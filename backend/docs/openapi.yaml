@@ -1,31 +1,4646 @@
-openapi: 3.1.0
+openapi: 3.0.3
 info:
   title: School Management System API
   version: 1.0.0
   description: |
-    REST API for the School Management System. Authenticate with a Firebase ID token
-    (`Authorization: Bearer <token>`). Every response uses the envelope
-    `{ success: true, data, meta? }` or `{ success: false, error: { code, message, details? } }`.
+    REST API of the School Management System: accounts, students, teachers, subjects, classes, teacher
+    assignments, enrollments, timetables, attendance, assessments and grades, announcements and
+    role-specific dashboards. Identity is handled by Firebase Authentication, data lives in MySQL.
+
+    All paths are relative to the server URL `/api/v1`. The raw specification is served at
+    `/api/docs/openapi.json`.
+
+    ## Authentication and roles
+
+    Every operation except `GET /health` and `POST /auth/register` requires
+    `Authorization: Bearer <Firebase ID token>`. Use **Authorize** and paste a token; in development
+    `npm run token --silent -- teacher1@school.test` (run in `backend/`) prints one for a demo account.
+    The token only proves identity: the account must exist in the school database and be active.
+
+    There are three roles: `admin`, `teacher` and `student`. Each operation starts its description with a
+    `Roles:` line that states who may call it and any ownership rule that applies on top of the role.
+
+    ## Responses
+
+    Success: `{ "success": true, "data": ..., "meta": ... }`. `data` is an object, or an array on lists;
+    `meta` is present only on paginated lists. `DELETE` returns `{ "success": true, "data": { "id": 7 } }`.
+
+    Error: `{ "success": false, "error": { "code": "...", "message": "...", "details": { ... } } }`.
+    `details` is optional and always an object.
+
+    Every response carries an `X-Request-Id` header. A request may send its own `X-Request-Id`
+    (8 to 64 characters of `A-Z a-z 0-9 _ -`); otherwise the server generates one. Quote it when reporting a problem.
+
+    ## Error codes
+
+    The catalogue is closed. Specifics are carried in `message` and `details` (`reason`, `key`, `issues`, ...).
+
+    | Code | HTTP | Meaning |
+    |------|------|---------|
+    | `VALIDATION_ERROR` | 400 | Malformed JSON, body over 1 MB, invalid parameters or body (`details.issues` lists `{ path, message }`), a referenced record that does not exist (`details.field`), or a business rule on the input (`details.reason`, for example `not_enrolled`). |
+    | `UNAUTHORIZED` | 401 | Missing or invalid bearer token. `details.reason` is `missing_token`, `invalid_token` or the Firebase code, for example `auth/id-token-expired`. |
+    | `FORBIDDEN` | 403 | The role, ownership or visibility rules forbid the call. `details.reason` is a stable identifier such as `role_not_allowed` or `not_class_subject_owner`. |
+    | `USER_NOT_REGISTERED` | 403 | The token is valid but no school account is linked to it. `details.firebaseUid`. |
+    | `ACCOUNT_DISABLED` | 403 | The account has been deactivated. |
+    | `NOT_FOUND` | 404 | The record does not exist or is not visible to the caller (`details.resource`, `details.id`), or the route is unknown. |
+    | `CONFLICT` | 409 | Duplicate value (`details.key`, as `table.key_name`), record still in use (`details.reason` is `in_use`, `details.constraint`), or a business conflict identified by `details.reason`. |
+    | `SCHEDULE_CONFLICT` | 409 | A timetable slot overlaps another slot of the same class, teacher or room. `details.conflicts` lists every overlap. |
+    | `RATE_LIMITED` | 429 | Too many registrations from one IP address. `details.retryAfterSeconds`, also sent as `Retry-After`. |
+    | `INTERNAL_ERROR` | 500 | Unexpected failure. |
+    | `SERVICE_UNAVAILABLE` | 503 | The database is unreachable. |
+
+    ## Lists, filtering and scoping
+
+    Every list operation accepts `page` (default 1), `limit` (1 to 100, default 20; larger values are rejected,
+    not clamped), `sortBy` (a whitelist stated per operation), `sortOrder` (`asc` or `desc`) and its own
+    filters. Most lists also accept `search`, a case-insensitive substring match over the columns named in
+    the operation. Unknown query parameters are rejected with 400. Paginated responses return
+    `meta: { page, limit, total, totalPages }`; `total` honours the filters.
+
+    Scoped lists follow one rule. Omitting a filter returns the caller's own scope: a student sees their
+    own records, a teacher the classes they teach or are homeroom teacher of, an admin everything. Naming
+    a filter outside that scope (another student, a class the teacher cannot see) is a `403 FORBIDDEN`,
+    never a silently narrowed result. Teachers read what they can see (teach or homeroom) but may only
+    modify the class-subjects assigned to them.
+
+    ## Conventions
+
+    - JSON in and out, camelCase. Request bodies are strict: unknown fields are rejected with 400.
+    - `PATCH` bodies must contain at least one known field; omitted fields stay untouched and `null`
+      clears a nullable field.
+    - Ids are positive integers. The literal `me` is accepted wherever a `studentId`, `teacherId` or
+      `authorId` appears (path or query) and stands for the caller; a caller without that profile gets a 400.
+    - Dates are `YYYY-MM-DD`, times `HH:MM` (24 hours), timestamps ISO-8601 UTC. "Today" and the weekday
+      are evaluated in the school time zone; the academic year starts in August (`2026-2027`).
+    - Write operations return the same shape as the corresponding read.
 servers:
   - url: /api/v1
+    description: Same origin as this page
 tags:
-  - name: system
+  - name: auth
+    description: Self-registration and the signed-in user's own account.
+  - name: users
+    description: Account administration for every role, including activation.
+  - name: students
+    description: Student directory and profiles.
+  - name: teachers
+    description: Teacher directory and profiles.
+  - name: subjects
+    description: Subject catalogue.
+  - name: classes
+    description: Classes per academic year and their homeroom teachers.
+  - name: class-subjects
+    description: Teacher assignments, which subject each teacher teaches to which class.
+  - name: enrollments
+    description: Student membership of classes, with history, bulk enrollment and transfers.
+  - name: schedules
+    description: Weekly timetable with conflict detection.
+  - name: attendance
+    description: Attendance sheets per lesson and day, flat records and summaries.
+  - name: assessments
+    description: Quizzes, tests and exams of a class-subject.
+  - name: grades
+    description: Scores per assessment, bulk entry, gradebook and summaries.
+  - name: announcements
+    description: Announcements by audience and class with a publication window.
+  - name: dashboard
+    description: One role-specific dashboard payload.
+  - name: health
+    description: Liveness and database check.
+security:
+  - bearerAuth: []
+paths:
+  /auth/register:
+    post:
+      tags: [auth]
+      operationId: registerStudent
+      summary: Register a student account
+      description: |
+        Roles: public (no token).
+
+        Self-registration. Creates the Firebase user, the account and the student profile in one step and
+        always assigns the role `student`; there is no `role` field. The student number is generated
+        (`STU-<admission year>-NNNN`) and `admissionDate` is today. No token is returned: sign in with the
+        Firebase client SDK afterwards.
+
+        Disabled with `ALLOW_PUBLIC_REGISTRATION=false` (404). Limited to 5 requests per 15 minutes per IP address.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              email: liam.cruz@example.com
+              password: Str0ngPass!
+              firstName: Liam
+              lastName: Cruz
+              phone: +63 917 123 4567
+              dateOfBirth: '2013-04-21'
+              gender: male
+              guardianName: Maria Cruz
+              guardianPhone: +63 917 765 4321
+      responses:
+        '201': { $ref: '#/components/responses/AccountResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/me:
+    get:
+      tags: [auth]
+      operationId: getMyAccount
+      summary: Get the signed-in account
+      description: |
+        Roles: any authenticated user.
+
+        Identity of the caller with the embedded role profile: `profile` holds the student or teacher record
+        and is `null` for admins; students also get `currentEnrollment`. Clients call this right after sign-in
+        to learn the role. A valid token without a school account fails with `403 USER_NOT_REGISTERED`,
+        a deactivated account with `403 ACCOUNT_DISABLED`.
+      responses:
+        '200': { $ref: '#/components/responses/AccountResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    patch:
+      tags: [auth]
+      operationId: updateMyAccount
+      summary: Update own contact details
+      description: |
+        Roles: any authenticated user (own account only); `address`, `guardianName` and `guardianPhone`
+        are accepted from students only.
+
+        Self-service update of contact fields. Names, date of birth and numbers are changed by an admin
+        (`PATCH /students/{id}`, `PATCH /teachers/{id}`). A non-student sending student-only fields gets
+        `400` with `details.reason = student_only_fields`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMeRequest'
+            example:
+              phone: +63 917 123 9999
+              address: 12 Mabini Street, Quezon City
+      responses:
+        '200': { $ref: '#/components/responses/AccountResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /users:
+    get:
+      tags: [users]
+      operationId: listUsers
+      summary: List accounts
+      description: |
+        Roles: admin.
+
+        Accounts of every role without the embedded profile. Search matches first name, last name and email.
+        Default order: last name, then first name.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Search'
+        - name: sortBy
+          in: query
+          description: Sort field.
+          schema:
+            type: string
+            enum: [lastName, firstName, email, role, createdAt]
+        - $ref: '#/components/parameters/SortOrder'
+        - name: role
+          in: query
+          description: Only accounts with this role.
+          schema:
+            $ref: '#/components/schemas/Role'
+        - $ref: '#/components/parameters/IsActiveFilter'
+      responses:
+        '200': { $ref: '#/components/responses/UserListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [users]
+      operationId: createUser
+      summary: Create an account
+      description: |
+        Roles: admin.
+
+        Creates a Firebase user, the account and the role profile, in one step, for any role. The `profile`
+        object is optional for `student` and `teacher` and not allowed for `admin`. Student and employee
+        numbers are generated when omitted; `admissionDate` and `hireDate` default to today.
+        If a Firebase user with the same email already exists it is adopted and its password is reset.
+        Returns the same shape as `GET /auth/me`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+            examples:
+              student:
+                summary: Student with contact details
+                value:
+                  email: mia.santos@example.com
+                  password: TempPass#2026
+                  role: student
+                  firstName: Mia
+                  lastName: Santos
+                  profile:
+                    dateOfBirth: '2013-09-02'
+                    gender: female
+                    guardianName: Ben Santos
+                    guardianPhone: +63 917 555 0102
+              teacher:
+                summary: Teacher with an explicit employee number
+                value:
+                  email: ana.reyes@school.test
+                  password: TempPass#2026
+                  role: teacher
+                  firstName: Ana
+                  lastName: Reyes
+                  profile:
+                    employeeNumber: EMP-2024-0007
+                    department: Science
+                    qualification: MSc Biology
+                    hireDate: '2024-06-01'
+              admin:
+                summary: Administrator (no profile)
+                value:
+                  email: admin3@school.test
+                  password: TempPass#2026
+                  role: admin
+                  firstName: Sam
+                  lastName: Ortiz
+      responses:
+        '201': { $ref: '#/components/responses/AccountResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /users/{id}:
+    get:
+      tags: [users]
+      operationId: getUser
+      summary: Get an account
+      description: |
+        Roles: admin.
+
+        Account with the embedded role profile, in the shape of `GET /auth/me`.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/AccountResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [users]
+      operationId: updateUser
+      summary: Update an account
+      description: |
+        Roles: admin.
+
+        Changes name and phone. Email and role are immutable: deactivate the account and create a new one.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+            example:
+              lastName: Reyes-Lim
+      responses:
+        '200': { $ref: '#/components/responses/AccountResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /users/{id}/status:
+    patch:
+      tags: [users]
+      operationId: setUserStatus
+      summary: Activate or deactivate an account
+      description: |
+        Roles: admin (not on their own account).
+
+        Updates `isActive` in the database, then disables or enables the Firebase user; deactivating also
+        revokes its refresh tokens, so the user is locked out immediately. Deactivating a student withdraws
+        their active enrollment. The call is idempotent.
+
+        Refused with `403` (`details.reason = self_status_change`) when the target is the caller, and with
+        `409` (`details.reason = teacher_has_assignments`) when a teacher still teaches a class-subject or is
+        homeroom teacher in the current academic year.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserStatusRequest'
+            example:
+              isActive: false
+      responses:
+        '200': { $ref: '#/components/responses/AccountResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /students:
+    get:
+      tags: [students]
+      operationId: listStudents
+      summary: List students
+      description: |
+        Roles: admin, teacher (only students with an active enrollment in a class they can see).
+
+        Directory, class roster and enrollment picker. Search matches first name, last name, student number
+        and email. Default order: last name, then first name. `hasActiveEnrollment=false` lists students
+        without a class (admin). A `classId` the teacher cannot see is a 403.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Search'
+        - name: sortBy
+          in: query
+          description: Sort field.
+          schema:
+            type: string
+            enum: [lastName, firstName, studentNumber, admissionDate, createdAt]
+        - $ref: '#/components/parameters/SortOrder'
+        - $ref: '#/components/parameters/ClassIdFilter'
+        - $ref: '#/components/parameters/GradeLevelFilter'
+        - name: gender
+          in: query
+          description: Only students with this gender.
+          schema:
+            $ref: '#/components/schemas/Gender'
+        - $ref: '#/components/parameters/IsActiveFilter'
+        - name: hasActiveEnrollment
+          in: query
+          description: Use true for students in a class, false for students without one.
+          schema:
+            type: boolean
+      responses:
+        '200': { $ref: '#/components/responses/StudentListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /students/{id}:
+    get:
+      tags: [students]
+      operationId: getStudent
+      summary: Get a student
+      description: |
+        Roles: admin, teacher (students in a class they can see), student (own profile only).
+
+        Full student profile with the current enrollment. `id` accepts `me`.
+      parameters:
+        - $ref: '#/components/parameters/IdOrMePath'
+      responses:
+        '200': { $ref: '#/components/responses/StudentResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [students]
+      operationId: updateStudent
+      summary: Update a student
+      description: |
+        Roles: admin.
+
+        Edits account and profile fields in one call. A student number that is already taken is a
+        409 (`details.key = students.uq_students_number`).
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStudentRequest'
+            example:
+              guardianPhone: +63 917 765 0000
+              address: null
+      responses:
+        '200': { $ref: '#/components/responses/StudentResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /teachers:
+    get:
+      tags: [teachers]
+      operationId: listTeachers
+      summary: List teachers
+      description: |
+        Roles: admin.
+
+        Staff list for assignment and homeroom pickers. Search matches first name, last name, employee
+        number and department. Default order: last name, then first name.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Search'
+        - name: sortBy
+          in: query
+          description: Sort field.
+          schema:
+            type: string
+            enum: [lastName, firstName, employeeNumber, department, hireDate, createdAt]
+        - $ref: '#/components/parameters/SortOrder'
+        - name: department
+          in: query
+          description: Only teachers of this department (exact match).
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+        - $ref: '#/components/parameters/IsActiveFilter'
+      responses:
+        '200': { $ref: '#/components/responses/TeacherListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /teachers/{id}:
+    get:
+      tags: [teachers]
+      operationId: getTeacher
+      summary: Get a teacher
+      description: |
+        Roles: admin, teacher (own profile only).
+
+        `id` accepts `me`.
+      parameters:
+        - $ref: '#/components/parameters/IdOrMePath'
+      responses:
+        '200': { $ref: '#/components/responses/TeacherResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [teachers]
+      operationId: updateTeacher
+      summary: Update a teacher
+      description: |
+        Roles: admin.
+
+        Edits account and profile fields in one call. An employee number that is already taken is a
+        409 (`details.key = teachers.uq_teachers_number`).
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTeacherRequest'
+            example:
+              department: Natural Sciences
+      responses:
+        '200': { $ref: '#/components/responses/TeacherResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /subjects:
+    get:
+      tags: [subjects]
+      operationId: listSubjects
+      summary: List subjects
+      description: |
+        Roles: any authenticated user.
+
+        Reference list; not scoped. Search matches code and name. Default order: code. Without `isActive`
+        both active and retired subjects are returned.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Search'
+        - name: sortBy
+          in: query
+          description: Sort field.
+          schema:
+            type: string
+            enum: [code, name, createdAt]
+        - $ref: '#/components/parameters/SortOrder'
+        - $ref: '#/components/parameters/IsActiveFilter'
+      responses:
+        '200': { $ref: '#/components/responses/SubjectListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [subjects]
+      operationId: createSubject
+      summary: Create a subject
+      description: |
+        Roles: admin.
+
+        A code that already exists is a 409 (`details.key = subjects.uq_subjects_code`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSubjectRequest'
+            example:
+              code: BIO7
+              name: Biology
+              description: Introductory life science
+      responses:
+        '201': { $ref: '#/components/responses/SubjectResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /subjects/{id}:
+    get:
+      tags: [subjects]
+      operationId: getSubject
+      summary: Get a subject
+      description: |
+        Roles: any authenticated user.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/SubjectResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [subjects]
+      operationId: updateSubject
+      summary: Update or retire a subject
+      description: |
+        Roles: admin.
+
+        Edits a subject, or retires and reactivates it with `isActive`. A retired subject cannot be assigned to
+        new classes (`POST /class-subjects` rejects it) while existing history keeps working. This is the way to
+        take a subject that is in use out of circulation.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSubjectRequest'
+            example:
+              isActive: false
+      responses:
+        '200': { $ref: '#/components/responses/SubjectResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [subjects]
+      operationId: deleteSubject
+      summary: Delete a subject
+      description: |
+        Roles: admin.
+
+        Allowed only while nothing references the subject; otherwise 409 with `details.reason = in_use`.
+        Retire it with `PATCH { "isActive": false }` instead.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /classes:
+    get:
+      tags: [classes]
+      operationId: listClasses
+      summary: List classes
+      description: |
+        Roles: any authenticated user.
+
+        Reference list; not scoped. Search matches the class name. Default order: academic year descending,
+        then name. `homeroomTeacherId=me` lists the caller's homeroom classes (teachers only).
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Search'
+        - name: sortBy
+          in: query
+          description: Sort field.
+          schema:
+            type: string
+            enum: [name, gradeLevel, academicYear, createdAt]
+        - $ref: '#/components/parameters/SortOrder'
+        - $ref: '#/components/parameters/AcademicYearFilter'
+        - $ref: '#/components/parameters/GradeLevelFilter'
+        - name: homeroomTeacherId
+          in: query
+          description: Only classes led by this teacher. Accepts `me`.
+          schema:
+            $ref: '#/components/schemas/IdOrMe'
+      responses:
+        '200': { $ref: '#/components/responses/ClassListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [classes]
+      operationId: createClass
+      summary: Create a class
+      description: |
+        Roles: admin.
+
+        The group letter is part of the name (`Grade 7 - A`). A class with the same name in the same academic
+        year is a 409 (`details.key = classes.uq_classes_year_name`). The homeroom teacher must exist and be
+        active (400 otherwise).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClassRequest'
+            example:
+              name: Grade 7 - A
+              gradeLevel: 7
+              academicYear: '2026-2027'
+              homeroomTeacherId: 5
+      responses:
+        '201': { $ref: '#/components/responses/ClassResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /classes/{id}:
+    get:
+      tags: [classes]
+      operationId: getClass
+      summary: Get a class
+      description: |
+        Roles: any authenticated user.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/ClassResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [classes]
+      operationId: updateClass
+      summary: Update a class
+      description: |
+        Roles: admin.
+
+        `homeroomTeacherId` may be set to `null` to remove the homeroom teacher.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateClassRequest'
+            example:
+              homeroomTeacherId: null
+      responses:
+        '200': { $ref: '#/components/responses/ClassResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [classes]
+      operationId: deleteClass
+      summary: Delete a class
+      description: |
+        Roles: admin.
+
+        409 (`details.reason = in_use`) while enrollments, class-subjects or announcements reference the class.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /class-subjects:
+    get:
+      tags: [class-subjects]
+      operationId: listClassSubjects
+      summary: List teacher assignments
+      description: |
+        Roles: any authenticated user (teachers: classes they can see; students: their own class only).
+
+        What is taught in which class by whom. A student without an active enrollment gets an empty list.
+        Search matches subject name, subject code and class name. Default order: class name, then subject name.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Search'
+        - name: sortBy
+          in: query
+          description: Sort field.
+          schema:
+            type: string
+            enum: [className, subjectName, teacherLastName, createdAt]
+        - $ref: '#/components/parameters/SortOrder'
+        - $ref: '#/components/parameters/ClassIdFilter'
+        - name: subjectId
+          in: query
+          description: Only assignments of this subject.
+          schema:
+            $ref: '#/components/schemas/Id'
+        - $ref: '#/components/parameters/TeacherIdFilter'
+        - $ref: '#/components/parameters/AcademicYearFilter'
+      responses:
+        '200': { $ref: '#/components/responses/ClassSubjectListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [class-subjects]
+      operationId: createClassSubject
+      summary: Assign a teacher to a subject in a class
+      description: |
+        Roles: admin.
+
+        One teacher teaches one subject per class: repeating a class and subject is a 409
+        (`details.key = class_subjects.uq_class_subjects_class_subject`). The teacher must exist and be
+        active, and the subject must exist and not be retired (400, `details.reason` is `teacher_inactive`,
+        `subject_inactive` or `invalid_reference`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClassSubjectRequest'
+            example:
+              classId: 3
+              subjectId: 2
+              teacherId: 5
+      responses:
+        '201': { $ref: '#/components/responses/ClassSubjectResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /class-subjects/{id}:
+    get:
+      tags: [class-subjects]
+      operationId: getClassSubject
+      summary: Get a teacher assignment
+      description: |
+        Roles: any authenticated user (teachers: classes they can see; students: their own class only).
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/ClassSubjectResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [class-subjects]
+      operationId: reassignClassSubject
+      summary: Reassign the teacher
+      description: |
+        Roles: admin.
+
+        Only the teacher can change. To change the class or the subject, delete the assignment and create a new
+        one; that keeps attendance and grade history honest.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReassignClassSubjectRequest'
+            example:
+              teacherId: 6
+      responses:
+        '200': { $ref: '#/components/responses/ClassSubjectResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [class-subjects]
+      operationId: deleteClassSubject
+      summary: Remove a teacher assignment
+      description: |
+        Roles: admin.
+
+        409 (`details.reason = in_use`) while attendance, assessments or schedules reference it.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /enrollments:
+    get:
+      tags: [enrollments]
+      operationId: listEnrollments
+      summary: List enrollment records
+      description: |
+        Roles: any authenticated user (teachers: classes they can see; students: their own enrollments only).
+
+        Enrollment records including history. A student always receives their own records; naming another
+        `studentId` is a 403. Default order: newest first. Free-text search is not supported: a `search` parameter is rejected with 400.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: sortBy
+          in: query
+          description: Sort field.
+          schema:
+            type: string
+            enum: [createdAt, status, enrolledOn, studentLastName]
+        - $ref: '#/components/parameters/SortOrder'
+        - $ref: '#/components/parameters/StudentIdFilter'
+        - $ref: '#/components/parameters/ClassIdFilter'
+        - name: status
+          in: query
+          description: Only enrollments in this status.
+          schema:
+            $ref: '#/components/schemas/EnrollmentStatus'
+        - $ref: '#/components/parameters/AcademicYearFilter'
+      responses:
+        '200': { $ref: '#/components/responses/EnrollmentListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [enrollments]
+      operationId: enrollStudent
+      summary: Enroll a student in a class
+      description: |
+        Roles: admin.
+
+        Creates an active enrollment dated today. A closed enrollment of the same student and class is
+        re-opened instead of duplicated. A student who is already active in a class is a 409
+        (`details.reason = already_enrolled`, with `activeEnrollmentId` and `classId`); use
+        `POST /enrollments/transfer` to move them. Unknown or deactivated students are a 400
+        (`details.reason = student_not_enrollable`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollmentRequest'
+            example:
+              studentId: 12
+              classId: 3
+      responses:
+        '201': { $ref: '#/components/responses/EnrollmentResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /enrollments/bulk:
+    post:
+      tags: [enrollments]
+      operationId: enrollStudentsBulk
+      summary: Enroll many students in one class
+      description: |
+        Roles: admin.
+
+        All or nothing: one transaction enrolls up to 200 students. If any student is unknown, deactivated or
+        already active in a class nothing is written; the 409 lists them in `details.alreadyActive`
+        (`studentId`, `enrollmentId`, `classId`), the 400 in `details.invalidStudentIds`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkEnrollmentRequest'
+            example:
+              classId: 3
+              studentIds: [12, 13, 14]
+      responses:
+        '201': { $ref: '#/components/responses/BulkEnrollmentResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /enrollments/transfer:
+    post:
+      tags: [enrollments]
+      operationId: transferStudent
+      summary: Transfer a student to another class
+      description: |
+        Roles: admin.
+
+        One transaction closes the active enrollment as `transferred` (left today) and opens an enrollment in
+        the new class, or re-opens an existing closed one. Returns the new enrollment.
+        409 with `details.reason = no_active_enrollment` when the student is not enrolled (use
+        `POST /enrollments`), or `same_class` when the target is the current class.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollmentRequest'
+            example:
+              studentId: 12
+              classId: 4
+      responses:
+        '201': { $ref: '#/components/responses/EnrollmentResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /enrollments/{id}:
+    get:
+      tags: [enrollments]
+      operationId: getEnrollment
+      summary: Get an enrollment
+      description: |
+        Roles: any authenticated user (teachers: classes they can see; students: their own enrollments only).
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/EnrollmentResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [enrollments]
+      operationId: closeEnrollment
+      summary: Close an enrollment
+      description: |
+        Roles: admin.
+
+        Allowed transitions are `active` to `completed` and `active` to `withdrawn`; both set `leftOn` to today.
+        Anything else, such as re-activation or closing a closed enrollment, is a 409
+        (`details.reason = invalid_status_transition`). `transferred` is set only by
+        `POST /enrollments/transfer`. Enrollments cannot be deleted.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloseEnrollmentRequest'
+            example:
+              status: withdrawn
+      responses:
+        '200': { $ref: '#/components/responses/EnrollmentResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /schedules:
+    get:
+      tags: [schedules]
+      operationId: listSchedules
+      summary: List timetable slots
+      description: |
+        Roles: any authenticated user (teachers: classes they can see; students: their own class only).
+
+        Weekly timetable rows; clients group them by `dayOfWeek`. Search matches subject name, class name and
+        room. Default order: weekday, then start time. A `classId` or `classSubjectId` outside the caller's
+        scope is a 403.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Search'
+        - name: sortBy
+          in: query
+          description: Sort field.
+          schema:
+            type: string
+            enum: [dayOfWeek, startTime]
+        - $ref: '#/components/parameters/SortOrder'
+        - $ref: '#/components/parameters/ClassIdFilter'
+        - $ref: '#/components/parameters/TeacherIdFilter'
+        - $ref: '#/components/parameters/ClassSubjectIdFilter'
+        - name: dayOfWeek
+          in: query
+          description: Only slots on this ISO weekday (1 = Monday, 7 = Sunday).
+          schema:
+            $ref: '#/components/schemas/DayOfWeek'
+        - name: room
+          in: query
+          description: Only slots in this room (exact match).
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 50
+        - $ref: '#/components/parameters/AcademicYearFilter'
+      responses:
+        '200': { $ref: '#/components/responses/ScheduleListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [schedules]
+      operationId: createSchedule
+      summary: Create a timetable slot
+      description: |
+        Roles: admin.
+
+        A slot overlaps another when it is on the same weekday and `start < other.end AND end > other.start`;
+        back-to-back slots do not overlap. Slots are compared within the same academic year against the same
+        class, the same teacher and the same room (case-insensitive; skipped when `room` is null). Any
+        overlap is a 409 `SCHEDULE_CONFLICT` that lists every conflict in `details.conflicts`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateScheduleRequest'
+            example:
+              classSubjectId: 12
+              dayOfWeek: 1
+              startTime: '08:00'
+              endTime: '09:00'
+              room: B-204
+      responses:
+        '201': { $ref: '#/components/responses/ScheduleResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/ScheduleConflict' }
+  /schedules/{id}:
+    get:
+      tags: [schedules]
+      operationId: getSchedule
+      summary: Get a timetable slot
+      description: |
+        Roles: any authenticated user (teachers: classes they can see; students: their own class only).
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/ScheduleResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [schedules]
+      operationId: updateSchedule
+      summary: Update a timetable slot
+      description: |
+        Roles: admin.
+
+        Applies the same conflict check as creation to the merged slot, ignoring the slot itself.
+        The merged `endTime` must be after `startTime` (400).
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateScheduleRequest'
+            example:
+              startTime: '09:00'
+              endTime: '10:00'
+      responses:
+        '200': { $ref: '#/components/responses/ScheduleResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/ScheduleConflict' }
+    delete:
+      tags: [schedules]
+      operationId: deleteSchedule
+      summary: Delete a timetable slot
+      description: |
+        Roles: admin.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /attendance:
+    get:
+      tags: [attendance]
+      operationId: listAttendance
+      summary: List attendance records
+      description: |
+        Roles: any authenticated user (teachers: class-subjects they can see; students: their own records only).
+
+        Flat attendance records for history views. A student always receives their own records; naming another
+        `studentId` is a 403. Default order: newest date first. Free-text search is not supported: a `search` parameter is rejected with 400.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: sortBy
+          in: query
+          description: Sort field.
+          schema:
+            type: string
+            enum: [attendanceDate, status, studentLastName]
+        - $ref: '#/components/parameters/SortOrder'
+        - $ref: '#/components/parameters/StudentIdFilter'
+        - $ref: '#/components/parameters/ClassSubjectIdFilter'
+        - $ref: '#/components/parameters/ClassIdFilter'
+        - name: status
+          in: query
+          description: Only records with this status.
+          schema:
+            $ref: '#/components/schemas/AttendanceStatus'
+        - $ref: '#/components/parameters/DateFromFilter'
+        - $ref: '#/components/parameters/DateToFilter'
+      responses:
+        '200': { $ref: '#/components/responses/AttendanceListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /attendance/summary:
+    get:
+      tags: [attendance]
+      operationId: getAttendanceSummary
+      summary: Summarize attendance
+      description: |
+        Roles: any authenticated user (teachers: class-subjects they can see; students: their own records only).
+
+        Counts per status and the attendance rate, `(present + late) / total` with 4 decimals, or `null` when
+        nothing is marked. With `groupBy=none` (default) `data` is one object; with `student` or
+        `classSubject` it is an array with one row per group, each with a `label`.
+      parameters:
+        - $ref: '#/components/parameters/StudentIdFilter'
+        - $ref: '#/components/parameters/ClassSubjectIdFilter'
+        - $ref: '#/components/parameters/ClassIdFilter'
+        - $ref: '#/components/parameters/DateFromFilter'
+        - $ref: '#/components/parameters/DateToFilter'
+        - name: groupBy
+          in: query
+          description: Grouping of the summary.
+          schema:
+            type: string
+            enum: [none, student, classSubject]
+            default: none
+      responses:
+        '200': { $ref: '#/components/responses/AttendanceSummaryResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /attendance/sheet:
+    get:
+      tags: [attendance]
+      operationId: getAttendanceSheet
+      summary: Get the attendance sheet of a lesson
+      description: |
+        Roles: admin, teacher (class-subjects they can see).
+
+        The active roster of the class-subject's class with the marks of one date merged in. Students who are
+        not marked yet have `attendanceId`, `status` and `remarks` set to `null`.
+      parameters:
+        - name: classSubjectId
+          in: query
+          required: true
+          description: Class-subject (lesson) the sheet belongs to.
+          schema:
+            $ref: '#/components/schemas/Id'
+        - name: date
+          in: query
+          required: true
+          description: Date of the lesson.
+          schema:
+            $ref: '#/components/schemas/DateYmd'
+      responses:
+        '200': { $ref: '#/components/responses/AttendanceSheetResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [attendance]
+      operationId: saveAttendanceSheet
+      summary: Save the attendance sheet of a lesson
+      description: |
+        Roles: admin, teacher (only the teacher assigned to the class-subject).
+
+        Idempotent bulk upsert in one transaction: students in `records` are inserted or updated, students
+        left out keep their marks, so a partial body never erases anything. Every student must be actively
+        enrolled in the class (400, `details.reason = not_enrolled`, `details.invalidStudentIds`) and the date
+        may not be in the future (400, `details.reason = future_date`). The caller becomes `markedBy`.
+        Returns the refreshed sheet. A teacher who is not assigned to the lesson gets
+        `403` with `details.reason = not_class_subject_owner`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveAttendanceSheetRequest'
+            example:
+              classSubjectId: 12
+              date: '2026-10-03'
+              records:
+                - studentId: 12
+                  status: present
+                - studentId: 13
+                  status: late
+                  remarks: arrived 08:15
+                - studentId: 14
+                  status: absent
+      responses:
+        '200': { $ref: '#/components/responses/AttendanceSheetResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /attendance/{id}:
+    patch:
+      tags: [attendance]
+      operationId: updateAttendance
+      summary: Correct one attendance record
+      description: |
+        Roles: admin, teacher (only the teacher assigned to the class-subject).
+
+        Single-row correction; the caller becomes `markedBy`.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAttendanceRequest'
+            example:
+              status: excused
+              remarks: medical certificate
+      responses:
+        '200': { $ref: '#/components/responses/AttendanceRecordResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [attendance]
+      operationId: deleteAttendance
+      summary: Delete an attendance record
+      description: |
+        Roles: admin.
+
+        Removes a record that was entered by mistake.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /assessments:
+    get:
+      tags: [assessments]
+      operationId: listAssessments
+      summary: List assessments
+      description: |
+        Roles: any authenticated user (teachers: class-subjects they can see; students: their own class only).
+
+        Quizzes, tests and exams with `gradedCount` and `enrolledCount`. Search matches the title. Default
+        order: newest assessment date first. A `classId` or `classSubjectId` outside the caller's scope is a 403.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Search'
+        - name: sortBy
+          in: query
+          description: Sort field.
+          schema:
+            type: string
+            enum: [assessedOn, title, type, createdAt]
+        - $ref: '#/components/parameters/SortOrder'
+        - $ref: '#/components/parameters/ClassSubjectIdFilter'
+        - $ref: '#/components/parameters/ClassIdFilter'
+        - $ref: '#/components/parameters/AssessmentTypeFilter'
+        - $ref: '#/components/parameters/TermFilter'
+        - $ref: '#/components/parameters/DateFromFilter'
+        - $ref: '#/components/parameters/DateToFilter'
+      responses:
+        '200': { $ref: '#/components/responses/AssessmentListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [assessments]
+      operationId: createAssessment
+      summary: Create an assessment
+      description: |
+        Roles: admin, teacher (only the teacher assigned to the class-subject).
+
+        `assessedOn` defaults to today. A title that is already used for the same class-subject and term is a
+        409 (`details.key = assessments.uq_assessments_cs_term_title`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAssessmentRequest'
+            example:
+              classSubjectId: 12
+              title: Unit 2 Exam
+              type: exam
+              term: term1
+              maxScore: 50
+              assessedOn: '2026-10-07'
+      responses:
+        '201': { $ref: '#/components/responses/AssessmentResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /assessments/{id}:
+    get:
+      tags: [assessments]
+      operationId: getAssessment
+      summary: Get an assessment
+      description: |
+        Roles: any authenticated user (teachers: class-subjects they can see; students: their own class only).
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/AssessmentResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [assessments]
+      operationId: updateAssessment
+      summary: Update an assessment
+      description: |
+        Roles: admin, teacher (only the teacher assigned to the class-subject).
+
+        The class-subject cannot be changed. Lowering `maxScore` below an existing score is a 409
+        (`details.reason = max_score_below_grades`, `details.maxExistingScore`).
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAssessmentRequest'
+            example:
+              maxScore: 60
+      responses:
+        '200': { $ref: '#/components/responses/AssessmentResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [assessments]
+      operationId: deleteAssessment
+      summary: Delete an assessment with its grades
+      description: |
+        Roles: admin, teacher (only the teacher assigned to the class-subject).
+
+        Deletes the grades of the assessment and then the assessment, in one transaction. Clients should
+        confirm first and show `gradedCount`.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /grades:
+    get:
+      tags: [grades]
+      operationId: listGrades
+      summary: List grades
+      description: |
+        Roles: any authenticated user (teachers: class-subjects they can see; students: their own grades only).
+
+        Flat grade records, for example a student's gradebook. A student always receives their own grades;
+        naming another `studentId` is a 403. Default order: newest assessment date first. Free-text search is
+        not supported: a `search` parameter is rejected with 400.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: sortBy
+          in: query
+          description: Sort field.
+          schema:
+            type: string
+            enum: [assessedOn, score, createdAt]
+        - $ref: '#/components/parameters/SortOrder'
+        - $ref: '#/components/parameters/StudentIdFilter'
+        - name: assessmentId
+          in: query
+          description: Only grades of this assessment.
+          schema:
+            $ref: '#/components/schemas/Id'
+        - $ref: '#/components/parameters/ClassSubjectIdFilter'
+        - $ref: '#/components/parameters/ClassIdFilter'
+        - $ref: '#/components/parameters/TermFilter'
+        - $ref: '#/components/parameters/AssessmentTypeFilter'
+      responses:
+        '200': { $ref: '#/components/responses/GradeListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /grades/summary:
+    get:
+      tags: [grades]
+      operationId: getGradeSummary
+      summary: Summarize grades
+      description: |
+        Roles: any authenticated user (teachers: class-subjects they can see; students: their own grades only,
+        and not grouped by student).
+
+        Points-weighted aggregate over graded assessments only:
+        `percentage = SUM(score) / SUM(maxScore) * 100`. `groupBy=classSubject` (default) returns one row per
+        subject, `groupBy=student` one row per student (403 for students).
+      parameters:
+        - $ref: '#/components/parameters/StudentIdFilter'
+        - $ref: '#/components/parameters/ClassSubjectIdFilter'
+        - $ref: '#/components/parameters/ClassIdFilter'
+        - $ref: '#/components/parameters/TermFilter'
+        - name: groupBy
+          in: query
+          description: Grouping of the summary.
+          schema:
+            type: string
+            enum: [classSubject, student]
+            default: classSubject
+      responses:
+        '200': { $ref: '#/components/responses/GradeSummaryResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /grades/{id}:
+    delete:
+      tags: [grades]
+      operationId: deleteGrade
+      summary: Delete a grade
+      description: |
+        Roles: admin, teacher (only the teacher assigned to the class-subject of the grade).
+
+        Removes a grade that was entered for the wrong student.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /assessments/{id}/grades:
+    get:
+      tags: [grades]
+      operationId: getAssessmentGrades
+      summary: Get the grade roster of an assessment
+      description: |
+        Roles: admin, teacher (class-subjects they can see).
+
+        The active roster of the class with each student's score; students who are not graded yet have
+        `gradeId`, `score`, `percentage` and `remarks` set to `null`.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/GradeRosterResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [grades]
+      operationId: saveAssessmentGrades
+      summary: Save grades in bulk
+      description: |
+        Roles: admin, teacher (only the teacher assigned to the class-subject).
+
+        Idempotent bulk upsert in one transaction: students in `grades` are inserted or updated, students left
+        out keep their scores. The whole batch is rejected, and nothing is written, when a score exceeds the
+        assessment's `maxScore` (400, `details.reason = score_above_max` with `studentId`, `score` and
+        `maxScore`) or a student is not actively enrolled in the class (400, `details.reason = not_enrolled`,
+        `details.invalidStudentIds`). The caller becomes `gradedBy`. Returns the refreshed roster.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveGradesRequest'
+            example:
+              grades:
+                - studentId: 12
+                  score: 45
+                - studentId: 13
+                  score: 38.5
+                  remarks: missed Q4
+                - studentId: 14
+                  score: 50
+      responses:
+        '200': { $ref: '#/components/responses/GradeRosterResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /announcements:
+    get:
+      tags: [announcements]
+      operationId: listAnnouncements
+      summary: List announcements
+      description: |
+        Roles: any authenticated user (visibility depends on the role).
+
+        An announcement is active when `publishedAt <= now` and it has not expired. Students see active
+        announcements for `all` or `students` that are school-wide or addressed to their class. Teachers see
+        active school-wide announcements for `all` or `teachers`, active announcements of classes they can see,
+        and everything they authored. Admins see everything; without `status` they get active announcements.
+        Search matches title and body. Default order: newest publication first.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Search'
+        - name: sortBy
+          in: query
+          description: Sort field.
+          schema:
+            type: string
+            enum: [publishedAt, title, createdAt]
+        - $ref: '#/components/parameters/SortOrder'
+        - name: audience
+          in: query
+          description: Only announcements for this audience.
+          schema:
+            $ref: '#/components/schemas/AnnouncementAudience'
+        - $ref: '#/components/parameters/ClassIdFilter'
+        - name: authorId
+          in: query
+          description: Only announcements written by this user. Accepts `me`.
+          schema:
+            $ref: '#/components/schemas/IdOrMe'
+        - name: status
+          in: query
+          description: Admin only (403 `admin_only_filter` for other roles). `all` disables the status filter.
+          schema:
+            type: string
+            enum: [active, scheduled, expired, all]
+      responses:
+        '200': { $ref: '#/components/responses/AnnouncementListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [announcements]
+      operationId: createAnnouncement
+      summary: Publish an announcement
+      description: |
+        Roles: admin, teacher (must target a class they can see).
+
+        `publishedAt` defaults to now and `expiresAt` must be after it. Teachers must send `classId`
+        (400, `details.reason = class_required`) of a class they can see (403). Admins may omit `classId` for
+        a school-wide announcement.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAnnouncementRequest'
+            example:
+              title: Science fair on Friday
+              body: Bring your project to room B-204 before 8:00.
+              audience: students
+              classId: 3
+              expiresAt: '2026-10-10T16:00:00.000Z'
+      responses:
+        '201': { $ref: '#/components/responses/AnnouncementResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /announcements/{id}:
+    get:
+      tags: [announcements]
+      operationId: getAnnouncement
+      summary: Get an announcement
+      description: |
+        Roles: any authenticated user (only announcements visible to the caller; others are 404).
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/AnnouncementResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [announcements]
+      operationId: updateAnnouncement
+      summary: Update an announcement
+      description: |
+        Roles: admin, teacher (only the author; admins may edit any announcement).
+
+        Teachers can only retarget to a class they can see. A teacher who is not the author gets 403 with
+        `details.reason = not_author`.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAnnouncementRequest'
+            example:
+              expiresAt: null
+      responses:
+        '200': { $ref: '#/components/responses/AnnouncementResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [announcements]
+      operationId: deleteAnnouncement
+      summary: Delete an announcement
+      description: |
+        Roles: admin, teacher (only the author; admins may delete any announcement).
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /dashboard:
+    get:
+      tags: [dashboard]
+      operationId: getDashboard
+      summary: Get the dashboard of the signed-in user
+      description: |
+        Roles: any authenticated user (the payload depends on the role).
+
+        One URL for all roles; the `role` property tells which payload was returned. It is built from the
+        caller alone and accepts no query parameters (any parameter is a 400). Lists are capped and not
+        paginated. Teacher lists cover the current academic year only.
+      responses:
+        '200': { $ref: '#/components/responses/DashboardResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /health:
+    get:
+      tags: [health]
+      operationId: getHealth
+      summary: Check liveness and the database
+      description: |
+        Roles: public (no token).
+
+        Pings the database with a 2-second timeout. Reports the application version, the Firebase project
+        id and the school time zone.
+      security: []
+      responses:
+        '200': { $ref: '#/components/responses/HealthResponse' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: Firebase ID token
-security:
-  - bearerAuth: []
-paths:
-  /health:
-    get:
-      tags: [system]
-      summary: Liveness and database check
-      security: []
-      responses:
-        '200':
-          description: API and database are up
-        '503':
-          description: Database unreachable
+      description: Firebase ID token of an active school account. Tokens expire after one hour.
+  headers:
+    XRequestId:
+      description: Request id, echoed from the request when valid and generated otherwise. Present on every response.
+      schema:
+        type: string
+        example: 5b0e9a3c-7f1d-4e0a-9c55-0d1f6a2b8e47
+    RetryAfter:
+      description: Seconds until the rate limit window allows another registration.
+      schema:
+        type: integer
+        example: 540
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: Page number, starting at 1.
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    Limit:
+      name: limit
+      in: query
+      description: Page size. Values above 100 are rejected with 400, not clamped.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Search:
+      name: search
+      in: query
+      description: >-
+        Case-insensitive substring match over the searchable columns named in the operation description.
+        `%` and `_` match literally.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 100
+    SortOrder:
+      name: sortOrder
+      in: query
+      description: Sort direction; `asc` when `sortBy` is given. Without `sortBy` the default order of the operation applies.
+      schema:
+        type: string
+        enum: [asc, desc]
+    IdPath:
+      name: id
+      in: path
+      required: true
+      description: Record id.
+      schema:
+        $ref: '#/components/schemas/Id'
+    IdOrMePath:
+      name: id
+      in: path
+      required: true
+      description: Record id, or `me` for the caller's own record.
+      schema:
+        $ref: '#/components/schemas/IdOrMe'
+    IsActiveFilter:
+      name: isActive
+      in: query
+      description: Only active (`true`) or deactivated (`false`) records. Omit for both.
+      schema:
+        type: boolean
+    ClassIdFilter:
+      name: classId
+      in: query
+      description: Only records of this class. A class outside the caller's scope is a 403.
+      schema:
+        $ref: '#/components/schemas/Id'
+    GradeLevelFilter:
+      name: gradeLevel
+      in: query
+      description: Only records of this grade level.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 12
+    AcademicYearFilter:
+      name: academicYear
+      in: query
+      description: Only records of this academic year.
+      schema:
+        $ref: '#/components/schemas/AcademicYear'
+    TeacherIdFilter:
+      name: teacherId
+      in: query
+      description: Only records of this teacher. Accepts `me`.
+      schema:
+        $ref: '#/components/schemas/IdOrMe'
+    StudentIdFilter:
+      name: studentId
+      in: query
+      description: Only records of this student. Accepts `me`. Students always get their own records; another id is a 403.
+      schema:
+        $ref: '#/components/schemas/IdOrMe'
+    ClassSubjectIdFilter:
+      name: classSubjectId
+      in: query
+      description: Only records of this class-subject (lesson). A class-subject outside the caller's scope is a 403.
+      schema:
+        $ref: '#/components/schemas/Id'
+    DateFromFilter:
+      name: dateFrom
+      in: query
+      description: Inclusive lower bound of the date range. Must not be after `dateTo`.
+      schema:
+        $ref: '#/components/schemas/DateYmd'
+    DateToFilter:
+      name: dateTo
+      in: query
+      description: Inclusive upper bound of the date range.
+      schema:
+        $ref: '#/components/schemas/DateYmd'
+    AssessmentTypeFilter:
+      name: type
+      in: query
+      description: Only assessments of this type.
+      schema:
+        $ref: '#/components/schemas/AssessmentType'
+    TermFilter:
+      name: term
+      in: query
+      description: Only assessments of this term.
+      schema:
+        $ref: '#/components/schemas/Term'
+  schemas:
+    # --- Primitives and enums (values are kept in sync with src/constants/shared.js by tests/openapi.test.js) ---
+    Id:
+      type: integer
+      minimum: 1
+      example: 12
+    IdOrMe:
+      type: string
+      pattern: '^([1-9][0-9]*|me)$'
+      description: A positive integer id, or the literal `me` for the caller.
+      example: me
+    DateYmd:
+      type: string
+      format: date
+      pattern: '^\d{4}-\d{2}-\d{2}$'
+      description: Calendar date, `YYYY-MM-DD`.
+      example: '2026-10-03'
+    TimeHm:
+      type: string
+      pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+      description: Time of day, `HH:MM` (24 hours).
+      example: '08:00'
+    Timestamp:
+      type: string
+      format: date-time
+      description: ISO-8601 timestamp in UTC.
+      example: '2026-10-03T07:30:00.000Z'
+    AcademicYear:
+      type: string
+      pattern: '^\d{4}-\d{4}$'
+      description: Academic year `YYYY-YYYY`; the second year is the first plus one. The year starts in August.
+      example: '2026-2027'
+    Phone:
+      type: string
+      pattern: '^\+?[0-9()\-\s]{7,20}$'
+      example: +63 917 123 4567
+    PersonName:
+      type: string
+      minLength: 1
+      maxLength: 100
+      example: Liam
+    Email:
+      type: string
+      format: email
+      maxLength: 255
+      description: Stored lower-cased; unique across accounts.
+      example: liam.cruz@example.com
+    Password:
+      type: string
+      format: password
+      minLength: 8
+      maxLength: 128
+    StudentNumber:
+      type: string
+      pattern: '^STU-\d{4}-\d{4,}$'
+      example: STU-2026-0040
+    EmployeeNumber:
+      type: string
+      pattern: '^EMP-\d{4}-\d{4,}$'
+      example: EMP-2024-0007
+    SubjectCode:
+      type: string
+      pattern: '^[A-Z0-9-]{2,20}$'
+      description: Letters, digits and dashes; lower-case input is upper-cased.
+      example: BIO7
+    Score:
+      type: number
+      minimum: 0
+      multipleOf: 0.01
+      example: 38.5
+    Role:
+      type: string
+      enum: [admin, teacher, student]
+    Gender:
+      type: string
+      enum: [male, female, other]
+    EnrollmentStatus:
+      type: string
+      enum: [active, completed, transferred, withdrawn]
+    AttendanceStatus:
+      type: string
+      enum: [present, absent, late, excused]
+    AssessmentType:
+      type: string
+      enum: [quiz, test, exam, assignment, project, other]
+    Term:
+      type: string
+      enum: [term1, term2, term3]
+    AnnouncementAudience:
+      type: string
+      enum: [all, students, teachers]
+    AnnouncementStatus:
+      type: string
+      enum: [active, scheduled, expired]
+      description: Computed from `publishedAt` and `expiresAt`.
+    DayOfWeek:
+      type: integer
+      enum: [1, 2, 3, 4, 5, 6, 7]
+      description: ISO weekday, 1 = Monday to 7 = Sunday.
+    # --- Envelope, pagination and errors ---
+    Envelope:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          description: Payload; the schema depends on the operation.
+    PageMeta:
+      type: object
+      required: [page, limit, total, totalPages]
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          description: Number of records matching the filters.
+          example: 57
+        totalPages:
+          type: integer
+          description: At least 1.
+          example: 3
+    PagedEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          required: [meta]
+          properties:
+            meta:
+              $ref: '#/components/schemas/PageMeta'
+    ErrorCode:
+      type: string
+      description: Closed catalogue of error codes; the HTTP status of each code is listed in the API description.
+      enum:
+        - VALIDATION_ERROR
+        - UNAUTHORIZED
+        - FORBIDDEN
+        - USER_NOT_REGISTERED
+        - ACCOUNT_DISABLED
+        - NOT_FOUND
+        - CONFLICT
+        - SCHEDULE_CONFLICT
+        - RATE_LIMITED
+        - INTERNAL_ERROR
+        - SERVICE_UNAVAILABLE
+    ErrorEnvelope:
+      type: object
+      required: [success, error]
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              $ref: '#/components/schemas/ErrorCode'
+            message:
+              type: string
+              example: request validation failed
+            details:
+              type: object
+              additionalProperties: true
+              description: >-
+                Context that depends on the code, for example `issues`, `reason`, `key`, `field`, `conflicts`,
+                `invalidStudentIds`.
+    DeletedRecord:
+      type: object
+      required: [id]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+    # --- Reference shapes embedded in other resources ---
+    PersonRef:
+      type: object
+      required: [id, firstName, lastName]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        firstName:
+          type: string
+          example: Ana
+        lastName:
+          type: string
+          example: Reyes
+    StudentRef:
+      type: object
+      required: [id, studentNumber, firstName, lastName]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        studentNumber:
+          $ref: '#/components/schemas/StudentNumber'
+        firstName:
+          type: string
+          example: Liam
+        lastName:
+          type: string
+          example: Cruz
+    ClassRef:
+      type: object
+      required: [id, name, gradeLevel, academicYear]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        name:
+          type: string
+          example: Grade 7 - A
+        gradeLevel:
+          type: integer
+          example: 7
+        academicYear:
+          $ref: '#/components/schemas/AcademicYear'
+    ClassSubjectRef:
+      type: object
+      required: [classId, className, academicYear, subjectId, subjectName, teacherId]
+      properties:
+        classId:
+          $ref: '#/components/schemas/Id'
+        className:
+          type: string
+          example: Grade 7 - A
+        academicYear:
+          $ref: '#/components/schemas/AcademicYear'
+        subjectId:
+          $ref: '#/components/schemas/Id'
+        subjectName:
+          type: string
+          example: Biology
+        teacherId:
+          $ref: '#/components/schemas/Id'
+    CurrentEnrollment:
+      type: object
+      required: [id, classId, className, gradeLevel, academicYear, status, enrolledOn]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        classId:
+          $ref: '#/components/schemas/Id'
+        className:
+          type: string
+          example: Grade 7 - A
+        gradeLevel:
+          type: integer
+          example: 7
+        academicYear:
+          $ref: '#/components/schemas/AcademicYear'
+        status:
+          $ref: '#/components/schemas/EnrollmentStatus'
+        enrolledOn:
+          $ref: '#/components/schemas/DateYmd'
+    # --- Accounts and people ---
+    StudentProfile:
+      type: object
+      required: [id, studentNumber, dateOfBirth, gender, address, guardianName, guardianPhone, admissionDate]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        studentNumber:
+          $ref: '#/components/schemas/StudentNumber'
+        dateOfBirth:
+          type: string
+          format: date
+          nullable: true
+        gender:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Gender'
+        address:
+          type: string
+          nullable: true
+        guardianName:
+          type: string
+          nullable: true
+        guardianPhone:
+          type: string
+          nullable: true
+        admissionDate:
+          $ref: '#/components/schemas/DateYmd'
+    TeacherProfile:
+      type: object
+      required: [id, employeeNumber, hireDate, department, qualification]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        employeeNumber:
+          $ref: '#/components/schemas/EmployeeNumber'
+        hireDate:
+          $ref: '#/components/schemas/DateYmd'
+        department:
+          type: string
+          nullable: true
+          example: Science
+        qualification:
+          type: string
+          nullable: true
+          example: MSc Biology
+    User:
+      type: object
+      required: [id, email, firstName, lastName, phone, role, isActive, createdAt, updatedAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        email:
+          $ref: '#/components/schemas/Email'
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        role:
+          $ref: '#/components/schemas/Role'
+        isActive:
+          type: boolean
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+    Account:
+      description: A user with the role profile; the shape of `GET /auth/me` and `GET /users/{id}`.
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          required: [firebaseUid, studentId, teacherId, profile]
+          properties:
+            firebaseUid:
+              type: string
+            studentId:
+              type: integer
+              nullable: true
+              description: Id of the student profile; `null` unless the role is `student`.
+            teacherId:
+              type: integer
+              nullable: true
+              description: Id of the teacher profile; `null` unless the role is `teacher`.
+            profile:
+              nullable: true
+              description: Student profile for students, teacher profile for teachers, `null` for admins.
+              oneOf:
+                - $ref: '#/components/schemas/StudentProfile'
+                - $ref: '#/components/schemas/TeacherProfile'
+            currentEnrollment:
+              nullable: true
+              description: Present for students only; `null` while they have no active enrollment.
+              allOf:
+                - $ref: '#/components/schemas/CurrentEnrollment'
+    Student:
+      allOf:
+        - $ref: '#/components/schemas/StudentProfile'
+        - type: object
+          required:
+            [userId, firstName, lastName, email, phone, isActive, currentEnrollment, createdAt, updatedAt]
+          properties:
+            userId:
+              $ref: '#/components/schemas/Id'
+            firstName:
+              type: string
+            lastName:
+              type: string
+            email:
+              $ref: '#/components/schemas/Email'
+            phone:
+              type: string
+              nullable: true
+            isActive:
+              type: boolean
+            currentEnrollment:
+              nullable: true
+              allOf:
+                - $ref: '#/components/schemas/CurrentEnrollment'
+            createdAt:
+              $ref: '#/components/schemas/Timestamp'
+            updatedAt:
+              $ref: '#/components/schemas/Timestamp'
+    Teacher:
+      allOf:
+        - $ref: '#/components/schemas/TeacherProfile'
+        - type: object
+          required: [userId, firstName, lastName, email, phone, isActive, createdAt, updatedAt]
+          properties:
+            userId:
+              $ref: '#/components/schemas/Id'
+            firstName:
+              type: string
+            lastName:
+              type: string
+            email:
+              $ref: '#/components/schemas/Email'
+            phone:
+              type: string
+              nullable: true
+            isActive:
+              type: boolean
+            createdAt:
+              $ref: '#/components/schemas/Timestamp'
+            updatedAt:
+              $ref: '#/components/schemas/Timestamp'
+    # --- Academic structure ---
+    Subject:
+      type: object
+      required: [id, code, name, description, isActive, createdAt, updatedAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        code:
+          $ref: '#/components/schemas/SubjectCode'
+        name:
+          type: string
+          example: Biology
+        description:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+          description: False for a retired subject, which cannot be assigned to new classes.
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+    Class:
+      type: object
+      required: [id, name, gradeLevel, academicYear, homeroomTeacher, studentCount, createdAt, updatedAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        name:
+          type: string
+          example: Grade 7 - A
+        gradeLevel:
+          type: integer
+          minimum: 1
+          maximum: 12
+        academicYear:
+          $ref: '#/components/schemas/AcademicYear'
+        homeroomTeacher:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/PersonRef'
+        studentCount:
+          type: integer
+          description: Students with an active enrollment.
+          example: 32
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+    ClassSubject:
+      allOf:
+        - $ref: '#/components/schemas/ClassSubjectRef'
+        - type: object
+          required: [id, subjectCode, teacher, createdAt, updatedAt]
+          properties:
+            id:
+              $ref: '#/components/schemas/Id'
+            subjectCode:
+              $ref: '#/components/schemas/SubjectCode'
+            teacher:
+              $ref: '#/components/schemas/PersonRef'
+            createdAt:
+              $ref: '#/components/schemas/Timestamp'
+            updatedAt:
+              $ref: '#/components/schemas/Timestamp'
+    Enrollment:
+      type: object
+      required: [id, studentId, student, classId, class, status, enrolledOn, leftOn, createdAt, updatedAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        studentId:
+          $ref: '#/components/schemas/Id'
+        student:
+          $ref: '#/components/schemas/StudentRef'
+        classId:
+          $ref: '#/components/schemas/Id'
+        class:
+          $ref: '#/components/schemas/ClassRef'
+        status:
+          $ref: '#/components/schemas/EnrollmentStatus'
+        enrolledOn:
+          $ref: '#/components/schemas/DateYmd'
+        leftOn:
+          type: string
+          format: date
+          nullable: true
+          description: Null while the enrollment is active, the closing date otherwise.
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+    BulkEnrollment:
+      type: object
+      required: [classId, created, enrollments]
+      properties:
+        classId:
+          $ref: '#/components/schemas/Id'
+        created:
+          type: integer
+          example: 3
+        enrollments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Enrollment'
+    Schedule:
+      type: object
+      required: [id, classSubjectId, classSubject, dayOfWeek, startTime, endTime, room, createdAt, updatedAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        classSubjectId:
+          $ref: '#/components/schemas/Id'
+        classSubject:
+          allOf:
+            - $ref: '#/components/schemas/ClassSubjectRef'
+            - type: object
+              required: [teacher]
+              properties:
+                teacher:
+                  $ref: '#/components/schemas/PersonRef'
+        dayOfWeek:
+          $ref: '#/components/schemas/DayOfWeek'
+        startTime:
+          $ref: '#/components/schemas/TimeHm'
+        endTime:
+          $ref: '#/components/schemas/TimeHm'
+        room:
+          type: string
+          nullable: true
+          example: B-204
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+    ScheduleConflictItem:
+      type: object
+      required:
+        [type, scheduleId, classSubjectId, className, subjectName, dayOfWeek, startTime, endTime, room]
+      properties:
+        type:
+          type: string
+          enum: [class, teacher, room]
+          description: Which shared resource overlaps.
+        scheduleId:
+          $ref: '#/components/schemas/Id'
+        classSubjectId:
+          $ref: '#/components/schemas/Id'
+        className:
+          type: string
+        subjectName:
+          type: string
+        dayOfWeek:
+          $ref: '#/components/schemas/DayOfWeek'
+        startTime:
+          $ref: '#/components/schemas/TimeHm'
+        endTime:
+          $ref: '#/components/schemas/TimeHm'
+        room:
+          type: string
+          nullable: true
+    # --- Attendance ---
+    AttendanceRecord:
+      type: object
+      required:
+        [
+          id,
+          studentId,
+          student,
+          classSubjectId,
+          classSubject,
+          attendanceDate,
+          status,
+          remarks,
+          markedBy,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        studentId:
+          $ref: '#/components/schemas/Id'
+        student:
+          $ref: '#/components/schemas/StudentRef'
+        classSubjectId:
+          $ref: '#/components/schemas/Id'
+        classSubject:
+          $ref: '#/components/schemas/ClassSubjectRef'
+        attendanceDate:
+          $ref: '#/components/schemas/DateYmd'
+        status:
+          $ref: '#/components/schemas/AttendanceStatus'
+        remarks:
+          type: string
+          nullable: true
+        markedBy:
+          $ref: '#/components/schemas/PersonRef'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+    AttendanceSheetRow:
+      type: object
+      required:
+        [studentId, studentNumber, firstName, lastName, attendanceId, status, remarks, markedBy, updatedAt]
+      properties:
+        studentId:
+          $ref: '#/components/schemas/Id'
+        studentNumber:
+          $ref: '#/components/schemas/StudentNumber'
+        firstName:
+          type: string
+        lastName:
+          type: string
+        attendanceId:
+          type: integer
+          nullable: true
+          description: Null until the student is marked.
+        status:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/AttendanceStatus'
+        remarks:
+          type: string
+          nullable: true
+        markedBy:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/PersonRef'
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+    AttendanceSheet:
+      type: object
+      required: [classSubjectId, classSubject, date, records]
+      properties:
+        classSubjectId:
+          $ref: '#/components/schemas/Id'
+        classSubject:
+          $ref: '#/components/schemas/ClassSubjectRef'
+        date:
+          $ref: '#/components/schemas/DateYmd'
+        records:
+          type: array
+          description: The active roster of the class, ordered by last name, then first name.
+          items:
+            $ref: '#/components/schemas/AttendanceSheetRow'
+    AttendanceSummary:
+      type: object
+      required: [total, present, absent, late, excused, rate]
+      properties:
+        total:
+          type: integer
+          example: 120
+        present:
+          type: integer
+          example: 110
+        absent:
+          type: integer
+          example: 4
+        late:
+          type: integer
+          example: 5
+        excused:
+          type: integer
+          example: 1
+        rate:
+          type: number
+          nullable: true
+          description: Computed as (present + late) / total with 4 decimals; null when total is 0.
+          example: 0.9583
+    AttendanceSummaryRow:
+      allOf:
+        - $ref: '#/components/schemas/AttendanceSummary'
+        - type: object
+          required: [label]
+          properties:
+            studentId:
+              $ref: '#/components/schemas/Id'
+            classSubjectId:
+              $ref: '#/components/schemas/Id'
+            label:
+              type: string
+              description: Student name, or class and subject name.
+              example: Grade 7 - A - Biology
+    # --- Assessments and grades ---
+    Assessment:
+      type: object
+      required:
+        [
+          id,
+          classSubjectId,
+          classSubject,
+          title,
+          type,
+          term,
+          maxScore,
+          assessedOn,
+          gradedCount,
+          enrolledCount,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        classSubjectId:
+          $ref: '#/components/schemas/Id'
+        classSubject:
+          $ref: '#/components/schemas/ClassSubjectRef'
+        title:
+          type: string
+          example: Unit 2 Exam
+        type:
+          $ref: '#/components/schemas/AssessmentType'
+        term:
+          $ref: '#/components/schemas/Term'
+        maxScore:
+          type: number
+          example: 50
+        assessedOn:
+          $ref: '#/components/schemas/DateYmd'
+        gradedCount:
+          type: integer
+          description: Students who have a grade.
+          example: 20
+        enrolledCount:
+          type: integer
+          description: Students with an active enrollment in the class.
+          example: 32
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+    AssessmentRef:
+      type: object
+      required: [id, title, type, maxScore, term, assessedOn, classSubjectId, subjectName, className]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        title:
+          type: string
+          example: Unit 2 Exam
+        type:
+          $ref: '#/components/schemas/AssessmentType'
+        maxScore:
+          type: number
+          example: 50
+        term:
+          $ref: '#/components/schemas/Term'
+        assessedOn:
+          $ref: '#/components/schemas/DateYmd'
+        classSubjectId:
+          $ref: '#/components/schemas/Id'
+        subjectName:
+          type: string
+          example: Biology
+        className:
+          type: string
+          example: Grade 7 - A
+    Grade:
+      type: object
+      required:
+        [
+          id,
+          assessmentId,
+          assessment,
+          studentId,
+          student,
+          score,
+          percentage,
+          remarks,
+          gradedBy,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        assessmentId:
+          $ref: '#/components/schemas/Id'
+        assessment:
+          $ref: '#/components/schemas/AssessmentRef'
+        studentId:
+          $ref: '#/components/schemas/Id'
+        student:
+          $ref: '#/components/schemas/StudentRef'
+        score:
+          type: number
+          example: 45
+        percentage:
+          type: number
+          description: Score as a percentage of the maximum score, rounded to 2 decimals.
+          example: 90
+        remarks:
+          type: string
+          nullable: true
+        gradedBy:
+          $ref: '#/components/schemas/PersonRef'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+    GradeRosterRow:
+      type: object
+      required:
+        [
+          studentId,
+          studentNumber,
+          firstName,
+          lastName,
+          gradeId,
+          score,
+          percentage,
+          remarks,
+          gradedBy,
+          updatedAt,
+        ]
+      properties:
+        studentId:
+          $ref: '#/components/schemas/Id'
+        studentNumber:
+          $ref: '#/components/schemas/StudentNumber'
+        firstName:
+          type: string
+        lastName:
+          type: string
+        gradeId:
+          type: integer
+          nullable: true
+          description: Null until the student is graded; so are score, percentage, remarks, gradedBy and updatedAt.
+        score:
+          type: number
+          nullable: true
+        percentage:
+          type: number
+          nullable: true
+        remarks:
+          type: string
+          nullable: true
+        gradedBy:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/PersonRef'
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+    GradeRoster:
+      type: object
+      required: [assessmentId, assessment, records]
+      properties:
+        assessmentId:
+          $ref: '#/components/schemas/Id'
+        assessment:
+          $ref: '#/components/schemas/AssessmentRef'
+        records:
+          type: array
+          description: The active roster of the class, ordered by last name, then first name.
+          items:
+            $ref: '#/components/schemas/GradeRosterRow'
+    GradeSummaryRow:
+      type: object
+      required: [label, assessmentsGraded, totalScore, totalMaxScore, percentage]
+      properties:
+        studentId:
+          $ref: '#/components/schemas/Id'
+        classSubjectId:
+          $ref: '#/components/schemas/Id'
+        subjectName:
+          type: string
+          description: Present with `groupBy=classSubject`.
+        label:
+          type: string
+          description: Student name, or class and subject name.
+          example: Grade 7 - A - Biology
+        assessmentsGraded:
+          type: integer
+          example: 4
+        totalScore:
+          type: number
+          example: 140
+        totalMaxScore:
+          type: number
+          example: 160
+        percentage:
+          type: number
+          description: totalScore / totalMaxScore * 100, rounded to 2 decimals.
+          example: 87.5
+    # --- Announcements ---
+    Announcement:
+      type: object
+      required:
+        [
+          id,
+          author,
+          title,
+          body,
+          audience,
+          classId,
+          className,
+          publishedAt,
+          expiresAt,
+          status,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        author:
+          allOf:
+            - $ref: '#/components/schemas/PersonRef'
+            - type: object
+              required: [role]
+              properties:
+                role:
+                  $ref: '#/components/schemas/Role'
+        title:
+          type: string
+          example: Science fair on Friday
+        body:
+          type: string
+        audience:
+          $ref: '#/components/schemas/AnnouncementAudience'
+        classId:
+          type: integer
+          nullable: true
+          description: Target class; null for a school-wide announcement.
+        className:
+          type: string
+          nullable: true
+        publishedAt:
+          $ref: '#/components/schemas/Timestamp'
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          $ref: '#/components/schemas/AnnouncementStatus'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+    # --- Dashboards ---
+    UpcomingAssessment:
+      type: object
+      required: [id, title, type, assessedOn, className, subjectName]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        title:
+          type: string
+        type:
+          $ref: '#/components/schemas/AssessmentType'
+        assessedOn:
+          $ref: '#/components/schemas/DateYmd'
+        className:
+          type: string
+        subjectName:
+          type: string
+    AnnouncementBrief:
+      type: object
+      required: [id, title, audience, className, publishedAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        title:
+          type: string
+        audience:
+          $ref: '#/components/schemas/AnnouncementAudience'
+        className:
+          type: string
+          nullable: true
+        publishedAt:
+          $ref: '#/components/schemas/Timestamp'
+    AdminDashboard:
+      type: object
+      required: [role, counts, attendanceToday, enrollmentsByGrade, upcomingAssessments, recentAnnouncements]
+      properties:
+        role:
+          type: string
+          enum: [admin]
+        counts:
+          type: object
+          required: [students, teachers, classes, subjects, activeEnrollments, unenrolledStudents]
+          properties:
+            students:
+              type: integer
+              description: Active student accounts.
+            teachers:
+              type: integer
+              description: Active teacher accounts.
+            classes:
+              type: integer
+              description: Classes of the current academic year.
+            subjects:
+              type: integer
+              description: Active subjects.
+            activeEnrollments:
+              type: integer
+            unenrolledStudents:
+              type: integer
+              description: Active students without an active enrollment.
+        attendanceToday:
+          description: Attendance counts of today across the whole school.
+          allOf:
+            - $ref: '#/components/schemas/AttendanceSummary'
+            - type: object
+              required: [date]
+              properties:
+                date:
+                  $ref: '#/components/schemas/DateYmd'
+        enrollmentsByGrade:
+          type: array
+          items:
+            type: object
+            required: [gradeLevel, students]
+            properties:
+              gradeLevel:
+                type: integer
+              students:
+                type: integer
+        upcomingAssessments:
+          type: array
+          description: Assessments in the next 7 days, at most 10.
+          items:
+            $ref: '#/components/schemas/UpcomingAssessment'
+        recentAnnouncements:
+          type: array
+          description: Latest active announcements, at most 5.
+          items:
+            $ref: '#/components/schemas/AnnouncementBrief'
+    TeacherDashboard:
+      type: object
+      required:
+        [
+          role,
+          teacher,
+          classSubjects,
+          homeroomClasses,
+          todaySchedule,
+          attendanceToday,
+          pendingGrading,
+          recentAnnouncements,
+        ]
+      properties:
+        role:
+          type: string
+          enum: [teacher]
+        teacher:
+          type: object
+          required: [id, firstName, lastName, department]
+          properties:
+            id:
+              $ref: '#/components/schemas/Id'
+            firstName:
+              type: string
+            lastName:
+              type: string
+            department:
+              type: string
+              nullable: true
+        classSubjects:
+          type: array
+          description: Class-subjects taught in the current academic year.
+          items:
+            type: object
+            required: [id, classId, className, subjectName, academicYear, studentCount]
+            properties:
+              id:
+                $ref: '#/components/schemas/Id'
+              classId:
+                $ref: '#/components/schemas/Id'
+              className:
+                type: string
+              subjectName:
+                type: string
+              academicYear:
+                $ref: '#/components/schemas/AcademicYear'
+              studentCount:
+                type: integer
+        homeroomClasses:
+          type: array
+          description: Classes led in the current academic year.
+          items:
+            type: object
+            required: [id, name, academicYear, studentCount]
+            properties:
+              id:
+                $ref: '#/components/schemas/Id'
+              name:
+                type: string
+              academicYear:
+                $ref: '#/components/schemas/AcademicYear'
+              studentCount:
+                type: integer
+        todaySchedule:
+          type: array
+          description: Lessons of today in the current academic year.
+          items:
+            type: object
+            required:
+              [scheduleId, classSubjectId, className, subjectName, startTime, endTime, room, attendanceMarked]
+            properties:
+              scheduleId:
+                $ref: '#/components/schemas/Id'
+              classSubjectId:
+                $ref: '#/components/schemas/Id'
+              className:
+                type: string
+              subjectName:
+                type: string
+              startTime:
+                $ref: '#/components/schemas/TimeHm'
+              endTime:
+                $ref: '#/components/schemas/TimeHm'
+              room:
+                type: string
+                nullable: true
+              attendanceMarked:
+                type: boolean
+                description: True when attendance has been marked for the lesson today.
+        attendanceToday:
+          type: object
+          required: [sessionsScheduled, sessionsMarked]
+          properties:
+            sessionsScheduled:
+              type: integer
+            sessionsMarked:
+              type: integer
+        pendingGrading:
+          type: array
+          description: Assessments with fewer graded than enrolled students, at most 10.
+          items:
+            type: object
+            required: [assessmentId, title, className, subjectName, assessedOn, graded, enrolled]
+            properties:
+              assessmentId:
+                $ref: '#/components/schemas/Id'
+              title:
+                type: string
+              className:
+                type: string
+              subjectName:
+                type: string
+              assessedOn:
+                $ref: '#/components/schemas/DateYmd'
+              graded:
+                type: integer
+              enrolled:
+                type: integer
+        recentAnnouncements:
+          type: array
+          description: Latest active announcements visible to the teacher, at most 5.
+          items:
+            $ref: '#/components/schemas/AnnouncementBrief'
+    StudentDashboard:
+      type: object
+      required:
+        [
+          role,
+          student,
+          currentEnrollment,
+          todaySchedule,
+          attendanceSummary,
+          gradeSummary,
+          recentGrades,
+          upcomingAssessments,
+          recentAnnouncements,
+        ]
+      properties:
+        role:
+          type: string
+          enum: [student]
+        student:
+          $ref: '#/components/schemas/StudentRef'
+        currentEnrollment:
+          type: object
+          nullable: true
+          description: Null while the student has no active enrollment; then the schedule, grade and assessment lists are empty.
+          required: [classId, className, gradeLevel, academicYear, homeroomTeacher]
+          properties:
+            classId:
+              $ref: '#/components/schemas/Id'
+            className:
+              type: string
+            gradeLevel:
+              type: integer
+            academicYear:
+              $ref: '#/components/schemas/AcademicYear'
+            homeroomTeacher:
+              nullable: true
+              allOf:
+                - $ref: '#/components/schemas/PersonRef'
+        todaySchedule:
+          type: array
+          description: Lessons of today for the student's class.
+          items:
+            type: object
+            required: [scheduleId, classSubjectId, subjectName, teacher, startTime, endTime, room]
+            properties:
+              scheduleId:
+                $ref: '#/components/schemas/Id'
+              classSubjectId:
+                $ref: '#/components/schemas/Id'
+              subjectName:
+                type: string
+              teacher:
+                $ref: '#/components/schemas/PersonRef'
+              startTime:
+                $ref: '#/components/schemas/TimeHm'
+              endTime:
+                $ref: '#/components/schemas/TimeHm'
+              room:
+                type: string
+                nullable: true
+        attendanceSummary:
+          description: Attendance since the start of the academic year.
+          allOf:
+            - $ref: '#/components/schemas/AttendanceSummary'
+            - type: object
+              required: [dateFrom, dateTo]
+              properties:
+                dateFrom:
+                  $ref: '#/components/schemas/DateYmd'
+                dateTo:
+                  $ref: '#/components/schemas/DateYmd'
+        gradeSummary:
+          type: array
+          description: One row per subject.
+          items:
+            type: object
+            required: [classSubjectId, subjectName, assessmentsGraded, percentage]
+            properties:
+              classSubjectId:
+                $ref: '#/components/schemas/Id'
+              subjectName:
+                type: string
+              assessmentsGraded:
+                type: integer
+              percentage:
+                type: number
+        recentGrades:
+          type: array
+          description: Newest grades, at most 5.
+          items:
+            type: object
+            required:
+              [gradeId, assessmentId, title, type, subjectName, score, maxScore, percentage, assessedOn]
+            properties:
+              gradeId:
+                $ref: '#/components/schemas/Id'
+              assessmentId:
+                $ref: '#/components/schemas/Id'
+              title:
+                type: string
+              type:
+                $ref: '#/components/schemas/AssessmentType'
+              subjectName:
+                type: string
+              score:
+                type: number
+              maxScore:
+                type: number
+              percentage:
+                type: number
+              assessedOn:
+                $ref: '#/components/schemas/DateYmd'
+        upcomingAssessments:
+          type: array
+          description: Assessments of the class in the next 7 days, at most 5.
+          items:
+            $ref: '#/components/schemas/UpcomingAssessment'
+        recentAnnouncements:
+          type: array
+          description: Latest active announcements visible to the student, at most 5.
+          items:
+            $ref: '#/components/schemas/AnnouncementBrief'
+    Dashboard:
+      description: The dashboard payload of the caller's role, discriminated by `role`.
+      oneOf:
+        - $ref: '#/components/schemas/AdminDashboard'
+        - $ref: '#/components/schemas/TeacherDashboard'
+        - $ref: '#/components/schemas/StudentDashboard'
+      discriminator:
+        propertyName: role
+        mapping:
+          admin: '#/components/schemas/AdminDashboard'
+          teacher: '#/components/schemas/TeacherDashboard'
+          student: '#/components/schemas/StudentDashboard'
+    Health:
+      type: object
+      required: [status, db, version, firebaseProjectId, timeZone, uptimeSeconds, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        db:
+          type: string
+          enum: [up]
+        version:
+          type: string
+          example: 1.0.0
+        firebaseProjectId:
+          type: string
+          nullable: true
+          description: Project id of the Firebase service account, null when it cannot be read.
+        timeZone:
+          type: string
+          description: School time zone used for today, weekdays and the academic year.
+          example: Asia/Manila
+        uptimeSeconds:
+          type: integer
+        timestamp:
+          $ref: '#/components/schemas/Timestamp'
+    # --- Request bodies (strict: unknown fields are rejected with 400) ---
+    AccountFields:
+      type: object
+      required: [email, password, firstName, lastName]
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+        password:
+          $ref: '#/components/schemas/Password'
+        firstName:
+          $ref: '#/components/schemas/PersonName'
+        lastName:
+          $ref: '#/components/schemas/PersonName'
+        phone:
+          $ref: '#/components/schemas/Phone'
+    StudentDetails:
+      type: object
+      properties:
+        dateOfBirth:
+          allOf:
+            - $ref: '#/components/schemas/DateYmd'
+          description: Must be a date in the past.
+        gender:
+          $ref: '#/components/schemas/Gender'
+        address:
+          type: string
+          maxLength: 255
+        guardianName:
+          $ref: '#/components/schemas/PersonName'
+        guardianPhone:
+          $ref: '#/components/schemas/Phone'
+    RegisterRequest:
+      description: Account fields plus the optional student details. There is no `role`; it is always `student`.
+      allOf:
+        - $ref: '#/components/schemas/AccountFields'
+        - $ref: '#/components/schemas/StudentDetails'
+    StudentProfileInput:
+      description: Every field is optional; a missing number is generated and a missing `admissionDate` is today.
+      allOf:
+        - $ref: '#/components/schemas/StudentDetails'
+        - type: object
+          properties:
+            studentNumber:
+              $ref: '#/components/schemas/StudentNumber'
+            admissionDate:
+              $ref: '#/components/schemas/DateYmd'
+    TeacherProfileInput:
+      description: Every field is optional; a missing number is generated and a missing `hireDate` is today.
+      type: object
+      additionalProperties: false
+      properties:
+        employeeNumber:
+          $ref: '#/components/schemas/EmployeeNumber'
+        hireDate:
+          $ref: '#/components/schemas/DateYmd'
+        department:
+          type: string
+          maxLength: 100
+        qualification:
+          type: string
+          maxLength: 150
+    CreateUserRequest:
+      description: Account fields, the role and the matching profile (not allowed for `admin`).
+      oneOf:
+        - $ref: '#/components/schemas/CreateStudentUser'
+        - $ref: '#/components/schemas/CreateTeacherUser'
+        - $ref: '#/components/schemas/CreateAdminUser'
+      discriminator:
+        propertyName: role
+        mapping:
+          student: '#/components/schemas/CreateStudentUser'
+          teacher: '#/components/schemas/CreateTeacherUser'
+          admin: '#/components/schemas/CreateAdminUser'
+    CreateStudentUser:
+      allOf:
+        - $ref: '#/components/schemas/AccountFields'
+        - type: object
+          required: [role]
+          properties:
+            role:
+              type: string
+              enum: [student]
+            profile:
+              $ref: '#/components/schemas/StudentProfileInput'
+    CreateTeacherUser:
+      allOf:
+        - $ref: '#/components/schemas/AccountFields'
+        - type: object
+          required: [role]
+          properties:
+            role:
+              type: string
+              enum: [teacher]
+            profile:
+              $ref: '#/components/schemas/TeacherProfileInput'
+    CreateAdminUser:
+      allOf:
+        - $ref: '#/components/schemas/AccountFields'
+        - type: object
+          required: [role]
+          properties:
+            role:
+              type: string
+              enum: [admin]
+    UpdateMeRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        phone: { nullable: true, allOf: [{ $ref: '#/components/schemas/Phone' }] }
+        address:
+          type: string
+          maxLength: 255
+          nullable: true
+          description: Students only.
+        guardianName:
+          nullable: true
+          description: Students only.
+          allOf:
+            - $ref: '#/components/schemas/PersonName'
+        guardianPhone:
+          nullable: true
+          description: Students only.
+          allOf:
+            - $ref: '#/components/schemas/Phone'
+    UpdateUserRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        firstName:
+          $ref: '#/components/schemas/PersonName'
+        lastName:
+          $ref: '#/components/schemas/PersonName'
+        phone: { nullable: true, allOf: [{ $ref: '#/components/schemas/Phone' }] }
+    UserStatusRequest:
+      type: object
+      additionalProperties: false
+      required: [isActive]
+      properties:
+        isActive:
+          type: boolean
+    UpdateStudentRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        firstName:
+          $ref: '#/components/schemas/PersonName'
+        lastName:
+          $ref: '#/components/schemas/PersonName'
+        phone: { nullable: true, allOf: [{ $ref: '#/components/schemas/Phone' }] }
+        studentNumber:
+          $ref: '#/components/schemas/StudentNumber'
+        dateOfBirth: { nullable: true, allOf: [{ $ref: '#/components/schemas/DateYmd' }] }
+        gender: { nullable: true, allOf: [{ $ref: '#/components/schemas/Gender' }] }
+        address:
+          type: string
+          maxLength: 255
+          nullable: true
+        guardianName: { nullable: true, allOf: [{ $ref: '#/components/schemas/PersonName' }] }
+        guardianPhone: { nullable: true, allOf: [{ $ref: '#/components/schemas/Phone' }] }
+        admissionDate:
+          $ref: '#/components/schemas/DateYmd'
+    UpdateTeacherRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        firstName:
+          $ref: '#/components/schemas/PersonName'
+        lastName:
+          $ref: '#/components/schemas/PersonName'
+        phone: { nullable: true, allOf: [{ $ref: '#/components/schemas/Phone' }] }
+        employeeNumber:
+          $ref: '#/components/schemas/EmployeeNumber'
+        hireDate:
+          $ref: '#/components/schemas/DateYmd'
+        department:
+          type: string
+          maxLength: 100
+          nullable: true
+        qualification:
+          type: string
+          maxLength: 150
+          nullable: true
+    CreateSubjectRequest:
+      type: object
+      additionalProperties: false
+      required: [code, name]
+      properties:
+        code:
+          $ref: '#/components/schemas/SubjectCode'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 1000
+          nullable: true
+    UpdateSubjectRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        code:
+          $ref: '#/components/schemas/CreateSubjectRequest/properties/code'
+        name:
+          $ref: '#/components/schemas/CreateSubjectRequest/properties/name'
+        description:
+          $ref: '#/components/schemas/CreateSubjectRequest/properties/description'
+        isActive:
+          type: boolean
+          description: False retires the subject, true reactivates it.
+    CreateClassRequest:
+      type: object
+      additionalProperties: false
+      required: [name, gradeLevel, academicYear]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: Includes the group letter, for example `Grade 7 - A`.
+        gradeLevel:
+          type: integer
+          minimum: 1
+          maximum: 12
+        academicYear:
+          $ref: '#/components/schemas/AcademicYear'
+        homeroomTeacherId:
+          type: integer
+          minimum: 1
+          nullable: true
+    UpdateClassRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          $ref: '#/components/schemas/CreateClassRequest/properties/name'
+        gradeLevel:
+          $ref: '#/components/schemas/CreateClassRequest/properties/gradeLevel'
+        academicYear:
+          $ref: '#/components/schemas/CreateClassRequest/properties/academicYear'
+        homeroomTeacherId:
+          $ref: '#/components/schemas/CreateClassRequest/properties/homeroomTeacherId'
+    CreateClassSubjectRequest:
+      type: object
+      additionalProperties: false
+      required: [classId, subjectId, teacherId]
+      properties:
+        classId:
+          $ref: '#/components/schemas/Id'
+        subjectId:
+          $ref: '#/components/schemas/Id'
+        teacherId:
+          $ref: '#/components/schemas/Id'
+    ReassignClassSubjectRequest:
+      type: object
+      additionalProperties: false
+      required: [teacherId]
+      properties:
+        teacherId:
+          $ref: '#/components/schemas/Id'
+    EnrollmentRequest:
+      type: object
+      additionalProperties: false
+      required: [studentId, classId]
+      properties:
+        studentId:
+          $ref: '#/components/schemas/Id'
+        classId:
+          $ref: '#/components/schemas/Id'
+    BulkEnrollmentRequest:
+      type: object
+      additionalProperties: false
+      required: [classId, studentIds]
+      properties:
+        classId:
+          $ref: '#/components/schemas/Id'
+        studentIds:
+          type: array
+          minItems: 1
+          maxItems: 200
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Id'
+    CloseEnrollmentRequest:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [completed, withdrawn]
+    CreateScheduleRequest:
+      type: object
+      additionalProperties: false
+      required: [classSubjectId, dayOfWeek, startTime, endTime]
+      properties:
+        classSubjectId:
+          $ref: '#/components/schemas/Id'
+        dayOfWeek:
+          $ref: '#/components/schemas/DayOfWeek'
+        startTime:
+          $ref: '#/components/schemas/TimeHm'
+        endTime:
+          allOf:
+            - $ref: '#/components/schemas/TimeHm'
+          description: Must be after `startTime`.
+        room:
+          type: string
+          maxLength: 50
+          nullable: true
+    UpdateScheduleRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        classSubjectId:
+          $ref: '#/components/schemas/CreateScheduleRequest/properties/classSubjectId'
+        dayOfWeek:
+          $ref: '#/components/schemas/CreateScheduleRequest/properties/dayOfWeek'
+        startTime:
+          $ref: '#/components/schemas/CreateScheduleRequest/properties/startTime'
+        endTime:
+          $ref: '#/components/schemas/CreateScheduleRequest/properties/endTime'
+        room:
+          $ref: '#/components/schemas/CreateScheduleRequest/properties/room'
+    AttendanceRecordInput:
+      type: object
+      additionalProperties: false
+      required: [studentId, status]
+      properties:
+        studentId:
+          $ref: '#/components/schemas/Id'
+        status:
+          $ref: '#/components/schemas/AttendanceStatus'
+        remarks:
+          type: string
+          maxLength: 255
+          nullable: true
+    SaveAttendanceSheetRequest:
+      type: object
+      additionalProperties: false
+      required: [classSubjectId, date, records]
+      properties:
+        classSubjectId:
+          $ref: '#/components/schemas/Id'
+        date:
+          allOf:
+            - $ref: '#/components/schemas/DateYmd'
+          description: Date of the lesson; must not be in the future.
+        records:
+          type: array
+          minItems: 1
+          maxItems: 200
+          description: One entry per student; `studentId` values must be unique.
+          items:
+            $ref: '#/components/schemas/AttendanceRecordInput'
+    UpdateAttendanceRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        status:
+          $ref: '#/components/schemas/AttendanceStatus'
+        remarks:
+          $ref: '#/components/schemas/AttendanceRecordInput/properties/remarks'
+    CreateAssessmentRequest:
+      type: object
+      additionalProperties: false
+      required: [classSubjectId, title, type, term, maxScore]
+      properties:
+        classSubjectId:
+          $ref: '#/components/schemas/Id'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 150
+        type:
+          $ref: '#/components/schemas/AssessmentType'
+        term:
+          $ref: '#/components/schemas/Term'
+        maxScore:
+          type: number
+          minimum: 0
+          exclusiveMinimum: true
+          maximum: 1000
+          multipleOf: 0.01
+        assessedOn:
+          allOf:
+            - $ref: '#/components/schemas/DateYmd'
+          description: Defaults to today.
+    UpdateAssessmentRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      description: The class-subject of an assessment cannot be changed.
+      properties:
+        title:
+          $ref: '#/components/schemas/CreateAssessmentRequest/properties/title'
+        type:
+          $ref: '#/components/schemas/AssessmentType'
+        term:
+          $ref: '#/components/schemas/Term'
+        maxScore:
+          $ref: '#/components/schemas/CreateAssessmentRequest/properties/maxScore'
+        assessedOn:
+          $ref: '#/components/schemas/DateYmd'
+    GradeInput:
+      type: object
+      additionalProperties: false
+      required: [studentId, score]
+      properties:
+        studentId:
+          $ref: '#/components/schemas/Id'
+        score:
+          allOf:
+            - $ref: '#/components/schemas/Score'
+          description: Between 0 and the maximum score of the assessment.
+        remarks:
+          type: string
+          maxLength: 255
+          nullable: true
+    SaveGradesRequest:
+      type: object
+      additionalProperties: false
+      required: [grades]
+      properties:
+        grades:
+          type: array
+          minItems: 1
+          maxItems: 200
+          description: One entry per student; `studentId` values must be unique.
+          items:
+            $ref: '#/components/schemas/GradeInput'
+    CreateAnnouncementRequest:
+      type: object
+      additionalProperties: false
+      required: [title, body, audience]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 150
+        body:
+          type: string
+          minLength: 1
+          maxLength: 5000
+        audience:
+          $ref: '#/components/schemas/AnnouncementAudience'
+        classId:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: Target class; required for teachers, optional for admins (null for school-wide).
+        publishedAt:
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+          description: Defaults to now. A future time schedules the announcement.
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Must be after `publishedAt`; null for no expiry.
+    UpdateAnnouncementRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title:
+          $ref: '#/components/schemas/CreateAnnouncementRequest/properties/title'
+        body:
+          $ref: '#/components/schemas/CreateAnnouncementRequest/properties/body'
+        audience:
+          $ref: '#/components/schemas/AnnouncementAudience'
+        classId:
+          $ref: '#/components/schemas/CreateAnnouncementRequest/properties/classId'
+        publishedAt:
+          $ref: '#/components/schemas/CreateAnnouncementRequest/properties/publishedAt'
+        expiresAt:
+          $ref: '#/components/schemas/CreateAnnouncementRequest/properties/expiresAt'
+  responses:
+    # --- Errors: each response carries the error envelope and the X-Request-Id header ---
+    BadRequest:
+      description: >-
+        Validation failed (`VALIDATION_ERROR`): malformed JSON, invalid parameters or body, a referenced record that
+        does not exist, or a business rule on the input.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            invalidBody:
+              summary: Request validation failed
+              value:
+                success: false
+                error:
+                  code: VALIDATION_ERROR
+                  message: request validation failed
+                  details:
+                    issues:
+                      - path: body.password
+                        message: password must be at least 8 characters
+                      - path: body.dateOfBirth
+                        message: expected YYYY-MM-DD
+            studentsNotEnrolled:
+              summary: Business rule on the input
+              value:
+                success: false
+                error:
+                  code: VALIDATION_ERROR
+                  message: students are not enrolled in this class
+                  details:
+                    reason: not_enrolled
+                    invalidStudentIds: [99]
+    Unauthorized:
+      description: Missing, malformed, expired or revoked bearer token (`UNAUTHORIZED`).
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            success: false
+            error:
+              code: UNAUTHORIZED
+              message: invalid or expired token
+              details:
+                reason: auth/id-token-expired
+    Forbidden:
+      description: >-
+        The caller is not allowed to do this. `FORBIDDEN` for role, ownership or scope rules; `USER_NOT_REGISTERED`
+        when the token has no school account; `ACCOUNT_DISABLED` for a deactivated account.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            roleNotAllowed:
+              summary: Role not allowed
+              value:
+                success: false
+                error:
+                  code: FORBIDDEN
+                  message: your role is not allowed to perform this action
+                  details:
+                    reason: role_not_allowed
+            notClassSubjectOwner:
+              summary: Teacher does not own the lesson
+              value:
+                success: false
+                error:
+                  code: FORBIDDEN
+                  message: only the assigned teacher can modify this class subject
+                  details:
+                    reason: not_class_subject_owner
+            userNotRegistered:
+              summary: Valid token without a school account
+              value:
+                success: false
+                error:
+                  code: USER_NOT_REGISTERED
+                  message: this account is not registered in the school system; contact an administrator
+                  details:
+                    firebaseUid: f1R3b4s3Uid
+    NotFound:
+      description: The record does not exist or is not visible to the caller (`NOT_FOUND`).
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            success: false
+            error:
+              code: NOT_FOUND
+              message: student not found
+              details:
+                resource: student
+                id: 999
+    Conflict:
+      description: >-
+        Duplicate value, record still in use, or a business conflict (`CONFLICT`); `details.key`,
+        `details.constraint` or `details.reason` tell which.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            duplicateKey:
+              summary: Duplicate value
+              value:
+                success: false
+                error:
+                  code: CONFLICT
+                  message: duplicate value for class_subjects.uq_class_subjects_class_subject
+                  details:
+                    key: class_subjects.uq_class_subjects_class_subject
+            alreadyEnrolled:
+              summary: Business conflict
+              value:
+                success: false
+                error:
+                  code: CONFLICT
+                  message: student already has an active enrollment
+                  details:
+                    reason: already_enrolled
+                    activeEnrollmentId: 87
+                    classId: 3
+    ScheduleConflict:
+      description: The slot overlaps another slot of the same class, teacher or room (`SCHEDULE_CONFLICT`).
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ErrorEnvelope'
+              - type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      details:
+                        type: object
+                        required: [conflicts]
+                        properties:
+                          conflicts:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/ScheduleConflictItem'
+          example:
+            success: false
+            error:
+              code: SCHEDULE_CONFLICT
+              message: schedule overlaps 2 existing schedule(s)
+              details:
+                conflicts:
+                  - type: teacher
+                    scheduleId: 40
+                    classSubjectId: 18
+                    className: Grade 8 - B
+                    subjectName: Chemistry
+                    dayOfWeek: 1
+                    startTime: '08:30'
+                    endTime: '09:30'
+                    room: B-201
+                  - type: room
+                    scheduleId: 41
+                    classSubjectId: 19
+                    className: Grade 9 - A
+                    subjectName: Physics
+                    dayOfWeek: 1
+                    startTime: '07:30'
+                    endTime: '08:30'
+                    room: b-204
+    RateLimited:
+      description: Too many registrations from this IP address (`RATE_LIMITED`).
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+        Retry-After: { $ref: '#/components/headers/RetryAfter' }
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            success: false
+            error:
+              code: RATE_LIMITED
+              message: too many requests, try again later
+              details:
+                retryAfterSeconds: 540
+    ServiceUnavailable:
+      description: The database is unreachable (`SERVICE_UNAVAILABLE`).
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            success: false
+            error:
+              code: SERVICE_UNAVAILABLE
+              message: db unavailable
+              details:
+                component: db
+    # --- Success: each response carries the success envelope and the X-Request-Id header ---
+    Deleted:
+      description: The record was deleted.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DeletedRecord'
+          example:
+            success: true
+            data:
+              id: 7
+    AccountResponse:
+      description: The account with its role profile.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Account'
+          examples:
+            teacher:
+              summary: Teacher
+              value:
+                success: true
+                data:
+                  id: 7
+                  firebaseUid: t3AcH3rUid
+                  email: ana.reyes@school.test
+                  firstName: Ana
+                  lastName: Reyes
+                  phone: null
+                  role: teacher
+                  isActive: true
+                  studentId: null
+                  teacherId: 5
+                  profile:
+                    id: 5
+                    employeeNumber: EMP-2024-0007
+                    hireDate: '2024-06-01'
+                    department: Science
+                    qualification: MSc Biology
+                  createdAt: '2024-06-01T01:00:00.000Z'
+                  updatedAt: '2024-06-01T01:00:00.000Z'
+            student:
+              summary: Student with an active enrollment
+              value:
+                success: true
+                data:
+                  id: 40
+                  firebaseUid: f1R3b4s3Uid
+                  email: liam.cruz@example.com
+                  firstName: Liam
+                  lastName: Cruz
+                  phone: +63 917 123 4567
+                  role: student
+                  isActive: true
+                  studentId: 12
+                  teacherId: null
+                  profile:
+                    id: 12
+                    studentNumber: STU-2026-0040
+                    dateOfBirth: '2013-04-21'
+                    gender: male
+                    address: null
+                    guardianName: Maria Cruz
+                    guardianPhone: +63 917 765 4321
+                    admissionDate: '2026-10-03'
+                  currentEnrollment:
+                    id: 87
+                    classId: 3
+                    className: Grade 7 - A
+                    gradeLevel: 7
+                    academicYear: '2026-2027'
+                    status: active
+                    enrolledOn: '2026-10-03'
+                  createdAt: '2026-10-03T07:30:00.000Z'
+                  updatedAt: '2026-10-03T07:30:00.000Z'
+            newStudent:
+              summary: Student who has just registered
+              value:
+                success: true
+                data:
+                  id: 41
+                  firebaseUid: n3wSt4dentUid
+                  email: new.student@example.com
+                  firstName: Noah
+                  lastName: Lim
+                  phone: null
+                  role: student
+                  isActive: true
+                  studentId: 13
+                  teacherId: null
+                  profile:
+                    id: 13
+                    studentNumber: STU-2026-0041
+                    dateOfBirth: null
+                    gender: null
+                    address: null
+                    guardianName: null
+                    guardianPhone: null
+                    admissionDate: '2026-10-03'
+                  currentEnrollment: null
+                  createdAt: '2026-10-03T07:45:00.000Z'
+                  updatedAt: '2026-10-03T07:45:00.000Z'
+    UserListResponse:
+      description: A page of accounts.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/PagedEnvelope'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+    StudentResponse:
+      description: The student.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/Student' } } }
+    TeacherResponse:
+      description: The teacher.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/Teacher' } } }
+    TeacherListResponse:
+      description: A page of teachers.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/PagedEnvelope'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Teacher'
+    SubjectResponse:
+      description: The subject.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/Subject' } } }
+    SubjectListResponse:
+      description: A page of subjects.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/PagedEnvelope'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Subject'
+    ClassResponse:
+      description: The class.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/Class' } } }
+    ClassListResponse:
+      description: A page of classes.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/PagedEnvelope'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Class'
+    ClassSubjectResponse:
+      description: The teacher assignment.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/ClassSubject' } } }
+    ClassSubjectListResponse:
+      description: A page of teacher assignments.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/PagedEnvelope'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClassSubject'
+    EnrollmentResponse:
+      description: The enrollment.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/Enrollment' } } }
+    EnrollmentListResponse:
+      description: A page of enrollment records.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/PagedEnvelope'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Enrollment'
+    BulkEnrollmentResponse:
+      description: The created enrollments.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/BulkEnrollment' } } }
+    ScheduleResponse:
+      description: The timetable slot.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/Schedule' } } }
+    ScheduleListResponse:
+      description: A page of timetable slots.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/PagedEnvelope'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Schedule'
+    AttendanceListResponse:
+      description: A page of attendance records.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/PagedEnvelope'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AttendanceRecord'
+    AttendanceRecordResponse:
+      description: The attendance record.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/AttendanceRecord' } } }
+    AssessmentResponse:
+      description: The assessment.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/Assessment' } } }
+    AssessmentListResponse:
+      description: A page of assessments.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/PagedEnvelope'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Assessment'
+    GradeListResponse:
+      description: A page of grades.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/PagedEnvelope'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Grade'
+    AnnouncementResponse:
+      description: The announcement.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/Announcement' } } }
+    AnnouncementListResponse:
+      description: A page of announcements.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/PagedEnvelope'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Announcement'
+    StudentListResponse:
+      description: A page of students.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/PagedEnvelope'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Student'
+          example:
+            success: true
+            data:
+              - id: 12
+                userId: 40
+                studentNumber: STU-2026-0040
+                firstName: Liam
+                lastName: Cruz
+                email: liam.cruz@example.com
+                phone: +63 917 123 4567
+                dateOfBirth: '2013-04-21'
+                gender: male
+                address: null
+                guardianName: Maria Cruz
+                guardianPhone: +63 917 765 4321
+                admissionDate: '2026-10-03'
+                isActive: true
+                currentEnrollment:
+                  id: 87
+                  classId: 3
+                  className: Grade 7 - A
+                  gradeLevel: 7
+                  academicYear: '2026-2027'
+                  status: active
+                  enrolledOn: '2026-10-03'
+                createdAt: '2026-10-03T07:30:00.000Z'
+                updatedAt: '2026-10-03T07:30:00.000Z'
+            meta:
+              page: 1
+              limit: 20
+              total: 1
+              totalPages: 1
+    AttendanceSummaryResponse:
+      description: >-
+        One summary object, or an array of summary rows when `groupBy` is `student` or `classSubject`.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - type: object
+                properties:
+                  data:
+                    oneOf:
+                      - $ref: '#/components/schemas/AttendanceSummary'
+                      - type: array
+                        items:
+                          $ref: '#/components/schemas/AttendanceSummaryRow'
+          examples:
+            ungrouped:
+              summary: groupBy=none
+              value:
+                success: true
+                data:
+                  total: 120
+                  present: 110
+                  absent: 4
+                  late: 5
+                  excused: 1
+                  rate: 0.9583
+            byClassSubject:
+              summary: groupBy=classSubject
+              value:
+                success: true
+                data:
+                  - classSubjectId: 12
+                    label: Grade 7 - A - Biology
+                    total: 40
+                    present: 37
+                    absent: 1
+                    late: 2
+                    excused: 0
+                    rate: 0.975
+    AttendanceSheetResponse:
+      description: The attendance sheet, the roster of the class with the marks of the date.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/AttendanceSheet' } } }
+          example:
+            success: true
+            data:
+              classSubjectId: 12
+              classSubject:
+                classId: 3
+                className: Grade 7 - A
+                academicYear: '2026-2027'
+                subjectId: 2
+                subjectName: Biology
+                teacherId: 5
+              date: '2026-10-03'
+              records:
+                - studentId: 12
+                  studentNumber: STU-2026-0040
+                  firstName: Liam
+                  lastName: Cruz
+                  attendanceId: 901
+                  status: present
+                  remarks: null
+                  markedBy: { id: 7, firstName: Ana, lastName: Reyes }
+                  updatedAt: '2026-10-03T00:05:12.000Z'
+                - studentId: 13
+                  studentNumber: STU-2026-0041
+                  firstName: Mia
+                  lastName: Santos
+                  attendanceId: 902
+                  status: late
+                  remarks: arrived 08:15
+                  markedBy: { id: 7, firstName: Ana, lastName: Reyes }
+                  updatedAt: '2026-10-03T00:05:12.000Z'
+                - studentId: 15
+                  studentNumber: STU-2026-0043
+                  firstName: Zoe
+                  lastName: Tan
+                  attendanceId: null
+                  status: null
+                  remarks: null
+                  markedBy: null
+                  updatedAt: null
+    GradeSummaryResponse:
+      description: One summary row per subject, or per student with `groupBy=student`.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GradeSummaryRow'
+          example:
+            success: true
+            data:
+              - classSubjectId: 12
+                subjectName: Biology
+                label: Grade 7 - A - Biology
+                assessmentsGraded: 4
+                totalScore: 70
+                totalMaxScore: 80
+                percentage: 87.5
+    GradeRosterResponse:
+      description: The roster of the class with the score of each student for the assessment.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/GradeRoster' } } }
+          example:
+            success: true
+            data:
+              assessmentId: 31
+              assessment:
+                id: 31
+                title: Unit 2 Exam
+                type: exam
+                maxScore: 50
+                term: term1
+                assessedOn: '2026-10-07'
+                classSubjectId: 12
+                subjectName: Biology
+                className: Grade 7 - A
+              records:
+                - studentId: 12
+                  studentNumber: STU-2026-0040
+                  firstName: Liam
+                  lastName: Cruz
+                  gradeId: 501
+                  score: 45
+                  percentage: 90
+                  remarks: null
+                  gradedBy: { id: 7, firstName: Ana, lastName: Reyes }
+                  updatedAt: '2026-10-07T09:12:44.000Z'
+                - studentId: 13
+                  studentNumber: STU-2026-0041
+                  firstName: Mia
+                  lastName: Santos
+                  gradeId: 502
+                  score: 38.5
+                  percentage: 77
+                  remarks: missed Q4
+                  gradedBy: { id: 7, firstName: Ana, lastName: Reyes }
+                  updatedAt: '2026-10-07T09:12:44.000Z'
+                - studentId: 15
+                  studentNumber: STU-2026-0043
+                  firstName: Zoe
+                  lastName: Tan
+                  gradeId: null
+                  score: null
+                  percentage: null
+                  remarks: null
+                  gradedBy: null
+                  updatedAt: null
+    HealthResponse:
+      description: The API and the database are up.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/Health' } } }
+          example:
+            success: true
+            data:
+              status: ok
+              db: up
+              version: 1.0.0
+              firebaseProjectId: school-management-demo
+              timeZone: Asia/Manila
+              uptimeSeconds: 4312
+              timestamp: '2026-10-03T07:30:00.000Z'
+    DashboardResponse:
+      description: The dashboard of the caller's role; `data.role` tells which one.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/Dashboard' } } }
+          examples:
+            admin:
+              summary: Administrator
+              value:
+                success: true
+                data:
+                  role: admin
+                  counts:
+                    students: 240
+                    teachers: 18
+                    classes: 12
+                    subjects: 9
+                    activeEnrollments: 236
+                    unenrolledStudents: 4
+                  attendanceToday:
+                    date: '2026-10-03'
+                    total: 980
+                    present: 900
+                    absent: 40
+                    late: 30
+                    excused: 10
+                    rate: 0.949
+                  enrollmentsByGrade:
+                    - { gradeLevel: 7, students: 80 }
+                  upcomingAssessments:
+                    - id: 31
+                      title: Unit 2 Exam
+                      type: exam
+                      assessedOn: '2026-10-07'
+                      className: Grade 7 - A
+                      subjectName: Biology
+                  recentAnnouncements:
+                    - id: 9
+                      title: Science fair on Friday
+                      audience: all
+                      className: null
+                      publishedAt: '2026-10-01T08:00:00.000Z'
+            teacher:
+              summary: Teacher
+              value:
+                success: true
+                data:
+                  role: teacher
+                  teacher: { id: 5, firstName: Ana, lastName: Reyes, department: Science }
+                  classSubjects:
+                    - id: 12
+                      classId: 3
+                      className: Grade 7 - A
+                      subjectName: Biology
+                      academicYear: '2026-2027'
+                      studentCount: 32
+                  homeroomClasses:
+                    - { id: 3, name: Grade 7 - A, academicYear: '2026-2027', studentCount: 32 }
+                  todaySchedule:
+                    - scheduleId: 44
+                      classSubjectId: 12
+                      className: Grade 7 - A
+                      subjectName: Biology
+                      startTime: '08:00'
+                      endTime: '09:00'
+                      room: B-204
+                      attendanceMarked: true
+                  attendanceToday: { sessionsScheduled: 4, sessionsMarked: 2 }
+                  pendingGrading:
+                    - assessmentId: 31
+                      title: Unit 2 Exam
+                      className: Grade 7 - A
+                      subjectName: Biology
+                      assessedOn: '2026-09-30'
+                      graded: 20
+                      enrolled: 32
+                  recentAnnouncements: []
+            student:
+              summary: Student
+              value:
+                success: true
+                data:
+                  role: student
+                  student: { id: 12, studentNumber: STU-2026-0040, firstName: Liam, lastName: Cruz }
+                  currentEnrollment:
+                    classId: 3
+                    className: Grade 7 - A
+                    gradeLevel: 7
+                    academicYear: '2026-2027'
+                    homeroomTeacher: { id: 5, firstName: Ana, lastName: Reyes }
+                  todaySchedule:
+                    - scheduleId: 44
+                      classSubjectId: 12
+                      subjectName: Biology
+                      teacher: { id: 5, firstName: Ana, lastName: Reyes }
+                      startTime: '08:00'
+                      endTime: '09:00'
+                      room: B-204
+                  attendanceSummary:
+                    dateFrom: '2026-08-01'
+                    dateTo: '2026-10-03'
+                    total: 120
+                    present: 110
+                    absent: 4
+                    late: 5
+                    excused: 1
+                    rate: 0.9583
+                  gradeSummary:
+                    - { classSubjectId: 12, subjectName: Biology, assessmentsGraded: 4, percentage: 87.5 }
+                  recentGrades:
+                    - gradeId: 501
+                      assessmentId: 31
+                      title: Quiz 3
+                      type: quiz
+                      subjectName: Biology
+                      score: 18
+                      maxScore: 20
+                      percentage: 90
+                      assessedOn: '2026-10-01'
+                  upcomingAssessments:
+                    - id: 33
+                      title: Unit 2 Exam
+                      type: exam
+                      assessedOn: '2026-10-07'
+                      className: Grade 7 - A
+                      subjectName: Biology
+                  recentAnnouncements: []

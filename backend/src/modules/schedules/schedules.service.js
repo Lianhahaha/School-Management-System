@@ -47,6 +47,7 @@ function toConflicts(rows) {
 }
 
 const TIMETABLE_LOCK = 'school_timetable';
+const LOCK_WAIT_SECONDS = 5;
 
 /**
  * Runs `write(conn)` after proving the slot has no conflicts. Check and write share one transaction and
@@ -54,7 +55,11 @@ const TIMETABLE_LOCK = 'school_timetable';
  */
 function writeIfFree(slot, excludeId, write) {
   return withTransaction(async (conn) => {
-    await conn.query('SELECT GET_LOCK(?, 5)', [TIMETABLE_LOCK]);
+    const [[{ acquired }]] = await conn.query('SELECT GET_LOCK(?, ?) AS acquired', [
+      TIMETABLE_LOCK,
+      LOCK_WAIT_SECONDS,
+    ]);
+    if (acquired !== 1) throw ApiError.unavailable('timetable');
     try {
       const conflicts = toConflicts(await repo.findOverlaps({ ...slot, excludeId }, conn));
       if (conflicts.length) throw ApiError.scheduleConflict(conflicts);

@@ -21,11 +21,16 @@ function firebaseProjectId() {
 }
 
 export async function check(_req, res, next) {
-  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('db ping timeout')), 2000));
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('db ping timeout')), 2000);
+  });
   try {
     await Promise.race([ping(), timeout]);
   } catch {
     return next(ApiError.unavailable('db'));
+  } finally {
+    clearTimeout(timer);
   }
   ok(res, {
     status: 'ok',

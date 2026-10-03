@@ -149,6 +149,14 @@ describe('attendance', () => {
     assert.equal(none.body.data.rate, null);
   });
 
+  it('rejects the unsupported search parameter instead of ignoring it', async () => {
+    for (const path of ['attendance', 'grades', 'enrollments']) {
+      const res = await api.get(`/api/v1/${path}?search=anna`).set(as(school.admin));
+      assert.equal(res.status, 400, path);
+      assert.equal(res.body.error.code, 'VALIDATION_ERROR');
+    }
+  });
+
   it('rejects an inverted date range with 400', async () => {
     const res = await api
       .get(`/api/v1/attendance?dateFrom=${today}&dateTo=${yesterday}`)

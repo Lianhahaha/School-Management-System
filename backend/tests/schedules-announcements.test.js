@@ -1,6 +1,8 @@
 import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
+import mysql from 'mysql2/promise';
+import { env } from '../src/config/env.js';
 import {
   api,
   as,
@@ -136,6 +138,26 @@ describe('schedules', () => {
     const created = (await create(slot(school.csA.id, { dayOfWeek: 7, room: 'R-D' }))).body.data;
     assert.equal((await api.delete(`/api/v1/schedules/${created.id}`).set(as(school.admin))).status, 200);
     assert.equal((await api.get(`/api/v1/schedules/${created.id}`).set(as(school.admin))).status, 404);
+  });
+
+  it('answers 503 instead of writing unchecked when the timetable lock is held elsewhere', async () => {
+    const holder = await mysql.createConnection({
+      host: env.DB_HOST,
+      port: env.DB_PORT,
+      user: env.DB_USER,
+      password: env.DB_PASSWORD,
+    });
+    try {
+      await holder.query("SELECT GET_LOCK('school_timetable', 0)");
+      const res = await create(slot(school.csA.id, { dayOfWeek: 7, startTime: '14:00', endTime: '15:00' }));
+      assert.equal(res.status, 503);
+      assert.equal(res.body.error.code, 'SERVICE_UNAVAILABLE');
+      assert.equal(res.body.error.details.component, 'timetable');
+    } finally {
+      await holder.end();
+    }
+    const retry = await create(slot(school.csA.id, { dayOfWeek: 7, startTime: '14:00', endTime: '15:00' }));
+    assert.equal(retry.status, 201);
   });
 });
 

@@ -10,11 +10,15 @@ const scopeFilters = {
   term: z.enum(TERMS).optional(),
 };
 
-export const listGradesQuery = listQuery(Object.keys(GRADE_SORT_MAP), {
-  ...scopeFilters,
-  assessmentId: id.optional(),
-  type: z.enum(ASSESSMENT_TYPES).optional(),
-});
+export const listGradesQuery = listQuery(
+  Object.keys(GRADE_SORT_MAP),
+  {
+    ...scopeFilters,
+    assessmentId: id.optional(),
+    type: z.enum(ASSESSMENT_TYPES).optional(),
+  },
+  { searchable: false },
+);
 
 export const gradeSummaryQuery = z.strictObject({
   ...scopeFilters,

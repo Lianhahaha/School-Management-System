@@ -16,14 +16,18 @@ import { ATTENDANCE_SORT_MAP } from './attendance.repository.js';
 const status = z.enum(ATTENDANCE_STATUSES);
 const remarks = shortText(255);
 
-export const listAttendanceQuery = listQuery(Object.keys(ATTENDANCE_SORT_MAP), {
-  studentId: idOrMe.optional(),
-  classSubjectId: id.optional(),
-  classId: id.optional(),
-  status: status.optional(),
-  dateFrom: dateStr.optional(),
-  dateTo: dateStr.optional(),
-}).refine(...dateRangeRefinement);
+export const listAttendanceQuery = listQuery(
+  Object.keys(ATTENDANCE_SORT_MAP),
+  {
+    studentId: idOrMe.optional(),
+    classSubjectId: id.optional(),
+    classId: id.optional(),
+    status: status.optional(),
+    dateFrom: dateStr.optional(),
+    dateTo: dateStr.optional(),
+  },
+  { searchable: false },
+).refine(...dateRangeRefinement);
 
 export const summaryQuery = z
   .strictObject({

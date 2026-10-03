@@ -3,12 +3,16 @@ import { ENROLLMENT_STATUSES } from '../../constants/shared.js';
 import { academicYear, id, idList, idOrMe, idParams, listQuery } from '../../utils/zod/common.js';
 import { ENROLLMENT_SORT_MAP } from './enrollments.repository.js';
 
-export const listEnrollmentsQuery = listQuery(Object.keys(ENROLLMENT_SORT_MAP), {
-  studentId: idOrMe.optional(),
-  classId: id.optional(),
-  status: z.enum(ENROLLMENT_STATUSES).optional(),
-  academicYear: academicYear.optional(),
-});
+export const listEnrollmentsQuery = listQuery(
+  Object.keys(ENROLLMENT_SORT_MAP),
+  {
+    studentId: idOrMe.optional(),
+    classId: id.optional(),
+    status: z.enum(ENROLLMENT_STATUSES).optional(),
+    academicYear: academicYear.optional(),
+  },
+  { searchable: false },
+);
 
 export const enrollBody = z.strictObject({ studentId: id, classId: id });
 

@@ -21,16 +21,13 @@ describe('dashboard', () => {
     await resetWorld();
     school = await buildSchool();
     const { admin, owner, s1, s2, csA } = school;
-    await api
-      .post('/api/v1/schedules')
-      .set(as(admin))
-      .send({
-        classSubjectId: csA.id,
-        dayOfWeek: todayIsoWeekday(),
-        startTime: '08:00',
-        endTime: '09:00',
-        room: 'R1',
-      });
+    await api.post('/api/v1/schedules').set(as(admin)).send({
+      classSubjectId: csA.id,
+      dayOfWeek: todayIsoWeekday(),
+      startTime: '08:00',
+      endTime: '09:00',
+      room: 'R1',
+    });
     await api
       .put('/api/v1/attendance/sheet')
       .set(as(owner))

@@ -89,13 +89,14 @@ export const idOrMeParams = z.strictObject({ id: idOrMe });
 
 /**
  * Builds the strict query schema of a list endpoint: pagination, search,
- * whitelisted sortBy, sortOrder, plus the resource's own filters.
+ * whitelisted sortBy, sortOrder, plus the resource's own filters. Lists without free-text
+ * search pass `{ searchable: false }`, so `search` is rejected instead of silently ignored.
  */
-export function listQuery(sortable, filters = {}) {
+export function listQuery(sortable, filters = {}, { searchable = true } = {}) {
   return z.strictObject({
     page: z.coerce.number().int().min(1).default(PAGINATION.DEFAULT_PAGE),
     limit: z.coerce.number().int().min(1).max(PAGINATION.MAX_LIMIT).default(PAGINATION.DEFAULT_LIMIT),
-    search: z.string().trim().min(1).max(100).optional(),
+    ...(searchable && { search: z.string().trim().min(1).max(100).optional() }),
     sortBy: z.enum(sortable).optional(),
     sortOrder: z.enum(SORT_ORDERS).optional(),
     ...filters,
