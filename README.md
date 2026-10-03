@@ -143,6 +143,7 @@ frontend/
     features/  one folder per feature: api, hooks, schemas, components, pages
     components/ hooks/ lib/ utils/ config/ app/
 docs/          ARCHITECTURE.md (start here), PROJECT_PLAN.md (requirements, decisions), design/
+DESIGN.md      the visual design system: colours for both themes, type, components, rules
 ```
 
 A bug is found by following one path: the URL names the route file, the route names its controller, the controller calls a service, the service calls a repository. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains the design with an ER diagram; [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md) records every decision and why.
