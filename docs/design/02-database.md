@@ -1156,7 +1156,7 @@ The API contract is `docs/design/03-api-and-rbac.md`; this table only shows whic
 | `GET\|PATCH /auth/me` | users, students, teachers, enrollments | D0 (role, `is_active`, `student_id`, `teacher_id`, `active_class_id`) plus D1 for a student's class card; PATCH edits own contact fields only |
 | `GET\|POST /users` | users, students, teachers (+ Firebase Admin SDK) | list = D9 pattern over `users`; create = Firebase user first, then `users` + profile row in one transaction (compensate by deleting the Firebase user on failure); `admission_date` / `hire_date` default to today |
 | `GET\|PATCH /users/:id` | users, students, teachers | profile fields only — `role` and `email` are immutable (decision D21) |
-| `PATCH /users/:id/status` | users, class_subjects, classes (+ Firebase Admin SDK) | `is_active` + Firebase `disabled` + `revokeRefreshTokens`; guards: own account → 403 `self_status_change`, last active admin → 409 `last_admin`, teacher with current-year `class_subjects` / homeroom → 409 `teacher_has_assignments` (decisions D22, D23) |
+| `PATCH /users/:id/status` | users, class_subjects, classes (+ Firebase Admin SDK) | `is_active` + Firebase `disabled` + `revokeRefreshTokens`; guards: own account → 403 `self_status_change`, teacher with current-year `class_subjects` / homeroom → 409 `teacher_has_assignments` (decisions D22, D23) |
 | `GET /students`, `GET\|PATCH /students/:id` | students, users, enrollments, classes | D9 (LEFT JOIN on the active enrollment), D1 for the current class |
 | `GET /teachers`, `GET\|PATCH /teachers/:id` | teachers, users, class_subjects | D9 pattern (filter on `department`); detail carries the D3 assignments |
 | `GET\|POST /subjects`, `GET\|PATCH\|DELETE /subjects/:id` | subjects | delete only when unused (1451 → 409 `CONFLICT`); otherwise retire with `is_active = 0` (decision D24) |
@@ -1618,7 +1618,7 @@ INSERT INTO announcements (author_id, title, body, audience, class_id, published
 | Login (password = `SEED_PASSWORD`, default `Password123!`) | Sees |
 |---|---|
 | `admin@school.test` — Amara Johnson | 8 active students, 3 teachers, 2 classes, 5 subjects; today's attendance summary and the list of lessons not yet marked; all 3 announcements; the student search with class / grade filters |
-| `admin2@school.test` — Noah Bennett | the same admin view; exists so a reviewer can deactivate an admin and see the `last_admin` guard refuse the final one (decision D23) |
+| `admin2@school.test` — Noah Bennett | the same admin view; exists so a reviewer can deactivate an admin safely (the self-status guard, decision D23, keeps the caller's own account from ever being deactivated) |
 | `teacher1@school.test` — Alice Morgan (Maths + CS, homeroom 10-A) | 4 assignments (D3), today's lessons with marked / unmarked flags, *Algebra Quiz 1* with 4 grades (class average 78.1 %), the staff-meeting and welcome notices plus her own class-targeted one |
 | `teacher2@school.test` — Brian Chen (English + History) | 4 assignments, *Reading Comprehension Test 1* with 4 grades |
 | `teacher3@school.test` — Carla Diaz (Science, homeroom 10-B) | 2 assignments; a homeroom class whose history contains a transferred-out student |

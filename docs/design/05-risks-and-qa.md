@@ -209,9 +209,9 @@ Scale: L = likelihood (1-5), I = impact on the submission (1-5). Ranked by produ
 - Detect fast: hard-reload on a protected route (no flash); deactivate `student1` while logged in in another browser profile - next click signs them out.
 
 ### 22. Admin lockout and confusing restricted deletes (L3 I3)
-- Symptom: the reviewer tries "Deactivate" on their own admin account (reviewers do this) and is locked out of the only admin; "Delete subject" on a seeded subject fails with a 500 or a cryptic FK message.
-- Root cause: no self/last-admin guard; hard deletes on referenced rows.
-- Prevention: `PATCH /users/:id/status { isActive: false }` -> 403 `FORBIDDEN` with `details.reason = 'self_status_change'` for the caller's own account, 409 `CONFLICT` with `details.reason = 'last_admin'` when it would leave zero active admins; subjects/classes/teachers use soft delete (`is_active`) or return 409 `CONFLICT` with a human sentence (`details.reason`, e.g. `teacher_has_assignments`); UI disables the button for self. Seed always creates one extra admin (`admin2@school.test`) so a reviewer can test deactivation of an admin safely.
+- Symptom: the reviewer tries "Deactivate" on their own admin account (reviewers do this) and loses access to the admin area; "Delete subject" on a seeded subject fails with a 500 or a cryptic FK message.
+- Root cause: no self-status guard; hard deletes on referenced rows.
+- Prevention: `PATCH /users/:id/status { isActive: false }` -> 403 `FORBIDDEN` with `details.reason = 'self_status_change'` for the caller's own account (so at least one active admin, the caller, always remains); subjects/classes/teachers use soft delete (`is_active`) or return 409 `CONFLICT` with a human sentence (`details.reason`, e.g. `teacher_has_assignments`); UI disables the button for self. Seed always creates one extra admin (`admin2@school.test`) so a reviewer can test deactivation of an admin safely.
 - Detect fast: manual test in Section D; supertest for self-deactivate.
 
 ### 23. Windows-only assumptions that break for a macOS/Linux reviewer, and vice versa (L3 I3)
@@ -274,7 +274,7 @@ Every value below is typed in at least three places. Each row is a bug waiting t
 | Email | `users.email VARCHAR(255) UNIQUE` (ci collation) | lowercased | lowercased on submit | Firebase also case-insensitive; normalize once with `.toLowerCase()` in zod |
 | Password rule | n/a | zod `min(8)` | zod `min(8)` | Firebase min is 6; both sides must agree |
 | Envelope | n/a | `{success, data, meta}` / `{success:false, error:{code,message,details}}` | API client unwraps `data`, throws `ApiError(code, message, details, status)` | returning raw arrays on one endpoint |
-| Error codes | n/a | closed catalogue of eleven: `VALIDATION_ERROR` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `USER_NOT_REGISTERED` 403, `ACCOUNT_DISABLED` 403, `NOT_FOUND` 404, `CONFLICT` 409, `SCHEDULE_CONFLICT` 409, `RATE_LIMITED` 429, `INTERNAL_ERROR` 500, `SERVICE_UNAVAILABLE` 503; the specifics travel in `details.reason` (`self_status_change`, `last_admin`, `not_enrolled`, `in_use`, a Firebase `auth/*` code, ...) or `details.key` (the duplicate column) | which codes trigger sign-out (`USER_NOT_REGISTERED`, `ACCOUNT_DISABLED`); which show inline on forms (`VALIDATION_ERROR`, `CONFLICT`) | inventing a twelfth code on one side; frontend comparing to strings instead of `ERROR_CODES` |
+| Error codes | n/a | closed catalogue of eleven: `VALIDATION_ERROR` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `USER_NOT_REGISTERED` 403, `ACCOUNT_DISABLED` 403, `NOT_FOUND` 404, `CONFLICT` 409, `SCHEDULE_CONFLICT` 409, `RATE_LIMITED` 429, `INTERNAL_ERROR` 500, `SERVICE_UNAVAILABLE` 503; the specifics travel in `details.reason` (`self_status_change`, `not_enrolled`, `in_use`, a Firebase `auth/*` code, ...) or `details.key` (the duplicate column) | which codes trigger sign-out (`USER_NOT_REGISTERED`, `ACCOUNT_DISABLED`); which show inline on forms (`VALIDATION_ERROR`, `CONFLICT`) | inventing a twelfth code on one side; frontend comparing to strings instead of `ERROR_CODES` |
 | HTTP status | n/a | 200/201 success (never 204), 400/401/403/404/409/429/500/503 | | 204 -> `res.json()` throws |
 | Base path | n/a | `/api/v1` (Express mount, OpenAPI `servers`, Vite proxy) | `API_BASE` | `/api/v1/` trailing slash; `/api` vs `/api/v1` |
 | Firebase project | service account `project_id` | `/health.firebaseProjectId` | `VITE_FIREBASE_PROJECT_ID` | different projects -> `aud` error |
@@ -335,7 +335,7 @@ Error handling and logging
 - [ ] No user enumeration from register beyond what Firebase already does (returning 409 `CONFLICT` with `details.reason = 'email_in_use'` is acceptable for a school admin tool; note it).
 
 Operational
-- [ ] Admin self-deactivation and last-admin guards.
+- [ ] Admin self-deactivation guard.
 - [ ] Seed demo passwords documented as demo only; `NODE_ENV=production` disables `details.stack` and the dev banner.
 - [ ] `npm audit` clean or explained; lockfiles committed.
 
@@ -374,7 +374,7 @@ Minimal automated smoke tests worth writing (node:test + supertest; DB `school_m
 6. Enrollment: second active enrollment -> 409 `CONFLICT`; `POST /enrollments/transfer` leaves exactly one `active` row and one `transferred` row.
 7. Lists: `sortBy=evil` -> 400; `limit=1000` -> 400; `search` with `%` is literal; `meta.total` respects `search`.
 8. Errors: duplicate subject code -> 409 `CONFLICT` with `details.key === 'code'`; unknown route -> envelope `NOT_FOUND`; invalid JSON -> 400 `VALIDATION_ERROR`; POST without content type -> 400.
-9. Admin guards: own status change -> 403 `FORBIDDEN` (`details.reason = 'self_status_change'`); last admin -> 409 `CONFLICT` (`details.reason = 'last_admin'`).
+9. Admin guard: own status change -> 403 `FORBIDDEN` (`details.reason = 'self_status_change'`).
 10. `check:constants` script passes; `openapi.yaml` parses; optional drift test: for each `paths` entry in the YAML, request it with `{id}` -> `1` as admin and assert status !== 404.
 
 ---

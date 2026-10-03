@@ -21,8 +21,8 @@ const YEAR = todayYmd().slice(0, 4);
 const number = (prefix, sequence) => `${prefix}-${YEAR}-${String(sequence).padStart(4, '0')}`;
 
 const ADMINS = [
-  { email: 'admin@school.test', firstName: 'Sam', lastName: 'Rivera' },
-  { email: 'admin2@school.test', firstName: 'Priya', lastName: 'Nair' },
+  { email: 'admin@school.test', firstName: 'Amara', lastName: 'Johnson' },
+  { email: 'admin2@school.test', firstName: 'Noah', lastName: 'Bennett' },
 ];
 
 // Subjects and classes in seed.sql refer to these teachers and students by e-mail.
@@ -33,14 +33,14 @@ const TEACHERS = [
 ];
 
 const STUDENTS = [
-  ['Ethan', 'Walker', 'male', '2010-03-14'],
+  ['Daniel', 'Okafor', 'male', '2010-03-14'],
   ['Sofia', 'Martins', 'female', '2010-07-02'],
-  ['Liam', 'Okafor', 'male', '2010-11-21'],
-  ['Mia', 'Tanaka', 'female', '2010-01-30'],
-  ['Noah', 'Haddad', 'male', '2010-05-09'],
+  ['Liam', 'Walker', 'male', '2010-11-21'],
+  ['Grace', 'Kim', 'female', '2010-01-30'],
+  ['Hiro', 'Tanaka', 'male', '2010-05-09'],
   ['Zoe', 'Petrov', 'female', '2010-09-17'],
   ['Lucas', 'Silva', 'male', '2010-12-05'],
-  ['Hana', 'Kim', 'female', '2010-04-26'],
+  ['Hana', 'Haddad', 'female', '2010-04-26'],
 ];
 
 const accounts = [
