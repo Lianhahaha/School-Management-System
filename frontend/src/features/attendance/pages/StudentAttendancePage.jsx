@@ -1,4 +1,5 @@
 import { PageHeader } from '../../../components/layout/PageHeader';
+import { Alert } from '../../../components/ui/Alert';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { FilterBar } from '../../../components/ui/FilterBar';
 import { Input } from '../../../components/ui/Input';
@@ -28,13 +29,15 @@ function StudentAttendanceContent({ academicYear }) {
   const today = todayYmd();
   const dateFrom = list.params.dateFrom || academicYearStart(academicYear);
   const dateTo = list.params.dateTo || today;
-  const records = useAttendance({ ...list.apiParams, dateFrom, dateTo });
+  // Typing can still produce an end before the start; the API rejects it, so ask instead of requesting.
+  const isRangeValid = dateFrom <= dateTo;
+  const records = useAttendance({ ...list.apiParams, dateFrom, dateTo }, { enabled: isRangeValid });
 
   const subjectOptions = subjects.data?.map(({ value, item }) => ({ value, label: item.subjectName }));
 
   return (
     <div className="space-y-6">
-      <AttendanceSummaryPanel studentId="me" dateFrom={dateFrom} dateTo={dateTo} />
+      {isRangeValid && <AttendanceSummaryPanel studentId="me" dateFrom={dateFrom} dateTo={dateTo} />}
 
       <section aria-labelledby="attendance-records-heading">
         <h2 id="attendance-records-heading" className="mb-3 text-base font-semibold text-gray-900">
@@ -80,20 +83,26 @@ function StudentAttendanceContent({ academicYear }) {
             className="w-40"
           />
         </FilterBar>
-        <AttendanceRecordsTable
-          rows={records.data?.items ?? []}
-          isLoading={records.isPending}
-          isFetching={records.isFetching}
-          error={records.error}
-          onRetry={records.refetch}
-          sort={{
-            sortBy: list.params.sortBy ?? 'attendanceDate',
-            sortOrder: list.params.sortOrder ?? 'desc',
-          }}
-          onSortChange={list.setSort}
-          emptyState={<EmptyState title="No attendance records in this period" />}
-        />
-        <Pagination meta={records.data?.meta} onPageChange={list.setPage} onLimitChange={list.setLimit} />
+        {isRangeValid ? (
+          <>
+            <AttendanceRecordsTable
+              rows={records.data?.items ?? []}
+              isLoading={records.isPending}
+              isFetching={records.isFetching}
+              error={records.error}
+              onRetry={records.refetch}
+              sort={{
+                sortBy: list.params.sortBy ?? 'attendanceDate',
+                sortOrder: list.params.sortOrder ?? 'desc',
+              }}
+              onSortChange={list.setSort}
+              emptyState={<EmptyState title="No attendance records in this period" />}
+            />
+            <Pagination meta={records.data?.meta} onPageChange={list.setPage} onLimitChange={list.setLimit} />
+          </>
+        ) : (
+          <Alert tone="warning">The start date must be on or before the end date.</Alert>
+        )}
       </section>
     </div>
   );

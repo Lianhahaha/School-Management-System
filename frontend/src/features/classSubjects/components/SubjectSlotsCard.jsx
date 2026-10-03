@@ -46,7 +46,7 @@ export function SubjectSlotsCard({ classSubjectId }) {
               <span className="tabular-nums">
                 {formatTime(slot.startTime)}–{formatTime(slot.endTime)}
               </span>
-              {slot.room && <span className="text-gray-600">Room {slot.room}</span>}
+              {slot.room && <span className="text-gray-600">{slot.room}</span>}
             </li>
           )),
         )}

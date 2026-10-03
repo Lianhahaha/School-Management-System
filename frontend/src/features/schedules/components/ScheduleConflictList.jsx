@@ -34,7 +34,7 @@ export function ScheduleConflictList({ message, conflicts }) {
                   conflict.className,
                   conflict.subjectName,
                   `${dayLabel(conflict.dayOfWeek, { short: true })} ${formatTime(conflict.startTime)}–${formatTime(conflict.endTime)}`,
-                  conflict.room && `Room ${conflict.room}`,
+                  conflict.room,
                 ]
                   .filter(Boolean)
                   .join(' · ')}

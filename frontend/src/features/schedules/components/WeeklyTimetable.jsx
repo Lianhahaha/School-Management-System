@@ -83,13 +83,16 @@ export function WeeklyTimetable({
           label="Show weekend"
           checked={isWeekendRequested}
           onChange={(event) => setWeekendRequested(event.target.checked)}
-          className="mb-3"
+          className="mb-3 print:hidden"
         />
       )}
       <div
         role="group"
         aria-label={label}
-        className={cx('grid gap-3 sm:grid-cols-2', isWeekendShown ? 'lg:grid-cols-7' : 'lg:grid-cols-5')}
+        className={cx(
+          'grid gap-3 sm:grid-cols-2',
+          isWeekendShown ? 'lg:grid-cols-7 print:grid-cols-7' : 'lg:grid-cols-5 print:grid-cols-5',
+        )}
       >
         {columns.map(({ day, slots: daySlots }) => {
           const isToday = highlightToday && day === today;

@@ -10,7 +10,7 @@ import { Button } from './Button';
  */
 export function FilterBar({ onClear, children }) {
   return (
-    <div role="group" aria-label="Filters" className="mb-4 flex flex-wrap items-center gap-3">
+    <div role="group" aria-label="Filters" className="filter-bar mb-4 flex flex-wrap items-center gap-3">
       {children}
       {onClear && (
         <Button variant="ghost" size="sm" icon={FilterX} onClick={onClear}>

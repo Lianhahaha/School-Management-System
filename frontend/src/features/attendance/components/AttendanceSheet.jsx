@@ -169,7 +169,7 @@ export function AttendanceSheet({ sheet, canSave, onReload }) {
         )}
       </div>
 
-      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Attendance sheet">
+      <div className="relative overflow-x-auto" tabIndex={0} role="region" aria-label="Attendance sheet">
         <Table caption={`Attendance for ${className}, ${subjectName}, ${formatDate(saved.date)}`}>
           <THead>
             <Tr>

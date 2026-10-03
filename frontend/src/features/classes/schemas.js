@@ -5,7 +5,10 @@ import { currentAcademicYear } from '../../utils/date';
 /** Both forms share these fields; only the meaning of a blank homeroom teacher differs (see `blank`). */
 const classShape = (blank) => ({
   name: z.string().trim().min(1, 'This field is required').max(50, 'Use 50 characters or fewer'),
-  gradeLevel: positiveInt.max(12, 'Choose a grade from 1 to 12'),
+  gradeLevel: z
+    .string()
+    .min(1, 'Choose a grade level')
+    .pipe(positiveInt.max(12, 'Choose a grade from 1 to 12')),
   academicYear,
   homeroomTeacherId: blank(positiveInt),
 });

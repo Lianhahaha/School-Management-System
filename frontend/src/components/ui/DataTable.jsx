@@ -98,7 +98,8 @@ export function DataTable({
   return (
     <div className="overflow-hidden rounded-card border border-gray-200 bg-white shadow-card">
       <div
-        className="overflow-x-auto"
+        // relative: the sr-only header text is absolutely positioned and would otherwise escape the scroll box
+        className="relative overflow-x-auto"
         tabIndex={0}
         role={label ? 'region' : undefined}
         aria-label={label}

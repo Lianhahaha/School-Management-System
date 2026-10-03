@@ -22,10 +22,10 @@ const classField = (blank, isClassRequired) =>
   isClassRequired ? requiredId('Choose a class') : blank(positiveInt);
 
 const expiresAfterPublished = [
+  // A blank publish time means "now", so the expiry must still be in the future.
   (announcement) =>
-    !announcement.publishedAt ||
     !announcement.expiresAt ||
-    new Date(announcement.expiresAt) > new Date(announcement.publishedAt),
+    new Date(announcement.expiresAt) > new Date(announcement.publishedAt ?? Date.now()),
   { error: 'Expiry must be after the publish time', path: ['expiresAt'] },
 ];
 

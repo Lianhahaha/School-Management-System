@@ -70,6 +70,11 @@
   .form-control {
     @apply block min-h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 read-only:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 aria-invalid:border-red-500;
   }
+
+  /* Filter selects sit side by side from `sm` up instead of each filling a row; a w-* class still wins. */
+  .filter-bar > select.form-control {
+    @apply sm:w-auto sm:max-w-xs;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -80,5 +85,17 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Printing a page (the timetable's "Print timetable" button): only the page content, no app shell. */
+@media print {
+  #app-sidebar,
+  #app-sidebar + div > header {
+    display: none;
+  }
+
+  #app-sidebar + div {
+    padding-left: 0;
   }
 }

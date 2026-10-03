@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { PAGINATION } from '../../constants/shared';
 import { PAGE_SIZES } from '../../constants/ui';
 import { Button } from './Button';
@@ -26,6 +27,17 @@ function pageItems(page, totalPages) {
  * @param {(limit: number) => void} props.onLimitChange
  */
 export function Pagination({ meta, onPageChange, onLimitChange }) {
+  const changePage = useRef(onPageChange);
+  useEffect(() => {
+    changePage.current = onPageChange;
+  });
+  // A stale or hand-edited URL can point past the last page (rows were deleted): go to the last one.
+  const isPastEnd = Boolean(meta) && meta.total > 0 && meta.page > meta.totalPages;
+  const lastPage = meta?.totalPages;
+  useEffect(() => {
+    if (isPastEnd) changePage.current(lastPage);
+  }, [isPastEnd, lastPage]);
+
   if (!meta || meta.total === 0) return null;
   const { page, limit, total, totalPages } = meta;
   if (totalPages <= 1 && limit === PAGINATION.DEFAULT_LIMIT) return null;
