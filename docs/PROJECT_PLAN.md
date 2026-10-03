@@ -412,3 +412,31 @@ Git: one commit per completed phase at minimum, conventional commit messages, no
 5. Do not touch Storage, Functions, Phone provider, App Check, or "Upgrade to Identity Platform".
 
 Both `.env` files must point at the **same** Firebase project; `npm run doctor` checks this.
+
+---
+
+## 16. Implementation notes (where the built code deliberately differs from the design documents)
+
+The code is the source of truth; `backend/docs/openapi.yaml` is checked against the routes by a test. Differences found while building and testing:
+
+**API**
+- `currentEnrollment` is a sibling of `profile` in `/auth/me`, `/users/:id` and `POST /users` (the design nested it inside `profile`).
+- Several responses carry extra fields the design shapes omit (for example `enrolledOn`, `academicYear`/`teacherId` inside `classSubject`, `subjectName` on grade summaries).
+- Enrollments, attendance and grades lists do not support free-text `search`; sending it is a 400.
+- Deactivating a student also withdraws their active enrollment.
+- Schedule writes answer 503 `SERVICE_UNAVAILABLE` (`details.component = 'timetable'`) when the timetable lock cannot be acquired.
+- Class names are limited to 50 characters (the column is `VARCHAR(50)`); the design said 100.
+- Extra `details.reason` values exist beyond the design list; the OpenAPI spec lists every one.
+- `GET /students/:id` for a student the caller may not see answers 403, not 404, so ids cannot be probed.
+
+**Frontend**
+- Update and delete hooks take their target at call time (`mutate({ id, body })`, `mutate(id)`), so row actions work without binding a hook per row.
+- Success toasts fire inside the mutation hooks; create/edit form hooks are silent and the form renders every error inline.
+- No `toCreatePayload`/`toUpdatePayload` helpers: the zod schemas already produce the exact request body.
+- Select inputs for classes, teachers and subjects are native selects fed by option hooks, not searchable async selects.
+- `ClassSubjectSelectorBar` and `NotEnrolledState` live in `features/attendance/components` and are reused by grades, classes and the dashboard.
+- Teachers only see their own classes in class pickers (the API list is unscoped by design).
+
+**Open polish items (cosmetic, not required by the brief)**
+- Transfer modal lacks the "from A to B" confirmation sentence; homeroom teacher picker is a plain select.
+- A 409 when deactivating a teacher with assignments is shown as a toast without a link to the Assignments tab.
