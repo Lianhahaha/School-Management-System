@@ -1,20 +1,23 @@
 import { cx } from '../../utils/cx';
 
-/** Selected-pill colours per option tone. Full class names so that Tailwind can find them. */
+/**
+ * Selected-pill colours per option tone. Full class names so that Tailwind can find them.
+ * The neutral choice (no tone) is an ink outline; status choices take their soft tone and a ring.
+ */
 const CHECKED_CLASSES = {
-  brand: 'peer-checked:border-brand-600 peer-checked:bg-brand-50 peer-checked:text-brand-700',
-  gray: 'peer-checked:border-gray-500 peer-checked:bg-gray-100 peer-checked:text-gray-800',
-  green: 'peer-checked:border-green-600 peer-checked:bg-green-50 peer-checked:text-green-700',
-  amber: 'peer-checked:border-amber-600 peer-checked:bg-amber-50 peer-checked:text-amber-700',
-  red: 'peer-checked:border-red-600 peer-checked:bg-red-50 peer-checked:text-red-700',
-  blue: 'peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:text-blue-700',
-  violet: 'peer-checked:border-violet-600 peer-checked:bg-violet-50 peer-checked:text-violet-700',
+  neutral: 'peer-checked:bg-surface peer-checked:text-gray-900 peer-checked:ring-gray-900',
+  gray: 'peer-checked:bg-gray-200 peer-checked:text-gray-900 peer-checked:ring-gray-500',
+  green: 'peer-checked:bg-green-50 peer-checked:text-green-700 peer-checked:ring-green-600',
+  amber: 'peer-checked:bg-amber-50 peer-checked:text-amber-700 peer-checked:ring-amber-600',
+  red: 'peer-checked:bg-red-50 peer-checked:text-red-700 peer-checked:ring-red-600',
+  blue: 'peer-checked:bg-blue-50 peer-checked:text-blue-700 peer-checked:ring-blue-600',
+  violet: 'peer-checked:bg-violet-50 peer-checked:text-violet-700 peer-checked:ring-violet-600',
 };
 
 /**
  * A real radio group (fieldset, legend, native radio inputs) drawn as selectable pills, so the
  * choice is announced correctly and works with the arrow keys. The selected option is marked by
- * weight and border as well as colour, never by colour alone.
+ * weight and a ring as well as colour, never by colour alone.
  *
  * Controlled: pass `value` and `onChange` (change event). Uncontrolled / react-hook-form: spread
  * `register('gender')` and omit `value`.
@@ -41,7 +44,7 @@ export function RadioGroup({
       <legend className={hideLegend ? 'sr-only' : 'mb-1.5 text-sm font-medium text-gray-700'}>
         {legend}
       </legend>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {options.map((option) => (
           <label
             key={option.value}
@@ -58,9 +61,9 @@ export function RadioGroup({
             />
             <span
               className={cx(
-                'inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-700',
-                'peer-checked:font-semibold peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-600 hover:bg-gray-50',
-                CHECKED_CLASSES[option.tone ?? 'brand'],
+                'inline-flex min-h-9 items-center gap-1.5 rounded-full bg-gray-100 px-3.5 text-sm text-gray-700 transition-colors ring-inset hover:bg-gray-200',
+                'peer-checked:font-semibold peer-checked:ring-2 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-gray-900',
+                CHECKED_CLASSES[option.tone ?? 'neutral'],
               )}
             >
               {option.label}

@@ -62,7 +62,7 @@ export function Pagination({ meta, onPageChange, onLimitChange }) {
             value={limit}
             onChange={(event) => onLimitChange(Number(event.target.value))}
             options={sizeOptions}
-            className="w-20"
+            className="w-24"
           />
         </label>
 

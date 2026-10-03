@@ -20,7 +20,7 @@ export function DevProjectBanner() {
   if (!apiProjectId || apiProjectId === env.firebase.projectId) return null;
 
   return (
-    <div role="alert" className="bg-red-600 px-4 py-2 text-center text-sm font-medium text-white">
+    <div role="alert" className="bg-red-600 px-4 py-2 text-center text-sm font-medium text-on-danger">
       Firebase project mismatch: the API uses "{apiProjectId}" but this app is configured for "
       {env.firebase.projectId}". Fix VITE_FIREBASE_* in frontend/.env or the service account in the backend,
       then restart both.

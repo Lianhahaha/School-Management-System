@@ -13,9 +13,9 @@ export function StudentTimetableCard({ periods }) {
   return (
     <Card title="Today's timetable" actions={<TextLink to="/student/schedule">Full week</TextLink>}>
       {sorted.length === 0 ? (
-        <EmptyState icon={CalendarOff} title="No classes today" className="py-6" />
+        <EmptyState icon={CalendarOff} title="No classes today" compact />
       ) : (
-        <ol className="divide-y divide-gray-100">
+        <ol className="divide-y divide-gray-200">
           {sorted.map((period) => (
             <li key={period.scheduleId} className="flex items-start gap-4 py-3 first:pt-0 last:pb-0">
               <PeriodTime

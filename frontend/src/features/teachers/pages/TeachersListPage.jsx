@@ -29,7 +29,7 @@ export default function TeachersListPage() {
       header: 'Name',
       sortKey: 'lastName',
       cell: (teacher) => (
-        <Link to={String(teacher.id)} className="font-medium text-brand-700 hover:underline">
+        <Link to={String(teacher.id)} className="link">
           {fullName(teacher)}
         </Link>
       ),
@@ -68,17 +68,14 @@ export default function TeachersListPage() {
   return (
     <>
       <PageHeader
+        total={data?.meta?.total}
         title="Teachers"
         description="Teaching staff, their assignments and homeroom classes"
         actions={<Button onClick={createModal.open}>Add teacher</Button>}
       />
 
       <FilterBar onClear={list.hasActiveFilters ? list.clearFilters : undefined}>
-        <SearchInput
-          value={list.params.search}
-          onChange={list.setSearch}
-          placeholder="Search name, employee number, department"
-        />
+        <SearchInput value={list.params.search} onChange={list.setSearch} placeholder="Search teachers" />
         <Select
           aria-label="Filter by status"
           value={list.params.isActive}

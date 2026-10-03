@@ -96,8 +96,8 @@ export function Dropdown({ label, items, trigger, align = 'right', className }) 
 
   const itemClasses = (item) =>
     cx(
-      'flex min-h-10 w-full items-center gap-2 px-3 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50',
-      item.danger ? 'text-red-700 hover:bg-red-50' : 'text-gray-700 hover:bg-gray-50',
+      'flex min-h-10 w-full items-center gap-2.5 rounded-xl px-3 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+      item.danger ? 'text-red-700 hover:bg-red-50' : 'text-gray-800 hover:bg-gray-100',
     );
 
   const itemContent = (item) => (
@@ -124,7 +124,7 @@ export function Dropdown({ label, items, trigger, align = 'right', className }) 
           }
         }}
         className={cx(
-          'inline-flex min-h-10 min-w-10 items-center justify-center gap-2 rounded-lg px-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+          'inline-flex min-h-10 min-w-10 items-center justify-center gap-2 rounded-full px-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900',
           className,
         )}
       >
@@ -140,7 +140,7 @@ export function Dropdown({ label, items, trigger, align = 'right', className }) 
             aria-label={label}
             style={position}
             onKeyDown={onMenuKeyDown}
-            className="fixed z-50 min-w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+            className="fixed z-50 min-w-52 rounded-[1.25rem] bg-surface p-1.5 shadow-pop"
           >
             {items.map((item) =>
               item.to ? (

@@ -23,11 +23,11 @@ export default function StudentDashboardPage() {
           <StudentHero student={data.student} enrollment={data.currentEnrollment} />
           {data.currentEnrollment && (
             <>
-              <div className="grid gap-6 lg:grid-cols-2">
+              <div className="grid items-start gap-6 lg:grid-cols-2">
                 <StudentAttendanceCard summary={data.attendanceSummary} />
                 <StudentGradeSummaryCard subjects={data.gradeSummary} />
               </div>
-              <div className="grid gap-6 lg:grid-cols-2">
+              <div className="grid items-start gap-6 lg:grid-cols-2">
                 <StudentTimetableCard periods={data.todaySchedule} />
                 <RecentGradesCard grades={data.recentGrades} />
               </div>

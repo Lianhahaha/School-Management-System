@@ -26,14 +26,7 @@ export function SubjectSlotsCard({ classSubjectId }) {
       </div>
     );
   } else if (error) {
-    body = (
-      <ErrorState
-        title="Couldn't load the periods"
-        message={error.message}
-        onRetry={refetch}
-        className="py-4"
-      />
-    );
+    body = <ErrorState title="Couldn't load the periods" message={error.message} onRetry={refetch} compact />;
   } else if (days.length === 0) {
     body = <p className="text-sm text-gray-600">No periods are scheduled for this subject yet.</p>;
   } else {

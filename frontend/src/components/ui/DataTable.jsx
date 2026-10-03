@@ -96,7 +96,7 @@ export function DataTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-card border border-gray-200 bg-white shadow-card">
+    <div className="sheet overflow-hidden pt-3 pb-1">
       <div
         // relative: the sr-only header text is absolutely positioned and would otherwise escape the scroll box
         className="relative overflow-x-auto"

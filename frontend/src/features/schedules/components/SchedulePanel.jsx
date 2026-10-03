@@ -31,14 +31,14 @@ export function SchedulePanel({ query, label, emptyTitle, emptyDescription, rend
   }
   if (error) {
     return (
-      <div className="rounded-card border border-gray-200 bg-white shadow-card">
+      <div className="sheet">
         <ErrorState title="Couldn't load the timetable" message={error.message} onRetry={refetch} />
       </div>
     );
   }
   if (data.items.length === 0) {
     return (
-      <div className="rounded-card border border-gray-200 bg-white shadow-card">
+      <div className="sheet">
         <EmptyState icon={CalendarDays} title={emptyTitle} description={emptyDescription} />
       </div>
     );

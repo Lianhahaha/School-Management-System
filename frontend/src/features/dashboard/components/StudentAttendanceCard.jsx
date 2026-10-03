@@ -18,7 +18,7 @@ export function StudentAttendanceCard({ summary }) {
           icon={ClipboardCheck}
           title="No attendance recorded yet"
           description="Your attendance shows up here once teachers mark it."
-          className="py-6"
+          compact
         />
       ) : (
         <AttendanceOverview summary={summary} />

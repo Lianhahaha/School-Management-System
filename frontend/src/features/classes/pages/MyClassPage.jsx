@@ -138,7 +138,7 @@ export default function MyClassPage() {
           <SubjectsCard />
         </div>
       ) : (
-        <div className="rounded-card border border-gray-200 bg-white shadow-card">
+        <div className="sheet">
           <NotEnrolledState />
         </div>
       )}

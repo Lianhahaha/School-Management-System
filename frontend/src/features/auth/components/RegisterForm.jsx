@@ -55,7 +55,7 @@ export function RegisterForm() {
           <Input {...register('confirmPassword')} type="password" autoComplete="new-password" />
         </FormField>
 
-        <details open={hasDetailErrors} className="rounded-lg border border-gray-200 px-4 py-3">
+        <details open={hasDetailErrors} className="rounded-[1.25rem] bg-gray-50 px-4 py-3">
           <summary className="cursor-pointer text-sm font-medium text-gray-700">
             Student details (optional)
           </summary>

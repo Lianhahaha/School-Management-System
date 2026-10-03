@@ -1,15 +1,23 @@
 import { cx } from '../../utils/cx';
 import { Spinner } from './Spinner';
 
+/*
+ * Pills. Yellow is the primary action only, so a screen carries one (or very few) yellow buttons;
+ * everything else is a soft grey pill or plain text. Disabled buttons keep their shape and fade.
+ */
 const VARIANTS = {
-  primary: 'bg-brand-600 text-white hover:bg-brand-700 disabled:bg-brand-600/50',
-  secondary: 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:text-gray-400',
-  ghost: 'text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-transparent',
-  danger: 'bg-red-600 text-white hover:bg-red-700 disabled:bg-red-600/50',
+  primary: 'bg-accent font-semibold text-accent-ink hover:bg-accent-hover disabled:opacity-50',
+  secondary: 'bg-gray-100 font-medium text-gray-900 hover:bg-gray-200 disabled:text-gray-500',
+  ghost:
+    'font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 disabled:text-gray-400 disabled:hover:bg-transparent',
+  danger: 'bg-red-600 font-semibold text-on-danger hover:bg-red-700 disabled:opacity-50',
 };
 
-// Heights keep touch targets at 36 px or more (40 px for the default size).
-const SIZES = { sm: 'h-9 px-3 text-sm', md: 'h-10 px-4 text-sm', lg: 'h-11 px-5 text-base' };
+// Heights keep touch targets at 36 px or more (44 px for the default size).
+const SIZES = { sm: 'h-9 px-3.5 text-sm', md: 'h-11 px-5 text-[0.9375rem]', lg: 'h-12 px-6 text-base' };
+
+/** A button with an icon and no label is a circle of the same height. */
+const ICON_ONLY = { sm: 'w-9 px-0', md: 'w-11 px-0', lg: 'w-12 px-0' };
 
 /**
  * @param {object} props
@@ -20,7 +28,7 @@ const SIZES = { sm: 'h-9 px-3 text-sm', md: 'h-10 px-4 text-sm', lg: 'h-11 px-5 
  * @param {import('react').ElementType} [props.as] render another element, for example `as={Link} to="/x"`
  *
  * A native button defaults to type="button" so that it never submits a form by accident;
- * the primary action of a form passes type="submit".
+ * the primary action of a form passes type="submit". An icon-only button needs an aria-label.
  */
 export function Button({
   as: Component = 'button',
@@ -34,6 +42,7 @@ export function Button({
 }) {
   const nativeProps =
     Component === 'button' ? { type: props.type ?? 'button', disabled: props.disabled || isLoading } : {};
+  const isIconOnly = Boolean(Icon) && (children === undefined || children === null || children === false);
 
   return (
     <Component
@@ -41,13 +50,14 @@ export function Button({
       {...nativeProps}
       aria-busy={isLoading || undefined}
       className={cx(
-        'inline-flex items-center justify-center gap-2 rounded-lg font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed',
+        'inline-flex shrink-0 items-center justify-center gap-2 rounded-full whitespace-nowrap transition-[background-color,color,transform] duration-150 select-none active:scale-[0.97] disabled:cursor-not-allowed disabled:active:scale-100',
         VARIANTS[variant],
         SIZES[size],
+        isIconOnly && ICON_ONLY[size],
         className,
       )}
     >
-      {isLoading ? <Spinner size="sm" /> : Icon && <Icon className="size-4" aria-hidden="true" />}
+      {isLoading ? <Spinner size="sm" /> : Icon && <Icon className="size-[1.125rem]" aria-hidden="true" />}
       {children}
     </Component>
   );

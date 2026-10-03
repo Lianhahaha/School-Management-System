@@ -4,8 +4,7 @@ import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { TextLink } from '../../../components/ui/TextLink';
 
-const CHIP =
-  'block rounded-lg border border-gray-200 px-3 py-2 text-sm hover:border-brand-300 hover:bg-brand-50';
+const CHIP = 'block rounded-full bg-gray-100 px-4 py-2.5 text-sm transition-colors hover:bg-gray-200';
 
 /** Class-subjects a teacher teaches (chips open the class page) and the classes they lead as homeroom teacher. */
 export function TeacherClassesCard({ classSubjects, homeroomClasses }) {
@@ -18,16 +17,13 @@ export function TeacherClassesCard({ classSubjects, homeroomClasses }) {
           icon={School}
           title="No classes yet"
           description="You haven't been assigned to any class yet. Ask an administrator."
-          className="py-6"
+          compact
         />
       ) : (
         <div className="space-y-5">
           {classSubjects.length > 0 && (
             <section aria-labelledby="teaching-heading">
-              <h3
-                id="teaching-heading"
-                className="text-xs font-semibold tracking-wide text-gray-500 uppercase"
-              >
+              <h3 id="teaching-heading" className="text-[0.8125rem] text-gray-500">
                 Teaching
               </h3>
               <ul className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -48,10 +44,7 @@ export function TeacherClassesCard({ classSubjects, homeroomClasses }) {
           )}
           {homeroomClasses.length > 0 && (
             <section aria-labelledby="homeroom-heading">
-              <h3
-                id="homeroom-heading"
-                className="text-xs font-semibold tracking-wide text-gray-500 uppercase"
-              >
+              <h3 id="homeroom-heading" className="text-[0.8125rem] text-gray-500">
                 Homeroom
               </h3>
               <ul className="mt-2 grid gap-2 sm:grid-cols-2">

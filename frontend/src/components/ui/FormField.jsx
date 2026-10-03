@@ -34,7 +34,7 @@ export function FormField({ label, hint, error, required = false, className, chi
 
   return (
     <div className={cx('space-y-1.5', className)}>
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700">
+      <label htmlFor={id} className="block text-sm font-medium text-gray-800">
         {label}
         {required && (
           <span aria-hidden="true" className="ml-0.5 text-red-600">

@@ -15,7 +15,7 @@ function ToastItem({ toast, onDismiss }) {
     <Alert
       tone={toast.tone}
       onDismiss={() => onDismiss(toast.id)}
-      className="pointer-events-auto animate-toast-in shadow-lg"
+      className="pointer-events-auto animate-toast-in rounded-[1.25rem] shadow-pop backdrop-blur-sm"
     >
       {toast.message}
       {toast.detail && <span className="mt-0.5 block text-xs opacity-80">{toast.detail}</span>}
@@ -46,7 +46,8 @@ export function ToastProvider({ children }) {
   return (
     <>
       {children}
-      <div className="pointer-events-none fixed inset-x-4 bottom-4 z-50 flex flex-col gap-2 sm:left-auto sm:w-96">
+      {/* Above the phone tab bar; bottom-right from `lg` up. */}
+      <div className="pointer-events-none fixed inset-x-4 bottom-28 z-50 flex flex-col gap-2 sm:left-auto sm:w-96 lg:bottom-5">
         <div role="status" aria-live="polite" className="flex flex-col gap-2">
           {renderToasts(false)}
         </div>

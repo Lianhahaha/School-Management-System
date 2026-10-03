@@ -23,3 +23,7 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 .idea/
+
+# local design tooling: previews, captures, briefs and product notes stay on this machine
+.impeccable/
+PRODUCT.md

@@ -1,24 +1,30 @@
 import { Suspense } from 'react';
 import { Outlet } from 'react-router';
 import { Spinner } from '../ui/Spinner';
+import { ThemeToggle } from '../ui/ThemeToggle';
 import { Brand } from './Brand';
 
-/** Centred card for the public pages (sign in, register, forgot password). */
+/** The public pages (sign in, register, forgot password): wordmark, one sheet, theme switch. */
 export function AuthLayout() {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-gray-50 px-4 py-10">
-      <Brand className="mb-6" />
-      <main className="w-full max-w-md rounded-card border border-gray-200 bg-white p-6 shadow-card sm:p-8">
-        <Suspense
-          fallback={
-            <div className="flex justify-center py-10">
-              <Spinner size="lg" label="Loading" />
-            </div>
-          }
-        >
-          <Outlet />
-        </Suspense>
-      </main>
+    <div className="flex min-h-dvh flex-col px-4 py-5 sm:px-8">
+      <header className="flex items-center justify-between">
+        <Brand />
+        <ThemeToggle />
+      </header>
+      <div className="flex flex-1 items-center justify-center py-10">
+        <main className="sheet w-full max-w-[26rem] p-6 sm:p-8">
+          <Suspense
+            fallback={
+              <div className="flex justify-center py-10">
+                <Spinner size="lg" label="Loading" />
+              </div>
+            }
+          >
+            <Outlet />
+          </Suspense>
+        </main>
+      </div>
     </div>
   );
 }

@@ -52,7 +52,7 @@ export function ClassStudentsTab({ schoolClass }) {
       header: 'Name',
       sortKey: 'lastName',
       cell: (student) => (
-        <Link to={`/admin/students/${student.id}`} className="font-medium text-brand-700 hover:underline">
+        <Link to={`/admin/students/${student.id}`} className="link">
           {fullName(student)}
         </Link>
       ),
@@ -90,11 +90,7 @@ export function ClassStudentsTab({ schoolClass }) {
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <FilterBar onClear={list.hasActiveFilters ? list.clearFilters : undefined}>
-          <SearchInput
-            value={list.params.search}
-            onChange={list.setSearch}
-            placeholder="Search name, student number, email"
-          />
+          <SearchInput value={list.params.search} onChange={list.setSearch} placeholder="Search students" />
         </FilterBar>
         {enrollButton}
       </div>

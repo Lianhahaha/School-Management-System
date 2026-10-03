@@ -99,7 +99,7 @@ export default function MyClassesPage() {
     return (
       <>
         {header}
-        <div className="rounded-card border border-gray-200 bg-white shadow-card">
+        <div className="sheet">
           <EmptyState
             icon={School}
             title="You haven't been assigned to any class yet"

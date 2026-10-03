@@ -17,7 +17,7 @@ function FeedSkeleton({ count }) {
   return (
     <div role="status" aria-busy="true" aria-label="Loading announcements" className="space-y-4">
       {Array.from({ length: count }, (_, row) => (
-        <div key={row} className="space-y-3 rounded-card border border-gray-200 bg-white p-5 shadow-card">
+        <div key={row} className="sheet space-y-3 p-5">
           <Skeleton className="h-5 w-1/2" />
           <Skeleton className="h-3 w-1/3" />
           <Skeleton className="h-4 w-full" />

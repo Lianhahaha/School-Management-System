@@ -37,7 +37,7 @@ export default function StudentsListPage() {
       header: 'Name',
       sortKey: 'lastName',
       cell: (student) => (
-        <Link to={String(student.id)} className="font-medium text-brand-700 hover:underline">
+        <Link to={String(student.id)} className="link">
           {fullName(student)}
         </Link>
       ),
@@ -66,17 +66,14 @@ export default function StudentsListPage() {
   return (
     <>
       <PageHeader
+        total={data?.meta?.total}
         title="Students"
         description="All registered students and their current class"
         actions={<Button onClick={createModal.open}>Add student</Button>}
       />
 
       <FilterBar onClear={list.hasActiveFilters ? list.clearFilters : undefined}>
-        <SearchInput
-          value={list.params.search}
-          onChange={list.setSearch}
-          placeholder="Search name, student number, email"
-        />
+        <SearchInput value={list.params.search} onChange={list.setSearch} placeholder="Search students" />
         <ClassSelect
           aria-label="Filter by class"
           value={list.params.classId}

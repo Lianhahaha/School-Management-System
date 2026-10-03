@@ -11,8 +11,8 @@ export function DescriptionList({ items, className }) {
     <dl className={cx('grid gap-x-6 gap-y-4 sm:grid-cols-2', className)}>
       {items.map(({ label, value }) => (
         <div key={label}>
-          <dt className="text-xs font-medium tracking-wide text-gray-500 uppercase">{label}</dt>
-          <dd className="mt-1 text-sm text-gray-900">
+          <dt className="text-[0.8125rem] text-gray-500">{label}</dt>
+          <dd className="mt-0.5 text-[0.9375rem] text-gray-900">
             {value === null || value === undefined || value === '' ? '—' : value}
           </dd>
         </div>

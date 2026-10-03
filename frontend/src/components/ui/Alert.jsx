@@ -1,5 +1,5 @@
 import { CircleAlert, CircleCheck, Info, TriangleAlert, X } from 'lucide-react';
-import { TONE_CLASSES } from '../../constants/ui';
+import { TONE_SOFT_CLASSES } from '../../constants/ui';
 import { cx } from '../../utils/cx';
 
 const FEEDBACK = {
@@ -23,11 +23,11 @@ export function Alert({ tone = 'info', title, role, onDismiss, className, childr
   return (
     <div
       role={role}
-      className={cx('flex gap-3 rounded-lg p-3 text-sm ring-1 ring-inset', TONE_CLASSES[color], className)}
+      className={cx('flex gap-3 rounded-control px-4 py-3 text-sm', TONE_SOFT_CLASSES[color], className)}
     >
       <Icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
       <div className="min-w-0 flex-1">
-        {title && <p className="font-medium">{title}</p>}
+        {title && <p className="font-semibold">{title}</p>}
         <div>{children}</div>
       </div>
       {onDismiss && (
@@ -35,7 +35,7 @@ export function Alert({ tone = 'info', title, role, onDismiss, className, childr
           type="button"
           onClick={onDismiss}
           aria-label="Dismiss"
-          className="-m-1 flex size-8 shrink-0 items-center justify-center rounded-md hover:bg-black/5"
+          className="-m-1.5 flex size-8 shrink-0 items-center justify-center rounded-full hover:bg-gray-900/5"
         >
           <X className="size-4" aria-hidden="true" />
         </button>

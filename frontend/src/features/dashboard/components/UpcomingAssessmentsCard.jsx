@@ -11,11 +11,20 @@ import { formatDate } from '../../../utils/date';
  */
 export function UpcomingAssessmentsCard({ assessments }) {
   return (
-    <Card title="Upcoming assessments" description="In the next 7 days">
+    <Card
+      title="Upcoming assessments"
+      total={assessments.length > 0 ? assessments.length : undefined}
+      description="In the next 7 days"
+    >
       {assessments.length === 0 ? (
-        <EmptyState icon={CalendarClock} title="Nothing coming up" className="py-6" />
+        <EmptyState
+          icon={CalendarClock}
+          title="Nothing coming up"
+          description="Quizzes, tests and exams dated in the next 7 days appear here."
+          compact
+        />
       ) : (
-        <ul className="divide-y divide-gray-100">
+        <ul className="divide-y divide-gray-200">
           {assessments.map((assessment) => (
             <li
               key={assessment.id}

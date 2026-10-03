@@ -23,22 +23,31 @@ import {
 /** `[{ value, label }]` for every value of a shared enum, in the order of the enum. */
 const optionsOf = (values, labels) => values.map((value) => ({ value, label: labels[value] }));
 
-export const APP_NAME = 'School Manager';
+export const APP_NAME = 'Skole';
 
 // ---------------------------------------------------------------------------
-// Tones: the colour families a Badge, StatTile or alert can use.
-// Text is the -700 shade on a light background, which keeps the contrast above 4.5:1.
+// Tones: the status colour families. A status is a coloured dot on a neutral pill (Badge);
+// alerts, icon chips and timetable slots use the soft form. Both follow the light and dark themes.
 // ---------------------------------------------------------------------------
 
 export const TONES = Object.freeze(['gray', 'green', 'amber', 'red', 'blue', 'violet']);
 
-export const TONE_CLASSES = Object.freeze({
-  gray: 'bg-gray-100 text-gray-700 ring-gray-500/20',
-  green: 'bg-green-50 text-green-700 ring-green-600/20',
-  amber: 'bg-amber-50 text-amber-700 ring-amber-600/20',
-  red: 'bg-red-50 text-red-700 ring-red-600/20',
-  blue: 'bg-blue-50 text-blue-700 ring-blue-600/20',
-  violet: 'bg-violet-50 text-violet-700 ring-violet-600/20',
+export const TONE_DOT_CLASSES = Object.freeze({
+  gray: 'bg-gray-400',
+  green: 'bg-green-600',
+  amber: 'bg-amber-500',
+  red: 'bg-red-600',
+  blue: 'bg-blue-600',
+  violet: 'bg-violet-600',
+});
+
+export const TONE_SOFT_CLASSES = Object.freeze({
+  gray: 'bg-gray-100 text-gray-700',
+  green: 'bg-green-50 text-green-700',
+  amber: 'bg-amber-50 text-amber-700',
+  red: 'bg-red-50 text-red-700',
+  blue: 'bg-blue-50 text-blue-700',
+  violet: 'bg-violet-50 text-violet-700',
 });
 
 // ---------------------------------------------------------------------------

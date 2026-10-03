@@ -6,7 +6,7 @@ export function PageSkeleton() {
     <div role="status" aria-busy="true" aria-label="Loading page">
       <Skeleton className="h-8 w-64" />
       <Skeleton className="mt-3 h-4 w-96 max-w-full" />
-      <div className="mt-8 space-y-4 rounded-card border border-gray-200 bg-white p-5 shadow-card">
+      <div className="sheet mt-8 space-y-4 p-5">
         <Skeleton className="h-5 w-1/3" />
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-5/6" />

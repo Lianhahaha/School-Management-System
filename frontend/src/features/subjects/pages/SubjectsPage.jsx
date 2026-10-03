@@ -118,6 +118,7 @@ export default function SubjectsPage() {
   return (
     <>
       <PageHeader
+        total={data?.meta?.total}
         title="Subjects"
         description="The subject catalogue that classes draw from"
         actions={<Button onClick={createModal.open}>Create subject</Button>}

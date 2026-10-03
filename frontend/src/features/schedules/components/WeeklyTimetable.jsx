@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { TONE_CLASSES } from '../../../constants/ui';
+import { TONE_SOFT_CLASSES } from '../../../constants/ui';
 import { cx } from '../../../utils/cx';
 import { formatTime, todayIsoWeekday } from '../../../utils/date';
 import { dayLabel, slotsToGrid } from '../../../utils/schedule';
 import { Checkbox } from '../../../components/ui/Checkbox';
+import { LiveTag } from '../../../components/ui/LiveTag';
 
 const WEEKDAYS = [1, 2, 3, 4, 5];
 const SUBJECT_TONES = ['blue', 'green', 'violet', 'amber', 'red'];
@@ -24,9 +25,9 @@ function DefaultSlotContent({ slot }) {
 
 function Slot({ slot, renderSlot, onSlotClick }) {
   const classes = cx(
-    'block w-full rounded-lg px-3 py-2 text-left text-sm ring-1 ring-inset',
-    TONE_CLASSES[subjectTone(slot)],
-    onSlotClick && 'cursor-pointer transition-shadow hover:shadow-md',
+    'block w-full rounded-2xl px-3 py-2.5 text-left text-sm',
+    TONE_SOFT_CLASSES[subjectTone(slot)],
+    onSlotClick && 'cursor-pointer transition-[filter] hover:brightness-95',
   );
   const content = (
     <>
@@ -100,14 +101,11 @@ export function WeeklyTimetable({
             <section
               key={day}
               aria-label={dayLabel(day)}
-              className={cx(
-                'rounded-card border p-3',
-                isToday ? 'border-brand-300 bg-brand-50' : 'border-gray-200 bg-white',
-              )}
+              className={cx('rounded-card bg-surface p-3', isToday && 'ring-2 ring-accent ring-inset')}
             >
               <h3 className="mb-2 flex items-center justify-between text-sm font-semibold text-gray-900">
                 {dayLabel(day)}
-                {isToday && <span className="text-xs font-medium text-brand-700">Today</span>}
+                {isToday && <LiveTag>Today</LiveTag>}
               </h3>
               {daySlots.length === 0 ? (
                 <p className="text-xs text-gray-500">No periods</p>

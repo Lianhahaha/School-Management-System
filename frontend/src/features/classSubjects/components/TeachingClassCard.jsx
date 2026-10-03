@@ -14,10 +14,7 @@ import { formatPeriod } from './nextPeriod';
 export function TeachingClassCard({ classSubject, nextSlot }) {
   const { id, className, subjectName, academicYear } = classSubject;
   return (
-    <article
-      aria-label={`${subjectName}, ${className}`}
-      className="flex flex-col rounded-card border border-gray-200 bg-white p-5 shadow-card"
-    >
+    <article aria-label={`${subjectName}, ${className}`} className="sheet flex flex-col p-5">
       <h3 className="text-base font-semibold text-gray-900">{className}</h3>
       <p className="text-sm text-gray-700">{subjectName}</p>
       <p className="mt-0.5 text-xs text-gray-500">{academicYear}</p>

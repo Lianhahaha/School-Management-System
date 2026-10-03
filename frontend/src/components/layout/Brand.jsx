@@ -1,15 +1,27 @@
-import { GraduationCap } from 'lucide-react';
 import { APP_NAME } from '../../constants/ui';
 import { cx } from '../../utils/cx';
 
-/** Logo mark and application name. */
+/**
+ * The Skole mark (a ruled line over a highlighter stroke on an ink tile, same drawing as
+ * public/favicon.svg) and the wordmark.
+ */
 export function Brand({ className }) {
   return (
-    <div className={cx('flex items-center gap-2', className)}>
-      <span className="flex size-9 items-center justify-center rounded-lg bg-brand-600 text-white">
-        <GraduationCap className="size-5" aria-hidden="true" />
-      </span>
-      <span className="text-base font-semibold text-gray-900">{APP_NAME}</span>
+    <div className={cx('flex items-center gap-2.5', className)}>
+      <svg viewBox="0 0 32 32" className="size-8 shrink-0" aria-hidden="true">
+        <rect width="32" height="32" rx="9" className="fill-gray-900" />
+        <rect
+          x="6.5"
+          y="15"
+          width="19"
+          height="7.5"
+          rx="2.6"
+          className="fill-accent"
+          transform="rotate(-8 16 18.75)"
+        />
+        <rect x="9" y="8.5" width="14" height="2.6" rx="1.3" className="fill-gray-50" />
+      </svg>
+      <span className="text-xl font-semibold tracking-[-0.03em] text-gray-900">{APP_NAME}</span>
     </div>
   );
 }

@@ -13,7 +13,7 @@ export function StudentGradeSummaryCard({ subjects }) {
           icon={Award}
           title="No grades yet"
           description="Graded assessments will appear here."
-          className="py-6"
+          compact
         />
       ) : (
         <ul className="space-y-4">
@@ -32,7 +32,7 @@ export function StudentGradeSummaryCard({ subjects }) {
                 className="mt-1.5 h-2 overflow-hidden rounded-full bg-gray-100"
               >
                 <div
-                  className="h-full rounded-full bg-brand-600"
+                  className="h-full rounded-full bg-gray-900"
                   style={{ width: `${Math.min(100, Math.max(0, subject.percentage))}%` }}
                 />
               </div>

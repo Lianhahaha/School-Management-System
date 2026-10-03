@@ -60,15 +60,15 @@ export function Modal({ open, onClose, title, description, footer, size = 'md', 
         if (event.target === event.currentTarget) onClose(); // the backdrop is part of the dialog box
       }}
       className={cx(
-        'm-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] flex-col rounded-xl bg-white p-0 shadow-xl backdrop:bg-gray-900/50 open:flex',
+        'm-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] flex-col rounded-[1.75rem] bg-surface p-0 text-gray-900 shadow-pop backdrop:bg-gray-900/40 backdrop:backdrop-blur-[2px] open:flex',
         SIZES[size],
       )}
     >
       {open && (
         <>
-          <header className="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-4">
+          <header className="flex items-start justify-between gap-4 px-6 pt-6 pb-2">
             <div>
-              <h2 id={titleId} className="text-lg font-semibold text-gray-900">
+              <h2 id={titleId} className="text-xl font-semibold tracking-[-0.01em] text-gray-900">
                 {title}
               </h2>
               {description && (
@@ -81,19 +81,15 @@ export function Modal({ open, onClose, title, description, footer, size = 'md', 
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="-m-2 flex size-10 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+              className="-mt-1 -mr-2 flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200 hover:text-gray-900"
             >
-              <X className="size-5" aria-hidden="true" />
+              <X className="size-[1.125rem]" aria-hidden="true" />
             </button>
           </header>
           <div data-modal-body className="overflow-y-auto px-6 py-4">
             {children}
           </div>
-          {footer && (
-            <footer className="flex flex-wrap justify-end gap-3 border-t border-gray-100 px-6 py-4">
-              {footer}
-            </footer>
-          )}
+          {footer && <footer className="flex flex-wrap justify-end gap-2 px-6 pt-2 pb-6">{footer}</footer>}
         </>
       )}
     </dialog>

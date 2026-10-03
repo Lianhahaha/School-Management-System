@@ -75,7 +75,7 @@ export function ClassScheduleTab({ schoolClass }) {
       </div>
 
       {slots.length === 0 ? (
-        <div className="rounded-card border border-gray-200 bg-white shadow-card">
+        <div className="sheet">
           <EmptyState
             icon={CalendarDays}
             title="No timetable yet"

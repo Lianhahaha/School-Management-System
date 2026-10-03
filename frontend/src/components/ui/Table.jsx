@@ -25,19 +25,19 @@ export function Table({ caption, className, children }) {
 }
 
 export function THead({ children }) {
-  return <thead className="bg-gray-50 text-xs tracking-wide text-gray-600 uppercase">{children}</thead>;
+  return <thead className="text-[0.8125rem] text-gray-500 [&>tr]:hover:bg-transparent">{children}</thead>;
 }
 
 export function TBody({ className, children, ...props }) {
   return (
-    <tbody className={cx('divide-y divide-gray-100 bg-white', className)} {...props}>
+    <tbody className={cx('[&>tr]:border-t [&>tr]:border-gray-200', className)} {...props}>
       {children}
     </tbody>
   );
 }
 
 export function Tr({ children }) {
-  return <tr className="hover:bg-gray-50/60">{children}</tr>;
+  return <tr className="transition-colors hover:bg-gray-50">{children}</tr>;
 }
 
 /**
@@ -58,13 +58,21 @@ export function Th({ sortDirection = null, onSort, align = 'left', hideBelow, wi
       scope="col"
       aria-sort={onSort ? (ARIA_SORT[sortDirection] ?? 'none') : undefined}
       style={width ? { width } : undefined}
-      className={cx('px-4 py-3 font-semibold', ALIGN[align], hideBelow && HIDE_BELOW[hideBelow], className)}
+      className={cx(
+        'px-4 pt-1 pb-2.5 font-medium first:pl-5 last:pr-5',
+        ALIGN[align],
+        hideBelow && HIDE_BELOW[hideBelow],
+        className,
+      )}
     >
       {onSort ? (
         <button
           type="button"
           onClick={onSort}
-          className="-mx-1 inline-flex items-center gap-1 rounded px-1 py-0.5 tracking-wide uppercase hover:text-gray-900"
+          className={cx(
+            '-mx-1.5 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 hover:text-gray-900',
+            sortDirection && 'text-gray-900',
+          )}
         >
           {children}
           <SortIcon className={cx('size-3.5', !sortDirection && 'opacity-40')} aria-hidden="true" />
@@ -80,7 +88,13 @@ export function Th({ sortDirection = null, onSort, align = 'left', hideBelow, wi
 export function Td({ align = 'left', hideBelow, className, children, ...props }) {
   return (
     <td
-      className={cx('px-4 py-3 text-gray-700', ALIGN[align], hideBelow && HIDE_BELOW[hideBelow], className)}
+      className={cx(
+        'px-4 py-3 text-[0.9375rem] text-gray-700 first:pl-5 last:pr-5',
+        ALIGN[align],
+        align === 'right' && 'tabular',
+        hideBelow && HIDE_BELOW[hideBelow],
+        className,
+      )}
       {...props}
     >
       {children}

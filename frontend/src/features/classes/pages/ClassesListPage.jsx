@@ -44,7 +44,7 @@ export default function ClassesListPage() {
       header: 'Name',
       sortKey: 'name',
       cell: (schoolClass) => (
-        <Link to={`/admin/classes/${schoolClass.id}`} className="font-medium text-brand-700 hover:underline">
+        <Link to={`/admin/classes/${schoolClass.id}`} className="link">
           {schoolClass.name}
         </Link>
       ),
@@ -89,6 +89,7 @@ export default function ClassesListPage() {
   return (
     <>
       <PageHeader
+        total={data?.meta?.total}
         title="Classes"
         description="Each school year's groups of students, with their homeroom teacher."
         actions={createButton}

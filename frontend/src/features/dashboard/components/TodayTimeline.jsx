@@ -2,6 +2,7 @@ import { CalendarOff, Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Badge } from '../../../components/ui/Badge';
+import { LiveTag } from '../../../components/ui/LiveTag';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
@@ -35,12 +36,7 @@ export function TodayTimeline({ periods }) {
   return (
     <Card title="Today's periods">
       {sorted.length === 0 ? (
-        <EmptyState
-          icon={CalendarOff}
-          title="No periods today"
-          description="Enjoy the quiet day."
-          className="py-6"
-        />
+        <EmptyState icon={CalendarOff} title="No periods today" description="Enjoy the quiet day." compact />
       ) : (
         <ol className="space-y-2">
           {sorted.map((period) => {
@@ -51,18 +47,14 @@ export function TodayTimeline({ periods }) {
                 key={period.scheduleId}
                 aria-current={isCurrent ? 'time' : undefined}
                 className={cx(
-                  'flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3',
-                  isCurrent ? 'border-brand-300 bg-brand-50' : 'border-gray-200',
+                  'flex flex-wrap items-center justify-between gap-3 rounded-[1.25rem] px-4 py-3',
+                  isCurrent ? 'bg-accent-soft ring-2 ring-accent-line ring-inset' : 'bg-gray-100',
                 )}
               >
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-gray-900">
                     <PeriodTime startTime={period.startTime} endTime={period.endTime} />
-                    {isCurrent && (
-                      <Badge tone="blue" className="ml-2">
-                        Now
-                      </Badge>
-                    )}
+                    {isCurrent && <LiveTag className="ml-2">Now</LiveTag>}
                   </p>
                   <p className="mt-0.5 text-sm text-gray-700">
                     {period.className} · {period.subjectName}

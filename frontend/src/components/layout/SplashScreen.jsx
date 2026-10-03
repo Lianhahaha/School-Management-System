@@ -13,7 +13,7 @@ import { Brand } from './Brand';
  */
 export function SplashScreen({ variant = 'loading', onRetry, onSignOut }) {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-8 bg-gray-50 px-4 text-center">
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-8 px-4 text-center">
       <Brand />
       {variant === 'error' ? (
         <div role="alert" className="max-w-sm">

@@ -24,7 +24,7 @@ export function SessionsProgressCard({ attendance }) {
             className="mt-3 h-2 overflow-hidden rounded-full bg-gray-100"
           >
             <div
-              className={isDone ? 'h-full rounded-full bg-green-600' : 'h-full rounded-full bg-brand-600'}
+              className={isDone ? 'h-full rounded-full bg-green-600' : 'h-full rounded-full bg-gray-900'}
               style={{ width: `${Math.min(100, (sessionsMarked / sessionsScheduled) * 100)}%` }}
             />
           </div>

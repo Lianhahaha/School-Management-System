@@ -59,17 +59,14 @@ export default function UsersListPage() {
   return (
     <>
       <PageHeader
+        total={data?.meta?.total}
         title="Users"
         description="Every account in the school, whatever its role"
         actions={<Button onClick={createModal.open}>Create user</Button>}
       />
 
       <FilterBar onClear={list.hasActiveFilters ? list.clearFilters : undefined}>
-        <SearchInput
-          value={list.params.search}
-          onChange={list.setSearch}
-          placeholder="Search first name, last name, email"
-        />
+        <SearchInput value={list.params.search} onChange={list.setSearch} placeholder="Search users" />
         <Select
           aria-label="Filter by role"
           value={list.params.role}

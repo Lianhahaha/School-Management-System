@@ -43,9 +43,9 @@ export function SearchInput({ value, onChange, placeholder, label = 'Search', de
   }
 
   return (
-    <div className={cx('relative w-full sm:w-72', className)}>
+    <div className={cx('relative w-full sm:w-64', className)}>
       <Search
-        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-gray-400"
+        className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-gray-500"
         aria-hidden="true"
       />
       <Input
@@ -54,7 +54,7 @@ export function SearchInput({ value, onChange, placeholder, label = 'Search', de
         onChange={(event) => setDraft(event.target.value)}
         placeholder={placeholder}
         aria-label={label}
-        className="pl-9"
+        className="rounded-full border-transparent bg-surface pl-10 hover:border-gray-300"
       />
     </div>
   );

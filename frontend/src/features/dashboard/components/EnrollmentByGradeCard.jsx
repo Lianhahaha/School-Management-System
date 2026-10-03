@@ -10,7 +10,7 @@ export function EnrollmentByGradeCard({ grades }) {
   return (
     <Card title="Enrollment by grade" description="Students with an active enrollment">
       {sorted.length === 0 ? (
-        <EmptyState icon={ChartNoAxesColumn} title="No enrollments yet" className="py-6" />
+        <EmptyState icon={ChartNoAxesColumn} title="No enrollments yet" compact />
       ) : (
         <ul className="space-y-3">
           {sorted.map((grade) => (
@@ -25,7 +25,7 @@ export function EnrollmentByGradeCard({ grades }) {
                 className="h-3 flex-1 overflow-hidden rounded-full bg-gray-100"
               >
                 <div
-                  className="h-full rounded-full bg-brand-600"
+                  className="h-full rounded-full bg-gray-900"
                   style={{ width: `${(grade.students / largest) * 100}%` }}
                 />
               </div>

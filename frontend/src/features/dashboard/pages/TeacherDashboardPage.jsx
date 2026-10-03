@@ -23,7 +23,7 @@ export default function TeacherDashboardPage() {
               <PendingGradingCard assessments={data.pendingGrading} />
             </div>
           </div>
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid items-start gap-6 lg:grid-cols-2">
             <TeacherClassesCard classSubjects={data.classSubjects} homeroomClasses={data.homeroomClasses} />
             <RecentAnnouncementsCard announcements={data.recentAnnouncements} to="/teacher/announcements" />
           </div>

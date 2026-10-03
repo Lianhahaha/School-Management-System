@@ -12,9 +12,9 @@ export function RecentGradesCard({ grades }) {
   return (
     <Card title="Recent grades" actions={<TextLink to="/student/grades">All grades</TextLink>}>
       {grades.length === 0 ? (
-        <EmptyState icon={Award} title="No grades yet" className="py-6" />
+        <EmptyState icon={Award} title="No grades yet" compact />
       ) : (
-        <ul className="divide-y divide-gray-100">
+        <ul className="divide-y divide-gray-200">
           {grades.map((grade) => (
             <li
               key={grade.gradeId}

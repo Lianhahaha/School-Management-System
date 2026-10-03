@@ -188,7 +188,7 @@ export function AttendanceSheet({ sheet, canSave, onReload }) {
                     <div className="flex items-center gap-3">
                       <span
                         aria-hidden="true"
-                        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-700"
+                        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-gray-700"
                       >
                         {initials(record)}
                       </span>

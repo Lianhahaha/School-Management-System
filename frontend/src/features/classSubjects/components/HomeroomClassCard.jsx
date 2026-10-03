@@ -20,7 +20,7 @@ export function HomeroomClassCard({ schoolClass, classSubjects }) {
       {classSubjects.length === 0 ? (
         <p className="text-sm text-gray-600">This class has no subjects yet.</p>
       ) : (
-        <ul className="divide-y divide-gray-100">
+        <ul className="divide-y divide-gray-200">
           {classSubjects.map((classSubject) => (
             <li
               key={classSubject.id}
@@ -30,7 +30,7 @@ export function HomeroomClassCard({ schoolClass, classSubjects }) {
                 <span className="font-medium text-gray-900">{classSubject.subjectName}</span>
                 <span className="text-gray-600"> · {fullName(classSubject.teacher)}</span>
               </span>
-              <Link to={`/teacher/classes/${classSubject.id}`} className="text-brand-700 hover:underline">
+              <Link to={`/teacher/classes/${classSubject.id}`} className="link">
                 Roster
                 <span className="sr-only">
                   {' '}

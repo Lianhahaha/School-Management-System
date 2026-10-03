@@ -14,7 +14,7 @@ export function StudentHero({ student, enrollment }) {
       <div className="flex flex-wrap items-center gap-5">
         <span
           aria-hidden="true"
-          className="flex size-16 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xl font-semibold text-brand-800"
+          className="flex size-16 shrink-0 items-center justify-center rounded-full bg-gray-900 text-xl font-semibold text-gray-50"
         >
           {initials(student)}
         </span>

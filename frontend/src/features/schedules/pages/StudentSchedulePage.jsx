@@ -35,7 +35,7 @@ export default function StudentSchedulePage() {
           emptyDescription="Your class timetable has not been set up. Check back soon."
         />
       ) : (
-        <div className="rounded-card border border-gray-200 bg-white shadow-card">
+        <div className="sheet">
           <NotEnrolledState />
         </div>
       )}

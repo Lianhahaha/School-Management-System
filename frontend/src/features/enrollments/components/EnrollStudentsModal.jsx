@@ -42,7 +42,7 @@ function StudentChecklist({ search, onSearch, selected, onToggle, onSelectVisibl
     );
   } else {
     body = (
-      <ul className="divide-y divide-gray-100">
+      <ul className="divide-y divide-gray-200">
         {students.map((student) => (
           <li key={student.id} className="px-3 py-2">
             <Checkbox
@@ -92,7 +92,7 @@ function StudentChecklist({ search, onSearch, selected, onToggle, onSelectVisibl
       <div
         role="group"
         aria-label="Students without a class"
-        className="max-h-72 overflow-y-auto rounded-lg border border-gray-200"
+        className="max-h-72 overflow-y-auto rounded-[1.25rem] bg-gray-50"
       >
         {body}
       </div>

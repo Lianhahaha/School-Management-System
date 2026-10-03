@@ -14,13 +14,17 @@ import { AnnouncementCard } from '../../announcements/components/AnnouncementCar
  */
 export function RecentAnnouncementsCard({ announcements, to }) {
   return (
-    <Card title="Recent announcements" actions={<TextLink to={to}>View all</TextLink>}>
+    <Card
+      title="Recent announcements"
+      total={announcements.length > 0 ? announcements.length : undefined}
+      actions={<TextLink to={to}>View all</TextLink>}
+    >
       {announcements.length === 0 ? (
-        <EmptyState icon={Megaphone} title="No announcements right now" className="py-6" />
+        <EmptyState icon={Megaphone} title="No announcements right now" compact />
       ) : (
-        <ul className="divide-y divide-gray-100">
+        <ul className="divide-y divide-gray-200">
           {announcements.map((announcement) => (
-            <li key={announcement.id}>
+            <li key={announcement.id} className="py-4 first:pt-0 last:pb-0">
               <AnnouncementCard announcement={announcement} bare />
             </li>
           ))}

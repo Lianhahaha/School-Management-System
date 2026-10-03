@@ -3,34 +3,25 @@ import { StatTile } from '../../../components/ui/StatTile';
 
 /**
  * The six school-wide figures of the admin dashboard (payload `counts`). Each tile opens its list;
- * the unenrolled count turns amber while it is above zero and opens the students without a class.
+ * only the unenrolled count carries a tone: amber while it is above zero and opens the students without a class.
  */
 export function AdminCountTiles({ counts }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-3">
       <StatTile label="Students" value={counts.students} icon={GraduationCap} to="/admin/students" />
-      <StatTile label="Teachers" value={counts.teachers} icon={BookUser} tone="violet" to="/admin/teachers" />
+      <StatTile label="Teachers" value={counts.teachers} icon={BookUser} to="/admin/teachers" />
       <StatTile
         label="Classes"
         value={counts.classes}
         hint="Current academic year"
         icon={School}
-        tone="blue"
         to="/admin/classes"
       />
-      <StatTile
-        label="Subjects"
-        value={counts.subjects}
-        hint="Active"
-        icon={BookOpen}
-        tone="gray"
-        to="/admin/subjects"
-      />
+      <StatTile label="Subjects" value={counts.subjects} hint="Active" icon={BookOpen} to="/admin/subjects" />
       <StatTile
         label="Active enrollments"
         value={counts.activeEnrollments}
         icon={UserCheck}
-        tone="green"
         to="/admin/students?hasActiveEnrollment=true"
       />
       <StatTile

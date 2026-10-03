@@ -1,28 +1,184 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens. Components use the `brand` scale for interactive elements and
- * Tailwind's gray / green / amber / red / blue / violet scales for neutrals and
- * status tones (see TONE_CLASSES in src/constants/ui.js).
+ * Skole design tokens.
+ *
+ * One calm neutral ramp (gray-50 is the page, gray-900 is the ink) plus white sheets (`surface`),
+ * and one warm yellow (`accent`) reserved for the primary action and for "you are here / now".
+ * Every value is a CSS variable that the theme switches (html[data-theme]), so any utility built
+ * on these tokens follows the light and dark palettes without a `dark:` variant.
  */
+
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/onest-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/onest-latin-ext.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF,
+    U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* `dark:` follows the theme attribute, not only the OS setting (the user can override it). */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+:root {
+  color-scheme: light;
+
+  /* Neutrals, cool grey with a hint of warmth. */
+  --n-50: #f3f3f1;
+  --n-100: #ebebe8;
+  --n-200: #e2e2de;
+  --n-300: #d0d0cb;
+  --n-400: #a3a3a6;
+  --n-500: #6c6c71;
+  --n-600: #56565b;
+  --n-700: #3e3e43;
+  --n-800: #2a2a2e;
+  --n-900: #18181b;
+  --surface: #ffffff;
+
+  --accent: #ffc629;
+  --accent-hover: #f5b800;
+  --accent-ink: #1f1a05;
+  --accent-soft: #fff2c7;
+  --accent-line: #f0c64a;
+
+  /* Status families: soft background, solid mark, text. */
+  --green-50: #e9f6ee;
+  --green-600: #2f9d5d;
+  --green-700: #1f7444;
+  --amber-50: #fbf1de;
+  --amber-500: #d99a1e;
+  --amber-600: #c28512;
+  --amber-700: #8a5a06;
+  --red-50: #fcebeb;
+  --red-600: #d93f44;
+  --red-700: #b42a30;
+  --red-800: #8f1f24;
+  --blue-50: #e8f0fb;
+  --blue-600: #3a72c9;
+  --blue-700: #285aa6;
+  --violet-50: #f1ebfb;
+  --violet-600: #7c55c7;
+  --violet-700: #6340a8;
+  --on-danger: #ffffff;
+
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236c6c71' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+
+  --sheet-shadow: 0 1px 2px rgb(24 24 27 / 0.04);
+  --pop-shadow: 0 12px 32px -12px rgb(24 24 27 / 0.28), 0 2px 6px rgb(24 24 27 / 0.06);
+}
+
+/* Soft dark: graphite, never black; the same yellow with dark text on it. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --n-50: #17181b;
+  --n-100: #2a2b30;
+  --n-200: #303137;
+  --n-300: #3e3f46;
+  --n-400: #6f7078;
+  --n-500: #9d9ea5;
+  --n-600: #b5b6bc;
+  --n-700: #cbcbd0;
+  --n-800: #dededf;
+  --n-900: #ecece9;
+  --surface: #202125;
+
+  --accent: #ffc629;
+  --accent-hover: #ffd35a;
+  --accent-ink: #1f1a05;
+  --accent-soft: rgb(255 198 41 / 0.14);
+  --accent-line: rgb(255 198 41 / 0.55);
+
+  --green-50: rgb(63 185 113 / 0.14);
+  --green-600: #4cc27f;
+  --green-700: #7fd8a4;
+  --amber-50: rgb(240 178 50 / 0.15);
+  --amber-500: #f0b232;
+  --amber-600: #f0b232;
+  --amber-700: #f6cd78;
+  --red-50: rgb(255 99 105 / 0.14);
+  --red-600: #ff6369;
+  --red-700: #ff8f93;
+  --red-800: #ffb3b5;
+  --blue-50: rgb(96 150 235 / 0.15);
+  --blue-600: #6c9ff0;
+  --blue-700: #9dbff5;
+  --violet-50: rgb(160 125 235 / 0.16);
+  --violet-600: #a98bf0;
+  --violet-700: #c6b2f6;
+  --on-danger: #2a0a0c;
+
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239d9ea5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+
+  --sheet-shadow: none;
+  --pop-shadow: 0 16px 40px -12px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.06);
+}
+
 @theme {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Onest', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-  --color-brand-50: oklch(97% 0.015 258);
-  --color-brand-100: oklch(94% 0.03 258);
-  --color-brand-200: oklch(88% 0.06 258);
-  --color-brand-300: oklch(80% 0.1 258);
-  --color-brand-400: oklch(70% 0.15 258);
-  --color-brand-500: oklch(60% 0.18 258);
-  --color-brand-600: oklch(52% 0.19 258);
-  --color-brand-700: oklch(45% 0.18 258);
-  --color-brand-800: oklch(38% 0.14 258);
-  --color-brand-900: oklch(31% 0.1 258);
+  --color-gray-50: var(--n-50);
+  --color-gray-100: var(--n-100);
+  --color-gray-200: var(--n-200);
+  --color-gray-300: var(--n-300);
+  --color-gray-400: var(--n-400);
+  --color-gray-500: var(--n-500);
+  --color-gray-600: var(--n-600);
+  --color-gray-700: var(--n-700);
+  --color-gray-800: var(--n-800);
+  --color-gray-900: var(--n-900);
 
-  --radius-card: 0.75rem;
-  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.05), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+  --color-canvas: var(--n-50);
+  --color-surface: var(--surface);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-line: var(--accent-line);
 
-  --animate-toast-in: toast-in 0.2s ease-out;
+  --color-green-50: var(--green-50);
+  --color-green-600: var(--green-600);
+  --color-green-700: var(--green-700);
+  --color-amber-50: var(--amber-50);
+  --color-amber-500: var(--amber-500);
+  --color-amber-600: var(--amber-600);
+  --color-amber-700: var(--amber-700);
+  --color-red-50: var(--red-50);
+  --color-red-600: var(--red-600);
+  --color-red-700: var(--red-700);
+  --color-red-800: var(--red-800);
+  --color-blue-50: var(--blue-50);
+  --color-blue-600: var(--blue-600);
+  --color-blue-700: var(--blue-700);
+  --color-violet-50: var(--violet-50);
+  --color-violet-600: var(--violet-600);
+  --color-violet-700: var(--violet-700);
+  --color-on-danger: var(--on-danger);
+
+  --radius-card: 1.375rem;
+  --radius-control: 0.875rem;
+  --shadow-card: var(--sheet-shadow);
+  --shadow-pop: var(--pop-shadow);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-toast-in: toast-in 0.2s var(--ease-out-soft);
+  --animate-highlight: highlight-in 0.24s var(--ease-out-soft) both;
 
   @keyframes toast-in {
     from {
@@ -34,20 +190,46 @@
       transform: translateY(0);
     }
   }
+
+  /* The highlighter stroke draws itself from left to right. */
+  @keyframes highlight-in {
+    from {
+      clip-path: inset(0 100% 0 0 round 4px);
+    }
+    to {
+      clip-path: inset(0 0 0 0 round 4px);
+    }
+  }
 }
 
 @layer base {
-  :root {
-    color-scheme: light;
+  html {
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply bg-canvas text-gray-900 antialiased;
+    font-feature-settings: 'cv11', 'ss01';
   }
 
-  /* One focus ring for every interactive element, keyboard users only. */
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--n-900);
+  }
+
+  input,
+  textarea {
+    caret-color: var(--n-900);
+  }
+
+  /* One focus ring for every interactive element, keyboard users only: ink, so it reads on yellow too. */
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-brand-600;
+    @apply outline-2 outline-offset-2 outline-gray-900;
+  }
+
+  /* Non-interactive elements that are focused programmatically (main, tab panels) need no ring. */
+  [tabindex='-1']:focus-visible {
+    outline: none;
   }
 
   /* A native modal dialog does not lock page scrolling by itself. */
@@ -55,25 +237,75 @@
     overflow: hidden;
   }
 
-  /* Non-interactive elements that are focused programmatically (main, tab panels) need no ring. */
-  [tabindex='-1']:focus-visible {
-    outline: none;
+  /* Numbers line up in columns (scores, times, counts): times, right-aligned cells and `.tabular`. */
+  time,
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--n-300) transparent;
   }
 }
 
 @layer components {
+  /* A sheet: the white surface every block of content sits on. Borderless; the page tone frames it. */
+  .sheet {
+    @apply rounded-card bg-surface shadow-card;
+  }
+
   /*
    * Shared look of Input, Select and Textarea. It lives in the components layer, so a utility passed
    * through className (w-20, sm:w-auto, ...) always wins. The invalid state follows aria-invalid,
    * which FormField sets, so styling and accessibility state cannot disagree.
    */
   .form-control {
-    @apply block min-h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 read-only:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 aria-invalid:border-red-500;
+    @apply block min-h-11 w-full rounded-control border border-gray-300 bg-surface px-3.5 py-2 text-[0.9375rem] text-gray-900 transition-colors placeholder:text-gray-500 read-only:bg-gray-50 hover:border-gray-400 focus:border-gray-900 focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 aria-invalid:border-red-600;
   }
 
-  /* Filter selects sit side by side from `sm` up instead of each filling a row; a w-* class still wins. */
+  /* Native selects with the app's own chevron (the arrow image follows the theme). */
+  select.form-control {
+    @apply appearance-none bg-[length:1rem] bg-[position:right_0.9rem_center] bg-no-repeat pr-10;
+    background-image: var(--chevron);
+  }
+
+  /*
+   * Filters share the search pill's shape: borderless white pills on the grey page, side by side from
+   * `sm` up and capped so a whole filter row fits on one line; a w-* class still wins.
+   */
   .filter-bar > select.form-control {
-    @apply sm:w-auto sm:max-w-xs;
+    @apply rounded-full border-transparent hover:border-gray-300 sm:w-auto sm:max-w-44;
+  }
+
+  /* In-text link: ink with a quiet underline that turns into the yellow highlighter on hover. */
+  .link {
+    @apply font-medium text-gray-900 underline decoration-gray-300 decoration-2 underline-offset-4 transition-[text-decoration-color] hover:decoration-accent focus-visible:decoration-accent;
+  }
+
+  /* In table rows the name link stays plain ink until hovered; its weight still sets it apart. */
+  td .link:not(:hover, :focus-visible) {
+    text-decoration-color: transparent;
+  }
+
+  /*
+   * The highlighter stroke behind a short label: the current page, today, the live lesson.
+   * Ink-on-yellow in both themes, so the marked label always reads; the chisel skew and uneven
+   * corners make it a drawn stroke rather than a selection box.
+   */
+  .highlight {
+    @apply relative isolate text-accent-ink;
+  }
+
+  .highlight::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 14% -0.5rem 2% -0.45rem;
+    background: var(--accent);
+    border-radius: 0.35em 0.9em 0.45em 1.1em / 0.6em 0.35em 0.75em 0.45em;
+    transform: rotate(-2deg) skewX(-10deg);
+    animation: var(--animate-highlight);
   }
 }
 
@@ -91,11 +323,12 @@
 /* Printing a page (the timetable's "Print timetable" button): only the page content, no app shell. */
 @media print {
   #app-sidebar,
-  #app-sidebar + div > header {
+  #app-topbar,
+  #app-tabbar {
     display: none;
   }
 
-  #app-sidebar + div {
+  #app-content {
     padding-left: 0;
   }
 }

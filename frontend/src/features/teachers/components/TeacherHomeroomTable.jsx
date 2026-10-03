@@ -9,7 +9,7 @@ const COLUMNS = [
     key: 'name',
     header: 'Class',
     cell: (row) => (
-      <Link to={`/admin/classes/${row.id}`} className="font-medium text-brand-700 hover:underline">
+      <Link to={`/admin/classes/${row.id}`} className="link">
         {row.name}
       </Link>
     ),

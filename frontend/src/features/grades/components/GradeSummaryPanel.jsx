@@ -44,7 +44,7 @@ export function GradeSummaryPanel({ studentId, term, enabled = true }) {
               aria-valuenow={subject.percentage}
               className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100"
             >
-              <div className="h-full rounded-full bg-brand-600" style={{ width: `${subject.percentage}%` }} />
+              <div className="h-full rounded-full bg-gray-900" style={{ width: `${subject.percentage}%` }} />
             </div>
             <p className="mt-2 text-xs text-gray-600">
               {formatScore(subject.totalScore, subject.totalMaxScore)} points · {subject.assessmentsGraded}{' '}

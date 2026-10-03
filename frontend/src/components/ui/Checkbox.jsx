@@ -18,7 +18,7 @@ export function Checkbox({ label, hint, className, ref, ...props }) {
         id={id}
         type="checkbox"
         aria-describedby={hint ? hintId : undefined}
-        className="mt-0.5 size-4 shrink-0 rounded border-gray-300 accent-brand-600"
+        className="mt-0.5 size-[1.125rem] shrink-0 cursor-pointer accent-accent"
         {...props}
       />
       <div className="text-sm">

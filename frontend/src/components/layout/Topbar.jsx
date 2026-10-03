@@ -1,27 +1,20 @@
-import { Menu } from 'lucide-react';
+import { ThemeToggle } from '../ui/ThemeToggle';
+import { Brand } from './Brand';
 import { UserMenu } from './UserMenu';
 
 /**
- * Top bar: the hamburger that opens the navigation drawer (below `lg`) and the user menu.
- * @param {object} props
- * @param {boolean} props.isMenuOpen state of the drawer, for aria-expanded
- * @param {string} props.menuId id of the sidebar, for aria-controls
- * @param {() => void} props.onMenuClick
+ * Top bar: the wordmark below `lg` (the sidebar carries it from `lg` up), the theme switch and the
+ * user menu. On phones the full menu opens from the tab bar's "More".
  */
-export function Topbar({ isMenuOpen, menuId, onMenuClick }) {
+export function Topbar() {
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-gray-200 bg-white/90 px-4 backdrop-blur sm:px-6 lg:px-8">
-      <button
-        type="button"
-        onClick={onMenuClick}
-        aria-label="Open navigation menu"
-        aria-expanded={isMenuOpen}
-        aria-controls={menuId}
-        className="-ml-2 flex size-10 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 lg:hidden"
-      >
-        <Menu className="size-5" aria-hidden="true" />
-      </button>
-      <div className="ml-auto">
+    <header
+      id="app-topbar"
+      className="sticky top-0 z-30 flex h-16 items-center gap-2 bg-canvas/85 px-4 backdrop-blur-md sm:px-6 lg:px-10"
+    >
+      <Brand className="lg:hidden" />
+      <div className="ml-auto flex items-center gap-2 sm:gap-3">
+        <ThemeToggle />
         <UserMenu />
       </div>
     </header>

@@ -17,7 +17,7 @@ export function UserMenu() {
         <>
           <span
             aria-hidden="true"
-            className="flex size-8 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-800"
+            className="flex size-9 items-center justify-center rounded-full bg-gray-900 text-xs font-semibold text-gray-50"
           >
             {initials(me)}
           </span>

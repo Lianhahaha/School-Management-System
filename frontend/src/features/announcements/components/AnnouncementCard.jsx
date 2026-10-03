@@ -29,12 +29,7 @@ export function AnnouncementCard({ announcement, actions, bare = false }) {
   const isScheduled = status === 'scheduled';
 
   return (
-    <article
-      className={cx(
-        !bare && 'rounded-card border border-gray-200 bg-white p-5 shadow-card',
-        bare && 'py-3 first:pt-0 last:pb-0',
-      )}
-    >
+    <article className={cx(!bare && 'sheet p-5')}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-base font-semibold break-words text-gray-900">{title}</h3>
@@ -83,7 +78,7 @@ export function AnnouncementCard({ announcement, actions, bare = false }) {
               type="button"
               onClick={() => setIsExpanded((current) => !current)}
               aria-expanded={isExpanded}
-              className="mt-1 text-sm font-medium text-brand-700 hover:underline"
+              className="link mt-1 inline-block text-sm"
             >
               {isExpanded ? 'Show less' : 'Read more'}
               <span className="sr-only"> of {title}</span>
