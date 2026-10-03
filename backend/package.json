@@ -5,12 +5,12 @@
   "description": "REST API for the School Management System (Express 5 + MySQL 8 + Firebase Authentication)",
   "type": "module",
   "engines": {
-    "node": ">=22.12"
+    "node": ">=22.22"
   },
   "scripts": {
     "dev": "node --watch --env-file-if-exists=.env src/server.js",
     "start": "node --env-file-if-exists=.env src/server.js",
-    "test": "npm run check:constants && node --env-file-if-exists=.env --test tests/",
+    "test": "npm run check:constants && node --env-file-if-exists=.env --test --test-concurrency=1 \"tests/**/*.test.js\"",
     "lint": "eslint .",
     "format": "prettier --write .",
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate.js",

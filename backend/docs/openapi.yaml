@@ -1,0 +1,31 @@
+openapi: 3.1.0
+info:
+  title: School Management System API
+  version: 1.0.0
+  description: |
+    REST API for the School Management System. Authenticate with a Firebase ID token
+    (`Authorization: Bearer <token>`). Every response uses the envelope
+    `{ success: true, data, meta? }` or `{ success: false, error: { code, message, details? } }`.
+servers:
+  - url: /api/v1
+tags:
+  - name: system
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Firebase ID token
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      tags: [system]
+      summary: Liveness and database check
+      security: []
+      responses:
+        '200':
+          description: API and database are up
+        '503':
+          description: Database unreachable

@@ -5,7 +5,7 @@
   "description": "React single-page app for the School Management System (Vite + Firebase Authentication)",
   "type": "module",
   "engines": {
-    "node": ">=22.12"
+    "node": ">=22.22"
   },
   "scripts": {
     "dev": "vite",
