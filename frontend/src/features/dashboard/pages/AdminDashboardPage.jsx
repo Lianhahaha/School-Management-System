@@ -36,12 +36,14 @@ export default function AdminDashboardPage() {
         <div className="space-y-6">
           <AdminCountTiles counts={data.counts} />
           <div className="grid items-start gap-6 lg:grid-cols-2">
-            <AdminAttendanceCard attendance={data.attendanceToday} />
-            <EnrollmentByGradeCard grades={data.enrollmentsByGrade} />
-          </div>
-          <div className="grid items-start gap-6 lg:grid-cols-2">
-            <UpcomingAssessmentsCard assessments={data.upcomingAssessments} />
-            <RecentAnnouncementsCard announcements={data.recentAnnouncements} to="/admin/announcements" />
+            <div className="space-y-6">
+              <AdminAttendanceCard attendance={data.attendanceToday} />
+              <UpcomingAssessmentsCard assessments={data.upcomingAssessments} />
+            </div>
+            <div className="space-y-6">
+              <EnrollmentByGradeCard grades={data.enrollmentsByGrade} />
+              <RecentAnnouncementsCard announcements={data.recentAnnouncements} to="/admin/announcements" />
+            </div>
           </div>
         </div>
       )}

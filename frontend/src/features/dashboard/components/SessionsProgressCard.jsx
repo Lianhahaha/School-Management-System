@@ -1,4 +1,6 @@
+import { CalendarOff } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
+import { EmptyState } from '../../../components/ui/EmptyState';
 
 /** "2 of 4 sessions marked" with a progress bar (payload `attendanceToday` of a teacher). */
 export function SessionsProgressCard({ attendance }) {
@@ -8,7 +10,12 @@ export function SessionsProgressCard({ attendance }) {
   return (
     <Card title="Attendance today">
       {sessionsScheduled === 0 ? (
-        <p className="text-sm text-gray-600">No sessions are scheduled for you today.</p>
+        <EmptyState
+          icon={CalendarOff}
+          title="No sessions today"
+          description="Nothing is scheduled for you."
+          compact
+        />
       ) : (
         <>
           <p className="text-sm text-gray-700">

@@ -24,14 +24,16 @@ export default function StudentDashboardPage() {
           {data.currentEnrollment && (
             <>
               <div className="grid items-start gap-6 lg:grid-cols-2">
-                <StudentAttendanceCard summary={data.attendanceSummary} />
-                <StudentGradeSummaryCard subjects={data.gradeSummary} />
+                <div className="space-y-6">
+                  <StudentTimetableCard periods={data.todaySchedule} />
+                  <StudentAttendanceCard summary={data.attendanceSummary} />
+                  <UpcomingAssessmentsCard assessments={data.upcomingAssessments} />
+                </div>
+                <div className="space-y-6">
+                  <StudentGradeSummaryCard subjects={data.gradeSummary} />
+                  <RecentGradesCard grades={data.recentGrades} />
+                </div>
               </div>
-              <div className="grid items-start gap-6 lg:grid-cols-2">
-                <StudentTimetableCard periods={data.todaySchedule} />
-                <RecentGradesCard grades={data.recentGrades} />
-              </div>
-              <UpcomingAssessmentsCard assessments={data.upcomingAssessments} />
             </>
           )}
           <RecentAnnouncementsCard announcements={data.recentAnnouncements} to="/student/announcements" />
