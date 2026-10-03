@@ -1,0 +1,5 @@
+dist
+node_modules
+package-lock.json
+# Byte-identical copy of backend/src/constants/shared.js, verified by `npm run check:constants` in the backend.
+src/constants/shared.js

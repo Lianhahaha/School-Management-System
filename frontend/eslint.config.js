@@ -24,6 +24,18 @@ export default defineConfig([
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       eqeqeq: ['error', 'always', { null: 'ignore' }],
       'prefer-const': 'error',
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'react-router-dom',
+              message:
+                "react-router-dom was removed in v8: import from 'react-router' ('react-router/dom' for RouterProvider).",
+            },
+          ],
+        },
+      ],
     },
   },
   prettier,

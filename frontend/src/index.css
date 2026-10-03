@@ -1,0 +1,84 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens. Components use the `brand` scale for interactive elements and
+ * Tailwind's gray / green / amber / red / blue / violet scales for neutrals and
+ * status tones (see TONE_CLASSES in src/constants/ui.js).
+ */
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --color-brand-50: oklch(97% 0.015 258);
+  --color-brand-100: oklch(94% 0.03 258);
+  --color-brand-200: oklch(88% 0.06 258);
+  --color-brand-300: oklch(80% 0.1 258);
+  --color-brand-400: oklch(70% 0.15 258);
+  --color-brand-500: oklch(60% 0.18 258);
+  --color-brand-600: oklch(52% 0.19 258);
+  --color-brand-700: oklch(45% 0.18 258);
+  --color-brand-800: oklch(38% 0.14 258);
+  --color-brand-900: oklch(31% 0.1 258);
+
+  --radius-card: 0.75rem;
+  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.05), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+
+  --animate-toast-in: toast-in 0.2s ease-out;
+
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+  }
+
+  /* One focus ring for every interactive element, keyboard users only. */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-600;
+  }
+
+  /* A native modal dialog does not lock page scrolling by itself. */
+  body:has(dialog[open]) {
+    overflow: hidden;
+  }
+
+  /* Non-interactive elements that are focused programmatically (main, tab panels) need no ring. */
+  [tabindex='-1']:focus-visible {
+    outline: none;
+  }
+}
+
+@layer components {
+  /*
+   * Shared look of Input, Select and Textarea. It lives in the components layer, so a utility passed
+   * through className (w-20, sm:w-auto, ...) always wins. The invalid state follows aria-invalid,
+   * which FormField sets, so styling and accessibility state cannot disagree.
+   */
+  .form-control {
+    @apply block min-h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 read-only:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 aria-invalid:border-red-500;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
