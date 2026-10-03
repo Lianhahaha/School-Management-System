@@ -1,0 +1,25 @@
+# dependencies and build output
+node_modules/
+dist/
+coverage/
+
+# environment files (examples are committed)
+.env
+.env.*
+!.env.example
+
+# Firebase service account keys (never commit)
+*firebase-service-account*.json
+*firebase-adminsdk*.json
+
+# logs and OS noise
+*.log
+npm-debug.log*
+desktop.ini
+Thumbs.db
+.DS_Store
+
+# editors
+.vscode/*
+!.vscode/extensions.json
+.idea/
