@@ -141,10 +141,10 @@ export const DAY_SHORT_LABELS = Object.freeze({
 });
 export const DAY_OPTIONS = DAYS_OF_WEEK.map((day) => ({ value: String(day), label: DAY_LABELS[day] }));
 
-/** Boolean list filters travel as the strings 'true' and 'false'. */
-export const ACTIVE_FILTER_OPTIONS = Object.freeze([
+/** Account status filter (users, students, teachers); boolean filters travel as 'true' and 'false'. */
+export const USER_STATUS_FILTER_OPTIONS = Object.freeze([
   { value: 'true', label: 'Active' },
-  { value: 'false', label: 'Inactive' },
+  { value: 'false', label: 'Disabled' },
 ]);
 
 export const GRADE_LEVELS = Object.freeze(Array.from({ length: 12 }, (_, index) => index + 1));
