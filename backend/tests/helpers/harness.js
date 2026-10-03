@@ -5,6 +5,7 @@
 import request from 'supertest';
 import { createApp } from '../../src/app.js';
 import { createUserAccount } from '../../src/modules/users/users.service.js';
+import { currentAcademicYear } from '../../src/utils/dates.js';
 import { bearer, installFakeFirebase } from './fakeFirebase.js';
 import { prepareDatabase, shutdown } from './db.js';
 
@@ -47,7 +48,12 @@ export async function makeClass(admin, overrides = {}) {
   const res = await api
     .post('/api/v1/classes')
     .set(as(admin))
-    .send({ name: `Grade 10 - ${sequence}`, gradeLevel: 10, academicYear: '2026-2027', ...overrides });
+    .send({
+      name: `Grade 10 - ${sequence}`,
+      gradeLevel: 10,
+      academicYear: currentAcademicYear(),
+      ...overrides,
+    });
   if (res.status !== 201) throw new Error(`makeClass failed: ${JSON.stringify(res.body)}`);
   return res.body.data;
 }
@@ -72,4 +78,30 @@ export async function enrollStudent(admin, { studentId, classId }) {
   const res = await api.post('/api/v1/enrollments').set(as(admin)).send({ studentId, classId });
   if (res.status !== 201) throw new Error(`enrollStudent failed: ${JSON.stringify(res.body)}`);
   return res.body.data;
+}
+
+/**
+ * A small school for the operational suites: one admin, two teachers, three students and two classes.
+ * `owner` is homeroom teacher of classA and teaches csA; `other` teaches csB and has no link to classA.
+ * s1 and s2 are enrolled in classA; s3 is not enrolled anywhere.
+ */
+export async function buildSchool() {
+  const admin = await makeUser('admin');
+  const [owner, other] = [await makeUser('teacher'), await makeUser('teacher')];
+  const [s1, s2, s3] = [await makeUser('student'), await makeUser('student'), await makeUser('student')];
+  const classA = await makeClass(admin, { homeroomTeacherId: owner.teacherId });
+  const classB = await makeClass(admin);
+  const csA = await assignTeacher(admin, {
+    classId: classA.id,
+    subjectId: (await makeSubject(admin)).id,
+    teacherId: owner.teacherId,
+  });
+  const csB = await assignTeacher(admin, {
+    classId: classB.id,
+    subjectId: (await makeSubject(admin)).id,
+    teacherId: other.teacherId,
+  });
+  await enrollStudent(admin, { studentId: s1.studentId, classId: classA.id });
+  await enrollStudent(admin, { studentId: s2.studentId, classId: classA.id });
+  return { admin, owner, other, s1, s2, s3, classA, classB, csA, csB };
 }
