@@ -1,6 +1,6 @@
-# School Management System
+# Skole
 
-A web application for running a school: student, teacher and administrator accounts, enrollment, classes and subjects, teacher assignment, attendance, grades, timetables, announcements and a separate dashboard for each role. Identity is handled by **Firebase Authentication**, all data lives in **MySQL**, and everything is exposed through a documented **REST API**.
+Skole is a web-based school management system: student, teacher and administrator accounts, enrollment, classes and subjects, teacher assignment, attendance, grades, timetables, announcements and a separate dashboard for each role. Identity is handled by **Firebase Authentication**, all data lives in **MySQL**, and everything is exposed through a documented **REST API**.
 
 | Layer | Stack |
 |---|---|
@@ -27,6 +27,7 @@ A web application for running a school: student, teacher and administrator accou
 | Class schedules | Weekly timetables per class, teacher and student, with clash detection (class, teacher, room) |
 | Announcements | School-wide or per class, per audience, with publish and expiry dates |
 | Separate dashboards | Admin, teacher and student each get their own content, not three skins of one page |
+| Light and dark themes | Switch in the top bar (and on the sign-in page); the choice is remembered on the device, and the system setting is followed until you pick one |
 | Search and filtering | Every list: search, whitelisted sorting, pagination and filters, kept in the URL |
 | Role-based access control | Route guards in the UI, `authorize` + ownership rules in the API (the API is the enforcement point) |
 | API documentation | Swagger UI at <http://localhost:3000/api/docs> |

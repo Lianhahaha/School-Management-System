@@ -4,7 +4,7 @@ import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { TextLink } from '../../../components/ui/TextLink';
 
-const CHIP = 'block rounded-full bg-gray-100 px-4 py-2.5 text-sm transition-colors hover:bg-gray-200';
+const CHIP = 'block rounded-[1.25rem] bg-gray-100 px-4 py-2.5 text-sm transition-colors hover:bg-gray-200';
 
 /** Class-subjects a teacher teaches (chips open the class page) and the classes they lead as homeroom teacher. */
 export function TeacherClassesCard({ classSubjects, homeroomClasses }) {

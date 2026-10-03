@@ -1,6 +1,5 @@
 import { ClipboardCheck } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
-import { LiveTag } from '../../../components/ui/LiveTag';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { TextLink } from '../../../components/ui/TextLink';
 import { formatDate } from '../../../utils/date';
@@ -11,7 +10,6 @@ export function AdminAttendanceCard({ attendance }) {
   return (
     <Card
       title="Attendance today"
-      total={<LiveTag>Today</LiveTag>}
       description={formatDate(attendance.date)}
       actions={<TextLink to="/admin/attendance">Mark attendance</TextLink>}
     >

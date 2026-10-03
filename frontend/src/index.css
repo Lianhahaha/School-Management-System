@@ -261,7 +261,13 @@
    * which FormField sets, so styling and accessibility state cannot disagree.
    */
   .form-control {
-    @apply block min-h-11 w-full rounded-control border border-gray-300 bg-surface px-3.5 py-2 text-[0.9375rem] text-gray-900 transition-colors placeholder:text-gray-500 read-only:bg-gray-50 hover:border-gray-400 focus:border-gray-900 focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 aria-invalid:border-red-600;
+    @apply block min-h-11 w-full rounded-control border border-gray-300 bg-surface px-3.5 py-2 text-[0.9375rem] text-gray-900 transition-colors placeholder:text-gray-500 hover:border-gray-400 focus:border-gray-900 focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 aria-invalid:border-red-600;
+  }
+
+  /* Read-only text fields look filled in (a select also matches :read-only, so it is excluded). */
+  input.form-control:read-only,
+  textarea.form-control:read-only {
+    @apply bg-gray-50;
   }
 
   /* Native selects with the app's own chevron (the arrow image follows the theme). */

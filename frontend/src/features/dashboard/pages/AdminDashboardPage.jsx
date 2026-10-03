@@ -17,7 +17,13 @@ export default function AdminDashboardPage() {
       description="How the school is doing right now."
       actions={
         <>
-          <Button as={Link} to="/admin/announcements" variant="secondary" icon={Megaphone}>
+          <Button
+            as={Link}
+            to="/admin/announcements"
+            variant="secondary"
+            icon={Megaphone}
+            className="max-sm:hidden"
+          >
             New announcement
           </Button>
           <Button as={Link} to="/admin/users" icon={UserPlus}>

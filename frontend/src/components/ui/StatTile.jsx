@@ -18,20 +18,20 @@ import { cx } from '../../utils/cx';
  */
 export function StatTile({ label, value, hint, icon: Icon, tone, to }) {
   const classes =
-    'flex min-h-14 items-center gap-3 rounded-[1.25rem] bg-gray-100 py-2 pr-3 pl-2 sm:rounded-full sm:pr-4';
+    'flex min-h-14 items-center gap-2 rounded-[1.25rem] bg-gray-100 py-2 pr-2.5 pl-2 sm:gap-3 sm:rounded-full sm:pr-4';
   const content = (
     <>
       {Icon && (
         <span
           className={cx(
-            'hidden size-10 shrink-0 items-center justify-center rounded-full sm:flex',
+            'flex size-8 shrink-0 items-center justify-center rounded-full sm:size-10',
             tone ? TONE_SOFT_CLASSES[tone] : 'bg-surface text-gray-700',
           )}
         >
           <Icon className="size-[1.125rem]" aria-hidden="true" />
         </span>
       )}
-      <span className={cx('min-w-0 flex-1 pl-2', Icon && 'sm:pl-0')}>
+      <span className={cx('min-w-0 flex-1', !Icon && 'pl-2')}>
         <span className="flex items-center gap-2 text-sm leading-snug font-medium text-gray-900 sm:text-[0.9375rem]">
           {tone && !Icon && (
             <span aria-hidden="true" className={cx('size-2 shrink-0 rounded-full', TONE_DOT_CLASSES[tone])} />
@@ -41,7 +41,7 @@ export function StatTile({ label, value, hint, icon: Icon, tone, to }) {
         {hint && <span className="hidden truncate text-xs text-gray-500 sm:block">{hint}</span>}
       </span>
       <span className="tabular text-lg font-semibold text-gray-900">{value}</span>
-      {to && <ChevronRight className="-mr-1 hidden size-4 text-gray-500 sm:block" aria-hidden="true" />}
+      {to && <ChevronRight className="-mr-1 size-4 shrink-0 text-gray-500" aria-hidden="true" />}
     </>
   );
 

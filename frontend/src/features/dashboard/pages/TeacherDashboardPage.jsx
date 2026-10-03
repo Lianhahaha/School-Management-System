@@ -1,3 +1,6 @@
+import { ClipboardCheck } from 'lucide-react';
+import { Link } from 'react-router';
+import { Button } from '../../../components/ui/Button';
 import { DashboardView } from '../components/DashboardView';
 import { PendingGradingCard } from '../components/PendingGradingCard';
 import { RecentAnnouncementsCard } from '../components/RecentAnnouncementsCard';
@@ -11,10 +14,19 @@ const todayLabel = () =>
 /** /teacher: "What do I do today?" Today's periods first, then grading, classes and announcements. */
 export default function TeacherDashboardPage() {
   return (
-    <DashboardView role="teacher" title="Today" description={todayLabel()}>
+    <DashboardView
+      role="teacher"
+      title="Today"
+      description={todayLabel()}
+      actions={
+        <Button as={Link} to="/teacher/attendance" icon={ClipboardCheck}>
+          Mark attendance
+        </Button>
+      }
+    >
       {(data) => (
         <div className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid items-start gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <TodayTimeline periods={data.todaySchedule} />
             </div>
