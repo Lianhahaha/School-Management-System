@@ -21,6 +21,7 @@ import {
   TIME_REGEX,
   isConsecutiveAcademicYear,
 } from '../constants/shared';
+import { todayYmd } from '../utils/date';
 
 /** '2025-02-30' matches DATE_REGEX but is not a calendar date. */
 function isCalendarDate(value) {
@@ -54,6 +55,9 @@ export const dateYMD = z
   .regex(DATE_REGEX, { error: 'Enter a valid date', abort: true })
   .refine(isCalendarDate, 'Enter a valid date');
 
+/** A real date strictly before today (a date of birth). */
+export const pastDateYMD = dateYMD.refine((value) => value < todayYmd(), 'Date must be in the past');
+
 export const timeHM = z.string().regex(TIME_REGEX, 'Enter a time as HH:MM (24-hour)');
 
 export const academicYear = z
@@ -84,6 +88,9 @@ export const positiveInt = z.coerce
   .number({ error: 'Enter a whole number greater than 0' })
   .int('Enter a whole number greater than 0')
   .positive('Enter a whole number greater than 0');
+
+/** A required choice from a select of ids: an empty selection reads `message` ("Choose a class"). */
+export const requiredId = (message) => z.string().min(1, message).pipe(positiveInt);
 
 /**
  * A score with at most two decimals. A blank input coerces to 0, so callers must drop blank

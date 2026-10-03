@@ -5,6 +5,7 @@ import { FormField, FormRootError } from '../../../components/ui/FormField';
 import { Input } from '../../../components/ui/Input';
 import { Textarea } from '../../../components/ui/Textarea';
 import { applyServerErrors } from '../../../lib/formErrors';
+import { changedFields } from '../../../utils/forms';
 import { useUpdateMe } from '../../auth/hooks';
 import { contactDefaults, contactSchema } from '../../auth/schemas';
 
@@ -29,9 +30,8 @@ export function ContactDetailsForm({ me }) {
   } = useForm({ resolver: zodResolver(contactSchema), defaultValues: contactDefaults(me) });
 
   const onSubmit = (values) => {
-    const patch = Object.fromEntries(Object.keys(dirtyFields).map((field) => [field, values[field]]));
     return updateMe
-      .mutateAsync(patch)
+      .mutateAsync(changedFields(values, dirtyFields))
       .then((account) => reset(contactDefaults(account)))
       .catch((error) => applyServerErrors(error, setError, { knownFields: renderedFields }));
   };

@@ -1,7 +1,14 @@
 import { z } from 'zod';
 import { GENDERS } from '../../constants/shared';
-import { dateYMD, email, name, nullableField, optionalField, password, phone } from '../../lib/validators';
-import { todayYmd } from '../../utils/date';
+import {
+  email,
+  name,
+  nullableField,
+  optionalField,
+  password,
+  pastDateYMD,
+  phone,
+} from '../../lib/validators';
 
 const address = z.string().max(255, 'Use 255 characters or fewer');
 
@@ -24,9 +31,7 @@ export const registerSchema = z
     password,
     confirmPassword: z.string(),
     phone: optionalField(phone),
-    dateOfBirth: optionalField(
-      dateYMD.refine((value) => value < todayYmd(), 'Date of birth must be in the past'),
-    ),
+    dateOfBirth: optionalField(pastDateYMD),
     gender: optionalField(z.enum(GENDERS)),
     address: optionalField(address),
     guardianName: optionalField(name),

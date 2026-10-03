@@ -209,6 +209,10 @@ export const UNIQUE_KEY_FIELDS = Object.freeze({
     field: 'employeeNumber',
     message: 'This employee number is already in use',
   },
+  'schedules.uq_schedules_cs_day_start': {
+    field: 'startTime',
+    message: 'This subject already has a period starting at this time on that day',
+  },
   'assessments.uq_assessments_cs_term_title': {
     field: 'title',
     message: 'An assessment with this title already exists for this term',
