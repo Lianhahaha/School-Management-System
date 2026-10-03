@@ -7,7 +7,10 @@
 -- this file); npm run db:reset drops the database and runs both again.
 -- All ids are resolved by natural keys (e-mail, subject code, class name), so
 -- nothing here depends on AUTO_INCREMENT values.
--- Dates are relative to CURDATE() so the demo looks "live" whenever it is run:
+-- Session variables set by seed.js before this file runs (school time zone, so the
+-- demo data lines up with what the API treats as "today"):
+--   @today (DATE), @now_time (TIME), @now (DATETIME, UTC), @ay_start_month (1-12)
+-- Dates are relative to @today so the demo looks "live" whenever it is run:
 -- attendance covers last week (Mon-Fri) plus this week up to the current time.
 -- Assumes the non-user tables are empty: seed.js refuses to run when `subjects`
 -- already has rows (see also the reset block at the bottom).
@@ -46,12 +49,12 @@ INSERT INTO seed_guard (ok) VALUES (
 DROP TEMPORARY TABLE seed_guard;
 
 -- ---------- 1. Dates -----------------------------------------------------------
--- Academic year starts in August (keep ACADEMIC_YEAR_START_MONTH = 8 in the API).
-SET @ay_start      := IF(MONTH(CURDATE()) >= 8, YEAR(CURDATE()), YEAR(CURDATE()) - 1);
+-- The academic year starts in @ay_start_month (ACADEMIC_YEAR_START_MONTH, August by default).
+SET @ay_start      := IF(MONTH(@today) >= @ay_start_month, YEAR(@today), YEAR(@today) - 1);
 SET @academic_year := CONCAT(@ay_start, '-', @ay_start + 1);                     -- e.g. '2026-2027'
-SET @enrolled_on   := LEAST(DATE(CONCAT(@ay_start, '-09-01')), CURDATE());      -- classes start 1 Sept
-SET @transfer_on   := LEAST(@enrolled_on + INTERVAL 14 DAY, CURDATE());         -- one demo transfer
-SET @last_monday   := CURDATE() - INTERVAL (WEEKDAY(CURDATE()) + 7) DAY;        -- Monday of LAST week
+SET @enrolled_on   := LEAST(DATE(CONCAT(@ay_start, '-09-01')), DATE(@today));      -- classes start 1 Sept
+SET @transfer_on   := LEAST(DATE(@enrolled_on) + INTERVAL 14 DAY, DATE(@today));         -- one demo transfer
+SET @last_monday   := @today - INTERVAL (WEEKDAY(@today) + 7) DAY;        -- Monday of LAST week
 
 -- ---------- 2. Subjects --------------------------------------------------------
 INSERT INTO subjects (code, name, description) VALUES
@@ -162,7 +165,7 @@ INSERT INTO attendance (student_id, class_subject_id, attendance_date, status, m
 WITH RECURSIVE days AS (
   SELECT CAST(@last_monday AS DATE) AS dt
   UNION ALL
-  SELECT dt + INTERVAL 1 DAY FROM days WHERE dt < CURDATE()
+  SELECT dt + INTERVAL 1 DAY FROM days WHERE dt < @today
 )
 SELECT DISTINCT
   e.student_id,
@@ -179,7 +182,7 @@ JOIN teachers t         ON t.id = cs.teacher_id
 JOIN enrollments e      ON e.class_id = cs.class_id
                        AND e.status = 'active'
                        AND e.enrolled_on <= d.dt                    -- no marks before the student joined
-WHERE d.dt < CURDATE() OR sch.end_time <= CURTIME();
+WHERE d.dt < @today OR sch.end_time <= @now_time;
 
 -- ---------- 8. Assessments + grades --------------------------------------------
 INSERT INTO assessments (class_subject_id, title, type, term, max_score, assessed_on) VALUES
@@ -203,13 +206,13 @@ INSERT INTO grades (assessment_id, student_id, score, remarks, graded_by) VALUES
 INSERT INTO announcements (author_id, title, body, audience, class_id, published_at, expires_at) VALUES
   (@admin_user, 'Welcome to the new academic year',
    'Classes start at 08:00. Please check your timetable on the dashboard and report to your homeroom teacher on the first day.',
-   'all', NULL, NOW() - INTERVAL 14 DAY, NULL),
+   'all', NULL, @now - INTERVAL 14 DAY, NULL),
   (@t1_user, 'Algebra Quiz 1 results published',
    'Results for Algebra Quiz 1 are now visible under Grades. Come to Room 101 during Tuesday break if you want to go through your paper.',
-   'students', @class_a, NOW() - INTERVAL 2 DAY, NOW() + INTERVAL 12 DAY),
+   'students', @class_a, @now - INTERVAL 2 DAY, @now + INTERVAL 12 DAY),
   (@admin_user, 'Staff meeting - Friday 15:00',
    'All teaching staff: term planning meeting in the staff room, Friday at 15:00. Attendance registers must be up to date before the meeting.',
-   'teachers', NULL, NOW() - INTERVAL 1 DAY, NOW() + INTERVAL 6 DAY);
+   'teachers', NULL, @now - INTERVAL 1 DAY, @now + INTERVAL 6 DAY);
 
 -- ---------- Reset (dev only) ---------------------------------------------------
 -- Preferred: npm run db:reset (drops the database, migrate, seed).
