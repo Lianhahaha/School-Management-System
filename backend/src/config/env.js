@@ -57,6 +57,8 @@ const schema = z.object({
   DB_SSL_CA: z.string().min(1).optional(),
 
   FIREBASE_SERVICE_ACCOUNT_PATH: z.string().min(1).default('./firebase-service-account.json'),
+  // For a host without a file system for secrets: the same JSON, base64-encoded (takes precedence over the file).
+  FIREBASE_SERVICE_ACCOUNT_BASE64: z.string().min(1).optional(),
 
   SEED_PASSWORD: z.string().min(8).default('Password123!'),
 });

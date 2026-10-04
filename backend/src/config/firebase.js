@@ -2,8 +2,10 @@
  * Firebase Admin SDK wrapper.
  *
  * Initialised lazily from the service-account JSON named by
- * FIREBASE_SERVICE_ACCOUNT_PATH, so importing this module never needs the
- * file (tests replace the methods on the exported object with fakes).
+ * FIREBASE_SERVICE_ACCOUNT_PATH (or given base64-encoded in
+ * FIREBASE_SERVICE_ACCOUNT_BASE64 on a host that cannot hold the file), so
+ * importing this module never needs it (tests replace the methods on the
+ * exported object with fakes).
  * `assertFirebaseReady()` is called once at server start to fail early.
  */
 import { readFileSync } from 'node:fs';
@@ -14,10 +16,17 @@ import { env } from './env.js';
 let adminAuth = null;
 let projectId = null;
 
-export function loadServiceAccount() {
-  let raw;
+const source = () =>
+  env.FIREBASE_SERVICE_ACCOUNT_BASE64
+    ? 'FIREBASE_SERVICE_ACCOUNT_BASE64'
+    : `Firebase service account file ${env.firebaseServiceAccountPath}`;
+
+function readServiceAccountText() {
+  if (env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
+    return Buffer.from(env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8');
+  }
   try {
-    raw = readFileSync(env.firebaseServiceAccountPath, 'utf8');
+    return readFileSync(env.firebaseServiceAccountPath, 'utf8');
   } catch {
     throw new Error(
       `Firebase service account file not found at ${env.firebaseServiceAccountPath}. ` +
@@ -25,21 +34,23 @@ export function loadServiceAccount() {
         'and save it as backend/firebase-service-account.json (or set FIREBASE_SERVICE_ACCOUNT_PATH).',
     );
   }
+}
+
+export function loadServiceAccount() {
+  const raw = readServiceAccountText();
   let parsed;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new Error(`Firebase service account file ${env.firebaseServiceAccountPath} is not valid JSON.`);
+    throw new Error(`${source()} is not valid JSON.`);
   }
   for (const field of ['project_id', 'private_key', 'client_email']) {
     if (typeof parsed[field] !== 'string' || !parsed[field]) {
-      throw new Error(`Firebase service account file is missing the "${field}" field; download a fresh key.`);
+      throw new Error(`${source()} is missing the "${field}" field; download a fresh key.`);
     }
   }
   if (parsed.type !== 'service_account') {
-    throw new Error(
-      'Firebase service account file must have "type": "service_account" (this looks like a web config).',
-    );
+    throw new Error(`${source()} must have "type": "service_account" (this looks like a web config).`);
   }
   return parsed;
 }

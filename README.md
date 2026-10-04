@@ -166,4 +166,29 @@ A bug is found by following one path: the URL names the route file, the route na
 
 ## Deploying for free (optional)
 
-Not required to run or review the project. The usual no-cost combination is the frontend on Firebase Hosting or any static host, the API on a free Node host and a free MySQL tier. The options and their limits (for example a free API host that sleeps after 15 idle minutes) are verified in [docs/design/01-stack-and-free-tier.md](docs/design/01-stack-and-free-tier.md), claim 7. Free tiers change, so check the provider's current terms first.
+Not required to run or review the project: everything above works on one machine. To put it online at no cost, the three parts go to three free services (limits as checked on 2026-10-04; free tiers change, so confirm the provider's current terms):
+
+| Part | Service | Free-tier limits that matter |
+|---|---|---|
+| Database | [Aiven for MySQL](https://aiven.io/docs/products/mysql/concepts/mysql-free-tier), **Free** plan | 1 GB, one service per organization, may be powered off after long inactivity (switch it back on in the console) |
+| API | [Render](https://render.com/docs/free) web service from `render.yaml` | sleeps after 15 idle minutes (the next request takes about a minute), 750 free hours a month |
+| Frontend | Firebase Hosting (Spark plan) from `firebase.json` | static files only |
+
+1. **Database.** Create the Aiven MySQL service on the Free plan, download its CA certificate to `backend/database-ca.pem`, and put its connection details in a git-ignored `backend/.env.cloud` (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_SSL=true`, `DB_SSL_CA_PATH=./database-ca.pem`). Then:
+   ```powershell
+   cd backend
+   node --env-file=.env.cloud scripts/migrate.js
+   node --env-file=.env.cloud scripts/seed.js
+   ```
+   Any database that shares the Firebase project shares its logins: seeding a second database re-links the accounts, so run `npm run db:seed` on the other one afterwards.
+2. **API.** In Render choose **New > Blueprint**, pick this repository, and enter the secret variables listed in `render.yaml` (database details, `DB_SSL_CA` as one line with `
+` for line breaks, `FIREBASE_SERVICE_ACCOUNT_BASE64` = the service-account JSON base64-encoded, and `CORS_ORIGINS` = the frontend's address). Check `https://<service>.onrender.com/api/v1/health`.
+3. **Frontend.** Put `VITE_API_BASE_URL=https://<service>.onrender.com/api/v1` in `frontend/.env.production`, then:
+   ```powershell
+   cd frontend
+   npm run build
+   cd ..
+   npx firebase-tools deploy --only hosting
+   ```
+   The site is served at `https://<project-id>.web.app`; Firebase Authentication already trusts that domain.
+
