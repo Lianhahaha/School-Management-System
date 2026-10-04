@@ -1,4 +1,4 @@
-# Skole
+# Skole (readme not updated)
 
 Skole is a web-based school management system: student, teacher and administrator accounts, enrollment, classes and subjects, teacher assignment, attendance, grades, timetables, announcements and a separate dashboard for each role. Identity is handled by **Firebase Authentication**, all data lives in **MySQL**, and everything is exposed through a documented **REST API**.
 
