@@ -96,6 +96,8 @@ Open <http://localhost:5173> and sign in with a demo account.
 
 ## Demo accounts
 
+These come from `npm run db:seed` on a local database. The live site no longer has the demo students (`student1` to `student8`); students there register themselves at `/register`. A new administrator for an empty database comes from `npm run db:create-admin -- <email> <password>`.
+
 Password for every account: `Password123!` (change it with `SEED_PASSWORD` in `backend/.env` before seeding).
 
 | Account | Name | Role and what to look at |
