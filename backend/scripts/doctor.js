@@ -9,6 +9,7 @@ import { existsSync } from 'node:fs';
 import { createServer } from 'node:net';
 import path from 'node:path';
 import mysql from 'mysql2/promise';
+import { dbConnectionOptions } from '../src/config/dbConnection.js';
 import { env } from '../src/config/env.js';
 import { firebase, loadServiceAccount } from '../src/config/firebase.js';
 import { frontendEnvPath, readFrontendEnv } from './lib/frontendEnv.js';
@@ -47,10 +48,7 @@ async function checkDatabase() {
   let conn;
   try {
     conn = await mysql.createConnection({
-      host: env.DB_HOST,
-      port: env.DB_PORT,
-      user: env.DB_USER,
-      password: env.DB_PASSWORD,
+      ...dbConnectionOptions(),
       connectTimeout: 5000,
     });
   } catch (error) {

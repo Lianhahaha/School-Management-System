@@ -8,14 +8,12 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import mysql from 'mysql2/promise';
 import { closePool } from '../../src/config/db.js';
+import { dbConnectionOptions } from '../../src/config/dbConnection.js';
 import { env } from '../../src/config/env.js';
 
 export async function prepareDatabase() {
   const conn = await mysql.createConnection({
-    host: env.DB_HOST,
-    port: env.DB_PORT,
-    user: env.DB_USER,
-    password: env.DB_PASSWORD,
+    ...dbConnectionOptions(),
     multipleStatements: true,
   });
   try {

@@ -11,6 +11,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import mysql from 'mysql2/promise';
+import { dbConnectionOptions } from '../src/config/dbConnection.js';
 import { env } from '../src/config/env.js';
 
 const fresh = process.argv.includes('--fresh');
@@ -48,10 +49,7 @@ const HINTS = {
 async function main() {
   const schema = readFileSync(schemaPath, 'utf8');
   const conn = await mysql.createConnection({
-    host: env.DB_HOST,
-    port: env.DB_PORT,
-    user: env.DB_USER,
-    password: env.DB_PASSWORD,
+    ...dbConnectionOptions(),
     multipleStatements: true,
   });
   try {

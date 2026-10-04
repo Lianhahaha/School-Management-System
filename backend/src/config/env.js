@@ -50,6 +50,11 @@ const schema = z.object({
     .regex(/^[A-Za-z0-9_]+$/, { error: 'letters, digits and underscores only' })
     .default('school_management'),
   DB_CONNECTION_LIMIT: z.coerce.number().int().min(1).max(50).default(10),
+  // A hosted MySQL requires an encrypted connection: DB_SSL=true, plus the provider's CA certificate
+  // as a file (DB_SSL_CA_PATH) or as PEM text with a literal backslash-n for line breaks (DB_SSL_CA).
+  DB_SSL: boolString.default(false),
+  DB_SSL_CA_PATH: z.string().min(1).optional(),
+  DB_SSL_CA: z.string().min(1).optional(),
 
   FIREBASE_SERVICE_ACCOUNT_PATH: z.string().min(1).default('./firebase-service-account.json'),
 

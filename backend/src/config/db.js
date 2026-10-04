@@ -12,6 +12,7 @@
  *     function works inside and outside a transaction.
  */
 import mysql from 'mysql2/promise';
+import { dbConnectionOptions } from './dbConnection.js';
 import { env } from './env.js';
 import { logger } from '../utils/logger.js';
 
@@ -38,10 +39,7 @@ export function camelizeRow(row) {
 }
 
 export const pool = mysql.createPool({
-  host: env.DB_HOST,
-  port: env.DB_PORT,
-  user: env.DB_USER,
-  password: env.DB_PASSWORD,
+  ...dbConnectionOptions(),
   database: env.DB_NAME,
   connectionLimit: env.DB_CONNECTION_LIMIT,
   waitForConnections: true,

@@ -10,6 +10,7 @@ coverage/
 
 # Firebase service account keys (never commit)
 *firebase-service-account*.json
+*.pem
 *firebase-adminsdk*.json
 
 # logs and OS noise
