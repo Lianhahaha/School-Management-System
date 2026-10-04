@@ -272,7 +272,7 @@ export const NAV = {
   ],
 };
 ```
-Sidebar footer (all roles): **API docs** (external link to `VITE_API_DOCS_URL`, `target="_blank" rel="noreferrer"`), Profile, Sign out. The sidebar renders `NAV[role]` only; RBAC is still enforced by `RequireRole` when a URL is typed by hand, and by the backend when a request is forged.
+Sidebar footer (all roles): Profile, Sign out. The API docs are not linked from the UI; Swagger UI lives at `/api/docs` on the backend and the README points to it. The sidebar renders `NAV[role]` only; RBAC is still enforced by `RequireRole` when a URL is typed by hand, and by the backend when a request is forged.
 
 ---
 ## 3. Per-feature UX spec

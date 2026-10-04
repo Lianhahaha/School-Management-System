@@ -40,5 +40,4 @@ export const env = Object.freeze({
     appId: read('VITE_FIREBASE_APP_ID'),
   }),
   apiBaseUrl: read('VITE_API_BASE_URL') || API_BASE_PATH,
-  apiDocsUrl: read('VITE_API_DOCS_URL') || '/api/docs',
 });

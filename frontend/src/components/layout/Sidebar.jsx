@@ -1,5 +1,4 @@
-import { BookText, LogOut, User, X } from 'lucide-react';
-import { env } from '../../config/env';
+import { LogOut, User, X } from 'lucide-react';
 import { useAuth } from '../../features/auth/hooks';
 import { cx } from '../../utils/cx';
 import { Brand } from './Brand';
@@ -7,7 +6,7 @@ import { NAV } from './navConfig';
 import { NavItem } from './NavItem';
 
 /**
- * Left navigation: the current role's entries from navConfig, then API docs, Profile and Sign out.
+ * Left navigation: the current role's entries from navConfig, then Profile and Sign out.
  * From `lg` up it is part of the page (same grey as the page, no frame); below `lg` it is an
  * off-canvas sheet that the phone tab bar's "More" opens.
  * While the drawer is closed it is `invisible`, which also removes its links from the tab order.
@@ -54,11 +53,6 @@ export function Sidebar({ id, isOpen, onClose }) {
       </nav>
 
       <ul className="shrink-0 space-y-0.5 px-3 pt-2 pb-5">
-        <li>
-          <NavItem href={env.apiDocsUrl} icon={BookText}>
-            API docs
-          </NavItem>
-        </li>
         <li>
           <NavItem to="/profile" icon={User} onClick={onClose}>
             Profile

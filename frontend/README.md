@@ -36,7 +36,6 @@ full-page message instead of a blank screen.
 | -------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------ |
 | `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` | yes      | none                                                               |
 | `VITE_API_BASE_URL`                                                                                      | no       | `/api/v1` (goes through the Vite proxy, so no CORS in development) |
-| `VITE_API_DOCS_URL`                                                                                      | no       | `/api/docs` (the "API docs" link in the sidebar)                   |
 
 The Firebase project must be the same one the backend's service account belongs to. In development a
 red banner appears when `GET /health` reports a different project id.
