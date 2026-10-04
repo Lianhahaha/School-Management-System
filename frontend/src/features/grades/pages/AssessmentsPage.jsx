@@ -6,14 +6,15 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { ErrorState } from '../../../components/ui/ErrorState';
 import { FilterBar } from '../../../components/ui/FilterBar';
 import { Pagination } from '../../../components/ui/Pagination';
+import { SearchInput } from '../../../components/ui/SearchInput';
 import { Select } from '../../../components/ui/Select';
 import { ASSESSMENT_TYPE_OPTIONS, TERM_OPTIONS } from '../../../constants/ui';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { useDisclosure } from '../../../hooks/useDisclosure';
 import { useListParams } from '../../../hooks/useListParams';
 import { roleHome } from '../../../utils/roles';
-import { ClassSubjectSelectorBar } from '../../attendance/components/ClassSubjectSelectorBar';
-import { useClassSubjectSelection } from '../../attendance/useClassSubjectSelection';
+import { ClassSubjectSelectorBar } from '../../classSubjects/components/ClassSubjectSelectorBar';
+import { useClassSubjectSelection } from '../../classSubjects/hooks';
 import { AssessmentFormModal } from '../components/AssessmentFormModal';
 import { AssessmentsTable } from '../components/AssessmentsTable';
 import { useAssessments, useDeleteAssessment } from '../hooks';
@@ -109,6 +110,7 @@ export default function AssessmentsPage() {
     content = (
       <>
         <FilterBar onClear={list.hasActiveFilters ? list.clearFilters : undefined}>
+          <SearchInput value={list.params.search} onChange={list.setSearch} placeholder="Search title" />
           <Select
             aria-label="Term"
             options={TERM_OPTIONS}

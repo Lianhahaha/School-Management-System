@@ -2,11 +2,11 @@ import { lazy } from 'react';
 import { createBrowserRouter } from 'react-router';
 import { AppShell } from '../components/layout/AppShell';
 import { AuthLayout } from '../components/layout/AuthLayout';
-import RouteErrorPage from '../features/misc/pages/RouteErrorPage';
 import { PublicOnly } from './guards/PublicOnly';
 import { RequireAuth } from './guards/RequireAuth';
 import { RequireRole } from './guards/RequireRole';
 import { RoleRedirect } from './guards/RoleRedirect';
+import RouteErrorPage from './pages/RouteErrorPage';
 
 /**
  * One lazy chunk per page. `load` is a dynamic import of a module whose default export is the
@@ -101,11 +101,11 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <RoleRedirect /> },
               { path: 'profile', element: page(() => import('../features/profile/pages/ProfilePage')) },
-              { path: '403', element: page(() => import('../features/misc/pages/ForbiddenPage')) },
+              { path: '403', element: page(() => import('./pages/ForbiddenPage')) },
               { path: 'admin', element: <RequireRole roles={['admin']} />, children: adminRoutes },
               { path: 'teacher', element: <RequireRole roles={['teacher']} />, children: teacherRoutes },
               { path: 'student', element: <RequireRole roles={['student']} />, children: studentRoutes },
-              { path: '*', element: page(() => import('../features/misc/pages/NotFoundPage')) },
+              { path: '*', element: page(() => import('./pages/NotFoundPage')) },
             ],
           },
         ],

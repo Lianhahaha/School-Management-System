@@ -1,10 +1,14 @@
-import { useRef } from 'react';
+import { Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '../../../components/ui/Button';
 import { Modal } from '../../../components/ui/Modal';
-import { useConfirm } from '../../../hooks/useConfirm';
+import { useDiscardConfirm } from '../../../hooks/useDiscardConfirm';
 import { fullName } from '../../../utils/names';
 import { roleLabel } from '../../../utils/roles';
+import { useAuth } from '../../auth/hooks';
+import { useCreateUser, useUpdateUser } from '../hooks';
 import { CreateUserForm } from './CreateUserForm';
+import { DeleteUserDialog } from './DeleteUserDialog';
 import { EditUserForm } from './EditUserForm';
 
 const FORM_ID = 'user-form';
@@ -12,7 +16,8 @@ const FORM_ID = 'user-form';
 /**
  * Create (any role, with its record fields) or edit (name and phone) an account. Create mode when
  * `user` is not given. The create form asks "Discard changes?" before it closes with unsaved input.
- * Also used by the dashboard's quick-create and by the students and teachers pages.
+ * Edit mode also offers "Delete account" (not on the signed-in admin's own account); after a delete
+ * the modal closes. Also used in create mode by the students and teachers pages.
  *
  * @param {object} props
  * @param {boolean} props.open
@@ -22,23 +27,14 @@ const FORM_ID = 'user-form';
  * @param {'admin'|'teacher'|'student'} [props.lockedRole] fixes the role in create mode
  */
 export function UserFormModal({ open, onClose, user, lockedRole }) {
-  const confirm = useConfirm();
-  const isDirty = useRef(false);
+  const { me } = useAuth();
+  const createUser = useCreateUser();
+  const updateUser = useUpdateUser();
+  const { requestClose, trackDirty } = useDiscardConfirm(onClose);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const isEdit = Boolean(user);
-
-  const requestClose = async () => {
-    if (isDirty.current) {
-      const discard = await confirm({
-        title: 'Discard changes?',
-        description: 'The details you entered will be lost.',
-        confirmLabel: 'Discard',
-        cancelLabel: 'Keep editing',
-      });
-      if (!discard) return;
-    }
-    isDirty.current = false;
-    onClose();
-  };
+  const mutation = isEdit ? updateUser : createUser;
+  const canDelete = isEdit && user.id !== me?.id;
 
   const title = isEdit
     ? 'Edit user'
@@ -47,38 +43,59 @@ export function UserFormModal({ open, onClose, user, lockedRole }) {
       : 'Create user';
 
   return (
-    <Modal
-      open={open}
-      onClose={requestClose}
-      title={title}
-      description={isEdit ? fullName(user) : undefined}
-      size={isEdit ? 'md' : 'lg'}
-      footer={
-        <>
-          <Button variant="secondary" onClick={requestClose}>
-            Cancel
-          </Button>
-          <Button type="submit" form={FORM_ID}>
-            {isEdit ? 'Save changes' : lockedRole ? title : 'Create user'}
-          </Button>
-        </>
-      }
-    >
-      {isEdit ? (
-        <EditUserForm formId={FORM_ID} user={user} onClose={onClose} />
-      ) : (
-        <CreateUserForm
-          formId={FORM_ID}
-          lockedRole={lockedRole}
-          onClose={() => {
-            isDirty.current = false;
+    <>
+      <Modal
+        open={open}
+        onClose={requestClose}
+        title={title}
+        description={isEdit ? fullName(user) : undefined}
+        size={isEdit ? 'md' : 'lg'}
+        footer={
+          <>
+            {canDelete && (
+              <Button
+                variant="danger"
+                icon={Trash2}
+                onClick={() => setIsConfirmingDelete(true)}
+                className="mr-auto"
+              >
+                Delete account
+              </Button>
+            )}
+            <Button variant="secondary" onClick={requestClose}>
+              Cancel
+            </Button>
+            <Button type="submit" form={FORM_ID} isLoading={mutation.isPending}>
+              {isEdit ? 'Save changes' : lockedRole ? title : 'Create user'}
+            </Button>
+          </>
+        }
+      >
+        {isEdit ? (
+          <EditUserForm formId={FORM_ID} user={user} mutation={updateUser} onClose={onClose} />
+        ) : (
+          <CreateUserForm
+            formId={FORM_ID}
+            lockedRole={lockedRole}
+            mutation={createUser}
+            onClose={onClose}
+            trackDirty={trackDirty}
+          />
+        )}
+      </Modal>
+      {canDelete && (
+        <DeleteUserDialog
+          user={user}
+          open={isConfirmingDelete}
+          onCancel={() => setIsConfirmingDelete(false)}
+          onDeleted={() => {
+            setIsConfirmingDelete(false);
             onClose();
-          }}
-          onDirtyChange={(dirty) => {
-            isDirty.current = dirty;
+            // The row (and the Edit button that opened the modal) is gone, so focus would fall to <body>.
+            requestAnimationFrame(() => document.getElementById('main')?.focus());
           }}
         />
       )}
-    </Modal>
+    </>
   );
 }

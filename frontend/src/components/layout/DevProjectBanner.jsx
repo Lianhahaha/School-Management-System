@@ -1,6 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
 import { env } from '../../config/env';
-import { api } from '../../lib/apiClient';
+import { useHealth } from '../../features/health/hooks';
 
 /**
  * Development-only warning for the most common setup mistake: the web app and the API use different
@@ -9,12 +8,7 @@ import { api } from '../../lib/apiClient';
  * cannot be reached. Mount it only when `import.meta.env.DEV`.
  */
 export function DevProjectBanner() {
-  const { data } = useQuery({
-    queryKey: ['dev', 'health'],
-    queryFn: () => api.get('/health', { auth: false }).then((response) => response.data),
-    staleTime: Infinity,
-    retry: false,
-  });
+  const { data } = useHealth();
 
   const apiProjectId = data?.firebaseProjectId;
   if (!apiProjectId || apiProjectId === env.firebase.projectId) return null;

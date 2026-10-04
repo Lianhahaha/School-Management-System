@@ -9,7 +9,7 @@ import { ClassSubjectSelect } from './ClassSubjectSelect';
  * Its state lives in the URL; build `selection` with useClassSubjectSelection (same `withDate`).
  *
  * @param {object} props
- * @param {ReturnType<typeof import('../useClassSubjectSelection').useClassSubjectSelection>} props.selection
+ * @param {ReturnType<typeof import('../hooks').useClassSubjectSelection>} props.selection
  * @param {boolean} [props.withDate] adds the date input (max today)
  */
 export function ClassSubjectSelectorBar({ selection, withDate = false }) {

@@ -2,8 +2,8 @@ import { PageHeader } from '../../../components/layout/PageHeader';
 import { Select } from '../../../components/ui/Select';
 import { TERM_OPTIONS } from '../../../constants/ui';
 import { useListParams } from '../../../hooks/useListParams';
-import { NotEnrolledState } from '../../attendance/components/NotEnrolledState';
 import { useAuth } from '../../auth/hooks';
+import { NotEnrolledState } from '../../enrollments/components/NotEnrolledState';
 import { GradesBySubject } from '../components/GradesBySubject';
 
 /** A student's own grades per subject, optionally for one term. */

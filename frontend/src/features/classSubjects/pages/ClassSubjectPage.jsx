@@ -1,5 +1,6 @@
 import { Award, ClipboardCheck, Plus } from 'lucide-react';
 import { Link, useParams } from 'react-router';
+import { DetailLoadError } from '../../../components/layout/DetailLoadError';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageSkeleton } from '../../../components/layout/PageSkeleton';
 import { Button } from '../../../components/ui/Button';
@@ -7,7 +8,6 @@ import { useDisclosure } from '../../../hooks/useDisclosure';
 import { todayYmd } from '../../../utils/date';
 import { fullName } from '../../../utils/names';
 import { useAuth } from '../../auth/hooks';
-import { DetailLoadError } from '../../classes/components/DetailLoadError';
 import { AssessmentFormModal } from '../../grades/components/AssessmentFormModal';
 import { ClassSubjectRoster } from '../components/ClassSubjectRoster';
 import { SubjectSlotsCard } from '../components/SubjectSlotsCard';

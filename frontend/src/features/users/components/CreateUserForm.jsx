@@ -7,7 +7,6 @@ import { Select } from '../../../components/ui/Select';
 import { Textarea } from '../../../components/ui/Textarea';
 import { GENDER_OPTIONS, ROLE_OPTIONS } from '../../../constants/ui';
 import { applyServerErrors } from '../../../lib/formErrors';
-import { useCreateUser } from '../hooks';
 import { CREATE_USER_FIELDS, CREATE_USER_FIELD_MAP, createUserDefaults, createUserSchema } from '../schemas';
 
 function StudentProfileFields({ register, errors }) {
@@ -76,10 +75,10 @@ function TeacherProfileFields({ register, errors }) {
 /**
  * Create form for an account of any role (POST /users). The role decides the record section: student
  * and teacher fields, none for an administrator (the `profile` key is not sent for them).
- * `onDirtyChange(isDirty)` lets the modal ask "Discard changes?" before closing.
+ * `mutation` is useCreateUser(), owned by the modal so its submit button can show the pending state;
+ * `trackDirty(isDirty)` lets the modal ask "Discard changes?" before closing.
  */
-export function CreateUserForm({ formId, lockedRole, onClose, onDirtyChange }) {
-  const createUser = useCreateUser();
+export function CreateUserForm({ formId, lockedRole, mutation, onClose, trackDirty }) {
   const {
     register,
     handleSubmit,
@@ -89,12 +88,10 @@ export function CreateUserForm({ formId, lockedRole, onClose, onDirtyChange }) {
   } = useForm({ resolver: zodResolver(createUserSchema), defaultValues: createUserDefaults(lockedRole) });
   const role = useWatch({ control, name: 'role' });
 
-  useEffect(() => {
-    onDirtyChange?.(isDirty);
-  }, [isDirty, onDirtyChange]);
+  useEffect(() => trackDirty(isDirty), [isDirty, trackDirty]);
 
   const onSubmit = (values) =>
-    createUser
+    mutation
       .mutateAsync(values)
       .then(onClose)
       .catch((error) =>

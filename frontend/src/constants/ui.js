@@ -13,7 +13,6 @@ import {
   ASSESSMENT_TYPES,
   ATTENDANCE_STATUSES,
   DAYS_OF_WEEK,
-  ENROLLMENT_STATUSES,
   ERROR_CODES,
   GENDERS,
   ROLES,
@@ -26,11 +25,10 @@ const optionsOf = (values, labels) => values.map((value) => ({ value, label: lab
 export const APP_NAME = 'Skole';
 
 // ---------------------------------------------------------------------------
-// Tones: the status colour families. A status is a coloured dot on a neutral pill (Badge);
-// alerts, icon chips and timetable slots use the soft form. Both follow the light and dark themes.
+// Tones: the status colour families (gray, green, amber, red, blue, violet). A status is a coloured
+// dot on a neutral pill (Badge); alerts, icon chips and timetable slots use the soft form. Both
+// follow the light and dark themes.
 // ---------------------------------------------------------------------------
-
-export const TONES = Object.freeze(['gray', 'green', 'amber', 'red', 'blue', 'violet']);
 
 export const TONE_DOT_CLASSES = Object.freeze({
   gray: 'bg-gray-400',
@@ -76,7 +74,6 @@ export const ENROLLMENT_STATUS_TONES = Object.freeze({
   transferred: 'gray',
   withdrawn: 'amber',
 });
-export const ENROLLMENT_STATUS_OPTIONS = optionsOf(ENROLLMENT_STATUSES, ENROLLMENT_STATUS_LABELS);
 
 export const ATTENDANCE_STATUS_LABELS = Object.freeze({
   present: 'Present',
@@ -164,8 +161,6 @@ export const GRADE_LEVEL_OPTIONS = GRADE_LEVELS.map((level) => ({
 
 /** Page sizes offered by Pagination; the API maximum is PAGINATION.MAX_LIMIT (100). */
 export const PAGE_SIZES = Object.freeze([10, 20, 50]);
-
-export const SCHOOL_HOURS = Object.freeze({ start: '07:00', end: '17:00' });
 
 /**
  * Academic years around the current one, newest first, as select options.

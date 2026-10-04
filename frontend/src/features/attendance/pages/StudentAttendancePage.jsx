@@ -12,9 +12,9 @@ import { useListParams } from '../../../hooks/useListParams';
 import { todayYmd } from '../../../utils/date';
 import { useAuth } from '../../auth/hooks';
 import { useClassSubjectOptions } from '../../classSubjects/hooks';
+import { NotEnrolledState } from '../../enrollments/components/NotEnrolledState';
 import { AttendanceRecordsTable } from '../components/AttendanceRecordsTable';
 import { AttendanceSummaryPanel } from '../components/AttendanceSummaryPanel';
-import { NotEnrolledState } from '../components/NotEnrolledState';
 import { useAttendance } from '../hooks';
 
 /** First day of an academic year such as '2026-2027' ('2026-08-01'). */

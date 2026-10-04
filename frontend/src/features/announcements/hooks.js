@@ -3,7 +3,6 @@
  *
  *   useAnnouncements(params, { enabled })  paginated list; params: page, limit, search, sortBy, sortOrder,
  *                                          audience, classId, authorId ('me'), status (admin only)
- *   useAnnouncement(id)                    one announcement
  *   useCreateAnnouncement() [form]         mutate(body) with the createAnnouncementSchema output
  *   useUpdateAnnouncement() [form]         mutate({ id, body }) with the updateAnnouncementSchema output
  *   useDeleteAnnouncement()                mutate(id)
@@ -15,13 +14,7 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { useInvalidate } from '../../hooks/useInvalidate';
 import { useToast } from '../../hooks/useToast';
 import { dashboardKeys } from '../dashboard/keys';
-import {
-  createAnnouncement,
-  deleteAnnouncement,
-  getAnnouncement,
-  listAnnouncements,
-  updateAnnouncement,
-} from './api';
+import { createAnnouncement, deleteAnnouncement, listAnnouncements, updateAnnouncement } from './api';
 import { announcementKeys } from './keys';
 
 export function useAnnouncements(params, { enabled = true } = {}) {
@@ -30,14 +23,6 @@ export function useAnnouncements(params, { enabled = true } = {}) {
     queryFn: () => listAnnouncements(params),
     placeholderData: keepPreviousData,
     enabled,
-  });
-}
-
-export function useAnnouncement(id) {
-  return useQuery({
-    queryKey: announcementKeys.detail(id),
-    queryFn: () => getAnnouncement(id),
-    enabled: Boolean(id),
   });
 }
 

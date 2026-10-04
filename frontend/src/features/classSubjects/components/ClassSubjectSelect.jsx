@@ -2,7 +2,7 @@ import { OptionSelect } from '../../../components/ui/OptionSelect';
 import { Select } from '../../../components/ui/Select';
 import { fullName } from '../../../utils/names';
 import { useAuth } from '../../auth/hooks';
-import { useClassSubjectOptions } from '../../classSubjects/hooks';
+import { useClassSubjectOptions } from '../hooks';
 
 /** Admin: the subjects of one class, "Biology · Ana Reyes". */
 function ClassSubjectsOfClass({ classId, ...props }) {

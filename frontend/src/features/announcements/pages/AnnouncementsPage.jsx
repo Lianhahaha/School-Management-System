@@ -97,7 +97,7 @@ export default function AnnouncementsPage() {
     content = <ErrorState title="Couldn't load announcements" message={error.message} onRetry={refetch} />;
   } else if (isPending) {
     content = <ListSkeleton />;
-  } else if (data.items.length === 0) {
+  } else if (data.meta.total === 0) {
     content = list.hasActiveFilters ? (
       <EmptyState
         icon={Megaphone}
@@ -121,6 +121,7 @@ export default function AnnouncementsPage() {
       />
     );
   } else {
+    // A page past the end (its last row was deleted) has no items but a total: Pagination moves back.
     content = (
       <div className={cx('transition-opacity', isFetching && 'opacity-60')} aria-busy={isFetching}>
         <AnnouncementList announcements={data.items} renderActions={renderActions} />

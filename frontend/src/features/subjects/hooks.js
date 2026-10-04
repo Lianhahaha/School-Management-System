@@ -2,7 +2,6 @@
  * Subjects (the catalogue; a subject taught in a class is a class-subject, features/classSubjects).
  *
  *   useSubjects(params, { enabled })  paginated list; params: page, limit, search, sortBy, sortOrder, isActive
- *   useSubject(id)                    one subject
  *   useCreateSubject() [form]         mutate(body) with the createSubjectSchema output
  *   useUpdateSubject() [form]         mutate({ id, body }) with the updateSubjectSchema output
  *   useSetSubjectActive()             mutate({ id, isActive }) retire or reactivate (a row action: errors toast)
@@ -17,7 +16,7 @@ import { createOptionsHook } from '../../hooks/createOptionsHook';
 import { useInvalidate } from '../../hooks/useInvalidate';
 import { useToast } from '../../hooks/useToast';
 import { classSubjectKeys } from '../classSubjects/keys';
-import { createSubject, deleteSubject, getSubject, listSubjects, updateSubject } from './api';
+import { createSubject, deleteSubject, listSubjects, updateSubject } from './api';
 import { subjectKeys } from './keys';
 
 export function useSubjects(params, { enabled = true } = {}) {
@@ -27,10 +26,6 @@ export function useSubjects(params, { enabled = true } = {}) {
     placeholderData: keepPreviousData,
     enabled,
   });
-}
-
-export function useSubject(id) {
-  return useQuery({ queryKey: subjectKeys.detail(id), queryFn: () => getSubject(id), enabled: Boolean(id) });
 }
 
 export function useCreateSubject() {

@@ -25,9 +25,3 @@ export const getAttendanceSheet = ({ classSubjectId, date }) =>
  */
 export const saveAttendanceSheet = ({ classSubjectId, date, records }) =>
   api.put('/attendance/sheet', { classSubjectId, date, records }).then(toData);
-
-/** Admin, or the subject's teacher. Corrects one record: { status?, remarks? }. */
-export const updateAttendance = (id, body) => api.patch(`/attendance/${id}`, body).then(toData);
-
-/** Admin only. */
-export const deleteAttendance = (id) => api.delete(`/attendance/${id}`).then(toData);

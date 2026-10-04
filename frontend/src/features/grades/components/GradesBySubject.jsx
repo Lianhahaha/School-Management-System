@@ -91,12 +91,12 @@ export function GradesBySubject({ term }) {
       <GradeSummaryPanel studentId="me" term={term} />
       {groups.map(([classSubjectId, rows]) => {
         const next = nextUp(classSubjectId);
-        const { subjectName } = rows[0].assessment;
+        const { subjectName, className } = rows[0].assessment;
         return (
           <Card
             key={classSubjectId}
             title={subjectName}
-            description={`${rows.length} ${rows.length === 1 ? 'grade' : 'grades'}`}
+            description={`${className} · ${rows.length} ${rows.length === 1 ? 'grade' : 'grades'}`}
             padded={false}
           >
             <DataTable label={`${subjectName} grades`} columns={COLUMNS} rows={rows} rowKey="id" />

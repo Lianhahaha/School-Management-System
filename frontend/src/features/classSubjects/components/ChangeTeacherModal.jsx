@@ -1,9 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '../../../components/ui/Button';
 import { FormField, FormRootError } from '../../../components/ui/FormField';
 import { Modal } from '../../../components/ui/Modal';
+import { ERROR_CODES } from '../../../constants/shared';
 import { applyServerErrors } from '../../../lib/formErrors';
+import { ScheduleConflictList } from '../../schedules/components/ScheduleConflictList';
 import { TeacherSelect } from '../../teachers/components/TeacherSelect';
 import { useReassignClassSubject } from '../hooks';
 import { classSubjectDefaults, reassignClassSubjectSchema } from '../schemas';
@@ -11,6 +14,7 @@ import { classSubjectDefaults, reassignClassSubjectSchema } from '../schemas';
 const FORM_ID = 'change-teacher-form';
 
 function ChangeTeacherForm({ classSubject, mutation, onClose }) {
+  const [conflicts, setConflicts] = useState(null);
   const {
     register,
     handleSubmit,
@@ -23,15 +27,25 @@ function ChangeTeacherForm({ classSubject, mutation, onClose }) {
 
   const onSubmit = ({ teacherId }) => {
     if (teacherId === classSubject.teacherId) return onClose(); // same teacher: nothing to change
+    setConflicts(null);
     return mutation
       .mutateAsync({ id: classSubject.id, teacherId })
       .then(onClose)
-      .catch((error) => applyServerErrors(error, setError, { knownFields: ['teacherId'] }));
+      .catch((error) => {
+        if (error?.code === ERROR_CODES.SCHEDULE_CONFLICT) {
+          setConflicts(error.details?.conflicts ?? []);
+          return;
+        }
+        applyServerErrors(error, setError, { knownFields: ['teacherId'] });
+      });
   };
 
   return (
     <form id={FORM_ID} onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
       <FormRootError error={errors.root?.server} />
+      {conflicts && (
+        <ScheduleConflictList message="This teacher already teaches at these times" conflicts={conflicts} />
+      )}
       <FormField
         label="Teacher"
         hint="Attendance and grades recorded so far stay with the subject."

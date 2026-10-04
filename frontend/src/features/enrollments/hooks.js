@@ -3,13 +3,13 @@
  *
  *   useEnrollments(params, { enabled })  paginated list (no `search`); params: page, limit, sortBy,
  *                                        sortOrder, studentId ('me'), classId, status, academicYear
- *   useEnrollment(id)                    one enrollment
  *   useEnrollStudent() [form]            mutate({ studentId, classId })
  *   useEnrollStudents() [form]           mutate({ classId, studentIds }) bulk, all or nothing
  *   useTransferStudent() [form]          mutate({ studentId, classId }) one request, no half-done state
  *   useSetEnrollmentStatus()             mutate({ id, status }) status 'completed' | 'withdrawn'
  *
- * Every write refreshes enrollments, students, classes (student counts) and the dashboard.
+ * Every write refreshes enrollments, students, classes (student counts), the attendance sheets and
+ * grade rosters (they list the enrolled students) and the dashboard.
  *
  * Mutations tagged [form] are silent (meta.silent): the form that sends them shows every error itself
  * (applyServerErrors + FormRootError). Every other mutation raises an error toast.
@@ -18,17 +18,12 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { useInvalidate } from '../../hooks/useInvalidate';
 import { useToast } from '../../hooks/useToast';
 import { fullName } from '../../utils/names';
+import { attendanceKeys } from '../attendance/keys';
 import { classKeys } from '../classes/keys';
 import { dashboardKeys } from '../dashboard/keys';
+import { gradeKeys } from '../grades/keys';
 import { studentKeys } from '../students/keys';
-import {
-  enrollStudent,
-  enrollStudents,
-  getEnrollment,
-  listEnrollments,
-  setEnrollmentStatus,
-  transferStudent,
-} from './api';
+import { enrollStudent, enrollStudents, listEnrollments, setEnrollmentStatus, transferStudent } from './api';
 import { enrollmentKeys } from './keys';
 
 export function useEnrollments(params, { enabled = true } = {}) {
@@ -40,17 +35,17 @@ export function useEnrollments(params, { enabled = true } = {}) {
   });
 }
 
-export function useEnrollment(id) {
-  return useQuery({
-    queryKey: enrollmentKeys.detail(id),
-    queryFn: () => getEnrollment(id),
-    enabled: Boolean(id),
-  });
-}
-
 function useInvalidateEnrollments() {
   const invalidate = useInvalidate();
-  return () => invalidate(enrollmentKeys.all, studentKeys.all, classKeys.all, dashboardKeys.all);
+  return () =>
+    invalidate(
+      enrollmentKeys.all,
+      studentKeys.all,
+      classKeys.all,
+      attendanceKeys.all,
+      gradeKeys.all,
+      dashboardKeys.all,
+    );
 }
 
 export function useEnrollStudent() {

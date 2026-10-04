@@ -6,7 +6,8 @@
  *   useTeachers(params, { enabled })  paginated list (admin); params: page, limit, search, sortBy,
  *                                     sortOrder, department, isActive
  *   useTeacher(id)                    one teacher ('me' allowed)
- *   useUpdateTeacher() [form]         mutate({ id, body }) admin only; body from changedFields(values, dirtyFields)
+ *   useUpdateTeacher() [form]         mutate({ id, body }) admin only; body from changedFields(values, dirtyFields);
+ *                                     also refreshes the class-subject, class and timetable rows that show the name
  *   useTeacherOptions(filters)        select options of active teachers: [{ value, label, item }]; filters e.g. { search }
  *
  * Mutations tagged [form] are silent (meta.silent): the form that sends them shows every error itself
@@ -17,6 +18,9 @@ import { createOptionsHook } from '../../hooks/createOptionsHook';
 import { useInvalidate } from '../../hooks/useInvalidate';
 import { useToast } from '../../hooks/useToast';
 import { fullName } from '../../utils/names';
+import { classKeys } from '../classes/keys';
+import { classSubjectKeys } from '../classSubjects/keys';
+import { scheduleKeys } from '../schedules/keys';
 import { userKeys } from '../users/keys';
 import { getTeacher, listTeachers, updateTeacher } from './api';
 import { teacherKeys } from './keys';
@@ -41,7 +45,7 @@ export function useUpdateTeacher() {
     mutationFn: ({ id, body }) => updateTeacher(id, body),
     meta: { silent: true },
     onSuccess: (teacher) => {
-      invalidate(teacherKeys.all, userKeys.all);
+      invalidate(teacherKeys.all, userKeys.all, classSubjectKeys.all, classKeys.all, scheduleKeys.all);
       toast.success(`${fullName(teacher)} updated`);
     },
   });

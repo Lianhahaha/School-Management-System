@@ -11,9 +11,9 @@ import { Skeleton } from '../../../components/ui/Skeleton';
 import { PAGINATION } from '../../../constants/shared';
 import { formatDate } from '../../../utils/date';
 import { fullName } from '../../../utils/names';
-import { NotEnrolledState } from '../../attendance/components/NotEnrolledState';
 import { useAuth } from '../../auth/hooks';
 import { useClassSubjects } from '../../classSubjects/hooks';
+import { NotEnrolledState } from '../../enrollments/components/NotEnrolledState';
 import { useSchedules } from '../../schedules/hooks';
 import { useClass } from '../hooks';
 

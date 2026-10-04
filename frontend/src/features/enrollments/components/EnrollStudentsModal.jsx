@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert } from '../../../components/ui/Alert';
 import { Button } from '../../../components/ui/Button';
 import { Checkbox } from '../../../components/ui/Checkbox';
@@ -107,7 +107,8 @@ function StudentChecklist({ search, onSearch, selected, onToggle, onSelectVisibl
 
 /**
  * Enroll many students into one class at once (POST /enrollments/bulk, all or nothing). Admin only.
- * Pick from the students who have no active class; the selection survives a change of search. If the
+ * Pick from the students who have no active class; the selection survives a change of search and is
+ * cleared, with the search and any error, whenever the modal closes. If the
  * server finds students who are already enrolled (409 `alreadyActive[]`) nothing is written; the modal
  * names them, offers to deselect them and keeps everything else selected so a retry is one click.
  *
@@ -122,6 +123,16 @@ export function EnrollStudentsModal({ classId, className, open, onClose }) {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState({}); // student id -> student row, so names survive a new search
   const [problem, setProblem] = useState(null); // { message, alreadyActiveIds }
+  const opening = useRef(0); // bumped on close, so a request that finishes after it cannot touch the next opening
+
+  // The modal stays mounted between openings, so every way out starts the next opening fresh.
+  const close = () => {
+    opening.current += 1;
+    setSearch('');
+    setSelected({});
+    setProblem(null);
+    onClose();
+  };
 
   const select = (update) => {
     setProblem(null);
@@ -157,10 +168,12 @@ export function EnrollStudentsModal({ classId, className, open, onClose }) {
       return;
     }
     setProblem(null);
+    const current = opening.current;
     mutation
       .mutateAsync({ classId, studentIds: parsed.data.studentIds })
-      .then(onClose)
+      .then(() => current === opening.current && close())
       .catch((error) => {
+        if (current !== opening.current) return;
         const alreadyActive = error?.details?.alreadyActive;
         if (error?.code === ERROR_CODES.CONFLICT && Array.isArray(alreadyActive)) {
           const alreadyActiveIds = alreadyActive.map((row) => String(row.studentId));
@@ -185,13 +198,13 @@ export function EnrollStudentsModal({ classId, className, open, onClose }) {
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={close}
       title="Enroll students"
       description={className ? `Choose the students who join ${className}.` : undefined}
       size="lg"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={close}>
             Cancel
           </Button>
           <Button onClick={onSubmit} isLoading={mutation.isPending} disabled={count === 0}>

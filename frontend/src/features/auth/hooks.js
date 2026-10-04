@@ -6,7 +6,7 @@ import { auth } from '../../config/firebase';
 import { useToast } from '../../hooks/useToast';
 import { AuthContext } from './authContext';
 import { register, updateMe } from './api';
-import { markRegistrationClosed } from './registrationClosed';
+import { REGISTRATION_DISABLED, markRegistrationClosed } from './registrationClosed';
 
 /** The signed-in session; see authContext.js for the fields. Throws outside <AuthProvider>. */
 export function useAuth() {
@@ -57,7 +57,7 @@ export function useRegister() {
       navigate('/login', { replace: true });
     },
     onError: (error) => {
-      if (error.status === 404) markRegistrationClosed();
+      if (error.details?.reason === REGISTRATION_DISABLED) markRegistrationClosed();
     },
     meta: { silent: true },
   });

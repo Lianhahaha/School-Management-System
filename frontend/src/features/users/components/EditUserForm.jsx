@@ -5,14 +5,15 @@ import { Input } from '../../../components/ui/Input';
 import { applyServerErrors } from '../../../lib/formErrors';
 import { changedFields } from '../../../utils/forms';
 import { roleLabel } from '../../../utils/roles';
-import { useUpdateUser } from '../hooks';
 import { updateUserDefaults, updateUserSchema } from '../schemas';
 
 const FIELDS = ['firstName', 'lastName', 'phone'];
 
-/** Edit form of an account: name and phone only (PATCH /users/:id); email and role are read-only. */
-export function EditUserForm({ formId, user, onClose }) {
-  const updateUser = useUpdateUser();
+/**
+ * Edit form of an account: name and phone only (PATCH /users/:id); email and role are read-only.
+ * `mutation` is useUpdateUser(), owned by the modal so its submit button can show the pending state.
+ */
+export function EditUserForm({ formId, user, mutation, onClose }) {
   const {
     register,
     handleSubmit,
@@ -23,7 +24,7 @@ export function EditUserForm({ formId, user, onClose }) {
   const onSubmit = (values) => {
     const body = changedFields(values, dirtyFields);
     if (Object.keys(body).length === 0) return onClose();
-    return updateUser
+    return mutation
       .mutateAsync({ id: user.id, body })
       .then(onClose)
       .catch((error) => applyServerErrors(error, setError, { knownFields: FIELDS }));
@@ -46,7 +47,7 @@ export function EditUserForm({ formId, user, onClose }) {
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField
           label="Email"
-          hint="Email and role can't be changed; deactivate and create a new account instead."
+          hint="Email and role can't be changed. If either is wrong, delete the account (possible while it has no school records) and create a new one."
         >
           <Input value={user.email} readOnly />
         </FormField>

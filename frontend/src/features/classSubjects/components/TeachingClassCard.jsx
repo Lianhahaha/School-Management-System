@@ -1,7 +1,7 @@
 import { Award, CalendarClock, ClipboardCheck, Users } from 'lucide-react';
 import { Link } from 'react-router';
 import { Button } from '../../../components/ui/Button';
-import { formatPeriod } from './nextPeriod';
+import { formatPeriod } from '../../../utils/schedule';
 
 /**
  * One subject the teacher teaches: class, subject, the next period and shortcuts to the roster,

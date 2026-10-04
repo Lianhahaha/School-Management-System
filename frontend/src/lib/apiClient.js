@@ -3,7 +3,8 @@
  *
  * Every request carries the Firebase ID token. A 401 is retried once with a forcibly
  * refreshed token; a second 401 means the session is dead and the user is signed out.
- * Failures become `ApiError`, successes resolve with the whole envelope `{ data, meta? }`.
+ * Failures become `ApiError`, successes resolve with the whole envelope `{ data, meta? }` (a 204 No
+ * Content resolves `{ data: null }`).
  * Feature `api.js` files own the URL paths and unwrap the envelope, so hooks and components
  * never see it:
  *
@@ -107,6 +108,7 @@ async function send(path, { method, body, params, needsAuth }, forceRefresh) {
 }
 
 async function readEnvelope(response) {
+  if (response.status === 204) return { data: null };
   const json = await response.json().catch(() => null);
   if (response.ok && json?.success === true) return json;
 

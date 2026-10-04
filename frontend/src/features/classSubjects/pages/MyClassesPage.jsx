@@ -6,15 +6,15 @@ import { ErrorState } from '../../../components/ui/ErrorState';
 import { SearchInput } from '../../../components/ui/SearchInput';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { PAGINATION } from '../../../constants/shared';
+import { currentAcademicYear } from '../../../utils/date';
+import { nextPeriodOf } from '../../../utils/schedule';
 import { useAuth } from '../../auth/hooks';
 import { useClasses } from '../../classes/hooks';
 import { useSchedules } from '../../schedules/hooks';
 import { HomeroomClassCard } from '../components/HomeroomClassCard';
-import { nextPeriodOf } from '../components/nextPeriod';
 import { TeachingClassCard } from '../components/TeachingClassCard';
 import { useClassSubjects } from '../hooks';
 
-const ALL = { limit: PAGINATION.MAX_LIMIT };
 const GRID = 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3';
 
 function Group({ id, title, description, children }) {
@@ -32,10 +32,12 @@ function Group({ id, title, description, children }) {
 export default function MyClassesPage() {
   const { me } = useAuth();
   const [search, setSearch] = useState('');
+  const academicYear = currentAcademicYear();
+  const thisYear = { academicYear, limit: PAGINATION.MAX_LIMIT };
   // No scope filter: the backend returns what the teacher can see (taught subjects plus homeroom classes).
-  const classSubjects = useClassSubjects({ ...ALL, sortBy: 'className', sortOrder: 'asc' });
-  const homeroomClasses = useClasses({ ...ALL, homeroomTeacherId: 'me' });
-  const schedules = useSchedules({ ...ALL, teacherId: 'me' });
+  const classSubjects = useClassSubjects({ ...thisYear, sortBy: 'className', sortOrder: 'asc' });
+  const homeroomClasses = useClasses({ ...thisYear, homeroomTeacherId: 'me' });
+  const schedules = useSchedules({ ...thisYear, teacherId: 'me' });
 
   const { teaching, homeroom } = useMemo(() => {
     const subjects = classSubjects.data?.items ?? [];
@@ -60,7 +62,10 @@ export default function MyClassesPage() {
   }, [classSubjects.data, homeroomClasses.data, schedules.data, search, me.teacherId]);
 
   const header = (
-    <PageHeader title="My classes" description="The subjects you teach and the classes you look after." />
+    <PageHeader
+      title="My classes"
+      description={`The subjects you teach and the classes you look after in ${academicYear}.`}
+    />
   );
 
   const failure = classSubjects.error ?? homeroomClasses.error;

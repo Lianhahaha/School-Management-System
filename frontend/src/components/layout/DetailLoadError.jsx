@@ -1,12 +1,16 @@
 import { ArrowLeft, SearchX, ShieldAlert } from 'lucide-react';
 import { Link } from 'react-router';
-import { Button } from '../../../components/ui/Button';
-import { EmptyState } from '../../../components/ui/EmptyState';
-import { ErrorState } from '../../../components/ui/ErrorState';
+import { Button } from '../ui/Button';
+import { Card } from '../ui/Card';
+import { EmptyState } from '../ui/EmptyState';
+import { ErrorState } from '../ui/ErrorState';
 
 /**
- * What a detail page shows when its main query failed: a 404 reads "not found", a 403 "no access",
- * anything else is an ErrorState with Retry. Both inline states link back to the list.
+ * What a detail page shows, in a sheet, when its main query failed: a 404 reads "not found", a 403
+ * "no access", anything else is an ErrorState with Retry. Both inline states link back to the list.
+ *
+ *   if (error) return <DetailLoadError error={error} noun="class" backTo="/admin/classes"
+ *                                      backLabel="Back to classes" onRetry={refetch} />;
  *
  * @param {object} props
  * @param {Error & { status?: number }} props.error the query error
@@ -22,8 +26,9 @@ export function DetailLoadError({ error, noun, backTo, backLabel, onRetry }) {
     </Button>
   );
 
+  let content;
   if (error.status === 404) {
-    return (
+    content = (
       <EmptyState
         icon={SearchX}
         title={`This ${noun} doesn't exist`}
@@ -31,9 +36,8 @@ export function DetailLoadError({ error, noun, backTo, backLabel, onRetry }) {
         action={backButton}
       />
     );
-  }
-  if (error.status === 403) {
-    return (
+  } else if (error.status === 403) {
+    content = (
       <EmptyState
         icon={ShieldAlert}
         title={`You don't have access to this ${noun}`}
@@ -41,6 +45,8 @@ export function DetailLoadError({ error, noun, backTo, backLabel, onRetry }) {
         action={backButton}
       />
     );
+  } else {
+    content = <ErrorState title={`Couldn't load the ${noun}`} message={error.message} onRetry={onRetry} />;
   }
-  return <ErrorState title={`Couldn't load the ${noun}`} message={error.message} onRetry={onRetry} />;
+  return <Card padded={false}>{content}</Card>;
 }

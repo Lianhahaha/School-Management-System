@@ -4,10 +4,10 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { ErrorState } from '../../../components/ui/ErrorState';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { todayYmd } from '../../../utils/date';
+import { ClassSubjectSelectorBar } from '../../classSubjects/components/ClassSubjectSelectorBar';
+import { useClassSubjectSelection } from '../../classSubjects/hooks';
 import { AttendanceSheet } from '../components/AttendanceSheet';
-import { ClassSubjectSelectorBar } from '../components/ClassSubjectSelectorBar';
 import { useAttendanceSheet } from '../hooks';
-import { useClassSubjectSelection } from '../useClassSubjectSelection';
 
 /** Admin and teacher: pick a lesson and a date, mark the roster, save. */
 export default function AttendanceMarkPage() {

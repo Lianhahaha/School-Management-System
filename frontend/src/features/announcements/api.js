@@ -8,8 +8,6 @@ import { toData, toPage } from '../../lib/envelope';
  */
 export const listAnnouncements = (params) => api.get('/announcements', { params }).then(toPage);
 
-export const getAnnouncement = (id) => api.get(`/announcements/${id}`).then(toData);
-
 /**
  * Admin, or a teacher for a visible class (classId is then required).
  * Body: { title, body, audience, classId?, publishedAt?, expiresAt? } with ISO-8601 date-times.

@@ -1,8 +1,8 @@
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PAGINATION } from '../../../constants/shared';
 import { fullName } from '../../../utils/names';
-import { NotEnrolledState } from '../../attendance/components/NotEnrolledState';
 import { useAuth } from '../../auth/hooks';
+import { NotEnrolledState } from '../../enrollments/components/NotEnrolledState';
 import { SchedulePanel } from '../components/SchedulePanel';
 import { useSchedules } from '../hooks';
 

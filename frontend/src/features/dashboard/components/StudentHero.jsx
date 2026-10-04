@@ -1,7 +1,7 @@
 import { Badge } from '../../../components/ui/Badge';
 import { Card } from '../../../components/ui/Card';
 import { fullName, initials } from '../../../utils/names';
-import { NotEnrolledState } from '../../attendance/components/NotEnrolledState';
+import { NotEnrolledState } from '../../enrollments/components/NotEnrolledState';
 
 /**
  * Who the student is: initials, name, student number, class, academic year and homeroom teacher

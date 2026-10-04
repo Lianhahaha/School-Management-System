@@ -9,8 +9,6 @@ import { toData, toPage } from '../../lib/envelope';
  */
 export const listSchedules = (params) => api.get('/schedules', { params }).then(toPage);
 
-export const getSchedule = (id) => api.get(`/schedules/${id}`).then(toData);
-
 /**
  * Admin only. Body: { classSubjectId, dayOfWeek (1 = Monday), startTime, endTime ('HH:MM'), room? }.
  * 409 SCHEDULE_CONFLICT with `details.conflicts` when the class, the teacher or the room is busy.

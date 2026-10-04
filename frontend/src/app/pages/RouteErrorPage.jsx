@@ -1,7 +1,7 @@
 import { RefreshCw, TriangleAlert } from 'lucide-react';
 import { useEffect } from 'react';
 import { isRouteErrorResponse, useRouteError } from 'react-router';
-import { Button } from '../../../components/ui/Button';
+import { Button } from '../../components/ui/Button';
 
 /** Messages browsers give when a lazy page chunk cannot be fetched, usually after a new deployment. */
 const STALE_CHUNK = /dynamically imported module|Importing a module script failed|Loading chunk/i;

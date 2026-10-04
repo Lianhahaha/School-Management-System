@@ -5,7 +5,9 @@
  *                                    academicYear, gradeLevel, homeroomTeacherId ('me' for a teacher)
  *   useClass(id)                     one class, with homeroomTeacher and studentCount
  *   useCreateClass() [form]          mutate(body) with the createClassSchema output
- *   useUpdateClass() [form]          mutate({ id, body }) with the updateClassSchema output
+ *   useUpdateClass() [form]          mutate({ id, body }) with the updateClassSchema output; also refreshes
+ *                                    the class-subject, student, enrollment and timetable rows that
+ *                                    show the class name
  *   useDeleteClass()                 mutate(id); 409 when referenced
  *   useClassOptions(filters)         select options: [{ value, label: 'Name · 2026-2027 · 30 students', item }];
  *                                    filters e.g. { academicYear, search }
@@ -17,7 +19,11 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { createOptionsHook } from '../../hooks/createOptionsHook';
 import { useInvalidate } from '../../hooks/useInvalidate';
 import { useToast } from '../../hooks/useToast';
+import { classSubjectKeys } from '../classSubjects/keys';
 import { dashboardKeys } from '../dashboard/keys';
+import { enrollmentKeys } from '../enrollments/keys';
+import { scheduleKeys } from '../schedules/keys';
+import { studentKeys } from '../students/keys';
 import { createClass, deleteClass, getClass, listClasses, updateClass } from './api';
 import { classKeys } from './keys';
 
@@ -54,7 +60,14 @@ export function useUpdateClass() {
     mutationFn: ({ id, body }) => updateClass(id, body),
     meta: { silent: true },
     onSuccess: (updatedClass) => {
-      invalidate(classKeys.all, dashboardKeys.all);
+      invalidate(
+        classKeys.all,
+        classSubjectKeys.all,
+        studentKeys.all,
+        enrollmentKeys.all,
+        scheduleKeys.all,
+        dashboardKeys.all,
+      );
       toast.success(`${updatedClass.name} updated`);
     },
   });

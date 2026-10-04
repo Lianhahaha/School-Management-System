@@ -6,7 +6,7 @@ import { formatPercent, formatScore } from '../../../utils/format';
 import { useGradeSummary } from '../hooks';
 
 /**
- * Grades of one student: a card per subject with the points-weighted percentage
+ * Grades of one student: a card per class-subject (newest academic year first) with the points-weighted percentage
  * (sum of scores / sum of max scores over graded assessments) as a bar and text.
  * Fetches its own data, so the admin's student page and the student's own pages use the same panel.
  *
@@ -33,12 +33,15 @@ export function GradeSummaryPanel({ studentId, term, enabled = true }) {
         <li key={subject.classSubjectId}>
           <Card className="h-full">
             <h3 className="text-sm font-semibold text-gray-900">{subject.subjectName}</h3>
+            <p className="text-xs text-gray-600">
+              {subject.className} · {subject.academicYear}
+            </p>
             <p className="mt-2 text-2xl font-semibold text-gray-900">
               {formatPercent(subject.percentage / 100)}
             </p>
             <div
               role="progressbar"
-              aria-label={`${subject.subjectName} percentage`}
+              aria-label={`${subject.subjectName}, ${subject.className} percentage`}
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={subject.percentage}

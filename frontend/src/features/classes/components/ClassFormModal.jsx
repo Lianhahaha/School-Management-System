@@ -7,12 +7,12 @@ import { Input } from '../../../components/ui/Input';
 import { Modal } from '../../../components/ui/Modal';
 import { Select } from '../../../components/ui/Select';
 import { GRADE_LEVEL_OPTIONS } from '../../../constants/ui';
+import { useDiscardConfirm } from '../../../hooks/useDiscardConfirm';
 import { applyServerErrors } from '../../../lib/formErrors';
 import { changedFields } from '../../../utils/forms';
 import { TeacherSelect } from '../../teachers/components/TeacherSelect';
 import { useCreateClass, useUpdateClass } from '../hooks';
 import { classDefaults, createClassSchema, updateClassSchema } from '../schemas';
-import { useDiscardConfirm } from './useDiscardConfirm';
 
 const FORM_ID = 'class-form';
 const FIELDS = ['name', 'gradeLevel', 'academicYear', 'homeroomTeacherId'];

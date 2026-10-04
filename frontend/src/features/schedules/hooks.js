@@ -5,7 +5,6 @@
  *   useSchedules(params, { enabled })  paginated list; pass limit: 100 for a whole timetable.
  *                                      params: classId, teacherId ('me'), classSubjectId, dayOfWeek, room,
  *                                      academicYear, page, limit, search, sortBy, sortOrder
- *   useSchedule(id)                    one slot
  *   useCreateSchedule() [form]         mutate(body) with the createScheduleSchema output
  *   useUpdateSchedule() [form]         mutate({ id, body }) with the updateScheduleSchema output
  *   useDeleteSchedule()                mutate(id)
@@ -20,7 +19,7 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { useInvalidate } from '../../hooks/useInvalidate';
 import { useToast } from '../../hooks/useToast';
 import { dashboardKeys } from '../dashboard/keys';
-import { createSchedule, deleteSchedule, getSchedule, listSchedules, updateSchedule } from './api';
+import { createSchedule, deleteSchedule, listSchedules, updateSchedule } from './api';
 import { scheduleKeys } from './keys';
 
 export function useSchedules(params, { enabled = true } = {}) {
@@ -29,14 +28,6 @@ export function useSchedules(params, { enabled = true } = {}) {
     queryFn: () => listSchedules(params),
     placeholderData: keepPreviousData,
     enabled,
-  });
-}
-
-export function useSchedule(id) {
-  return useQuery({
-    queryKey: scheduleKeys.detail(id),
-    queryFn: () => getSchedule(id),
-    enabled: Boolean(id),
   });
 }
 

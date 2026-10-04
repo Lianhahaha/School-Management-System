@@ -1,6 +1,6 @@
-# School Manager — frontend
+# Skole — frontend
 
-React single-page app for the School Management System. It talks to the REST API in `../backend`
+React single-page app of Skole, the school management system. It talks to the REST API in `../backend`
 (the source of truth for every request and response shape) and signs users in with Firebase
 Authentication. Design reference: `../docs/design/04-frontend.md`.
 
@@ -49,20 +49,22 @@ enums live in `src/constants/ui.js`.
 > If a file mentions a school resource (student, class, grade, ...) it lives in `src/features/<resource>/`.
 > If it knows nothing about any resource it lives in `components`, `hooks`, `utils`, `lib` or `config`.
 
-Features may import another feature's `api.js`, `hooks.js` and `components/`, never its `pages/`. Nothing
-outside `src/app` imports from `src/app`.
+Features may import another feature's `api.js`, `keys.js` (to refresh its cache after a write),
+`hooks.js` and `components/`, never its `pages/`. Nothing outside `src/app` imports from `src/app`.
 
 ```
 src/
-  app/          App, router (every route), providers, route guards
+  app/          App, router (every route), providers, route guards, pages/ (403, 404, route error)
   config/       env validation, Firebase client
   constants/    shared.js (backend copy), ui.js (labels, tones, options, error tables)
   lib/          apiClient, queryClient, queryKeys, formErrors, validators, toastBus
   utils/        date, schedule, roles, names, format, grades, listParams, cx
-  hooks/        useListParams, useDebounce, useDisclosure, useConfirm, useToast, useUnsavedChangesBlocker, ...
+  hooks/        useListParams, useDebounce, useDisclosure, useConfirm, useDiscardConfirm, useToast,
+                useUnsavedChangesBlocker, ...
   components/
     ui/         domain-free building blocks (Button, DataTable, Modal, FormField, ...)
-    layout/     AppShell, Sidebar, Topbar, PageHeader, guards' splash screens, navConfig.js
+    layout/     AppShell, Sidebar, Topbar, PageHeader, PageSkeleton, DetailLoadError, guards' splash
+                screens, DevProjectBanner, navConfig.js
   features/<feature>/
     keys.js     query keys            api.js     one function per endpoint (the only place with URLs)
     hooks.js    useQuery / useMutation  schemas.js zod schemas and form defaults
@@ -105,10 +107,9 @@ the `{ success, data, meta }` envelope.
    }
    ```
 
-3. Replace the stub in `features/<feature>/pages/` (it starts with `// STUB`). The route already exists in
-   `src/app/router.jsx`, under the right guard. A new route is added there, inside the matching
-   `RequireRole` area, with `page(() => import('...'))`; add a sidebar entry in
-   `components/layout/navConfig.js` if it needs one.
+3. Write the page as the default export of a file in `features/<feature>/pages/`, then add its route to
+   `src/app/router.jsx`, inside the matching `RequireRole` area, with `page(() => import('...'))`; add a
+   sidebar entry in `components/layout/navConfig.js` if it needs one.
 
 Error policy (in `lib/queryClient.js`): a first-load query error renders `<ErrorState>` in the page, a
 background refetch error is a toast; a mutation error is a toast except validation errors and mapped
@@ -121,6 +122,12 @@ unique-key conflicts, which the form shows. A mutation whose form renders every 
 filters the endpoint accepts: the backend rejects unknown query parameters.
 
 ```jsx
+// Boolean filters travel as 'true' and 'false'.
+const STATUS_OPTIONS = [
+  { value: 'true', label: 'Active' },
+  { value: 'false', label: 'Retired' },
+];
+
 export default function SubjectsPage() {
   const list = useListParams({ filters: ['isActive'] });
   const { data, isPending, isFetching, error, refetch } = useSubjects(list.apiParams);
@@ -145,7 +152,7 @@ export default function SubjectsPage() {
           aria-label="Status"
           value={list.params.isActive}
           onChange={(e) => list.setFilter('isActive', e.target.value)}
-          options={ACTIVE_FILTER_OPTIONS}
+          options={STATUS_OPTIONS}
           placeholder="All statuses"
           className="sm:w-auto"
         />
@@ -190,11 +197,11 @@ change event to `onChange`, like any input.
 Forms are react-hook-form + a zod schema built from `lib/validators.js`. `FormField` wires the label, hint,
 error and ARIA attributes to the one control it wraps. Server errors go through `applyServerErrors`, which
 puts field errors under the fields and everything else in the root alert. The form lives in a child of
-`Modal`, which mounts its children only while open, so it starts fresh every time.
+`Modal`, which mounts its children only while open, so it starts fresh every time. The modal owns the
+mutation, so its footer's submit button shows the pending state and cannot submit twice.
 
 ```jsx
-function SubjectForm({ onClose }) {
-  const create = useCreateSubject();
+function SubjectForm({ create, onClose }) {
   const {
     register,
     handleSubmit,
@@ -224,6 +231,7 @@ function SubjectForm({ onClose }) {
 }
 
 export function SubjectFormModal({ open, onClose }) {
+  const create = useCreateSubject();
   return (
     <Modal
       open={open}
@@ -234,17 +242,20 @@ export function SubjectFormModal({ open, onClose }) {
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" form="subject-form">
+          <Button type="submit" form="subject-form" isLoading={create.isPending}>
             Create
           </Button>
         </>
       }
     >
-      <SubjectForm onClose={onClose} />
+      <SubjectForm create={create} onClose={onClose} />
     </Modal>
   );
 }
 ```
+
+A modal with more than three fields asks "Discard changes?" before it closes dirty:
+`useDiscardConfirm(onClose)` returns `requestClose` for the modal and `trackDirty` for the form.
 
 Destructive actions confirm first, and `useConfirm` reads top to bottom:
 

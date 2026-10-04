@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router';
+import { useParams, useSearchParams } from 'react-router';
+import { DetailLoadError } from '../../../components/layout/DetailLoadError';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageSkeleton } from '../../../components/layout/PageSkeleton';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
-import { EmptyState } from '../../../components/ui/EmptyState';
-import { ErrorState } from '../../../components/ui/ErrorState';
 import { Tabs } from '../../../components/ui/Tabs';
 import { fullName } from '../../../utils/names';
 import { AttendanceSummaryPanel } from '../../attendance/components/AttendanceSummaryPanel';
@@ -29,21 +28,13 @@ export default function StudentDetailPage() {
 
   if (error) {
     return (
-      <Card padded={false}>
-        {error.status === 404 ? (
-          <EmptyState
-            title="Student not found"
-            description="This student does not exist or was removed."
-            action={
-              <Button as={Link} to={STUDENTS_PATH}>
-                Back to students
-              </Button>
-            }
-          />
-        ) : (
-          <ErrorState title="Couldn't load student" message={error.message} onRetry={refetch} />
-        )}
-      </Card>
+      <DetailLoadError
+        error={error}
+        noun="student"
+        backTo={STUDENTS_PATH}
+        backLabel="Back to students"
+        onRetry={refetch}
+      />
     );
   }
 

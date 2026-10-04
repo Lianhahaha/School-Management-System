@@ -27,17 +27,23 @@ function ClassPickerForm({ student, mutation, onClose, excludeIds }) {
   return (
     <form id={FORM_ID} onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
       <FormRootError error={errors.root?.server} />
-      <FormField label="Class" error={errors.classId?.message} required>
-        <ClassSelect {...register('classId')} excludeIds={excludeIds} />
+      <FormField
+        label="Class"
+        hint="Classes of the current and later academic years."
+        error={errors.classId?.message}
+        required
+      >
+        <ClassSelect {...register('classId')} excludeIds={excludeIds} fromCurrentYear />
       </FormField>
     </form>
   );
 }
 
 /**
- * The modal behind EnrollStudentModal and TransferStudentModal: pick a class for one student and
- * submit. Not used directly by pages. Server errors (already enrolled, same class, ...) show in the
- * form's alert; the success toast comes from the mutation hook.
+ * The modal behind EnrollStudentModal and TransferStudentModal: pick a class of the current or a later
+ * academic year for one student and submit. Not used directly by pages. Server errors (already
+ * enrolled, same class, past academic year, ...) show in the form's alert; the success toast comes
+ * from the mutation hook.
  *
  * @param {object} props
  * @param {{ id: number }|null} props.student the student row; null while closed

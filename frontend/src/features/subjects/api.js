@@ -4,8 +4,6 @@ import { toData, toPage } from '../../lib/envelope';
 /** params: page, limit, search (code, name), sortBy, sortOrder, isActive. */
 export const listSubjects = (params) => api.get('/subjects', { params }).then(toPage);
 
-export const getSubject = (id) => api.get(`/subjects/${id}`).then(toData);
-
 /** Admin only. Body: { code, name, description? }. 409 when the code exists. */
 export const createSubject = (body) => api.post('/subjects', body).then(toData);
 

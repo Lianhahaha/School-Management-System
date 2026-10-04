@@ -1,10 +1,8 @@
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
+import { DetailLoadError } from '../../../components/layout/DetailLoadError';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageSkeleton } from '../../../components/layout/PageSkeleton';
-import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
-import { EmptyState } from '../../../components/ui/EmptyState';
-import { ErrorState } from '../../../components/ui/ErrorState';
 import { Tabs } from '../../../components/ui/Tabs';
 import { fullName } from '../../../utils/names';
 import { UserStatusBadge } from '../../users/components/UserStatusBadge';
@@ -24,21 +22,13 @@ export default function TeacherDetailPage() {
 
   if (error) {
     return (
-      <Card padded={false}>
-        {error.status === 404 ? (
-          <EmptyState
-            title="Teacher not found"
-            description="This teacher does not exist or was removed."
-            action={
-              <Button as={Link} to={TEACHERS_PATH}>
-                Back to teachers
-              </Button>
-            }
-          />
-        ) : (
-          <ErrorState title="Couldn't load teacher" message={error.message} onRetry={refetch} />
-        )}
-      </Card>
+      <DetailLoadError
+        error={error}
+        noun="teacher"
+        backTo={TEACHERS_PATH}
+        backLabel="Back to teachers"
+        onRetry={refetch}
+      />
     );
   }
 

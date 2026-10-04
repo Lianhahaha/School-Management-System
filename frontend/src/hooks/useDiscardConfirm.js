@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react';
-import { useConfirm } from '../../../hooks/useConfirm';
+import { useConfirm } from './useConfirm';
 
 /**
  * "Discard changes?" guard for a modal with a larger form (more than three fields). The form reports

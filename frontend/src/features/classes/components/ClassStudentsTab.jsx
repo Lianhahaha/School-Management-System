@@ -11,6 +11,7 @@ import { SearchInput } from '../../../components/ui/SearchInput';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { useDisclosure } from '../../../hooks/useDisclosure';
 import { useListParams } from '../../../hooks/useListParams';
+import { currentAcademicYear } from '../../../utils/date';
 import { fullName } from '../../../utils/names';
 import { EnrollStudentsModal } from '../../enrollments/components/EnrollStudentsModal';
 import { TransferStudentModal } from '../../enrollments/components/TransferStudentModal';
@@ -19,8 +20,9 @@ import { useStudents } from '../../students/hooks';
 import { UserStatusBadge } from '../../users/components/UserStatusBadge';
 
 /**
- * "Students" tab of a class (admin): the roster with search, "Enroll students" (many at once),
- * Transfer and Withdraw. A student's `currentEnrollment.id` is the active enrollment of this class.
+ * "Students" tab of a class (admin): the roster with search, "Enroll students" (many at once; only
+ * for a class of the current or a later academic year), Transfer and Withdraw. A student's
+ * `currentEnrollment.id` is the active enrollment of this class.
  *
  * @param {object} props
  * @param {{ id: number, name: string }} props.schoolClass
@@ -80,7 +82,9 @@ export function ClassStudentsTab({ schoolClass }) {
     },
   ];
 
-  const enrollButton = (
+  // The API refuses enrollments into a past academic year's class.
+  const canEnroll = schoolClass.academicYear >= currentAcademicYear();
+  const enrollButton = canEnroll && (
     <Button icon={UserPlus} onClick={enrollModal.open}>
       Enroll students
     </Button>
@@ -120,8 +124,12 @@ export function ClassStudentsTab({ schoolClass }) {
           ) : (
             <EmptyState
               icon={Users}
-              title="No students enrolled yet"
-              description="Enroll the students who study in this class."
+              title="No students enrolled"
+              description={
+                canEnroll
+                  ? 'Enroll the students who study in this class.'
+                  : 'This class belongs to a past academic year, so no one can be enrolled in it.'
+              }
               action={enrollButton}
             />
           )

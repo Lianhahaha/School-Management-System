@@ -1,6 +1,7 @@
 import { Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { DetailLoadError } from '../../../components/layout/DetailLoadError';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageSkeleton } from '../../../components/layout/PageSkeleton';
 import { Button } from '../../../components/ui/Button';
@@ -12,7 +13,6 @@ import { ClassFormModal } from '../components/ClassFormModal';
 import { ClassScheduleTab } from '../components/ClassScheduleTab';
 import { ClassStudentsTab } from '../components/ClassStudentsTab';
 import { ClassSubjectsTab } from '../components/ClassSubjectsTab';
-import { DetailLoadError } from '../components/DetailLoadError';
 import { useClass, useDeleteClass } from '../hooks';
 
 const BACK = { backTo: '/admin/classes', backLabel: 'Back to classes' };

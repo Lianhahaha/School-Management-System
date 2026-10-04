@@ -8,24 +8,15 @@
  *                                            sortOrder, studentId ('me'), classSubjectId, classId, status, dateFrom, dateTo
  *   useAttendanceSummary(params, { enabled }) counts and rate; groupBy 'none' gives one object,
  *                                            'student' | 'classSubject' an array of them with a `label`
- *   useUpdateAttendance()         mutate({ id, body }) correct one record: { status?, remarks? }
- *   useDeleteAttendance()         mutate(id) admin only
  *
- * Every write refreshes all attendance queries and the dashboard.
+ * Saving a sheet refreshes all attendance queries and the dashboard.
  */
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { useInvalidate } from '../../hooks/useInvalidate';
 import { useToast } from '../../hooks/useToast';
 import { formatDate } from '../../utils/date';
 import { dashboardKeys } from '../dashboard/keys';
-import {
-  deleteAttendance,
-  getAttendanceSheet,
-  getAttendanceSummary,
-  listAttendance,
-  saveAttendanceSheet,
-  updateAttendance,
-} from './api';
+import { getAttendanceSheet, getAttendanceSummary, listAttendance, saveAttendanceSheet } from './api';
 import { attendanceKeys } from './keys';
 
 export function useAttendanceSheet({ classSubjectId, date }, { enabled = true } = {}) {
@@ -62,30 +53,6 @@ export function useSaveAttendanceSheet() {
       invalidate(attendanceKeys.all, dashboardKeys.all);
       const { className, subjectName } = sheet.classSubject;
       toast.success(`Attendance saved · ${className} · ${subjectName} · ${formatDate(sheet.date)}`);
-    },
-  });
-}
-
-export function useUpdateAttendance() {
-  const invalidate = useInvalidate();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: ({ id, body }) => updateAttendance(id, body),
-    onSuccess: () => {
-      invalidate(attendanceKeys.all, dashboardKeys.all);
-      toast.success('Attendance record updated');
-    },
-  });
-}
-
-export function useDeleteAttendance() {
-  const invalidate = useInvalidate();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: deleteAttendance,
-    onSuccess: () => {
-      invalidate(attendanceKeys.all, dashboardKeys.all);
-      toast.success('Attendance record deleted');
     },
   });
 }

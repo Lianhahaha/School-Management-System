@@ -7,9 +7,11 @@ import { toData, toPage } from '../../lib/envelope';
  */
 export const listEnrollments = (params) => api.get('/enrollments', { params }).then(toPage);
 
-export const getEnrollment = (id) => api.get(`/enrollments/${id}`).then(toData);
-
-/** Admin only. Opens an enrollment. 409 `activeEnrollmentId` when the student is already enrolled. */
+/**
+ * Admin only. Opens an enrollment. 409 `activeEnrollmentId` when the student is already enrolled.
+ * Here, in bulk and in a transfer, a class of a past academic year is refused with
+ * `details.reason` 'past_academic_year'.
+ */
 export const enrollStudent = ({ studentId, classId }) =>
   api.post('/enrollments', { studentId, classId }).then(toData);
 

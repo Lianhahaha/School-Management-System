@@ -13,10 +13,8 @@ import { createSubjectSchema, subjectDefaults, updateSubjectSchema } from '../sc
 const FORM_ID = 'subject-form';
 const FIELDS = ['code', 'name', 'description'];
 
-function SubjectForm({ subject, onClose }) {
+function SubjectForm({ subject, mutation, onClose }) {
   const isEdit = Boolean(subject);
-  const createSubject = useCreateSubject();
-  const updateSubject = useUpdateSubject();
   const {
     register,
     handleSubmit,
@@ -33,9 +31,9 @@ function SubjectForm({ subject, onClose }) {
     if (isEdit) {
       const body = changedFields(values, dirtyFields);
       if (Object.keys(body).length === 0) return onClose();
-      request = updateSubject.mutateAsync({ id: subject.id, body });
+      request = mutation.mutateAsync({ id: subject.id, body });
     } else {
-      request = createSubject.mutateAsync(values);
+      request = mutation.mutateAsync(values);
     }
     return request
       .then(onClose)
@@ -79,7 +77,10 @@ function SubjectForm({ subject, onClose }) {
  * @param {object} [props.subject] the subject to edit
  */
 export function SubjectFormModal({ open, onClose, subject }) {
+  const createSubject = useCreateSubject();
+  const updateSubject = useUpdateSubject();
   const isEdit = Boolean(subject);
+  const mutation = isEdit ? updateSubject : createSubject;
   return (
     <Modal
       open={open}
@@ -90,13 +91,13 @@ export function SubjectFormModal({ open, onClose, subject }) {
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" form={FORM_ID}>
+          <Button type="submit" form={FORM_ID} isLoading={mutation.isPending}>
             {isEdit ? 'Save changes' : 'Create subject'}
           </Button>
         </>
       }
     >
-      <SubjectForm subject={subject} onClose={onClose} />
+      <SubjectForm subject={subject} mutation={mutation} onClose={onClose} />
     </Modal>
   );
 }
