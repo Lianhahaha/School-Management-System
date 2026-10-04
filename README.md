@@ -2,7 +2,7 @@
 
 Skole is a web-based school management system: student, teacher and administrator accounts, enrollment, classes and subjects, teacher assignment, attendance, grades, timetables, announcements and a separate dashboard for each role. Identity is handled by **Firebase Authentication**, all data lives in **MySQL**, and everything is exposed through a documented **REST API**.
 
-**Live demo:** <https://school-management-system-b0a2a.web.app> (sign in with a [demo account](#demo-accounts)). It runs on free tiers: the API sleeps after 15 idle minutes, so the first request after a pause can take about a minute, and the free MySQL service can be switched off after long inactivity. The local setup below needs none of that.
+**Live demo:** <https://skoleph.web.app> (sign in with a [demo account](#demo-accounts)). It runs on free tiers: the API sleeps after 15 idle minutes, so the first request after a pause can take about a minute, and the free MySQL service can be switched off after long inactivity. The local setup below needs none of that.
 
 | Layer | Stack |
 |---|---|
@@ -191,5 +191,5 @@ Not required to run or review the project: everything above works on one machine
    cd ..
    npx firebase-tools deploy --only hosting
    ```
-   The site is served at `https://<project-id>.web.app`; Firebase Authentication already trusts that domain.
+   The site is served at `https://<site-id>.web.app`, where the site id is the `site` in `firebase.json` (`skoleph` here; create another with `npx firebase-tools hosting:sites:create <name>`). Firebase Authentication trusts it automatically, but add the new address to the API's `CORS_ORIGINS` on Render.
 
