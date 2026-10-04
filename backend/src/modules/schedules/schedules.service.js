@@ -1,4 +1,4 @@
-import { withTransaction } from '../../config/db.js';
+import { withLockedTransaction } from '../../config/db.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import { classSubjectRef, personRef } from '../../utils/shapes.js';
@@ -20,53 +20,61 @@ const toScheduleShape = (row) => ({
   updatedAt: row.updatedAt,
 });
 
+/** A `details.conflicts` entry: the existing slot that clashes, and the resource (`type`) it shares. */
+const toConflict = (type, row) => ({
+  type,
+  scheduleId: row.scheduleId,
+  classSubjectId: row.classSubjectId,
+  className: row.className,
+  subjectName: row.subjectName,
+  dayOfWeek: row.dayOfWeek,
+  startTime: row.startTime,
+  endTime: row.endTime,
+  room: row.room,
+});
+
 /** One entry per (overlapping slot, shared resource): the class, the teacher or the room. */
-function toConflicts(rows) {
-  const conflicts = [];
-  for (const row of rows) {
-    for (const [type, shared] of [
+const toConflicts = (rows) =>
+  rows.flatMap((row) =>
+    [
       ['class', row.sameClass],
       ['teacher', row.sameTeacher],
       ['room', row.sameRoom],
-    ]) {
-      if (!shared) continue;
-      conflicts.push({
-        type,
-        scheduleId: row.scheduleId,
-        classSubjectId: row.classSubjectId,
-        className: row.className,
-        subjectName: row.subjectName,
-        dayOfWeek: row.dayOfWeek,
-        startTime: row.startTime,
-        endTime: row.endTime,
-        room: row.room,
-      });
-    }
-  }
-  return conflicts;
-}
-
-const TIMETABLE_LOCK = 'school_timetable';
-const LOCK_WAIT_SECONDS = 5;
+    ]
+      .filter(([, shared]) => shared)
+      .map(([type]) => toConflict(type, row)),
+  );
 
 /**
- * Runs `write(conn)` after proving the slot has no conflicts. Check and write share one transaction and
- * a named lock, so two concurrent edits cannot both pass the check.
+ * Runs `work(conn)` in a transaction while holding the named timetable lock, so two timetable edits cannot
+ * both pass their conflict checks. The lock is released only after the transaction commits or rolls back,
+ * so a second writer always sees the first writer's committed slot.
  */
+function withTimetableLock(work) {
+  const acquire = async (conn) => {
+    if (!(await repo.acquireTimetableLock(conn))) throw ApiError.unavailable('timetable');
+  };
+  return withLockedTransaction(acquire, repo.releaseTimetableLock, work);
+}
+
+/** Runs `write(conn)` once the slot is proven free of class, teacher and room clashes. */
 function writeIfFree(slot, excludeId, write) {
-  return withTransaction(async (conn) => {
-    const [[{ acquired }]] = await conn.query('SELECT GET_LOCK(?, ?) AS acquired', [
-      TIMETABLE_LOCK,
-      LOCK_WAIT_SECONDS,
-    ]);
-    if (acquired !== 1) throw ApiError.unavailable('timetable');
-    try {
-      const conflicts = toConflicts(await repo.findOverlaps({ ...slot, excludeId }, conn));
-      if (conflicts.length) throw ApiError.scheduleConflict(conflicts);
-      return await write(conn);
-    } finally {
-      await conn.query('SELECT RELEASE_LOCK(?)', [TIMETABLE_LOCK]);
-    }
+  return withTimetableLock(async (conn) => {
+    const conflicts = toConflicts(await repo.findOverlaps({ ...slot, excludeId }, conn));
+    if (conflicts.length) throw ApiError.scheduleConflict(conflicts);
+    return write(conn);
+  });
+}
+
+/**
+ * Runs `write(conn)` once every slot of class-subject `classSubjectId` is proven free of clashes with the other
+ * slots of `teacherId` in the same academic year (the check behind a teacher reassignment).
+ */
+export function writeIfTeacherFree(classSubjectId, teacherId, write) {
+  return withTimetableLock(async (conn) => {
+    const overlaps = await repo.findTeacherOverlaps(classSubjectId, teacherId, conn);
+    if (overlaps.length) throw ApiError.scheduleConflict(overlaps.map((row) => toConflict('teacher', row)));
+    return write(conn);
   });
 }
 
@@ -88,7 +96,7 @@ export async function listSchedules(user, listQuery) {
 }
 
 /** Unscoped slots matching `filters` (classId, teacherId, dayOfWeek, academicYear); dashboards only. */
-export async function findSlots(filters) {
+export async function findSlotsUnscoped(filters) {
   const { rows } = await repo.listSchedules({ page: 1, limit: 100, ...filters }, null);
   return rows.map(toScheduleShape);
 }

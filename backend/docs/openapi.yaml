@@ -38,16 +38,16 @@ info:
     | Code | HTTP | Meaning |
     |------|------|---------|
     | `VALIDATION_ERROR` | 400 | Malformed JSON, body over 1 MB, invalid parameters or body (`details.issues` lists `{ path, message }`), a referenced record that does not exist (`details.field`), or a business rule on the input (`details.reason`, for example `not_enrolled`). |
-    | `UNAUTHORIZED` | 401 | Missing or invalid bearer token. `details.reason` is `missing_token`, `invalid_token` or the Firebase code, for example `auth/id-token-expired`. |
+    | `UNAUTHORIZED` | 401 | Missing, malformed, expired or revoked bearer token. `details.reason` is `missing_token` or the Firebase code, for example `auth/id-token-expired`. Only this code means the session is over. |
     | `FORBIDDEN` | 403 | The role, ownership or visibility rules forbid the call. `details.reason` is a stable identifier such as `role_not_allowed` or `not_class_subject_owner`. |
     | `USER_NOT_REGISTERED` | 403 | The token is valid but no school account is linked to it. `details.firebaseUid`. |
     | `ACCOUNT_DISABLED` | 403 | The account has been deactivated. |
-    | `NOT_FOUND` | 404 | The record does not exist or is not visible to the caller (`details.resource`, `details.id`), or the route is unknown. |
+    | `NOT_FOUND` | 404 | The record does not exist or is not visible to the caller (`details.resource`, `details.id`), or the route is unknown. An unknown route is a 404 with or without a token; only below a secured resource (for example `/students/...`) is the token checked first. `POST /auth/register` answers 404 with `details.reason = registration_disabled` when self-registration is switched off. |
     | `CONFLICT` | 409 | Duplicate value (`details.key`, as `table.key_name`), record still in use (`details.reason` is `in_use`, `details.constraint`), or a business conflict identified by `details.reason`. |
     | `SCHEDULE_CONFLICT` | 409 | A timetable slot overlaps another slot of the same class, teacher or room. `details.conflicts` lists every overlap. |
     | `RATE_LIMITED` | 429 | Too many registrations from one IP address. `details.retryAfterSeconds`, also sent as `Retry-After`. |
     | `INTERNAL_ERROR` | 500 | Unexpected failure. |
-    | `SERVICE_UNAVAILABLE` | 503 | The database is unreachable. |
+    | `SERVICE_UNAVAILABLE` | 503 | A dependency cannot serve the request right now; retry later. `details.component` names it: `db` (database unreachable), `auth` (the token could not be checked because Firebase's signing keys could not be fetched; the session is still valid) or `timetable` (timetable lock busy). |
 
     ## Lists, filtering and scoping
 
@@ -123,7 +123,9 @@ paths:
         (`STU-<admission year>-NNNN`) and `admissionDate` is today. No token is returned: sign in with the
         Firebase client SDK afterwards.
 
-        Disabled with `ALLOW_PUBLIC_REGISTRATION=false` (404). Limited to 5 requests per 15 minutes per IP address.
+        Disabled with `ALLOW_PUBLIC_REGISTRATION=false`: 404 with `details.reason = registration_disabled`.
+        Limited to 30 successful registrations per 15 minutes per IP address; rejected attempts (400, 409) do not
+        count, so one class registering from a school network is not locked out by typos.
       security: []
       requestBody:
         required: true
@@ -196,8 +198,8 @@ paths:
       description: |
         Roles: admin.
 
-        Accounts of every role without the embedded profile. Search matches first name, last name and email.
-        Default order: last name, then first name.
+        Accounts of every role without the embedded profile. Search matches first name, last name, full name
+        (`Liam Cruz`) and email. Default order: last name, then first name.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Limit'
@@ -230,7 +232,8 @@ paths:
         Creates a Firebase user, the account and the role profile, in one step, for any role. The `profile`
         object is optional for `student` and `teacher` and not allowed for `admin`. Student and employee
         numbers are generated when omitted; `admissionDate` and `hireDate` default to today.
-        If a Firebase user with the same email already exists it is adopted and its password is reset.
+        A Firebase user with the same email but no school account is deleted and replaced by a new one, so
+        whoever created it (anyone can, with the public web key) cannot sign in to the new account.
         Returns the same shape as `GET /auth/me`.
       requestBody:
         required: true
@@ -303,7 +306,8 @@ paths:
       description: |
         Roles: admin.
 
-        Changes name and phone. Email and role are immutable: deactivate the account and create a new one.
+        Changes name and phone. Email and role are immutable: an account created by mistake is removed with
+        `DELETE /users/{id}` while it has no school records, and created again.
       parameters:
         - $ref: '#/components/parameters/IdPath'
       requestBody:
@@ -320,6 +324,30 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [users]
+      operationId: deleteUser
+      summary: Delete an unused account
+      description: |
+        Roles: admin (not on their own account).
+
+        Permanently removes an account created by mistake: the role profile and the account in one
+        transaction, then the Firebase user. The email becomes free again. An account that anything refers
+        to (enrollments, attendance, grades, class-subject assignments, homeroom classes, announcements it
+        wrote, attendance or grades it entered) is kept; deactivate it instead.
+
+        Refused with `403` (`details.reason = self`) when the target is the caller, with `409`
+        (`details.reason = has_history`) when the account has school records, and with `409`
+        (`details.reason = last_admin`) when it would leave no active administrator.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /users/{id}/status:
     patch:
       tags: [users]
@@ -332,9 +360,11 @@ paths:
         revokes its refresh tokens, so the user is locked out immediately. Deactivating a student withdraws
         their active enrollment. The call is idempotent.
 
-        Refused with `403` (`details.reason = self_status_change`) when the target is the caller, and with
+        Refused with `403` (`details.reason = self_status_change`) when the target is the caller, with
         `409` (`details.reason = teacher_has_assignments`) when a teacher still teaches a class-subject or is
-        homeroom teacher in the current academic year.
+        homeroom teacher in the current academic year, and with `409` (`details.reason = last_admin`) when
+        deactivating an administrator would leave none active (also when two admins deactivate each other
+        at the same moment).
       parameters:
         - $ref: '#/components/parameters/IdPath'
       requestBody:
@@ -360,9 +390,10 @@ paths:
       description: |
         Roles: admin, teacher (only students with an active enrollment in a class they can see).
 
-        Directory, class roster and enrollment picker. Search matches first name, last name, student number
-        and email. Default order: last name, then first name. `hasActiveEnrollment=false` lists students
-        without a class (admin). A `classId` the teacher cannot see is a 403.
+        Directory, class roster and enrollment picker. Search matches first name, last name, full name
+        (`Liam Cruz`), student number and email. Default order: last name, then first name.
+        `hasActiveEnrollment=false` lists students without a class (admin). A `classId` the teacher cannot
+        see is a 403.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Limit'
@@ -416,8 +447,8 @@ paths:
       description: |
         Roles: admin.
 
-        Edits account and profile fields in one call. A student number that is already taken is a
-        409 (`details.key = students.uq_students_number`).
+        Edits account and profile fields in one call. `dateOfBirth` must be in the past, as at registration.
+        A student number that is already taken is a 409 (`details.key = students.uq_students_number`).
       parameters:
         - $ref: '#/components/parameters/IdPath'
       requestBody:
@@ -444,8 +475,8 @@ paths:
       description: |
         Roles: admin.
 
-        Staff list for assignment and homeroom pickers. Search matches first name, last name, employee
-        number and department. Default order: last name, then first name.
+        Staff list for assignment and homeroom pickers. Search matches first name, last name, full name
+        (`Liam Cruz`), employee number and department. Default order: last name, then first name.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Limit'
@@ -706,7 +737,10 @@ paths:
       description: |
         Roles: admin.
 
-        `homeroomTeacherId` may be set to `null` to remove the homeroom teacher.
+        `homeroomTeacherId` may be set to `null` to remove the homeroom teacher. `academicYear` and `gradeLevel`
+        are fixed once the class has enrollments (current or past) or teacher assignments: changing either is a
+        409 (`details.reason = class_in_use`, `details.fields` lists the changed fields). Sending the current
+        value is not a change.
       parameters:
         - $ref: '#/components/parameters/IdPath'
       requestBody:
@@ -825,7 +859,10 @@ paths:
         Roles: admin.
 
         Only the teacher can change. To change the class or the subject, delete the assignment and create a new
-        one; that keeps attendance and grade history honest.
+        one; that keeps attendance and grade history honest. The new teacher takes over the timetable slots, so
+        a slot that overlaps another lesson of theirs in the same academic year is a 409 `SCHEDULE_CONFLICT`
+        listing those lessons in `details.conflicts` (all of type `teacher`), checked under the same lock as
+        timetable edits.
       parameters:
         - $ref: '#/components/parameters/IdPath'
       requestBody:
@@ -842,6 +879,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/ScheduleConflict' }
     delete:
       tags: [class-subjects]
       operationId: deleteClassSubject
@@ -899,11 +937,13 @@ paths:
       description: |
         Roles: admin.
 
-        Creates an active enrollment dated today. A closed enrollment of the same student and class is
-        re-opened instead of duplicated. A student who is already active in a class is a 409
-        (`details.reason = already_enrolled`, with `activeEnrollmentId` and `classId`); use
+        Creates an active enrollment dated today. Every enrollment is a new record, also a return to a class the
+        student left, so earlier periods in that class stay on record. A student who is already active in a
+        class is a 409 (`details.reason = already_enrolled`, with `activeEnrollmentId` and `classId`); use
         `POST /enrollments/transfer` to move them. Unknown or deactivated students are a 400
-        (`details.reason = student_not_enrollable`).
+        (`details.reason = student_not_enrollable`). The class must exist and belong to the current or a
+        future academic year: 400 with `details.field = classId` and `details.reason` `invalid_reference` or
+        `past_academic_year` (plus `details.academicYear`).
       requestBody:
         required: true
         content:
@@ -929,7 +969,8 @@ paths:
 
         All or nothing: one transaction enrolls up to 200 students. If any student is unknown, deactivated or
         already active in a class nothing is written; the 409 lists them in `details.alreadyActive`
-        (`studentId`, `enrollmentId`, `classId`), the 400 in `details.invalidStudentIds`.
+        (`studentId`, `enrollmentId`, `classId`), the 400 in `details.invalidStudentIds`. The class follows the
+        rules of `POST /enrollments` (400 `invalid_reference` or `past_academic_year`).
       requestBody:
         required: true
         content:
@@ -953,10 +994,11 @@ paths:
       description: |
         Roles: admin.
 
-        One transaction closes the active enrollment as `transferred` (left today) and opens an enrollment in
-        the new class, or re-opens an existing closed one. Returns the new enrollment.
-        409 with `details.reason = no_active_enrollment` when the student is not enrolled (use
-        `POST /enrollments`), or `same_class` when the target is the current class.
+        One transaction closes the active enrollment as `transferred` (left today) and opens a new enrollment in
+        the target class from today, so on that date the student belongs to the target class. Returns the new
+        enrollment. 409 with `details.reason = no_active_enrollment` when the student is not enrolled (use
+        `POST /enrollments`), or `same_class` when the target is the current class. The target class follows
+        the rules of `POST /enrollments` (400 `invalid_reference` or `past_academic_year`).
       requestBody:
         required: true
         content:
@@ -1215,8 +1257,10 @@ paths:
       description: |
         Roles: admin, teacher (class-subjects they can see).
 
-        The active roster of the class-subject's class with the marks of one date merged in. Students who are
-        not marked yet have `attendanceId`, `status` and `remarks` set to `null`.
+        The roster of the class-subject's class on that date with its marks merged in: students enrolled on or
+        before the date who had not left it yet (a student who changed class on the date belongs to the new
+        class), plus anyone already marked on that date. For today this is the active roster. Students who
+        are not marked yet have `attendanceId`, `status` and `remarks` set to `null`.
       parameters:
         - name: classSubjectId
           in: query
@@ -1244,9 +1288,11 @@ paths:
         Roles: admin, teacher (only the teacher assigned to the class-subject).
 
         Idempotent bulk upsert in one transaction: students in `records` are inserted or updated, students
-        left out keep their marks, so a partial body never erases anything. Every student must be actively
-        enrolled in the class (400, `details.reason = not_enrolled`, `details.invalidStudentIds`) and the date
-        may not be in the future (400, `details.reason = future_date`). The caller becomes `markedBy`.
+        left out keep their marks, so a partial body never erases anything. Every student must be on the sheet
+        of that date (see `GET /attendance/sheet`; 400, `details.reason = not_enrolled`,
+        `details.invalidStudentIds`). The date may not be in the future (400, `details.reason = future_date`)
+        and must fall within the class's academic year (400, `details.reason = outside_academic_year`, with
+        `details.academicYear`). The caller becomes `markedBy`.
         Returns the refreshed sheet. A teacher who is not assigned to the lesson gets
         `403` with `details.reason = not_class_subject_owner`.
       requestBody:
@@ -1322,8 +1368,9 @@ paths:
       description: |
         Roles: any authenticated user (teachers: class-subjects they can see; students: their own class only).
 
-        Quizzes, tests and exams with `gradedCount` and `enrolledCount`. Search matches the title. Default
-        order: newest assessment date first. A `classId` or `classSubjectId` outside the caller's scope is a 403.
+        Quizzes, tests and exams with `gradedCount` and `enrolledCount`, both counted on the assessment's roster
+        (the class on `assessedOn`, plus anyone already graded). Search matches the title. Default order: newest
+        assessment date first. A `classId` or `classSubjectId` outside the caller's scope is a 403.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Limit'
@@ -1522,7 +1569,8 @@ paths:
       description: |
         Roles: admin, teacher (class-subjects they can see).
 
-        The active roster of the class with each student's score; students who are not graded yet have
+        The assessment's roster with each student's score: the students in the class on `assessedOn` (same rule
+        as `GET /attendance/sheet`), plus anyone already graded. Students who are not graded yet have
         `gradeId`, `score`, `percentage` and `remarks` set to `null`.
       parameters:
         - $ref: '#/components/parameters/IdPath'
@@ -1542,7 +1590,7 @@ paths:
         Idempotent bulk upsert in one transaction: students in `grades` are inserted or updated, students left
         out keep their scores. The whole batch is rejected, and nothing is written, when a score exceeds the
         assessment's `maxScore` (400, `details.reason = score_above_max` with `studentId`, `score` and
-        `maxScore`) or a student is not actively enrolled in the class (400, `details.reason = not_enrolled`,
+        `maxScore`) or a student is not on the assessment's roster (400, `details.reason = not_enrolled`,
         `details.invalidStudentIds`). The caller becomes `gradedBy`. Returns the refreshed roster.
       parameters:
         - $ref: '#/components/parameters/IdPath'
@@ -2510,7 +2558,7 @@ components:
           $ref: '#/components/schemas/DateYmd'
         records:
           type: array
-          description: The active roster of the class, ordered by last name, then first name.
+          description: The class roster on `date` plus students already marked on it, ordered by last name, then first name.
           items:
             $ref: '#/components/schemas/AttendanceSheetRow'
     AttendanceSummary:
@@ -2590,11 +2638,11 @@ components:
           $ref: '#/components/schemas/DateYmd'
         gradedCount:
           type: integer
-          description: Students who have a grade.
+          description: Students on the roster who have a grade (every graded student is on the roster).
           example: 20
         enrolledCount:
           type: integer
-          description: Students with an active enrollment in the class.
+          description: Students on the roster - in the class on `assessedOn`, plus anyone already graded.
           example: 32
         createdAt:
           $ref: '#/components/schemas/Timestamp'
@@ -2724,7 +2772,7 @@ components:
           $ref: '#/components/schemas/AssessmentRef'
         records:
           type: array
-          description: The active roster of the class, ordered by last name, then first name.
+          description: The class roster on `assessedOn` plus students already graded, ordered by last name, then first name.
           items:
             $ref: '#/components/schemas/GradeRosterRow'
     GradeSummaryRow:
@@ -2738,6 +2786,14 @@ components:
         subjectName:
           type: string
           description: Present with `groupBy=classSubject`.
+        className:
+          type: string
+          description: Present with `groupBy=classSubject`.
+          example: Grade 7 - A
+        academicYear:
+          type: string
+          description: Present with `groupBy=classSubject`; rows are ordered newest year first.
+          example: 2026-2027
         label:
           type: string
           description: Student name, or class and subject name.
@@ -2999,7 +3055,9 @@ components:
               type: integer
         pendingGrading:
           type: array
-          description: Assessments with fewer graded than enrolled students, at most 10.
+          description: >-
+            Assessments dated up to today with fewer graded than enrolled students, both counted on the assessment's
+            roster (see `Assessment.enrolledCount`), newest first, at most 10.
           items:
             type: object
             required: [assessmentId, title, className, subjectName, assessedOn, graded, enrolled]
@@ -3699,7 +3757,7 @@ components:
                 success: false
                 error:
                   code: VALIDATION_ERROR
-                  message: students are not enrolled in this class
+                  message: students were not enrolled in this class on this date
                   details:
                     reason: not_enrolled
                     invalidStudentIds: [99]
@@ -3757,21 +3815,37 @@ components:
                   details:
                     firebaseUid: f1R3b4s3Uid
     NotFound:
-      description: The record does not exist or is not visible to the caller (`NOT_FOUND`).
+      description: >-
+        The record does not exist or is not visible to the caller, or the route is unknown (`NOT_FOUND`);
+        `details.reason` is `registration_disabled` when self-registration is switched off.
       headers:
         X-Request-Id: { $ref: '#/components/headers/XRequestId' }
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
-          example:
-            success: false
-            error:
-              code: NOT_FOUND
-              message: student not found
-              details:
-                resource: student
-                id: 999
+          examples:
+            recordNotFound:
+              summary: Record not found
+              value:
+                success: false
+                error:
+                  code: NOT_FOUND
+                  message: student not found
+                  details:
+                    resource: student
+                    id: 999
+            registrationDisabled:
+              summary: Self-registration switched off
+              value:
+                success: false
+                error:
+                  code: NOT_FOUND
+                  message: route not found
+                  details:
+                    resource: route
+                    id: POST /auth/register
+                    reason: registration_disabled
     Conflict:
       description: >-
         Duplicate value, record still in use, or a business conflict (`CONFLICT`); `details.key`,
@@ -3867,20 +3941,34 @@ components:
               details:
                 retryAfterSeconds: 540
     ServiceUnavailable:
-      description: The database is unreachable (`SERVICE_UNAVAILABLE`).
+      description: >-
+        A dependency cannot serve the request right now (`SERVICE_UNAVAILABLE`); `details.component` is `db`,
+        `auth` (the token could not be checked; the session is still valid) or `timetable`. Retry later.
       headers:
         X-Request-Id: { $ref: '#/components/headers/XRequestId' }
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
-          example:
-            success: false
-            error:
-              code: SERVICE_UNAVAILABLE
-              message: db unavailable
-              details:
-                component: db
+          examples:
+            database:
+              summary: Database unreachable
+              value:
+                success: false
+                error:
+                  code: SERVICE_UNAVAILABLE
+                  message: db unavailable
+                  details:
+                    component: db
+            tokenCheck:
+              summary: Token could not be verified
+              value:
+                success: false
+                error:
+                  code: SERVICE_UNAVAILABLE
+                  message: auth unavailable
+                  details:
+                    component: auth
     # --- Success: each response carries the success envelope and the X-Request-Id header ---
     Deleted:
       description: The record was deleted.

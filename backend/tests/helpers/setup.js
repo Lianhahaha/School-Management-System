@@ -8,4 +8,3 @@ process.env.LOG_LEVEL = 'error';
 process.env.DOCS_ENABLED = 'true';
 process.env.ALLOW_PUBLIC_REGISTRATION = 'true';
 process.env.APP_TIMEZONE = 'UTC';
-process.env.ACADEMIC_YEAR_START_MONTH = '8';

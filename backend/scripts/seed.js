@@ -13,6 +13,7 @@ import mysql from 'mysql2/promise';
 import { closePool, query } from '../src/config/db.js';
 import { env } from '../src/config/env.js';
 import { assertFirebaseReady, firebase } from '../src/config/firebase.js';
+import { ACADEMIC_YEAR_START_MONTH } from '../src/constants/shared.js';
 import { createUserAccount } from '../src/modules/users/users.service.js';
 import * as usersRepository from '../src/modules/users/users.repository.js';
 import { todayYmd } from '../src/utils/dates.js';
@@ -134,7 +135,7 @@ async function seedSchoolData() {
         todayYmd(),
         schoolClockTime(),
         new Date().toISOString().slice(0, 19).replace('T', ' '),
-        env.ACADEMIC_YEAR_START_MONTH,
+        ACADEMIC_YEAR_START_MONTH,
       ],
     );
     await conn.query(sql);

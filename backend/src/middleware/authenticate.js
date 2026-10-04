@@ -3,9 +3,11 @@
  *
  *   1. missing / malformed header            -> 401 UNAUTHORIZED
  *   2. token rejected by Firebase            -> 401 UNAUTHORIZED (details.reason = Firebase code)
- *   3. no users row for the Firebase uid     -> 403 USER_NOT_REGISTERED
- *   4. users.is_active = 0                   -> 403 ACCOUNT_DISABLED
- *   5. req.user = { id, firebaseUid, email, firstName, lastName, role, studentId, teacherId, activeClassId }
+ *   3. token could not be checked            -> 503 SERVICE_UNAVAILABLE (details.component = auth),
+ *      e.g. Google's signing keys cannot be downloaded; the session stays valid
+ *   4. no users row for the Firebase uid     -> 403 USER_NOT_REGISTERED
+ *   5. users.is_active = 0                   -> 403 ACCOUNT_DISABLED
+ *   6. req.user = { id, firebaseUid, email, firstName, lastName, role, studentId, teacherId, activeClassId }
  *
  * The MySQL row is loaded on every request on purpose: a deactivated user's
  * still-valid token must stop working immediately.
@@ -13,7 +15,7 @@
 import { firebase } from '../config/firebase.js';
 import { findAuthContextByFirebaseUid } from '../modules/users/users.repository.js';
 import { ApiError } from '../utils/ApiError.js';
-import { firebaseErrorMap, isFirebaseError } from '../utils/firebaseErrorMap.js';
+import { tokenVerificationError } from '../utils/firebaseErrorMap.js';
 
 export async function authenticate(req, _res, next) {
   const header = req.get('Authorization') ?? '';
@@ -25,11 +27,7 @@ export async function authenticate(req, _res, next) {
   try {
     decoded = await firebase.verifyIdToken(token);
   } catch (error) {
-    return next(
-      isFirebaseError(error)
-        ? firebaseErrorMap(error)
-        : ApiError.unauthorized('invalid token', 'invalid_token'),
-    );
+    return next(tokenVerificationError(error));
   }
 
   const user = await findAuthContextByFirebaseUid(decoded.uid);

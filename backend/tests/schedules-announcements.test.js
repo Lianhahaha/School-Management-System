@@ -146,9 +146,10 @@ describe('schedules', () => {
       port: env.DB_PORT,
       user: env.DB_USER,
       password: env.DB_PASSWORD,
+      database: env.DB_NAME,
     });
     try {
-      await holder.query("SELECT GET_LOCK('school_timetable', 0)");
+      await holder.query("SELECT GET_LOCK(CONCAT(DATABASE(), ':timetable'), 0)");
       const res = await create(slot(school.csA.id, { dayOfWeek: 7, startTime: '14:00', endTime: '15:00' }));
       assert.equal(res.status, 503);
       assert.equal(res.body.error.code, 'SERVICE_UNAVAILABLE');

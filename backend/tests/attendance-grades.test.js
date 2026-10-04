@@ -1,7 +1,8 @@
 import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
-import { addDaysYmd, todayYmd } from '../src/utils/dates.js';
+import { run } from '../src/config/db.js';
+import { academicYearOf, addDaysYmd, todayYmd } from '../src/utils/dates.js';
 import { api, as, buildSchool, closeWorld, resetWorld } from './helpers/harness.js';
 
 after(closeWorld);
@@ -9,6 +10,8 @@ after(closeWorld);
 const today = todayYmd();
 const yesterday = addDaysYmd(today, -1);
 const tomorrow = addDaysYmd(today, 1);
+// On the first day of an academic year no earlier date belongs to it, so the past-date case skips.
+const firstDayOfYear = academicYearOf(yesterday) !== academicYearOf(today);
 
 describe('attendance', () => {
   let school;
@@ -18,6 +21,8 @@ describe('attendance', () => {
   before(async () => {
     await resetWorld();
     school = await buildSchool();
+    // The API enrolls as of today; yesterday's sheet needs students who were already in the class.
+    await run('UPDATE enrollments SET enrolled_on = ?', [addDaysYmd(today, -7)]);
   });
 
   it('lets the assigned teacher mark a sheet and returns the whole roster', async () => {
@@ -114,40 +119,51 @@ describe('attendance', () => {
     assert.equal((await api.get(url).set(as(school.admin))).status, 200);
   });
 
-  it('summarises with rate = (present + late) / total, overall and per student', async () => {
-    await putSheet(
-      school.owner,
-      sheet(yesterday, [
-        { studentId: school.s1.studentId, status: 'absent' },
-        { studentId: school.s2.studentId, status: 'excused' },
-      ]),
-    );
-    const overall = await api
-      .get(`/api/v1/attendance/summary?classSubjectId=${school.csA.id}`)
-      .set(as(school.owner));
-    assert.equal(overall.status, 200);
-    // s1: late, absent; s2: present, excused
-    assert.deepEqual(overall.body.data, { total: 4, present: 1, absent: 1, late: 1, excused: 1, rate: 0.5 });
+  it(
+    'summarises with rate = (present + late) / total, overall and per student',
+    { skip: firstDayOfYear },
+    async () => {
+      await putSheet(
+        school.owner,
+        sheet(yesterday, [
+          { studentId: school.s1.studentId, status: 'absent' },
+          { studentId: school.s2.studentId, status: 'excused' },
+        ]),
+      );
+      const overall = await api
+        .get(`/api/v1/attendance/summary?classSubjectId=${school.csA.id}`)
+        .set(as(school.owner));
+      assert.equal(overall.status, 200);
+      // s1: late, absent; s2: present, excused
+      assert.deepEqual(overall.body.data, {
+        total: 4,
+        present: 1,
+        absent: 1,
+        late: 1,
+        excused: 1,
+        rate: 0.5,
+      });
 
-    const perStudent = await api
-      .get(`/api/v1/attendance/summary?classId=${school.classA.id}&groupBy=student`)
-      .set(as(school.admin));
-    assert.equal(perStudent.body.data.length, 2);
-    const s1 = perStudent.body.data.find((r) => r.studentId === school.s1.studentId);
-    assert.equal(s1.rate, 0.5);
+      const perStudent = await api
+        .get(`/api/v1/attendance/summary?classId=${school.classA.id}&groupBy=student`)
+        .set(as(school.admin));
+      assert.equal(perStudent.body.data.length, 2);
+      const s1 = perStudent.body.data.find((r) => r.studentId === school.s1.studentId);
+      assert.equal(s1.rate, 0.5);
 
-    const ranged = await api
-      .get(`/api/v1/attendance/summary?classSubjectId=${school.csA.id}&dateFrom=${today}&dateTo=${today}`)
-      .set(as(school.admin));
-    assert.equal(ranged.body.data.total, 2);
-    assert.equal(ranged.body.data.rate, 1);
+      const ranged = await api
+        .get(`/api/v1/attendance/summary?classSubjectId=${school.csA.id}&dateFrom=${today}&dateTo=${today}`)
+        .set(as(school.admin));
+      assert.equal(ranged.body.data.total, 2);
+      assert.equal(ranged.body.data.rate, 1);
 
-    const none = await api
-      .get(`/api/v1/attendance/summary?dateFrom=2000-01-01&dateTo=2000-01-02`)
-      .set(as(school.admin));
-    assert.equal(none.body.data.total, 0);
-    assert.equal(none.body.data.rate, null);
-  });
+      const none = await api
+        .get(`/api/v1/attendance/summary?dateFrom=2000-01-01&dateTo=2000-01-02`)
+        .set(as(school.admin));
+      assert.equal(none.body.data.total, 0);
+      assert.equal(none.body.data.rate, null);
+    },
+  );
 
   it('rejects the unsupported search parameter instead of ignoring it', async () => {
     for (const path of ['attendance', 'grades', 'enrollments']) {

@@ -29,7 +29,13 @@ export async function findTeacherByUserId(userId) {
 
 export function listTeachers(listQuery) {
   const where = new WhereBuilder()
-    .addSearch(listQuery.search, ['u.first_name', 'u.last_name', 't.employee_number', 't.department'])
+    .addSearch(listQuery.search, [
+      'u.first_name',
+      'u.last_name',
+      "CONCAT(u.first_name, ' ', u.last_name)",
+      't.employee_number',
+      't.department',
+    ])
     .addIf(listQuery.department, 't.department = ?')
     .addIf(listQuery.isActive, 'u.is_active = ?');
   return selectPage({
@@ -77,6 +83,10 @@ export async function updateTeacher(id, fields, conn) {
     [...set.params, id],
     conn,
   );
+}
+
+export async function deleteTeacherByUserId(userId, conn) {
+  await run('DELETE FROM teachers WHERE user_id = ?', [userId], conn);
 }
 
 /** Highest sequence already issued for EMP-<year>-NNNN, or 0. */

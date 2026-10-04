@@ -1,14 +1,16 @@
 /**
  * Enrollment workflow. A student has at most one active enrollment (enforced by
  * the database); a transfer closes the old row and opens the new one in a single
- * transaction, and an existing closed row of the same class is re-opened because
- * UNIQUE(student_id, class_id) forbids a duplicate.
+ * transaction. Every enrollment is a new row, also a return to a class the
+ * student left, so each period in a class stays on record for dated rosters.
+ * Only classes of the current or a future academic year accept students.
  */
 import { withTransaction } from '../../config/db.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { todayYmd } from '../../utils/dates.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import * as access from '../access/access.service.js';
+import { assertEnrollableClass } from '../classes/classes.service.js';
 import * as repo from './enrollments.repository.js';
 
 const toEnrollmentShape = (row) => ({
@@ -40,12 +42,8 @@ export async function listEnrollments(user, listQuery) {
 
 export async function getEnrollment(user, id) {
   const row = ApiError.assertFound(await repo.findEnrollmentById(id), 'enrollment', id);
-  if (access.isStudent(user)) {
-    if (row.studentId !== user.studentId)
-      throw ApiError.forbidden('student_not_self', 'students can only read their own records');
-  } else {
-    await access.assertCanViewClass(user, row.classId);
-  }
+  if (access.isStudent(user)) access.scopedStudentId(user, row.studentId);
+  else await access.assertCanViewClass(user, row.classId);
   return toEnrollmentShape(row);
 }
 
@@ -62,17 +60,6 @@ async function assertEnrollable(studentIds, conn) {
   }
 }
 
-/** Open (or re-open) the enrollment of `studentId` in `classId`. The caller guarantees no other active row. */
-async function openEnrollment(studentId, classId, conn) {
-  const today = todayYmd();
-  const existing = await repo.findByStudentAndClass(studentId, classId, conn);
-  if (existing) {
-    await repo.reopenEnrollment(existing.id, today, conn);
-    return existing.id;
-  }
-  return repo.insertEnrollment(studentId, classId, today, conn);
-}
-
 const alreadyEnrolled = (active) =>
   ApiError.conflict('student already has an active enrollment', {
     reason: 'already_enrolled',
@@ -83,17 +70,19 @@ const alreadyEnrolled = (active) =>
 export async function enroll({ studentId, classId }) {
   const id = await withTransaction(async (conn) => {
     await assertEnrollable([studentId], conn);
+    await assertEnrollableClass(classId, conn);
     const active = await repo.findActiveByStudent(studentId, conn);
     if (active) throw alreadyEnrolled(active);
-    return openEnrollment(studentId, classId, conn);
+    return repo.insertEnrollment(studentId, classId, todayYmd(), conn);
   });
   return toEnrollmentShape(await repo.findEnrollmentById(id));
 }
 
-/** All-or-nothing: nothing is written when any student is invalid or already enrolled. */
+/** All-or-nothing: nothing is written when the class or any student is invalid or already enrolled. */
 export async function enrollMany({ classId, studentIds }) {
   const ids = await withTransaction(async (conn) => {
     await assertEnrollable(studentIds, conn);
+    await assertEnrollableClass(classId, conn);
     const active = await repo.findActiveByStudents(studentIds, conn);
     if (active.length) {
       throw ApiError.conflict('some students already have an active enrollment', {
@@ -105,8 +94,11 @@ export async function enrollMany({ classId, studentIds }) {
         })),
       });
     }
+    const today = todayYmd();
     const created = [];
-    for (const studentId of studentIds) created.push(await openEnrollment(studentId, classId, conn));
+    for (const studentId of studentIds) {
+      created.push(await repo.insertEnrollment(studentId, classId, today, conn));
+    }
     return created;
   });
   const enrollments = await Promise.all(ids.map((id) => repo.findEnrollmentById(id)));
@@ -117,6 +109,7 @@ export async function enrollMany({ classId, studentIds }) {
 export async function transfer({ studentId, classId }) {
   const id = await withTransaction(async (conn) => {
     await assertEnrollable([studentId], conn);
+    await assertEnrollableClass(classId, conn);
     const active = await repo.findActiveByStudent(studentId, conn);
     if (!active) {
       throw ApiError.conflict('student has no active enrollment; enroll them instead', {
@@ -126,8 +119,10 @@ export async function transfer({ studentId, classId }) {
     if (active.classId === classId) {
       throw ApiError.conflict('student is already enrolled in this class', { reason: 'same_class', classId });
     }
-    await repo.closeEnrollment(active.id, 'transferred', todayYmd(), conn);
-    return openEnrollment(studentId, classId, conn);
+    // One date for both rows: the student leaves the old class and joins the new one on the same day.
+    const today = todayYmd();
+    await repo.closeEnrollment(active.id, 'transferred', today, conn);
+    return repo.insertEnrollment(studentId, classId, today, conn);
   });
   return toEnrollmentShape(await repo.findEnrollmentById(id));
 }

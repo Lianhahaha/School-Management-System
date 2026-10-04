@@ -2,8 +2,12 @@
  * SQL for announcements. Status is computed from published_at / expires_at in UTC.
  */
 import { query, run } from '../../config/db.js';
+import { ANNOUNCEMENT_AUDIENCES } from '../../constants/shared.js';
 import { selectPage } from '../../utils/pagination.js';
 import { WhereBuilder, buildSet } from '../../utils/sql.js';
+
+// Positional: the order is pinned to the ENUM in schema.sql by `npm run check:constants`.
+const [AUDIENCE_ALL, AUDIENCE_STUDENTS, AUDIENCE_TEACHERS] = ANNOUNCEMENT_AUDIENCES;
 
 export const ANNOUNCEMENT_SORT_MAP = {
   publishedAt: 'a.published_at',
@@ -12,10 +16,26 @@ export const ANNOUNCEMENT_SORT_MAP = {
 };
 
 /** Published and not expired. */
-export const ACTIVE_SQL = `(a.published_at <= UTC_TIMESTAMP() AND (a.expires_at IS NULL OR a.expires_at > UTC_TIMESTAMP()))`;
+const ACTIVE_SQL = `(a.published_at <= UTC_TIMESTAMP() AND (a.expires_at IS NULL OR a.expires_at > UTC_TIMESTAMP()))`;
 
 export const STATUS_SQL = `(CASE WHEN a.published_at > UTC_TIMESTAMP() THEN 'scheduled'
   WHEN a.expires_at IS NOT NULL AND a.expires_at <= UTC_TIMESTAMP() THEN 'expired' ELSE 'active' END)`;
+
+/**
+ * Visibility scope of a teacher: active school-wide notices for everyone or for teachers, active notices
+ * of the classes in `visibleClass` (access.classScope on a.class_id), and everything they authored.
+ */
+export const teacherVisibility = (visibleClass, authorId) => ({
+  sql: `((${ACTIVE_SQL} AND ((a.class_id IS NULL AND a.audience IN (?, ?)) OR ${visibleClass.sql}))
+         OR a.author_id = ?)`,
+  params: [AUDIENCE_ALL, AUDIENCE_TEACHERS, ...visibleClass.params, authorId],
+});
+
+/** Visibility scope of a student: active notices for everyone or for students, school-wide or for their class. */
+export const studentVisibility = (activeClassId) => ({
+  sql: `(${ACTIVE_SQL} AND a.audience IN (?, ?) AND (a.class_id IS NULL OR a.class_id = ?))`,
+  params: [AUDIENCE_ALL, AUDIENCE_STUDENTS, activeClassId ?? 0],
+});
 
 const COLUMNS = `a.id, a.author_id, au.first_name AS author_first_name, au.last_name AS author_last_name,
   au.role AS author_role, a.title, a.body, a.audience, a.class_id, c.name AS class_name,

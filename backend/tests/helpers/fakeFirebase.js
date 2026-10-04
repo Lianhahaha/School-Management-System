@@ -1,11 +1,13 @@
 /**
- * In-memory replacement for the Firebase Admin SDK surface the app uses.
- * Tokens are the string `token-<uid>`; `bearer(uid)` builds the header value.
+ * In-memory replacement for the Firebase Admin SDK surface the app uses, with a fixed project id
+ * (no service-account file needed). Tokens are the string `token-<uid>`; `bearer(uid)` builds the header value.
  */
 import { firebase } from '../../src/config/firebase.js';
 
 const users = new Map(); // uid -> { uid, email, password, disabled }
 let counter = 0;
+
+export const FAKE_PROJECT_ID = 'fake-school-project';
 
 const failure = (code) => Object.assign(new Error(code), { code });
 
@@ -13,6 +15,7 @@ export function installFakeFirebase() {
   users.clear();
   counter = 0;
 
+  Object.defineProperty(firebase, 'projectId', { value: FAKE_PROJECT_ID, configurable: true });
   firebase.verifyIdToken = async (token) => {
     const uid = String(token).replace(/^token-/, '');
     if (!users.has(uid)) throw failure('auth/argument-error');
@@ -39,7 +42,7 @@ export function installFakeFirebase() {
     return users.get(uid);
   };
   firebase.deleteUser = async (uid) => {
-    users.delete(uid);
+    if (!users.delete(uid)) throw failure('auth/user-not-found');
   };
   firebase.revokeRefreshTokens = async () => {};
 }

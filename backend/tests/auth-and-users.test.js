@@ -1,31 +1,62 @@
 import './helpers/setup.js';
 import assert from 'node:assert/strict';
-import { after, before, describe, it } from 'node:test';
-import { bearer, firebaseUsers } from './helpers/fakeFirebase.js';
-import { api, as, closeWorld, makeUser, resetWorld } from './helpers/harness.js';
+import { after, before, beforeEach, describe, it, mock } from 'node:test';
+import { pool, query } from '../src/config/db.js';
+import { firebase } from '../src/config/firebase.js';
+import { logger } from '../src/utils/logger.js';
+import { FAKE_PROJECT_ID, bearer, firebaseUsers } from './helpers/fakeFirebase.js';
+import { api, as, closeWorld, enrollStudent, makeClass, makeUser, resetWorld } from './helpers/harness.js';
+import { openSession, waitForLockWaits } from './helpers/locks.js';
 
 after(closeWorld); // once per file: every suite shares the pool
+
+const firebaseError = (code, message) => Object.assign(new Error(message), { code });
 
 describe('health, 404 and authentication middleware', () => {
   before(resetWorld);
 
-  it('GET /health is public and reports the database', async () => {
+  it('GET /health is public and reports the database and the Firebase project', async () => {
     const res = await api.get('/api/v1/health');
     assert.equal(res.status, 200);
     assert.equal(res.body.success, true);
     assert.equal(res.body.data.db, 'up');
+    assert.equal(res.body.data.firebaseProjectId, FAKE_PROJECT_ID);
     assert.ok(res.headers['x-request-id']);
   });
 
-  it('unknown routes answer with the 404 envelope (401 first for anonymous API callers)', async () => {
+  it('GET /health answers 503 and logs why the database ping failed', async () => {
+    mock.method(pool, 'query', async () => {
+      throw new Error('connect ECONNREFUSED 127.0.0.1:3306');
+    });
+    const logged = mock.method(logger, 'error', () => {});
+    try {
+      const res = await api.get('/api/v1/health');
+      assert.equal(res.status, 503);
+      assert.equal(res.body.error.details.component, 'db');
+      assert.equal(logged.mock.calls[0].arguments[1].cause, 'connect ECONNREFUSED 127.0.0.1:3306');
+    } finally {
+      mock.restoreAll();
+    }
+  });
+
+  it('serves the OpenAPI document without a token', async () => {
+    const res = await api.get('/api/docs/openapi.json');
+    assert.equal(res.status, 200);
+    assert.match(res.body.openapi, /^3\.0\./);
+    assert.ok(res.body.paths['/users/{id}'].delete);
+  });
+
+  it('answers 404 for an unknown route whether or not a token is sent', async () => {
     const outside = await api.get('/nowhere');
     assert.equal(outside.status, 404);
     assert.equal(outside.body.error.code, 'NOT_FOUND');
-    assert.equal((await api.get('/api/v1/nope')).status, 401);
+    const anonymous = await api.get('/api/v1/nope');
+    assert.equal(anonymous.status, 404);
+    assert.equal(anonymous.body.error.code, 'NOT_FOUND');
+    assert.equal((await api.get('/api/v1/nope').set('Authorization', 'Bearer token-ghost')).status, 404);
     const admin = await makeUser('admin');
-    const res = await api.get('/api/v1/nope').set(as(admin));
-    assert.equal(res.status, 404);
-    assert.equal(res.body.error.code, 'NOT_FOUND');
+    assert.equal((await api.get('/api/v1/nope').set(as(admin))).status, 404);
+    assert.equal((await api.get('/api/v1/students')).status, 401);
   });
 
   it('rejects a missing token with 401 UNAUTHORIZED', async () => {
@@ -40,8 +71,38 @@ describe('health, 404 and authentication middleware', () => {
     assert.equal(res.body.error.details.reason, 'auth/argument-error');
   });
 
+  it('answers 503 SERVICE_UNAVAILABLE, not 401, when the token cannot be checked at all', async () => {
+    const failures = [
+      // firebase-admin reports a failed download of Google's signing keys with the malformed-token code.
+      firebaseError(
+        'auth/argument-error',
+        'Error fetching public keys for Google certs: Service Unavailable',
+      ),
+      firebaseError(
+        'auth/argument-error',
+        'Error while making request: getaddrinfo ENOTFOUND www.googleapis.com. Error code: ENOTFOUND',
+      ),
+      firebaseError('ENOTFOUND', 'getaddrinfo ENOTFOUND www.googleapis.com'),
+    ];
+    const logged = mock.method(logger, 'error', () => {});
+    const verify = mock.method(firebase, 'verifyIdToken');
+    try {
+      for (const failure of failures) {
+        verify.mock.mockImplementation(async () => {
+          throw failure;
+        });
+        const res = await api.get('/api/v1/auth/me').set('Authorization', 'Bearer any-token');
+        assert.equal(res.status, 503, failure.message);
+        assert.equal(res.body.error.code, 'SERVICE_UNAVAILABLE');
+        assert.equal(res.body.error.details.component, 'auth');
+        assert.equal(logged.mock.calls.at(-1).arguments[1].cause, failure.message);
+      }
+    } finally {
+      mock.restoreAll();
+    }
+  });
+
   it('answers 403 USER_NOT_REGISTERED for a valid Firebase user without a MySQL row', async () => {
-    const { firebase } = await import('../src/config/firebase.js');
     const { uid } = await firebase.createUser({ email: 'orphan@school.test', password: 'Password123!' });
     const res = await api.get('/api/v1/auth/me').set('Authorization', bearer(uid));
     assert.equal(res.status, 403);
@@ -106,7 +167,6 @@ describe('registration', () => {
   });
 
   it('never adopts an orphaned Firebase user: 409 email_in_use', async () => {
-    const { firebase } = await import('../src/config/firebase.js');
     await firebase.createUser({ email: 'orphan2@school.test', password: 'Password123!' });
     const res = await api.post('/api/v1/auth/register').send({ ...body, email: 'orphan2@school.test' });
     assert.equal(res.status, 409);
@@ -120,6 +180,18 @@ describe('registration', () => {
     assert.equal(short.status, 400);
     const none = await api.post('/api/v1/auth/register');
     assert.equal(none.status, 400);
+  });
+
+  it('counts only successful registrations against the limit of 30 per 15 minutes per IP', async () => {
+    for (let attempt = 1; attempt <= 35; attempt += 1) {
+      const rejected = await api
+        .post('/api/v1/auth/register')
+        .send({ ...body, email: `lab${attempt}@school.test`, password: 'short' });
+      assert.equal(rejected.status, 400, `attempt ${attempt}`);
+    }
+    const res = await api.post('/api/v1/auth/register').send({ ...body, email: 'lab.ok@school.test' });
+    assert.equal(res.status, 201);
+    assert.equal(res.headers['ratelimit-limit'], '30');
   });
 });
 
@@ -176,22 +248,51 @@ describe('user administration', () => {
     );
   });
 
-  it('an admin adopts an existing Firebase account instead of failing', async () => {
+  it('replaces a Firebase user that has no school account instead of adopting it (no takeover)', async () => {
     const admin = await makeUser('admin');
-    const { firebase } = await import('../src/config/firebase.js');
-    const orphan = await firebase.createUser({ email: 'adopt@school.test', password: 'old-password' });
+    const squatter = await firebase.createUser({ email: 'squat@school.test', password: 'attacker-pass' });
     const res = await api.post('/api/v1/users').set(as(admin)).send({
       role: 'admin',
-      email: 'adopt@school.test',
+      email: 'squat@school.test',
       password: 'Password123!',
-      firstName: 'Ad',
-      lastName: 'Opt',
+      firstName: 'Sam',
+      lastName: 'Ortiz',
     });
     assert.equal(res.status, 201);
-    assert.equal(res.body.data.firebaseUid, orphan.uid);
+    assert.notEqual(res.body.data.firebaseUid, squatter.uid);
+    assert.deepEqual(
+      firebaseUsers()
+        .filter((user) => user.email === 'squat@school.test')
+        .map((user) => user.uid),
+      [res.body.data.firebaseUid],
+    );
+    const stolen = await api.get('/api/v1/auth/me').set('Authorization', bearer(squatter.uid));
+    assert.equal(stolen.status, 401);
   });
 
-  it('refuses to change your own status, which also protects the last active admin', async () => {
+  it('leaves no Firebase user behind when the account replacing a stray one fails to insert', async () => {
+    const admin = await makeUser('admin');
+    await makeUser('teacher', { profile: { employeeNumber: 'EMP-2026-8888' } });
+    await firebase.createUser({ email: 'stray@school.test', password: 'whatever1' });
+    const res = await api
+      .post('/api/v1/users')
+      .set(as(admin))
+      .send({
+        role: 'teacher',
+        email: 'stray@school.test',
+        password: 'Password123!',
+        firstName: 'Stray',
+        lastName: 'Account',
+        profile: { employeeNumber: 'EMP-2026-8888' },
+      });
+    assert.equal(res.status, 409);
+    assert.equal(
+      firebaseUsers().some((user) => user.email === 'stray@school.test'),
+      false,
+    );
+  });
+
+  it('refuses to change your own status (403 self_status_change)', async () => {
     const admin = await makeUser('admin');
     const self = await api.patch(`/api/v1/users/${admin.id}/status`).set(as(admin)).send({ isActive: false });
     assert.equal(self.status, 403);
@@ -212,5 +313,154 @@ describe('user administration', () => {
     assert.equal((await api.get('/api/v1/users?sortBy=password').set(as(admin))).status, 400);
     assert.equal((await api.get('/api/v1/users?limit=1000').set(as(admin))).status, 400);
     assert.equal((await api.get('/api/v1/users?search=%25').set(as(admin))).body.meta.total, 0);
+  });
+
+  it('finds an account by its full name', async () => {
+    const admin = await makeUser('admin');
+    const liam = await makeUser('teacher', { firstName: 'Liam', lastName: 'Cruz' });
+    await makeUser('teacher', { firstName: 'Liam', lastName: 'Walker' });
+    const res = await api.get('/api/v1/users?search=Liam%20Cruz').set(as(admin));
+    assert.equal(res.status, 200);
+    assert.deepEqual(
+      res.body.data.map((user) => user.id),
+      [liam.id],
+    );
+  });
+});
+
+describe('account deletion', () => {
+  let admin;
+  before(async () => {
+    await resetWorld();
+    admin = await makeUser('admin');
+  });
+
+  const remove = (user, actor = admin) => api.delete(`/api/v1/users/${user.id}`).set(as(actor));
+
+  it('deletes an unused account of any role; the email can then be used again', async () => {
+    for (const role of ['student', 'teacher', 'admin']) {
+      const user = await makeUser(role);
+      const res = await remove(user);
+      assert.equal(res.status, 200, role);
+      assert.deepEqual(res.body.data, { id: user.id });
+      assert.equal((await api.get(`/api/v1/users/${user.id}`).set(as(admin))).status, 404);
+      if (user.studentId) {
+        assert.equal((await api.get(`/api/v1/students/${user.studentId}`).set(as(admin))).status, 404);
+      }
+      if (user.teacherId) {
+        assert.equal((await api.get(`/api/v1/teachers/${user.teacherId}`).set(as(admin))).status, 404);
+      }
+      assert.equal(
+        firebaseUsers().some((entry) => entry.uid === user.firebaseUid),
+        false,
+      );
+      const again = await api
+        .post('/api/v1/users')
+        .set(as(admin))
+        .send({ role, email: user.email, password: 'Password123!', firstName: 'New', lastName: 'Person' });
+      assert.equal(again.status, 201);
+    }
+  });
+
+  it('refuses to delete your own account (403 self)', async () => {
+    const res = await remove(admin);
+    assert.equal(res.status, 403);
+    assert.equal(res.body.error.details.reason, 'self');
+  });
+
+  it('refuses an account with school records (409 has_history) and keeps it', async () => {
+    const student = await makeUser('student');
+    const teacher = await makeUser('teacher');
+    const author = await makeUser('admin');
+    const homeroom = await makeClass(admin, { homeroomTeacherId: teacher.teacherId });
+    await enrollStudent(admin, { studentId: student.studentId, classId: homeroom.id });
+    const announcement = await api
+      .post('/api/v1/announcements')
+      .set(as(author))
+      .send({ title: 'Welcome', body: 'b', audience: 'all' });
+    assert.equal(announcement.status, 201);
+
+    for (const user of [student, teacher, author]) {
+      const res = await remove(user);
+      assert.equal(res.status, 409, user.role);
+      assert.equal(res.body.error.details.reason, 'has_history');
+      assert.equal((await api.get(`/api/v1/users/${user.id}`).set(as(admin))).status, 200);
+      assert.ok(firebaseUsers().some((entry) => entry.uid === user.firebaseUid));
+    }
+  });
+
+  it('maps a record added while the delete runs (FK RESTRICT) to the same 409 has_history', async () => {
+    const student = await makeUser('student');
+    const classRow = await makeClass(admin);
+    const session = await openSession();
+    try {
+      await session.beginTransaction();
+      await session.query(
+        'INSERT INTO enrollments (student_id, class_id, enrolled_on) VALUES (?, ?, CURDATE())',
+        [student.studentId, classRow.id],
+      );
+      const pending = remove(student).then((res) => res);
+      await waitForLockWaits(1);
+      await session.commit();
+      const res = await pending;
+      assert.equal(res.status, 409);
+      assert.equal(res.body.error.details.reason, 'has_history');
+    } finally {
+      await session.end();
+    }
+  });
+
+  it('is admin only, needs a token and answers 404 for an unknown id', async () => {
+    const teacher = await makeUser('teacher');
+    const target = await makeUser('student');
+    const forbidden = await remove(target, teacher);
+    assert.equal(forbidden.status, 403);
+    assert.equal(forbidden.body.error.details.reason, 'role_not_allowed');
+    assert.equal((await api.delete(`/api/v1/users/${target.id}`)).status, 401);
+    assert.equal((await api.delete('/api/v1/users/999999').set(as(admin))).status, 404);
+  });
+});
+
+describe('last active admin', () => {
+  beforeEach(resetWorld);
+
+  const activeAdmins = async () =>
+    (await query("SELECT COUNT(*) AS n FROM users WHERE role = 'admin' AND is_active = 1"))[0].n;
+  const deactivate = (target, actor) =>
+    api.patch(`/api/v1/users/${target.id}/status`).set(as(actor)).send({ isActive: false });
+
+  /** Sends `requests` while another session holds the admins' rows, so they all reach the lock together. */
+  async function race(admins, requests) {
+    const session = await openSession();
+    try {
+      await session.beginTransaction();
+      await session.query('SELECT id FROM users WHERE id IN (?) FOR UPDATE', [admins.map((user) => user.id)]);
+      const pending = Promise.all(requests);
+      await waitForLockWaits(requests.length);
+      await session.commit();
+      return await pending;
+    } finally {
+      await session.end();
+    }
+  }
+
+  it('lets only one of two admins deactivating each other succeed (409 last_admin)', async () => {
+    const [first, second] = [await makeUser('admin'), await makeUser('admin')];
+    const responses = await race([first, second], [deactivate(second, first), deactivate(first, second)]);
+    assert.deepEqual(responses.map((res) => res.status).sort(), [200, 409]);
+    assert.equal(responses.find((res) => res.status === 409).body.error.details.reason, 'last_admin');
+    assert.equal(await activeAdmins(), 1);
+  });
+
+  it('applies the same rule when one admin deletes the other while being deactivated', async () => {
+    const [first, second] = [await makeUser('admin'), await makeUser('admin')];
+    const responses = await race(
+      [first, second],
+      [api.delete(`/api/v1/users/${second.id}`).set(as(first)), deactivate(first, second)],
+    );
+    const refused = responses.filter((res) => res.status === 409);
+    assert.equal(refused.length, 1, JSON.stringify(responses.map((res) => res.status)));
+    assert.equal(refused[0].body.error.details.reason, 'last_admin');
+    assert.equal(await activeAdmins(), 1);
   });
 });

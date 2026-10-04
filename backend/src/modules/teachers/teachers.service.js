@@ -1,5 +1,5 @@
 /**
- * Teacher profiles: creation (called by users.service inside its transaction),
+ * Teacher profiles: creation and deletion (called by users.service inside its transaction),
  * reads with role scoping, admin edits, and the "is this teacher assignable" check.
  */
 import { withTransaction } from '../../config/db.js';
@@ -49,6 +49,9 @@ export async function createProfile(userId, profile = {}, conn) {
   }
   return repo.insertTeacher(userId, { ...profile, employeeNumber, hireDate }, conn);
 }
+
+/** Remove the profile row of a teacher user that is being deleted. Runs inside the caller's transaction. */
+export const deleteProfile = (userId, conn) => repo.deleteTeacherByUserId(userId, conn);
 
 /** 400 when the teacher does not exist or is deactivated (used before assigning a teacher to work). */
 export async function assertActiveTeacher(teacherId, conn) {

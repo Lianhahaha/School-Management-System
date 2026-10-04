@@ -4,6 +4,7 @@
 import { query, run } from '../../config/db.js';
 import { selectPage } from '../../utils/pagination.js';
 import { CLASS_SUBJECT_REF_COLUMNS, WhereBuilder, buildSet, joinClassSubject } from '../../utils/sql.js';
+import { enrolledInClassOn } from '../access/access.repository.js';
 
 export const ASSESSMENT_SORT_MAP = {
   assessedOn: 'a.assessed_on',
@@ -12,11 +13,22 @@ export const ASSESSMENT_SORT_MAP = {
   createdAt: 'a.created_at',
 };
 
+/**
+ * Sub-select of an assessment's roster: the students in its class on the assessment date plus anyone already
+ * graded, so a grade stays correctable after its student left. Correlated to the assessment `a` and its
+ * class-subject `cs` of the enclosing query.
+ */
+export const ROSTER_STUDENT_IDS = `SELECT e.student_id FROM enrollments e
+   WHERE ${enrolledInClassOn('cs.class_id', 'a.assessed_on')}
+  UNION
+  SELECT g.student_id FROM grades g WHERE g.assessment_id = a.id`;
+
+// Every graded student is on the roster, so graded < enrolled means a roster student still lacks a grade.
+const GRADED_COUNT = '(SELECT COUNT(*) FROM grades g WHERE g.assessment_id = a.id)';
+const ENROLLED_COUNT = `(SELECT COUNT(*) FROM (${ROSTER_STUDENT_IDS}) roster)`;
+
 const COLUMNS = `a.id, a.class_subject_id, ${CLASS_SUBJECT_REF_COLUMNS}, a.title, a.type, a.term, a.max_score,
-  a.assessed_on,
-  (SELECT COUNT(*) FROM grades g WHERE g.assessment_id = a.id) AS graded_count,
-  (SELECT COUNT(*) FROM enrollments e WHERE e.class_id = cs.class_id AND e.status = 'active') AS enrolled_count,
-  a.created_at, a.updated_at`;
+  a.assessed_on, ${GRADED_COUNT} AS graded_count, ${ENROLLED_COUNT} AS enrolled_count, a.created_at, a.updated_at`;
 
 const FROM = `FROM assessments a ${joinClassSubject('a')}`;
 
@@ -57,18 +69,17 @@ export function findUpcoming({ classId, from, to, limit }) {
   );
 }
 
-/** The teacher's assessments of an academic year where fewer students are graded than enrolled. */
-export function findPendingGrading(teacherId, academicYear, limit) {
+/** The teacher's assessments of an academic year, dated up to `today`, where a roster student lacks a grade. */
+export function findPendingGrading(teacherId, academicYear, today, limit) {
   return query(
     `SELECT * FROM (
        SELECT a.id AS assessment_id, a.title, c.name AS class_name, sub.name AS subject_name, a.assessed_on,
-              (SELECT COUNT(*) FROM grades g WHERE g.assessment_id = a.id) AS graded,
-              (SELECT COUNT(*) FROM enrollments e WHERE e.class_id = cs.class_id AND e.status = 'active') AS enrolled
+              ${GRADED_COUNT} AS graded, ${ENROLLED_COUNT} AS enrolled
          ${FROM}
-        WHERE cs.teacher_id = ? AND c.academic_year = ?
+        WHERE cs.teacher_id = ? AND c.academic_year = ? AND a.assessed_on <= ?
      ) pending
       WHERE graded < enrolled ORDER BY assessed_on DESC LIMIT ${Number(limit)}`,
-    [teacherId, academicYear],
+    [teacherId, academicYear, today],
   );
 }
 

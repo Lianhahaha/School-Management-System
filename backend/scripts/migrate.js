@@ -1,7 +1,8 @@
 /**
  * migrate.js — creates the database and applies database/schema.sql.
  *
- *   npm run db:migrate            create the database (if missing) and every table (IF NOT EXISTS)
+ *   npm run db:migrate            create the database (if missing) and every table (IF NOT EXISTS),
+ *                                 then apply the in-place upgrades below to an older database
  *   node scripts/migrate.js --fresh   DROP the database first (destructive), then recreate it
  *
  * Uses a dedicated connection with multipleStatements enabled (the API pool
@@ -14,6 +15,27 @@ import { env } from '../src/config/env.js';
 
 const fresh = process.argv.includes('--fresh');
 const schemaPath = path.join(env.backendRoot, 'database', 'schema.sql');
+
+// Changes CREATE TABLE IF NOT EXISTS cannot make to a database created by an older schema.sql.
+// Each one checks the catalogue first, so running migrate again is a no-op.
+const UPGRADES = [
+  {
+    // Every enrollment is its own row now, so re-joining a class must not collide with the old period.
+    description: 'drop enrollments.uq_enrollments_student_class',
+    needed: `SELECT 1 FROM information_schema.STATISTICS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'enrollments' AND INDEX_NAME = 'uq_enrollments_student_class'`,
+    apply: 'ALTER TABLE enrollments DROP INDEX uq_enrollments_student_class',
+  },
+];
+
+async function applyUpgrades(conn) {
+  for (const upgrade of UPGRADES) {
+    const [rows] = await conn.query(upgrade.needed);
+    if (rows.length === 0) continue;
+    await conn.query(upgrade.apply);
+    console.log(`✔ Upgraded: ${upgrade.description}`);
+  }
+}
 
 const HINTS = {
   ECONNREFUSED: `MySQL is not reachable at ${env.DB_HOST}:${env.DB_PORT}. Start the "MySQL80" service (services.msc or \`net start MySQL80\` in an admin terminal).`,
@@ -42,6 +64,7 @@ async function main() {
     );
     await conn.query(`USE \`${env.DB_NAME}\``);
     await conn.query(schema);
+    await applyUpgrades(conn);
     const [tables] = await conn.query('SHOW TABLES');
     console.log(`✔ Database ${env.DB_NAME} ready: ${tables.length} tables`);
   } finally {

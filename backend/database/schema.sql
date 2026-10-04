@@ -1,7 +1,8 @@
 -- =============================================================================
 -- School Management System — MySQL 8.0 schema
 -- Engine: InnoDB | Charset: utf8mb4 | Collation: utf8mb4_unicode_ci
--- Requires MySQL >= 8.0.16 (CHECK constraints are enforced from 8.0.16).
+-- Requires MySQL >= 8.0.19: the API's bulk upserts use the row alias of
+-- INSERT ... AS new ON DUPLICATE KEY UPDATE (8.0.19); CHECKs are enforced from 8.0.16.
 -- Validated on MySQL 8.0.43 with sql_mode = STRICT_TRANS_TABLES,ONLY_FULL_GROUP_BY,...
 -- Run:   npm run db:migrate   (scripts/migrate.js creates the database named by
 --        DB_NAME, selects it, then executes this file over a dedicated mysql2
@@ -9,7 +10,8 @@
 --        no CREATE DATABASE / USE statement.
 -- Order: tables appear in dependency order (parents before children).
 -- Delete policy: every FK is ON DELETE RESTRICT — nothing is ever removed
--- implicitly. Users are deactivated (is_active = 0), never deleted.
+-- implicitly. Users are deactivated (is_active = 0) once anything refers to them; only an
+-- unused account (no history) can be deleted, profile row first.
 -- =============================================================================
 
 SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -63,7 +65,7 @@ CREATE TABLE IF NOT EXISTS teachers (
   UNIQUE KEY uq_teachers_user   (user_id),          -- enforces the 1:1 with users
   UNIQUE KEY uq_teachers_number (employee_number),  -- lookup / search by employee number
   CONSTRAINT fk_teachers_user FOREIGN KEY (user_id) REFERENCES users (id)
-    ON DELETE RESTRICT ON UPDATE RESTRICT,          -- users are never deleted; fail loudly if attempted
+    ON DELETE RESTRICT ON UPDATE RESTRICT,          -- the profile row goes first; a stray user delete fails loudly
   CONSTRAINT chk_teachers_number CHECK (employee_number REGEXP '^EMP-[0-9]{4}-[0-9]{4,}$')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='Teacher profile (1:1 with users)';
@@ -90,7 +92,7 @@ CREATE TABLE IF NOT EXISTS students (
   UNIQUE KEY uq_students_user   (user_id),          -- enforces the 1:1 with users
   UNIQUE KEY uq_students_number (student_number),   -- lookup / search by student number
   CONSTRAINT fk_students_user FOREIGN KEY (user_id) REFERENCES users (id)
-    ON DELETE RESTRICT ON UPDATE RESTRICT,          -- users are never deleted; fail loudly if attempted
+    ON DELETE RESTRICT ON UPDATE RESTRICT,          -- the profile row goes first; a stray user delete fails loudly
   CONSTRAINT chk_students_number CHECK (student_number REGEXP '^STU-[0-9]{4}-[0-9]{4,}$')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='Student profile (1:1 with users); current class lives in enrollments';
@@ -172,6 +174,9 @@ CREATE TABLE IF NOT EXISTS class_subjects (
 --    otherwise) + UNIQUE(student_id, active_flag): NULLs never collide in a
 --    UNIQUE index, so any number of closed rows coexist with at most one open
 --    row. A transfer = close the old row THEN insert the new one (same tx).
+--    Every enrollment is a new row, also a return to a class the student left,
+--    so each [enrolled_on, left_on) period survives: rosters of past dates
+--    (attendance sheets, grade rosters) are read from these periods.
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS enrollments (
   id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -186,9 +191,8 @@ CREATE TABLE IF NOT EXISTS enrollments (
   created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_enrollments_student_class (student_id, class_id),   -- one row per student per class (re-open the row instead of duplicating)
-  UNIQUE KEY uq_enrollments_one_active    (student_id, active_flag), -- THE "one active enrollment" rule
-  KEY        idx_enrollments_class_status (class_id, status),       -- roster of a class (active rows); also serves FK class_id
+  UNIQUE KEY uq_enrollments_one_active    (student_id, active_flag), -- THE "one active enrollment" rule; also serves FK student_id
+  KEY        idx_enrollments_class_status (class_id, status),       -- roster of a class (active rows or a past date); also serves FK class_id
   CONSTRAINT fk_enrollments_student FOREIGN KEY (student_id) REFERENCES students (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT fk_enrollments_class   FOREIGN KEY (class_id)   REFERENCES classes  (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT chk_enrollments_dates  CHECK (left_on IS NULL OR left_on >= enrolled_on),

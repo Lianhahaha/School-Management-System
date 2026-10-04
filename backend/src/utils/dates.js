@@ -4,7 +4,7 @@
  * 'YYYY-MM-DD' strings end to end.
  */
 import { env } from '../config/env.js';
-import { jsDayToIsoDay } from '../constants/shared.js';
+import { ACADEMIC_YEAR_START_MONTH, jsDayToIsoDay } from '../constants/shared.js';
 
 const ymdFormatter = new Intl.DateTimeFormat('en-CA', {
   timeZone: env.APP_TIMEZONE,
@@ -26,25 +26,19 @@ export function todayIsoWeekday(now = new Date()) {
   return jsDayToIsoDay(WEEKDAY_INDEX[weekdayFormatter.format(now)]);
 }
 
-/** ISO weekday for a 'YYYY-MM-DD' string (calendar date, time-zone independent). */
-export function isoWeekdayOf(ymd) {
-  const [year, month, day] = ymd.split('-').map(Number);
-  return jsDayToIsoDay(new Date(Date.UTC(year, month - 1, day)).getUTCDay());
-}
-
 /** True when `ymd` is later than today in APP_TIMEZONE (string comparison works for zero-padded dates). */
 export function isAfterToday(ymd, now = new Date()) {
   return ymd > todayYmd(now);
 }
 
 /**
- * Academic year label for a date, using the configured start month
+ * Academic year label for a date, using the shared start month
  * (ACADEMIC_YEAR_START_MONTH, 8 = August): 2026-10-03 -> '2026-2027',
  * 2027-05-10 -> '2026-2027'.
  */
 export function academicYearOf(ymd = todayYmd()) {
   const [year, month] = ymd.split('-').map(Number);
-  const start = month >= env.ACADEMIC_YEAR_START_MONTH ? year : year - 1;
+  const start = month >= ACADEMIC_YEAR_START_MONTH ? year : year - 1;
   return `${start}-${start + 1}`;
 }
 
@@ -56,7 +50,7 @@ export function currentAcademicYear(now = new Date()) {
 /** First day ('YYYY-MM-DD') of the given academic year label, e.g. '2026-2027' -> '2026-08-01'. */
 export function academicYearStart(label) {
   const start = Number(label.slice(0, 4));
-  return `${start}-${String(env.ACADEMIC_YEAR_START_MONTH).padStart(2, '0')}-01`;
+  return `${start}-${String(ACADEMIC_YEAR_START_MONTH).padStart(2, '0')}-01`;
 }
 
 /** 'YYYY-MM-DD' plus `days` calendar days (negative allowed); time-zone independent. */

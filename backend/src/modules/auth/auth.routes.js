@@ -1,6 +1,9 @@
 /**
  * /auth: POST /register is public (rate limited; disabled with ALLOW_PUBLIC_REGISTRATION=false);
  * GET and PATCH /me require a signed-in user.
+ *
+ * The limit counts successful registrations only and is sized for a school lab, where a whole
+ * class registers from one public IP address: rejected attempts (400, 409) never lock others out.
  */
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
@@ -15,10 +18,10 @@ export const authRoutes = Router();
 
 const registerLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 5,
+  limit: 30,
+  skipFailedRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: () => env.isTest,
   handler: (req, _res, next, options) => {
     const resetAt = req.rateLimit?.resetTime?.getTime();
     const retryAfterSeconds = resetAt
@@ -29,7 +32,9 @@ const registerLimiter = rateLimit({
 });
 
 function registrationEnabled(_req, _res, next) {
-  if (!env.ALLOW_PUBLIC_REGISTRATION) return next(ApiError.notFound('route', 'POST /auth/register'));
+  if (!env.ALLOW_PUBLIC_REGISTRATION) {
+    return next(ApiError.notFound('route', 'POST /auth/register', { reason: 'registration_disabled' }));
+  }
   next();
 }
 

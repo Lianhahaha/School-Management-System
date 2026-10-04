@@ -1,5 +1,6 @@
 /**
- * SQL for the users table (identity row of every account) and the per-request auth lookup.
+ * SQL for the users table (identity row of every account), the per-request auth lookup and the
+ * "is anything still pointing at this account" check before a delete.
  */
 import { query, run } from '../../config/db.js';
 import { selectPage } from '../../utils/pagination.js';
@@ -41,7 +42,12 @@ export async function findUserByEmail(email, conn) {
 
 export function listUsers(listQuery) {
   const where = new WhereBuilder()
-    .addSearch(listQuery.search, ['u.first_name', 'u.last_name', 'u.email'])
+    .addSearch(listQuery.search, [
+      'u.first_name',
+      'u.last_name',
+      "CONCAT(u.first_name, ' ', u.last_name)",
+      'u.email',
+    ])
     .addIf(listQuery.role, 'u.role = ?')
     .addIf(listQuery.isActive, 'u.is_active = ?');
   return selectPage({
@@ -73,6 +79,52 @@ export async function updateUser(id, fields, conn) {
 
 export async function setActive(id, isActive, conn) {
   await run('UPDATE users SET is_active = ? WHERE id = ?', [isActive ? 1 : 0, id], conn);
+}
+
+/**
+ * Ids of the active admins, row-locked until `conn`'s transaction ends, so two "last admin" checks
+ * cannot pass side by side. Only primary-key records are locked (candidates from a plain read,
+ * re-checked under the lock). Any lock in idx_users_role_active, including the gap locks of a scan
+ * through it, which the optimizer picks on a small table unless forced, would deadlock the caller's
+ * own UPDATE of is_active with a concurrent caller waiting there.
+ */
+export async function lockActiveAdminIds(conn) {
+  const candidates = await query("SELECT id FROM users WHERE role = 'admin' AND is_active = 1", [], conn);
+  if (!candidates.length) return [];
+  const locked = await query(
+    'SELECT id FROM users FORCE INDEX (PRIMARY) WHERE id IN (?) AND is_active = 1 FOR UPDATE',
+    [candidates.map((row) => row.id)],
+    conn,
+  );
+  return locked.map((row) => row.id);
+}
+
+/**
+ * True when any record points at the account or its role profile: announcements it wrote, attendance
+ * it marked, grades it entered, a student's enrollments, attendance and grades, or a teacher's
+ * class-subject assignments (with their timetable and assessments) and homeroom classes.
+ */
+export async function hasHistory(id, conn) {
+  const rows = await query(
+    `SELECT (
+          EXISTS (SELECT 1 FROM announcements an WHERE an.author_id = ?)
+       OR EXISTS (SELECT 1 FROM attendance att WHERE att.marked_by = ?)
+       OR EXISTS (SELECT 1 FROM grades g WHERE g.graded_by = ?)
+       OR EXISTS (SELECT 1 FROM students s JOIN enrollments e ON e.student_id = s.id WHERE s.user_id = ?)
+       OR EXISTS (SELECT 1 FROM students s JOIN attendance att ON att.student_id = s.id WHERE s.user_id = ?)
+       OR EXISTS (SELECT 1 FROM students s JOIN grades g ON g.student_id = s.id WHERE s.user_id = ?)
+       OR EXISTS (SELECT 1 FROM teachers t JOIN class_subjects cs ON cs.teacher_id = t.id WHERE t.user_id = ?)
+       OR EXISTS (SELECT 1 FROM teachers t JOIN classes c ON c.homeroom_teacher_id = t.id WHERE t.user_id = ?)
+     ) AS has_history`,
+    Array(8).fill(id),
+    conn,
+  );
+  return Boolean(rows[0].hasHistory);
+}
+
+/** Deletes the users row; returns false when it no longer exists. The role profile must be deleted first. */
+export async function deleteUser(id, conn) {
+  return (await run('DELETE FROM users WHERE id = ?', [id], conn)).affectedRows > 0;
 }
 
 /** Point an existing users row at a (new) Firebase account; used by the seed after a Firebase project change. */

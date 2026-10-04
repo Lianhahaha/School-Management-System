@@ -4,6 +4,7 @@
 import { query, run } from '../../config/db.js';
 import { selectPage } from '../../utils/pagination.js';
 import { WhereBuilder, joinClassSubject } from '../../utils/sql.js';
+import { ROSTER_STUDENT_IDS } from '../assessments/assessments.repository.js';
 
 export const GRADE_SORT_MAP = { assessedOn: 'a.assessed_on', score: 'g.score', createdAt: 'g.created_at' };
 
@@ -68,22 +69,26 @@ export function summarizeGrades({ groupBy = 'classSubject', ...filters }, scope)
     );
   }
   return query(
-    `SELECT cs.id AS class_subject_id, sub.name AS subject_name, CONCAT(c.name, ' - ', sub.name) AS label, ${TOTALS} ${FROM} ${where.sql}
-      GROUP BY cs.id, c.name, sub.name ORDER BY c.name, sub.name`,
+    `SELECT cs.id AS class_subject_id, sub.name AS subject_name, c.name AS class_name, c.academic_year,
+            CONCAT(c.name, ' - ', sub.name) AS label, ${TOTALS} ${FROM} ${where.sql}
+      GROUP BY cs.id, c.name, c.academic_year, sub.name ORDER BY c.academic_year DESC, c.name, sub.name`,
     where.params,
   );
 }
 
-/** The class roster (active enrollments) with each student's score for the assessment; ungraded rows have null score. */
+/** Assessments joined to their roster students (`roster.student_id`, see ROSTER_STUDENT_IDS). */
+const ROSTER_FROM = `FROM assessments a
+  JOIN class_subjects cs ON cs.id = a.class_subject_id
+  CROSS JOIN LATERAL (${ROSTER_STUDENT_IDS}) roster`;
+
+/** The assessment's roster with each student's score; ungraded rows have null score. */
 export function findRosterRows(assessmentId) {
   return query(
     `SELECT s.id AS student_id, s.student_number, u.first_name, u.last_name,
             g.id AS grade_id, g.score, g.remarks, g.graded_by,
             gu.first_name AS grader_first_name, gu.last_name AS grader_last_name, g.updated_at
-       FROM assessments a
-       JOIN class_subjects cs ON cs.id = a.class_subject_id
-       JOIN enrollments e ON e.class_id = cs.class_id AND e.status = 'active'
-       JOIN students s ON s.id = e.student_id
+       ${ROSTER_FROM}
+       JOIN students s ON s.id = roster.student_id
        JOIN users u ON u.id = s.user_id
        LEFT JOIN grades g ON g.assessment_id = a.id AND g.student_id = s.id
        LEFT JOIN users gu ON gu.id = g.graded_by
@@ -94,14 +99,7 @@ export function findRosterRows(assessmentId) {
 }
 
 export async function findRosterStudentIds(assessmentId, conn) {
-  const rows = await query(
-    `SELECT e.student_id FROM assessments a
-       JOIN class_subjects cs ON cs.id = a.class_subject_id
-       JOIN enrollments e ON e.class_id = cs.class_id AND e.status = 'active'
-      WHERE a.id = ?`,
-    [assessmentId],
-    conn,
-  );
+  const rows = await query(`SELECT roster.student_id ${ROSTER_FROM} WHERE a.id = ?`, [assessmentId], conn);
   return rows.map((row) => row.studentId);
 }
 

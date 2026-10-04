@@ -16,7 +16,7 @@ export const createUserBody = z.discriminatedUnion('role', [
   z.strictObject({ role: z.literal('admin'), ...accountFields }),
 ]);
 
-/** Email and role are immutable after creation (deactivate and create a new account instead). */
+/** Email and role are immutable after creation; an account created by mistake is deleted while it has no records. */
 export const updateUserBody = patchOf({ firstName: name, lastName: name, phone: phone.nullable() });
 
 export const statusBody = z.strictObject({ isActive: z.boolean() });

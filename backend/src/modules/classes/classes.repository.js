@@ -18,8 +18,23 @@ const FROM = `FROM classes c
   LEFT JOIN teachers ht ON ht.id = c.homeroom_teacher_id
   LEFT JOIN users hu ON hu.id = ht.user_id`;
 
-export async function findClassById(id) {
-  return (await query(`SELECT ${COLUMNS} ${FROM} WHERE c.id = ?`, [id]))[0] ?? null;
+export async function findClassById(id, conn) {
+  return (await query(`SELECT ${COLUMNS} ${FROM} WHERE c.id = ?`, [id], conn))[0] ?? null;
+}
+
+/**
+ * True when students are or were enrolled in the class, or a subject is assigned to it. Timetable slots,
+ * attendance and assessments all hang off an assignment, so they are covered by the second check.
+ */
+export async function classHasDependents(id) {
+  const rows = await query(
+    `SELECT 1 AS ok FROM enrollments WHERE class_id = ?
+     UNION
+     SELECT 1 FROM class_subjects WHERE class_id = ?
+     LIMIT 1`,
+    [id, id],
+  );
+  return rows.length > 0;
 }
 
 export function listClasses(listQuery) {

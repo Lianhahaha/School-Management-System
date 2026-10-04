@@ -1,6 +1,6 @@
 /**
  * Accounts: the one code path that creates a person in Firebase and MySQL,
- * account reads, admin edits and activation status.
+ * account reads, admin edits, activation status and deletion of unused accounts.
  */
 import { withTransaction } from '../../config/db.js';
 import { firebase } from '../../config/firebase.js';
@@ -56,18 +56,27 @@ export async function updateUser(id, patch) {
   return getAccount(id);
 }
 
-/**
- * Finds or creates the Firebase account for an email.
- * Trusted callers (admin, seed) adopt an existing account and reset its password; public
- * registration never adopts: an existing Firebase user without a MySQL row is a 409.
- */
-async function resolveFirebaseUser({ email, password, displayName }, trusted) {
-  let existing = null;
+async function findFirebaseUserByEmail(email) {
   try {
-    existing = await firebase.getUserByEmail(email);
+    return await firebase.getUserByEmail(email);
   } catch (error) {
-    if (error?.code !== 'auth/user-not-found') throw error;
+    if (error?.code === 'auth/user-not-found') return null;
+    throw error;
   }
+}
+
+const emailAlreadyRegistered = () =>
+  ApiError.conflict('email already registered', { key: 'users.uq_users_email' });
+
+/**
+ * Creates the Firebase account of a new person and returns its uid. The caller has checked that no
+ * MySQL row uses the email, so an existing Firebase user with it belongs to nobody in the school.
+ * It is never reused: anyone can create a Firebase user with the public web key and keep its ID token,
+ * and reusing that uid would hand them the new account. Public registration refuses it (409); trusted
+ * callers (admin, seed) delete it and create a fresh user with a new uid.
+ */
+async function createFirebaseUser({ email, password, displayName }, trusted) {
+  const existing = await findFirebaseUserByEmail(email);
   if (existing) {
     if (!trusted) {
       throw ApiError.conflict('this email is already in use; contact an administrator', {
@@ -75,12 +84,13 @@ async function resolveFirebaseUser({ email, password, displayName }, trusted) {
         reason: 'email_in_use',
       });
     }
-    await firebase.updateUser(existing.uid, { password, displayName, disabled: false });
-    logger.info('adopted existing Firebase user', { email, uid: existing.uid });
-    return { uid: existing.uid, created: false };
+    // Re-checked right before the delete: a concurrent create of the same email may have just linked this uid.
+    if (await repo.findUserByEmail(email)) throw emailAlreadyRegistered();
+    await firebase.deleteUser(existing.uid);
+    logger.warn('deleted a Firebase user that had no school account', { email, uid: existing.uid });
   }
   const record = await firebase.createUser({ email, password, displayName, emailVerified: trusted });
-  return { uid: record.uid, created: true };
+  return record.uid;
 }
 
 const isGeneratedNumberCollision = (error, profile) =>
@@ -93,9 +103,9 @@ const isGeneratedNumberCollision = (error, profile) =>
  * Create a person in Firebase Authentication and MySQL.
  *
  *   1. email already in MySQL        -> 409 CONFLICT (key users.uq_users_email)
- *   2. Firebase account for the email -> see resolveFirebaseUser
+ *   2. Firebase account for the email -> see createFirebaseUser
  *   3. users + profile rows in ONE transaction (a generated business number that collides is regenerated once)
- *   4. MySQL failed and this call created the Firebase user -> delete it again (no orphans)
+ *   4. MySQL failed -> delete the Firebase user this call created (no orphans)
  *
  * @param {{ email: string, password: string, role: 'admin'|'teacher'|'student', firstName: string,
  *           lastName: string, phone?: string, profile?: object }} input
@@ -103,11 +113,9 @@ const isGeneratedNumberCollision = (error, profile) =>
  */
 export async function createUserAccount(input, { trusted }) {
   const email = input.email.toLowerCase();
-  if (await repo.findUserByEmail(email)) {
-    throw ApiError.conflict('email already registered', { key: 'users.uq_users_email' });
-  }
+  if (await repo.findUserByEmail(email)) throw emailAlreadyRegistered();
 
-  const { uid, created } = await resolveFirebaseUser(
+  const uid = await createFirebaseUser(
     { email, password: input.password, displayName: `${input.firstName} ${input.lastName}` },
     trusted,
   );
@@ -130,21 +138,31 @@ export async function createUserAccount(input, { trusted }) {
     }
     return await getAccount(userId);
   } catch (error) {
-    if (created) {
-      await firebase.deleteUser(uid).catch((cleanupError) =>
-        logger.error('could not delete Firebase user after a failure', {
-          uid,
-          cleanupError: String(cleanupError),
-        }),
-      );
-    }
+    await deleteFirebaseUserOrLog(uid, 'could not delete Firebase user after a failure');
     throw error;
+  }
+}
+
+/** Best effort: a leftover Firebase user without a MySQL row cannot sign in (403 USER_NOT_REGISTERED). */
+async function deleteFirebaseUserOrLog(uid, message) {
+  await firebase
+    .deleteUser(uid)
+    .catch((cleanupError) => logger.error(message, { uid, cleanupError: String(cleanupError) }));
+}
+
+/** Inside `conn`'s transaction: 409 when taking admin `id` out of the active admins would leave none. */
+async function assertNotLastActiveAdmin(id, conn) {
+  const activeAdminIds = await repo.lockActiveAdminIds(conn);
+  if (activeAdminIds.every((adminId) => adminId === id)) {
+    throw ApiError.conflict('at least one active administrator must remain', { reason: 'last_admin' });
   }
 }
 
 /**
  * Activate / deactivate. MySQL first (the middleware enforces it on the next request),
  * then Firebase (disabled flag, plus refresh-token revocation when deactivating).
+ * Deactivating an admin re-checks the "last active admin" rule under row locks, so two admins
+ * deactivating each other at the same moment cannot both succeed.
  */
 export async function setStatus(actor, id, isActive) {
   if (actor.id === id)
@@ -160,6 +178,7 @@ export async function setStatus(actor, id, isActive) {
   }
 
   await withTransaction(async (conn) => {
+    if (!isActive && target.role === 'admin') await assertNotLastActiveAdmin(id, conn);
     await repo.setActive(id, isActive, conn);
     if (!isActive && target.role === 'student')
       await closeActiveForStudent(target.studentId, 'withdrawn', conn);
@@ -169,4 +188,41 @@ export async function setStatus(actor, id, isActive) {
   if (!isActive) await firebase.revokeRefreshTokens(target.firebaseUid);
 
   return getAccount(id);
+}
+
+const hasHistoryConflict = (options) =>
+  ApiError.conflict(
+    'this account already has school records; deactivate it instead',
+    { reason: 'has_history' },
+    options,
+  );
+
+/**
+ * Permanent removal of an account created by mistake (email and role cannot be edited, and a
+ * deactivated account keeps its email). Only an account nothing refers to can go; FK RESTRICT is
+ * the backstop when a record is added concurrently. MySQL (profile + users row, one transaction)
+ * first, then the Firebase user.
+ */
+export async function deleteUser(actor, id) {
+  if (actor.id === id) throw ApiError.forbidden('self', 'you cannot delete your own account');
+  const target = ApiError.assertFound(await repo.findUserById(id), 'user', id);
+
+  try {
+    await withTransaction(async (conn) => {
+      if (target.role === 'admin') await assertNotLastActiveAdmin(id, conn);
+      if (await repo.hasHistory(id, conn)) throw hasHistoryConflict();
+      if (target.role === 'student') await studentsService.deleteProfile(id, conn);
+      if (target.role === 'teacher') await teachersService.deleteProfile(id, conn);
+      if (!(await repo.deleteUser(id, conn))) throw ApiError.notFound('user', id);
+    });
+  } catch (error) {
+    if (error?.code === 'ER_ROW_IS_REFERENCED_2') throw hasHistoryConflict({ cause: error });
+    throw error;
+  }
+
+  await deleteFirebaseUserOrLog(
+    target.firebaseUid,
+    'could not delete the Firebase user of a deleted account',
+  );
+  return { id };
 }

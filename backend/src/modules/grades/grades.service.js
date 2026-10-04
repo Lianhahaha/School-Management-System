@@ -56,7 +56,11 @@ const toGradeShape = (row) => ({
 const toSummaryRow = (row) => ({
   ...(row.studentId !== undefined && { studentId: row.studentId }),
   ...(row.classSubjectId !== undefined && { classSubjectId: row.classSubjectId }),
-  ...(row.subjectName !== undefined && { subjectName: row.subjectName }),
+  ...(row.subjectName !== undefined && {
+    subjectName: row.subjectName,
+    className: row.className,
+    academicYear: row.academicYear,
+  }),
   label: row.label,
   assessmentsGraded: row.assessmentsGraded,
   totalScore: row.totalScore,
@@ -87,14 +91,14 @@ export async function getSummary(user, query) {
 }
 
 /** Unscoped per-subject summary of one student (dashboards; the caller did the access checks). */
-export async function summarizeStudentGrades(studentId, classId) {
+export async function summarizeStudentGradesUnscoped(studentId, classId) {
   return (await repo.summarizeGrades({ groupBy: 'classSubject', studentId, classId }, null)).map(
     toSummaryRow,
   );
 }
 
 /** Newest grades of a student (dashboards; the caller did the access checks). */
-export async function recentGrades(studentId, limit = 5) {
+export async function recentGradesUnscoped(studentId, limit = 5) {
   return (await repo.findRecentGrades(studentId, limit)).map(toGradeShape);
 }
 
@@ -142,7 +146,7 @@ export async function saveGrades(user, assessmentId, { grades }) {
     const roster = new Set(await repo.findRosterStudentIds(assessmentId, conn));
     const invalidStudentIds = grades.map((g) => g.studentId).filter((id) => !roster.has(id));
     if (invalidStudentIds.length) {
-      throw ApiError.validation('students are not enrolled in this class', undefined, {
+      throw ApiError.validation('students were not in this class on the assessment date', undefined, {
         reason: 'not_enrolled',
         invalidStudentIds,
       });

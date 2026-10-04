@@ -1,8 +1,19 @@
 /**
- * The EXISTS queries behind every ownership / visibility rule. No other
- * repository writes scoping SQL; services call access.service instead.
+ * The EXISTS queries behind every ownership / visibility rule, and the class
+ * membership rule that every dated roster (attendance sheet, grade roster)
+ * is built on. No other repository writes scoping SQL; services call
+ * access.service instead.
  */
 import { query } from '../../config/db.js';
+
+/**
+ * Condition on an `enrollments e` row: its student was in class `classSql` on day `daySql` — enrolled on or
+ * before that day and not yet left, so a student who changes class on day D belongs to the new class on D.
+ * For today this is exactly the active enrollments. Both arguments are SQL expressions of the enclosing query
+ * (columns, or `?`; a `?` day is bound twice).
+ */
+export const enrolledInClassOn = (classSql, daySql) =>
+  `e.class_id = ${classSql} AND e.enrolled_on <= ${daySql} AND (e.left_on IS NULL OR e.left_on > ${daySql})`;
 
 /**
  * Sub-select of the class ids a teacher can see: classes where they teach a

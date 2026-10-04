@@ -1,5 +1,5 @@
 /**
- * Student profiles: creation (called by users.service inside its transaction),
+ * Student profiles: creation and deletion (called by users.service inside its transaction),
  * reads with role scoping, admin edits.
  */
 import { withTransaction } from '../../config/db.js';
@@ -68,6 +68,9 @@ export async function createProfile(userId, profile = {}, conn) {
   }
   return repo.insertStudent(userId, { ...profile, studentNumber, admissionDate }, conn);
 }
+
+/** Remove the profile row of a student user that is being deleted. Runs inside the caller's transaction. */
+export const deleteProfile = (userId, conn) => repo.deleteStudentByUserId(userId, conn);
 
 export async function listStudents(user, listQuery) {
   if (listQuery.classId !== undefined) await access.assertCanViewClass(user, listQuery.classId);

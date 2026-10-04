@@ -7,18 +7,11 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ping } from '../../config/db.js';
 import { env } from '../../config/env.js';
+import { firebase } from '../../config/firebase.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { ok } from '../../utils/respond.js';
 
 const { version } = JSON.parse(readFileSync(path.join(env.backendRoot, 'package.json'), 'utf8'));
-
-function firebaseProjectId() {
-  try {
-    return JSON.parse(readFileSync(env.firebaseServiceAccountPath, 'utf8')).project_id ?? null;
-  } catch {
-    return null;
-  }
-}
 
 export async function check(_req, res, next) {
   let timer;
@@ -27,8 +20,8 @@ export async function check(_req, res, next) {
   });
   try {
     await Promise.race([ping(), timeout]);
-  } catch {
-    return next(ApiError.unavailable('db'));
+  } catch (error) {
+    return next(ApiError.unavailable('db', { cause: error }));
   } finally {
     clearTimeout(timer);
   }
@@ -36,7 +29,7 @@ export async function check(_req, res, next) {
     status: 'ok',
     db: 'up',
     version,
-    firebaseProjectId: firebaseProjectId(),
+    firebaseProjectId: firebase.projectId,
     timeZone: env.APP_TIMEZONE,
     uptimeSeconds: Math.round(process.uptime()),
     timestamp: new Date().toISOString(),

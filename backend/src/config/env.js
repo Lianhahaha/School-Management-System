@@ -40,7 +40,6 @@ const schema = z.object({
     .refine(isSupportedTimeZone, {
       error: 'must be a valid IANA time zone such as Asia/Manila or Europe/Berlin',
     }),
-  ACADEMIC_YEAR_START_MONTH: z.coerce.number().int().min(1).max(12).default(8),
 
   DB_HOST: z.string().default('127.0.0.1'),
   DB_PORT: z.coerce.number().int().min(1).max(65535).default(3306),

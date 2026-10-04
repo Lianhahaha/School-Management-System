@@ -54,8 +54,8 @@ export async function insertClassSubject({ classId, subjectId, teacherId }) {
   return result.insertId;
 }
 
-export async function updateTeacher(id, teacherId) {
-  await run('UPDATE class_subjects SET teacher_id = ? WHERE id = ?', [teacherId, id]);
+export async function updateTeacher(id, teacherId, conn) {
+  await run('UPDATE class_subjects SET teacher_id = ? WHERE id = ?', [teacherId, id], conn);
 }
 
 export async function deleteClassSubject(id) {

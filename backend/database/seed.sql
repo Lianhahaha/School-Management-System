@@ -49,7 +49,7 @@ INSERT INTO seed_guard (ok) VALUES (
 DROP TEMPORARY TABLE seed_guard;
 
 -- ---------- 1. Dates -----------------------------------------------------------
--- The academic year starts in @ay_start_month (ACADEMIC_YEAR_START_MONTH, August by default).
+-- The academic year starts in @ay_start_month (ACADEMIC_YEAR_START_MONTH in src/constants/shared.js, 8 = August).
 SET @ay_start      := IF(MONTH(@today) >= @ay_start_month, YEAR(@today), YEAR(@today) - 1);
 SET @academic_year := CONCAT(@ay_start, '-', @ay_start + 1);                     -- e.g. '2026-2027'
 SET @enrolled_on   := LEAST(DATE(CONCAT(@ay_start, '-09-01')), DATE(@today));      -- classes start 1 Sept
@@ -179,9 +179,9 @@ FROM days d
 JOIN schedules sch      ON sch.day_of_week = WEEKDAY(d.dt) + 1      -- ISO day
 JOIN class_subjects cs  ON cs.id = sch.class_subject_id
 JOIN teachers t         ON t.id = cs.teacher_id
-JOIN enrollments e      ON e.class_id = cs.class_id
-                       AND e.status = 'active'
-                       AND e.enrolled_on <= d.dt                    -- no marks before the student joined
+JOIN enrollments e      ON e.class_id = cs.class_id                 -- the class roster on that day,
+                       AND e.enrolled_on <= d.dt                    -- same rule as the API: joined by then
+                       AND (e.left_on IS NULL OR e.left_on > d.dt)  -- and not yet left
 WHERE d.dt < @today OR sch.end_time <= @now_time;
 
 -- ---------- 8. Assessments + grades --------------------------------------------

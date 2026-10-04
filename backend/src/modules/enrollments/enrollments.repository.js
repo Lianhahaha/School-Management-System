@@ -1,6 +1,7 @@
 /**
- * SQL for enrollments: student <-> class membership with history. At most one
- * active row per student is guaranteed by the generated-column unique index.
+ * SQL for enrollments: student <-> class membership with history. Rows are
+ * only ever inserted and closed, never re-opened; at most one active row per
+ * student is guaranteed by the generated-column unique index.
  */
 import { query, run } from '../../config/db.js';
 import { selectPage } from '../../utils/pagination.js';
@@ -29,10 +30,6 @@ export const findEnrollmentById = (id, conn) => findOne('e.id = ?', [id], conn);
 export const findActiveByStudent = (studentId, conn) =>
   findOne(`e.student_id = ? AND e.status = 'active'`, [studentId], conn);
 
-/** Any existing row (open or closed) of this student in this class: UNIQUE(student_id, class_id). */
-export const findByStudentAndClass = (studentId, classId, conn) =>
-  findOne('e.student_id = ? AND e.class_id = ?', [studentId, classId], conn);
-
 export function listEnrollments(listQuery, scope) {
   const where = new WhereBuilder()
     .addIf(listQuery.studentId, 'e.student_id = ?')
@@ -58,15 +55,6 @@ export async function insertEnrollment(studentId, classId, enrolledOn, conn) {
     conn,
   );
   return result.insertId;
-}
-
-/** Re-open a closed row (same student, same class). */
-export async function reopenEnrollment(id, enrolledOn, conn) {
-  await run(
-    `UPDATE enrollments SET status = 'active', enrolled_on = ?, left_on = NULL WHERE id = ?`,
-    [enrolledOn, id],
-    conn,
-  );
 }
 
 export async function closeEnrollment(id, status, leftOn, conn) {

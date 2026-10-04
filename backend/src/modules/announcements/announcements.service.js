@@ -34,18 +34,8 @@ const toAnnouncementShape = (row) => ({
 /** `{ sql, params }` limiting rows to what `user` may read, or null for admins. */
 function visibilityScope(user) {
   if (access.isAdmin(user)) return null;
-  if (access.isTeacher(user)) {
-    const visibleClass = access.classScope(user, 'a.class_id');
-    return {
-      sql: `((${repo.ACTIVE_SQL} AND ((a.class_id IS NULL AND a.audience IN ('all', 'teachers')) OR ${visibleClass.sql}))
-             OR a.author_id = ?)`,
-      params: [...visibleClass.params, user.id],
-    };
-  }
-  return {
-    sql: `(${repo.ACTIVE_SQL} AND a.audience IN ('all', 'students') AND (a.class_id IS NULL OR a.class_id = ?))`,
-    params: [user.activeClassId ?? 0],
-  };
+  if (access.isTeacher(user)) return repo.teacherVisibility(access.classScope(user, 'a.class_id'), user.id);
+  return repo.studentVisibility(user.activeClassId);
 }
 
 export async function listAnnouncements(user, listQuery) {

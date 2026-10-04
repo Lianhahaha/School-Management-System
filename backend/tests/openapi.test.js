@@ -42,23 +42,25 @@ function* callsOn(source, receiverPattern) {
 const rolesIn = (args) =>
   [...(/authorize\(([^)]*)\)/.exec(args)?.[1] ?? '').matchAll(/'(\w+)'/g)].map((match) => match[1]);
 
-/** Router variable -> mount prefix, mount-level roles, and whether it is mounted before `authenticate`. */
+/**
+ * Router variable -> mount prefix, mount-level roles, and whether the mount runs `authenticate`.
+ * Every call must mount a router under a literal path: middleware applied to the whole API router
+ * (e.g. `apiRouter.use(authenticate)`) would run before routing and turn unknown paths into 401s.
+ */
 function readMounts() {
-  const calls = [...callsOn(read('routes.js'), 'apiRouter')];
-  const authenticateAt = calls.find(
-    (call) => call.method === 'use' && call.args.trim() === 'authenticate',
-  )?.index;
-  assert.notEqual(authenticateAt, undefined, 'routes.js: apiRouter.use(authenticate) not found');
   const mounts = new Map();
-  for (const call of calls) {
+  for (const call of callsOn(read('routes.js'), 'apiRouter')) {
     assert.equal(call.method, 'use', `routes.js: unsupported apiRouter.${call.method}()`);
     const prefix = /^\s*'([^']+)'/.exec(call.args)?.[1];
-    if (!prefix) continue; // apiRouter.use(authenticate)
+    assert.ok(
+      prefix,
+      `routes.js: apiRouter.use(${call.args.trim()}) must mount a router under a literal path`,
+    );
     const router = /(\w+)\s*,?\s*$/.exec(call.args)[1];
     mounts.set(router, {
       prefix,
       roles: rolesIn(call.args),
-      beforeAuthenticate: call.index < authenticateAt,
+      authenticated: /\bauthenticate\b/.test(call.args),
     });
   }
   return mounts;
@@ -83,7 +85,7 @@ function readCodeOperations() {
       const routeRoles = rolesIn(call.args);
       operations.set(`${call.method.toUpperCase()} ${fullPath}`, {
         roles: routeRoles.length ? routeRoles : mount.roles,
-        isPublic: mount.beforeAuthenticate && !/\bauthenticate\b/.test(call.args),
+        isPublic: !mount.authenticated && !/\bauthenticate\b/.test(call.args),
       });
     }
   }

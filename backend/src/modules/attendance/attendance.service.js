@@ -1,10 +1,10 @@
 import { withTransaction } from '../../config/db.js';
 import { ApiError } from '../../utils/ApiError.js';
-import { isAfterToday } from '../../utils/dates.js';
+import { academicYearOf, isAfterToday } from '../../utils/dates.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import { classSubjectRef, personRef, ratio } from '../../utils/shapes.js';
 import * as access from '../access/access.service.js';
-import { getClassSubjectRef } from '../classSubjects/classSubjects.service.js';
+import { getClassSubjectRefUnscoped } from '../classSubjects/classSubjects.service.js';
 import * as repo from './attendance.repository.js';
 
 const toStudentRef = (row) => ({
@@ -55,7 +55,7 @@ const toSummaryRow = (row) => ({
 });
 
 /** Unscoped summary for callers that did their own access checks (dashboards). rate = (present + late) / total. */
-export async function summarizeAttendance(filters) {
+export async function summarizeAttendanceUnscoped(filters) {
   const rows = (await repo.summarizeAttendance(filters, null)).map(toSummaryRow);
   return filters.groupBy && filters.groupBy !== 'none' ? rows : rows[0];
 }
@@ -66,14 +66,14 @@ export async function getSummary(user, query) {
   return query.groupBy === 'none' ? rows[0] : rows;
 }
 
-/** Set of class-subject ids that have attendance marked on `date` (teacher dashboard). */
-export async function markedClassSubjectIds(classSubjectIds, date) {
+/** Set of class-subject ids that have attendance marked on `date` (teacher dashboard; no access check). */
+export async function markedClassSubjectIdsUnscoped(classSubjectIds, date) {
   return new Set(await repo.findMarkedClassSubjectIds(classSubjectIds, date));
 }
 
 async function buildSheet(classSubjectId, date) {
   const [classSubject, rows] = await Promise.all([
-    getClassSubjectRef(classSubjectId),
+    getClassSubjectRefUnscoped(classSubjectId),
     repo.findSheetRows(classSubjectId, date),
   ]);
   return {
@@ -99,20 +99,31 @@ export async function getSheet(user, { classSubjectId, date }) {
   return buildSheet(classSubjectId, date);
 }
 
-/** Idempotent upsert of the listed students only; students left out of `records` keep their marks. */
-export async function saveSheet(user, { classSubjectId, date, records }) {
-  await access.assertCanManageClassSubject(user, classSubjectId);
-  await getClassSubjectRef(classSubjectId); // 404 for an unknown class-subject (admins)
+/** 400 unless attendance can be marked on `date`: not in the future and within the class's academic year. */
+function assertMarkableDate(date, academicYear) {
   if (isAfterToday(date)) {
     throw ApiError.validation('attendance cannot be marked for a future date', undefined, {
       reason: 'future_date',
     });
   }
+  if (academicYearOf(date) !== academicYear) {
+    throw ApiError.validation(`date is outside the academic year ${academicYear}`, undefined, {
+      reason: 'outside_academic_year',
+      academicYear,
+    });
+  }
+}
+
+/** Idempotent upsert of the listed students only; students left out of `records` keep their marks. */
+export async function saveSheet(user, { classSubjectId, date, records }) {
+  await access.assertCanManageClassSubject(user, classSubjectId);
+  const classSubject = await getClassSubjectRefUnscoped(classSubjectId); // 404 for an unknown class-subject (admins)
+  assertMarkableDate(date, classSubject.academicYear);
   await withTransaction(async (conn) => {
-    const roster = new Set(await repo.findRosterStudentIds(classSubjectId, conn));
+    const roster = new Set(await repo.findRosterStudentIds(classSubjectId, date, conn));
     const invalidStudentIds = records.map((r) => r.studentId).filter((id) => !roster.has(id));
     if (invalidStudentIds.length) {
-      throw ApiError.validation('students are not enrolled in this class', undefined, {
+      throw ApiError.validation('students were not enrolled in this class on this date', undefined, {
         reason: 'not_enrolled',
         invalidStudentIds,
       });

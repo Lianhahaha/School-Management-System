@@ -7,12 +7,15 @@
  * `details` (`reason`, `key`, `issues`, `conflicts`, ...). Use the static
  * factories below — never construct codes by hand — so that
  * `grep "ApiError\."` lists every failure path of a module.
+ *
+ * Factories that replace a lower-level failure take a trailing `{ cause }`:
+ * the original error is never sent to the client, but errorHandler logs it.
  */
 import { ERROR_CODES } from '../constants/shared.js';
 
 export class ApiError extends Error {
-  constructor(status, code, message, details) {
-    super(message);
+  constructor(status, code, message, details, options) {
+    super(message, options);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
@@ -23,22 +26,25 @@ export class ApiError extends Error {
    * 400 — zod issues (`part` prefixes paths: "body.email") or a business-rule
    * message with optional details ({ reason, field, invalidStudentIds, ... }).
    */
-  static validation(zodErrorOrMessage, part, details) {
+  static validation(zodErrorOrMessage, part, details, options) {
     if (typeof zodErrorOrMessage === 'string') {
-      return new ApiError(400, ERROR_CODES.VALIDATION_ERROR, zodErrorOrMessage, details);
+      return new ApiError(400, ERROR_CODES.VALIDATION_ERROR, zodErrorOrMessage, details, options);
     }
     const issues = zodErrorOrMessage.issues.map((issue) => ({
       path: [part, ...issue.path].filter((segment) => segment !== undefined && segment !== '').join('.'),
       message: issue.message,
     }));
-    return new ApiError(400, ERROR_CODES.VALIDATION_ERROR, 'request validation failed', {
-      issues,
-      ...details,
-    });
+    return new ApiError(
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+      'request validation failed',
+      { issues, ...details },
+      options,
+    );
   }
 
-  static unauthorized(message = 'authentication required', reason) {
-    return new ApiError(401, ERROR_CODES.UNAUTHORIZED, message, reason ? { reason } : undefined);
+  static unauthorized(message = 'authentication required', reason, options) {
+    return new ApiError(401, ERROR_CODES.UNAUTHORIZED, message, reason ? { reason } : undefined, options);
   }
 
   static notRegistered(firebaseUid) {
@@ -58,8 +64,9 @@ export class ApiError extends Error {
     return new ApiError(403, ERROR_CODES.FORBIDDEN, message, { reason });
   }
 
-  static notFound(resource, id) {
-    return new ApiError(404, ERROR_CODES.NOT_FOUND, `${resource} not found`, { resource, id });
+  /** 404 for `resource` / `id`; `details` adds specifics such as a `reason`. */
+  static notFound(resource, id, details) {
+    return new ApiError(404, ERROR_CODES.NOT_FOUND, `${resource} not found`, { resource, id, ...details });
   }
 
   /** Returns `row` when it exists, otherwise throws 404 for `resource` / `id`. */
@@ -68,8 +75,8 @@ export class ApiError extends Error {
     return row;
   }
 
-  static conflict(message, details) {
-    return new ApiError(409, ERROR_CODES.CONFLICT, message, details);
+  static conflict(message, details, options) {
+    return new ApiError(409, ERROR_CODES.CONFLICT, message, details, options);
   }
 
   static scheduleConflict(conflicts) {
@@ -87,12 +94,19 @@ export class ApiError extends Error {
     });
   }
 
-  static internal(message = 'internal server error') {
-    return new ApiError(500, ERROR_CODES.INTERNAL_ERROR, message);
+  static internal(message = 'internal server error', options) {
+    return new ApiError(500, ERROR_CODES.INTERNAL_ERROR, message, undefined, options);
   }
 
-  static unavailable(component = 'db') {
-    return new ApiError(503, ERROR_CODES.SERVICE_UNAVAILABLE, `${component} unavailable`, { component });
+  /** 503 — a dependency (`db`, `auth`, `timetable`, ...) cannot serve the request right now. */
+  static unavailable(component = 'db', options) {
+    return new ApiError(
+      503,
+      ERROR_CODES.SERVICE_UNAVAILABLE,
+      `${component} unavailable`,
+      { component },
+      options,
+    );
   }
 
   toJSON() {

@@ -35,7 +35,13 @@ export async function findStudentByUserId(userId) {
 /** @param {{ sql: string, params: unknown[] } | null} scope extra WHERE fragment (teacher visibility) or null */
 export function listStudents(listQuery, scope) {
   const where = new WhereBuilder()
-    .addSearch(listQuery.search, ['u.first_name', 'u.last_name', 's.student_number', 'u.email'])
+    .addSearch(listQuery.search, [
+      'u.first_name',
+      'u.last_name',
+      "CONCAT(u.first_name, ' ', u.last_name)",
+      's.student_number',
+      'u.email',
+    ])
     .addIf(listQuery.classId, 'e.class_id = ?')
     .addIf(listQuery.gradeLevel, 'c.grade_level = ?')
     .addIf(listQuery.gender, 's.gender = ?')
@@ -96,6 +102,10 @@ export async function updateStudent(id, fields, conn) {
     [...set.params, id],
     conn,
   );
+}
+
+export async function deleteStudentByUserId(userId, conn) {
+  await run('DELETE FROM students WHERE user_id = ?', [userId], conn);
 }
 
 /** Highest sequence already issued for STU-<year>-NNNN, or 0. */

@@ -96,12 +96,7 @@ export async function run(sql, params = [], conn = pool) {
   return result;
 }
 
-/**
- * Run `fn(conn)` inside a transaction. Commits on success, rolls back on any
- * error, always releases the connection.
- */
-export async function withTransaction(fn) {
-  const conn = await pool.getConnection();
+async function inTransaction(conn, fn) {
   try {
     await conn.beginTransaction();
     const result = await fn(conn);
@@ -110,8 +105,43 @@ export async function withTransaction(fn) {
   } catch (error) {
     await conn.rollback().catch(() => {});
     throw error;
+  }
+}
+
+/**
+ * Run `fn(conn)` inside a transaction. Commits on success, rolls back on any
+ * error, always releases the connection.
+ */
+export async function withTransaction(fn) {
+  const conn = await pool.getConnection();
+  try {
+    return await inTransaction(conn, fn);
   } finally {
     conn.release();
+  }
+}
+
+/**
+ * Like withTransaction, but `acquire(conn)` takes a session-level lock (GET_LOCK) on the same connection
+ * before BEGIN and `release(conn)` frees it after COMMIT or ROLLBACK, so the lock covers the committed write
+ * with one pooled connection. If `acquire` throws, nothing runs; if `release` fails, the connection is
+ * destroyed so the session (and its lock) ends instead of going back to the pool still holding it.
+ */
+export async function withLockedTransaction(acquire, release, fn) {
+  const conn = await pool.getConnection();
+  let reusable = true;
+  try {
+    await acquire(conn);
+    try {
+      return await inTransaction(conn, fn);
+    } finally {
+      await release(conn).catch(() => {
+        reusable = false;
+      });
+    }
+  } finally {
+    if (reusable) conn.release();
+    else conn.destroy();
   }
 }
 

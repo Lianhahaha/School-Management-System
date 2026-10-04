@@ -69,7 +69,7 @@ export async function deleteAssessment(user, id) {
 }
 
 /** Upcoming assessments within `days` from today, optionally for one class (dashboards; no access check). */
-export async function upcomingAssessments({ classId, days = 7, limit = 10 }) {
+export async function upcomingAssessmentsUnscoped({ classId, days = 7, limit = 10 }) {
   const today = todayYmd();
   const rows = await repo.findUpcoming({ classId, from: today, to: addDaysYmd(today, days), limit });
   return rows.map((row) => ({
@@ -82,9 +82,9 @@ export async function upcomingAssessments({ classId, days = 7, limit = 10 }) {
   }));
 }
 
-/** Assessments of a teacher that still lack grades (dashboards; no access check). */
-export async function pendingGrading(teacherId, academicYear, limit = 10) {
-  const rows = await repo.findPendingGrading(teacherId, academicYear, limit);
+/** Assessments of a teacher dated up to today that still lack grades (dashboards; no access check). */
+export async function pendingGradingUnscoped(teacherId, academicYear, limit = 10) {
+  const rows = await repo.findPendingGrading(teacherId, academicYear, todayYmd(), limit);
   return rows.map((row) => ({
     assessmentId: row.assessmentId,
     title: row.title,

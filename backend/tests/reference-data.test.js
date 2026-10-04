@@ -199,7 +199,7 @@ describe('enrollments', () => {
     assert.equal(again.body.error.details.activeEnrollmentId, first.id);
   });
 
-  it('transfers in one step and re-opens the old row when the student returns', async () => {
+  it('transfers in one step; a return to the old class opens a new row and keeps the old period', async () => {
     const student = await makeUser('student');
     const first = await enrollStudent(admin, { studentId: student.studentId, classId: classA.id });
     const moved = await api
@@ -215,8 +215,17 @@ describe('enrollments', () => {
       .post('/api/v1/enrollments/transfer')
       .set(as(admin))
       .send({ studentId: student.studentId, classId: classA.id });
-    assert.equal(back.body.data.id, first.id); // same row re-opened (UNIQUE student + class)
+    assert.equal(back.status, 201);
+    assert.notEqual(back.body.data.id, first.id);
     assert.equal(back.body.data.status, 'active');
+    const inClassA = await api
+      .get(`/api/v1/enrollments?studentId=${student.studentId}&classId=${classA.id}`)
+      .set(as(admin));
+    const original = inClassA.body.data.find((row) => row.id === first.id);
+    assert.equal(inClassA.body.meta.total, 2);
+    assert.equal(original.status, 'transferred');
+    assert.equal(original.enrolledOn, first.enrolledOn);
+    assert.ok(original.leftOn);
     const same = await api
       .post('/api/v1/enrollments/transfer')
       .set(as(admin))

@@ -2,6 +2,7 @@ import { ApiError } from '../../utils/ApiError.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import { classSubjectRef, personRef } from '../../utils/shapes.js';
 import * as access from '../access/access.service.js';
+import { writeIfTeacherFree } from '../schedules/schedules.service.js';
 import { assertActiveSubject } from '../subjects/subjects.service.js';
 import { assertActiveTeacher } from '../teachers/teachers.service.js';
 import * as repo from './classSubjects.repository.js';
@@ -28,7 +29,7 @@ export async function getClassSubject(user, id) {
 }
 
 /** Unscoped reference `{ classId, className, ... teacherId }` for other modules that already did their own access check. */
-export async function getClassSubjectRef(id) {
+export async function getClassSubjectRefUnscoped(id) {
   return classSubjectRef(ApiError.assertFound(await repo.findClassSubjectById(id), 'class subject', id));
 }
 
@@ -39,10 +40,11 @@ export async function createClassSubject(body) {
   return toClassSubjectShape(await repo.findClassSubjectById(id));
 }
 
+/** The new teacher takes over the timetable slots, so a clash with their other lessons is a 409. */
 export async function reassignTeacher(id, teacherId) {
   ApiError.assertFound(await repo.findClassSubjectById(id), 'class subject', id);
   await assertActiveTeacher(teacherId);
-  await repo.updateTeacher(id, teacherId);
+  await writeIfTeacherFree(id, teacherId, (conn) => repo.updateTeacher(id, teacherId, conn));
   return toClassSubjectShape(await repo.findClassSubjectById(id));
 }
 

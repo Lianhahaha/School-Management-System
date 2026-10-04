@@ -1,11 +1,11 @@
 /**
- * The /api/v1 router. Public routes first (health, auth), then `authenticate`
- * guards everything below it. Role gates live next to each route (authorize),
- * except /users which is admin-only as a whole.
+ * The /api/v1 router. Public routes first (health, auth), then every other
+ * resource mounted behind `authenticate`. Authentication is applied per mount,
+ * not to the router as a whole, so an unknown path reaches the 404 handler
+ * whether or not a token was sent. Role gates live next to each route (authorize).
  */
 import { Router } from 'express';
 import { authenticate } from './middleware/authenticate.js';
-import { authorize } from './middleware/authorize.js';
 import { announcementsRoutes } from './modules/announcements/announcements.routes.js';
 import { assessmentsRoutes } from './modules/assessments/assessments.routes.js';
 import { attendanceRoutes } from './modules/attendance/attendance.routes.js';
@@ -27,18 +27,18 @@ export const apiRouter = Router();
 apiRouter.use('/health', healthRoutes);
 apiRouter.use('/auth', authRoutes);
 
-apiRouter.use(authenticate);
-apiRouter.use('/users', authorize('admin'), usersRoutes);
-apiRouter.use('/students', studentsRoutes);
-apiRouter.use('/teachers', teachersRoutes);
-apiRouter.use('/subjects', subjectsRoutes);
-apiRouter.use('/classes', classesRoutes);
-apiRouter.use('/class-subjects', classSubjectsRoutes);
-apiRouter.use('/enrollments', enrollmentsRoutes);
-apiRouter.use('/attendance', attendanceRoutes);
-apiRouter.use('/assessments', assessmentsRoutes);
-apiRouter.use('/assessments/:id/grades', assessmentGradesRoutes);
-apiRouter.use('/grades', gradesRoutes);
-apiRouter.use('/schedules', schedulesRoutes);
-apiRouter.use('/announcements', announcementsRoutes);
-apiRouter.use('/dashboard', dashboardRoutes);
+apiRouter.use('/users', authenticate, usersRoutes);
+apiRouter.use('/students', authenticate, studentsRoutes);
+apiRouter.use('/teachers', authenticate, teachersRoutes);
+apiRouter.use('/subjects', authenticate, subjectsRoutes);
+apiRouter.use('/classes', authenticate, classesRoutes);
+apiRouter.use('/class-subjects', authenticate, classSubjectsRoutes);
+apiRouter.use('/enrollments', authenticate, enrollmentsRoutes);
+apiRouter.use('/attendance', authenticate, attendanceRoutes);
+// Mounted before /assessments so a roster request is authenticated once, not by both mounts.
+apiRouter.use('/assessments/:id/grades', authenticate, assessmentGradesRoutes);
+apiRouter.use('/assessments', authenticate, assessmentsRoutes);
+apiRouter.use('/grades', authenticate, gradesRoutes);
+apiRouter.use('/schedules', authenticate, schedulesRoutes);
+apiRouter.use('/announcements', authenticate, announcementsRoutes);
+apiRouter.use('/dashboard', authenticate, dashboardRoutes);

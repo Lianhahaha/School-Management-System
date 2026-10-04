@@ -4,6 +4,7 @@
 import { query, run } from '../../config/db.js';
 import { selectPage } from '../../utils/pagination.js';
 import { CLASS_SUBJECT_REF_COLUMNS, WhereBuilder, buildSet, joinClassSubject } from '../../utils/sql.js';
+import { enrolledInClassOn } from '../access/access.repository.js';
 
 export const ATTENDANCE_SORT_MAP = {
   attendanceDate: 'a.attendance_date',
@@ -78,21 +79,32 @@ export function summarizeAttendance({ groupBy = 'none', ...filters }, scope) {
   return query(`SELECT ${COUNTS} ${base}`, where.params);
 }
 
-/** The class roster (active enrollments) with the marks of one date merged in; unmarked rows have null status. */
+/**
+ * Sub-select `{ sql, params }` of the students on the sheet of one lesson and date: the class roster on that
+ * date plus anyone already marked on it, so a mark stays correctable after its student left the class.
+ */
+const sheetStudentIds = (classSubjectId, date) => ({
+  sql: `SELECT e.student_id FROM class_subjects cs JOIN enrollments e ON ${enrolledInClassOn('cs.class_id', '?')}
+         WHERE cs.id = ?
+        UNION
+        SELECT a.student_id FROM attendance a WHERE a.class_subject_id = ? AND a.attendance_date = ?`,
+  params: [date, date, classSubjectId, classSubjectId, date],
+});
+
+/** The sheet's students with the marks of that date merged in; unmarked rows have null status. */
 export function findSheetRows(classSubjectId, date) {
+  const roster = sheetStudentIds(classSubjectId, date);
   return query(
     `SELECT s.id AS student_id, s.student_number, u.first_name, u.last_name,
             a.id AS attendance_id, a.status, a.remarks, a.marked_by,
             mu.first_name AS marker_first_name, mu.last_name AS marker_last_name, a.updated_at
-       FROM class_subjects cs
-       JOIN enrollments e ON e.class_id = cs.class_id AND e.status = 'active'
-       JOIN students s ON s.id = e.student_id
+       FROM (${roster.sql}) roster
+       JOIN students s ON s.id = roster.student_id
        JOIN users u ON u.id = s.user_id
-       LEFT JOIN attendance a ON a.class_subject_id = cs.id AND a.student_id = s.id AND a.attendance_date = ?
+       LEFT JOIN attendance a ON a.class_subject_id = ? AND a.student_id = s.id AND a.attendance_date = ?
        LEFT JOIN users mu ON mu.id = a.marked_by
-      WHERE cs.id = ?
       ORDER BY u.last_name, u.first_name, s.id`,
-    [date, classSubjectId],
+    [...roster.params, classSubjectId, date],
   );
 }
 
@@ -106,14 +118,10 @@ export async function findMarkedClassSubjectIds(classSubjectIds, date) {
   return rows.map((row) => row.classSubjectId);
 }
 
-export async function findRosterStudentIds(classSubjectId, conn) {
-  const rows = await query(
-    `SELECT e.student_id FROM class_subjects cs
-       JOIN enrollments e ON e.class_id = cs.class_id AND e.status = 'active' WHERE cs.id = ?`,
-    [classSubjectId],
-    conn,
-  );
-  return rows.map((row) => row.studentId);
+/** Ids of the students a sheet of this lesson and date may mark (see sheetStudentIds). */
+export async function findRosterStudentIds(classSubjectId, date, conn) {
+  const roster = sheetStudentIds(classSubjectId, date);
+  return (await query(roster.sql, roster.params, conn)).map((row) => row.studentId);
 }
 
 /** Idempotent bulk upsert on UNIQUE(student, class-subject, date). Needs MySQL >= 8.0.19 (row alias). */

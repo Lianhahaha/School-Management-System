@@ -1,12 +1,30 @@
 /**
- * SQL for schedules (weekly timetable slots of a class-subject) and the
- * overlap query behind conflict detection.
+ * SQL for schedules (weekly timetable slots of a class-subject), the overlap
+ * queries behind conflict detection and the named lock that serialises them.
  */
 import { query, run } from '../../config/db.js';
 import { selectPage } from '../../utils/pagination.js';
 import { CLASS_SUBJECT_REF_COLUMNS, WhereBuilder, buildSet, joinClassSubject } from '../../utils/sql.js';
 
 export const SCHEDULE_SORT_MAP = { dayOfWeek: 'sch.day_of_week', startTime: 'sch.start_time' };
+
+// Named locks are server-wide, so the name carries the schema to keep two databases independent.
+const TIMETABLE_LOCK = `CONCAT(DATABASE(), ':timetable')`;
+const LOCK_WAIT_SECONDS = 5;
+
+/** Takes the named timetable lock for the session of `conn`; false when another session holds it past the wait. */
+export async function acquireTimetableLock(conn) {
+  const [{ acquired }] = await query(
+    `SELECT GET_LOCK(${TIMETABLE_LOCK}, ?) AS acquired`,
+    [LOCK_WAIT_SECONDS],
+    conn,
+  );
+  return acquired === 1;
+}
+
+export async function releaseTimetableLock(conn) {
+  await query(`SELECT RELEASE_LOCK(${TIMETABLE_LOCK}) AS released`, [], conn);
+}
 
 const COLUMNS = `sch.id, sch.class_subject_id, ${CLASS_SUBJECT_REF_COLUMNS},
   tu.first_name AS teacher_first_name, tu.last_name AS teacher_last_name,
@@ -91,6 +109,29 @@ export function findOverlaps({ classSubjectId, dayOfWeek, startTime, endTime, ro
         AND (cs.class_id = target.class_id OR cs.teacher_id = target.teacher_id OR ${sameRoom})
       ORDER BY sch.start_time, sch.id`,
     [room, room, dayOfWeek, endTime, startTime, excludeId, classSubjectId, room, room],
+    conn,
+  );
+}
+
+/**
+ * Slots of `teacherId`'s other class-subjects in the same academic year that overlap any slot of class-subject
+ * `classSubjectId`: the clashes a reassignment of that class-subject to the teacher would create.
+ */
+export function findTeacherOverlaps(classSubjectId, teacherId, conn) {
+  return query(
+    `SELECT DISTINCT sch.id AS schedule_id, sch.class_subject_id, c.name AS class_name, sub.name AS subject_name,
+            sch.day_of_week, sch.start_time, sch.end_time, sch.room
+       FROM class_subjects target
+       JOIN classes tc ON tc.id = target.class_id
+       JOIN schedules own ON own.class_subject_id = target.id
+       JOIN schedules sch ON sch.day_of_week = own.day_of_week
+                         AND sch.start_time < own.end_time AND sch.end_time > own.start_time
+       JOIN class_subjects cs ON cs.id = sch.class_subject_id AND cs.teacher_id = ? AND cs.id <> target.id
+       JOIN classes c ON c.id = cs.class_id AND c.academic_year = tc.academic_year
+       JOIN subjects sub ON sub.id = cs.subject_id
+      WHERE target.id = ?
+      ORDER BY sch.day_of_week, sch.start_time, sch.id`,
+    [teacherId, classSubjectId],
     conn,
   );
 }
