@@ -1,7 +1,7 @@
 # School Management System — Project Plan
 
-Status: planning complete. Implementation starts after the open decisions in section 14 are confirmed.
-Date: 2026-10-03.
+Status: implemented. Sections 1–15 are the plan the build followed; section 16 records where the code deliberately differs.
+Date: 2026-10-03 (plan), updated 2026-10-04.
 
 This document is the contract for the whole project. The detailed design documents in `docs/design/` expand on it; where a detailed document disagrees with this plan, this plan wins (the decisions in section 5 list every such case).
 
@@ -30,10 +30,10 @@ Hard constraints:
 
 | # | Required feature | Database | Backend | Frontend | How a reviewer verifies it |
 |---|---|---|---|---|---|
-| 1 | Student, teacher, and administrator accounts | `users.role` ENUM + 1:1 `students` / `teachers` profile tables | `POST /users` (admin, any role), `POST /auth/register` (public, student only), `PATCH /users/:id/status` | Admin → Users page: create user of any role, activate/deactivate | Create a teacher as admin, log in as that teacher in a private window |
+| 1 | Student, teacher, and administrator accounts | `users.role` ENUM + 1:1 `students` / `teachers` profile tables | `POST /users` (admin, any role), `POST /auth/register` (public, student only), `PATCH /users/:id/status`, `DELETE /users/:id` (only while unused) | Admin → Users page: create user of any role, activate/deactivate | Create a teacher as admin, log in as that teacher in a private window |
 | 2 | Firebase Authentication | `users.firebase_uid` UNIQUE | `authenticate` middleware verifies the Firebase ID token on every request; Admin SDK creates/disables users | Firebase JS SDK login, register, forgot password, logout | Register, log out, log in, reload page: session survives; wrong password shows a generic error |
 | 3 | MySQL database | 12 InnoDB tables, 18 FKs, 15 UNIQUE keys, 11 CHECK constraints, 1 generated column | `mysql2` pool, parameterized SQL only, repository layer | — | `npm run db:migrate` creates the schema from `schema.sql`; Workbench shows the ERD |
-| 4 | Backend REST API | — | 63 endpoints under `/api/v1`, one JSON envelope, closed error catalogue | all data via `apiClient` | Swagger UI "Try it out" with a token |
+| 4 | Backend REST API | — | 64 endpoints under `/api/v1`, one JSON envelope, closed error catalogue | all data via `apiClient` | Swagger UI "Try it out" with a token |
 | 5 | Student enrollment and profile management | `students`, `enrollments` (one active row per student, enforced by a unique index) | students CRUD, `POST /enrollments`, `/enrollments/bulk`, `/enrollments/transfer`, `PATCH /enrollments/:id` | Students list (enroll / transfer), Student detail (profile, enrollment history, attendance, grades), Profile page (self-service contact fields) | Enroll a new student, try to enroll them in a second class (409), transfer them |
 | 6 | Subjects and class management | `subjects`, `classes` (UNIQUE per academic year) | subjects CRUD, classes CRUD | Subjects page, Classes list + Class detail (tabs) | Create a class for `2026-2027`; try `2026/2027` (400); delete a used subject (409) |
 | 7 | Teacher assignment | `class_subjects (class_id, subject_id) → teacher_id`, UNIQUE per class+subject | `/class-subjects` CRUD (assign, reassign teacher, remove) | Class detail → "Subjects & Teachers" tab | Assign Physics to Grade 10-A with teacher1; assign again (409); teacher1 sees it under "My classes" |
@@ -44,7 +44,7 @@ Hard constraints:
 | 12 | Separate student, teacher, and admin dashboards | aggregate queries | `GET /dashboard` returns one of three role-specific payloads | `AdminDashboardPage`, `TeacherDashboardPage`, `StudentDashboardPage` with different content, not three skins | Log in as each demo user |
 | 13 | Search and filtering | indexes on names, numbers, codes, dates, class/status | every list endpoint: `page`, `limit`, `search`, `sortBy` (whitelisted), `sortOrder`, resource filters; `meta.total` honours filters | shared `useListParams` + `DataTable`; filters live in the URL | Change `search`, `sortBy`, `page` in the URL bar; `sortBy=evil` returns 400 |
 | 14 | Role-based access control | `users.role`, `is_active` | `authenticate` + `authorize(...roles)` + ownership assertions in services (teacher owns a lesson, student reads only own data) | route guards per area, nav per role, forbidden actions not rendered; backend remains the enforcement point | As student, open `/admin/users` (403 page); `curl` `GET /users` with a student token (403 JSON) |
-| (also listed) | Basic API documentation | — | `docs/openapi.yaml` served by Swagger UI at `/api/docs`; raw spec at `/api/docs/openapi.json` | "API docs" link in the sidebar | Open Swagger UI, authorize with a token, call `GET /students` |
+| (also listed) | Basic API documentation | — | `backend/docs/openapi.yaml` served by Swagger UI at `/api/docs`; raw spec at `/api/docs/openapi.json` | linked from the README (not from the app UI) | Open Swagger UI, authorize with a token, call `GET /students` |
 
 ---
 
@@ -60,7 +60,7 @@ Hard constraints:
 | Backend | firebase-admin | ^14.5 | **no `admin.auth()` namespace**; use `initializeApp`/`cert` from `firebase-admin/app` and `getAuth` from `firebase-admin/auth` |
 | Backend | zod | ^4.6 | v4 API: `z.email()`, `z.iso.date()`, `{ error }` instead of `{ message }`, `z.treeifyError` |
 | Backend | swagger-ui-express, yaml | ^5.0, ^2 | spec loaded from YAML at startup so a YAML error fails the boot |
-| Backend | helmet, cors, morgan, dotenv, express-rate-limit | ^8.3, ^2.8, ^1.10, ^18.0, ^7 | dotenv 18 prints a banner unless `quiet: true` |
+| Backend | helmet, cors, morgan, express-rate-limit | ^8.3, ^2.8, ^1.10, ^8.7 | env files are loaded by Node (`--env-file-if-exists`), no dotenv |
 | Backend (dev) | supertest, node:test | ^7 | no Jest; Node's built-in runner |
 | Frontend | react, react-dom | ^19.3 | |
 | Frontend | vite, @vitejs/plugin-react | ^8.3, ^6.1 | Rolldown bundler; keep the pair matched |
@@ -70,7 +70,7 @@ Hard constraints:
 | Frontend | firebase | ^12.19 | modular SDK; never `firebase@next` |
 | Frontend | react-hook-form, @hookform/resolvers, zod | ^7.89, ^5, ^4.6 | same zod major as the backend |
 | Frontend | lucide-react | latest | only icon dependency |
-| Tooling | eslint ^9 (flat config), prettier ^3, prettier-plugin-tailwindcss | | |
+| Tooling | eslint ^10 (flat config), prettier ^3, prettier-plugin-tailwindcss | | |
 | Local services | MySQL Server 8.0 (service `MySQL80`, installed), Firebase project on the Spark plan | | MySQL 8.0 is out of Oracle support since 2026-04-30; fine for local use |
 
 ### 3.2 Cost check
@@ -121,7 +121,7 @@ Principles:
 | D1 | Language | JavaScript (ESM) on both sides, zod for runtime validation, JSDoc where helpful | No build step on the backend, fewer config files, fewer failure modes for a reviewer; zod gives the runtime safety that matters here (section 14 asks you to confirm) |
 | D2 | Valid Firebase token but no MySQL row | `403 USER_NOT_REGISTERED` (not 401) | The token *is* authenticated; the account is not provisioned. Frontend treats `USER_NOT_REGISTERED` and `ACCOUNT_DISABLED` as "sign out + message" |
 | D3 | Enrollment statuses | `active`, `completed`, `transferred`, `withdrawn` (no `dropped`) | Matches the validated schema and its CHECK constraints (`left_on` required once closed) |
-| D4 | Class transfer | Single endpoint `POST /enrollments/transfer { studentId, classId }` — one transaction: close the active row as `transferred`, insert (or re-open) the new row | Removes the half-done state a two-call transfer leaves behind; the DB order (close first, then insert) is exactly what the unique index requires |
+| D4 | Class transfer | Single endpoint `POST /enrollments/transfer { studentId, classId }` — one transaction: close the active row as `transferred`, insert a new row (every enrollment is its own row, so re-joining a class keeps the earlier period) | Removes the half-done state a two-call transfer leaves behind; the DB order (close first, then insert) is exactly what the unique index requires |
 | D5 | Assessment types | `quiz`, `test`, `exam`, `assignment`, `project`, `other` | Schema's set; `other` avoids forcing a wrong label |
 | D6 | Term | ENUM `term1`, `term2`, `term3` in DB, zod and UI (labels "Term 1/2/3") | One shared constant instead of free text typed differently per teacher |
 | D7 | Deleting an assessment with grades | FK stays RESTRICT; `DELETE /assessments/:id` deletes grades then the assessment in one transaction, after a UI confirm that shows the graded count | Nothing is erased implicitly; API behaviour is the same as a cascade |
@@ -132,7 +132,7 @@ Principles:
 | D12 | Database name | `school_management` (tests use `school_management_test`) | |
 | D13 | Firebase credentials on the backend | One git-ignored file `backend/firebase-service-account.json`, path from env `FIREBASE_SERVICE_ACCOUNT_PATH` | Pasting a private key into `.env` mangles newlines; a file the reviewer drops in place cannot |
 | D14 | Ports and origins | API on 3000, Vite on 5173 (`strictPort`), Vite dev proxy `/api → http://127.0.0.1:3000`; `CORS_ORIGINS` env kept for non-proxy use | No CORS on a fresh clone; `127.0.0.1` avoids the IPv6 `localhost` pitfall on Windows |
-| D15 | Frontend API base | `VITE_API_BASE_URL` default `/api/v1` (proxied); docs link default `/api/docs` | Same reason |
+| D15 | Frontend API base | `VITE_API_BASE_URL` default `/api/v1` (proxied) | Same reason |
 | D16 | mysql2 pool options | `dateStrings: ['DATE']`, `timezone: 'Z'`, `decimalNumbers: true`, `typeCast` that returns TIME as `HH:MM` and TINYINT(1) as boolean, `SET time_zone = '+00:00'` per connection, `namedPlaceholders: false` | DATE never shifts; DATETIME serialises as ISO UTC; times and booleans are converted in exactly one place |
 | D17 | Attendance rate | `rate = (present + late) / total`, 4 decimals, `null` when nothing is marked; counts per status returned alongside | One definition, documented in OpenAPI |
 | D18 | Grade summary | Points-weighted: `SUM(score) / SUM(max_score) × 100` over graded assessments | Standard gradebook behaviour; a 50-point exam counts more than a 10-point quiz |
@@ -140,9 +140,9 @@ Principles:
 | D20 | Error catalogue | Closed set: `VALIDATION_ERROR` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `USER_NOT_REGISTERED` 403, `ACCOUNT_DISABLED` 403, `NOT_FOUND` 404, `CONFLICT` 409, `SCHEDULE_CONFLICT` 409, `RATE_LIMITED` 429 (register endpoint only), `INTERNAL_ERROR` 500, `SERVICE_UNAVAILABLE` 503. Specific situations go in `details.reason` (`not_class_subject_owner`, `self_status_change`, `invalid_status_transition`, …) | Eleven codes are easy to keep identical on both sides; reasons are free to grow |
 | D21 | Role changes | Not supported in v1: deactivate and create a new account (email also immutable) | Removes the stale-role bug class and the two-system consistency problem |
 | D22 | Teacher deactivation | Refused with 409 (`details.reason = 'teacher_has_assignments'`) while the teacher has `class_subjects` or homeroom classes in the current academic year | Rosters must never show an inactive teacher |
-| D23 | Admin guards | Admin cannot change own status (403 `self_status_change`). A separate last-admin guard was dropped during implementation: the caller must be an active admin and cannot target self, so one active admin always remains and the guard could never fire; the seed still ships a second admin so reviewers can test deactivating one | Lockout prevention |
+| D23 | Admin guards | Admin cannot change own status (403 `self_status_change`) or delete themselves (403 `self`). A last-admin guard locks the active admin rows inside the transaction and refuses (409 `last_admin`) any change that would leave none, so two admins deactivating each other at once cannot lock the school out; the seed ships a second admin | Lockout prevention |
 | D24 | Subjects | Hard delete allowed only when unused (409 otherwise) **and** `is_active` flag to retire a used subject (hidden from new assignments) | Both behaviours are expected by reviewers |
-| D25 | "Today" and the current academic year | Backend computes "today" and ISO weekday in `APP_TIMEZONE` (env; default = machine time zone); current academic year = August rule (`ACADEMIC_YEAR_START_MONTH`, default 8) in one helper used by dashboards, teacher visibility defaults and the seed. Clients always send attendance dates explicitly | Without a "current year" rule, last year's timetable would appear in "today" |
+| D25 | "Today" and the current academic year | Backend computes "today" and ISO weekday in `APP_TIMEZONE` (env; default = machine time zone); current academic year = August rule (`ACADEMIC_YEAR_START_MONTH = 8` in `constants/shared.js`, the one value both sides read) in one helper used by dashboards, teacher visibility defaults, attendance date checks and the seed. Clients always send attendance dates explicitly | Without a "current year" rule, last year's timetable would appear in "today" |
 | D26 | Shared constants | `backend/src/constants/shared.js` and `frontend/src/constants/shared.js` are byte-identical (pure ESM, no env, no React); `npm run check:constants` (backend) compares the two files and the ENUM lists parsed from `schema.sql` | Every enum is typed once per side and checked mechanically |
 | D27 | Helmet | `helmet({ contentSecurityPolicy: false })` globally | The only HTML served is Swagger UI, which CSP breaks; everything else is JSON |
 | D28 | Body limit | `express.json({ limit: '1mb' })` | Bulk attendance/grade bodies up to 200 rows |
@@ -162,7 +162,7 @@ MySQL 8.0, InnoDB, `utf8mb4_unicode_ci`, snake_case, `id INT UNSIGNED AUTO_INCRE
 
 | Table | Purpose | Key rules |
 |---|---|---|
-| `users` | one row per person of any role; `firebase_uid` (UNIQUE, binary collation), `email` (UNIQUE), names, phone, `role`, `is_active` | never deleted |
+| `users` | one row per person of any role; `firebase_uid` (UNIQUE, binary collation), `email` (UNIQUE), names, phone, `role`, `is_active` | deactivated, not deleted, once anything refers to it; an unused account can be deleted |
 | `teachers` | 1:1 profile: `employee_number` UNIQUE, `hire_date`, `department`, `qualification` | `UNIQUE(user_id)` |
 | `students` | 1:1 profile: `student_number` UNIQUE, `date_of_birth`, `gender`, `address`, guardian fields, `admission_date`; **no class column** | `UNIQUE(user_id)`; current class derived from `enrollments` |
 | `subjects` | catalogue: `code` UNIQUE, `name`, `description`, `is_active` | |
@@ -192,12 +192,12 @@ Shared enum values (section 11) are the only values these ENUM columns accept.
 - Scoping: omitted filter = caller's own scope; explicit filter outside the caller's scope = 403 (never silently narrowed); admin unscoped. The literal `me` is accepted wherever a `studentId`, `teacherId` or `authorId` appears.
 - Teacher *visible* set = class-subjects they teach or any class-subject of a class they are homeroom teacher of; teacher *owns* = `class_subjects.teacher_id = me`. Reads use visible, writes use owns.
 
-### 7.2 Endpoints (63)
+### 7.2 Endpoints (64)
 
 | Module | Endpoints | Roles |
 |---|---|---|
 | auth (3) | `POST /auth/register` (public, student only) · `GET /auth/me` · `PATCH /auth/me` (contact fields) | any |
-| users (5) | `GET /users` · `POST /users` (any role, profile object per role) · `GET /users/:id` · `PATCH /users/:id` (name, phone) · `PATCH /users/:id/status` | admin |
+| users (6) | `GET /users` · `POST /users` (any role, profile object per role) · `GET /users/:id` · `PATCH /users/:id` (name, phone) · `PATCH /users/:id/status` · `DELETE /users/:id` (409 `has_history` once referenced) | admin |
 | students (3) | `GET /students` (filters `classId`, `gradeLevel`, `gender`, `isActive`, `hasActiveEnrollment`) · `GET /students/:id` (`me` allowed) · `PATCH /students/:id` | A, T (visible), S (self) / A |
 | teachers (3) | `GET /teachers` · `GET /teachers/:id` (`me`) · `PATCH /teachers/:id` | A / A, T (self) / A |
 | subjects (5) | `GET` · `POST` · `GET /:id` · `PATCH /:id` (incl. `isActive`) · `DELETE /:id` (409 when used) | read any; write admin |
@@ -293,13 +293,13 @@ school-management-system/
 │       ├── middleware/             # requestId, httpLogger, authenticate, authorize, validate, notFound, errorHandler
 │       ├── utils/                  # ApiError, respond, pagination, resolveMe, dates, sql (escapeLike, where builder), mysqlErrorMap, firebaseErrorMap, logger, zod/common
 │       └── modules/
-│           ├── access/             # access.service.js + access.repository.js — the only place ownership SQL exists
+│           ├── access/             # access.service.js + access.repository.js — ownership rules and the dated-roster SQL fragment
 │           ├── auth/               # auth.routes/controller/service/schemas
-│           ├── users/              # + users.repository (createUserAccount, setStatus, auth lookup)
+│           ├── users/              # users.service creates accounts (Firebase + MySQL, compensated); repository: auth lookup, history check
 │           ├── students/ teachers/ subjects/ classes/ classSubjects/ enrollments/
 │           ├── attendance/ assessments/ grades/ schedules/ announcements/
-│           ├── dashboard/          # routes/controller/service/repository (aggregates only)
-│           └── health/
+│           ├── dashboard/          # routes/controller/service/repository (aggregates only; no schemas)
+│           └── health/             # routes/controller (pings the database)
 └── frontend/
     ├── package.json                # scripts: dev, build, preview, lint, format, check
     ├── .env.example
@@ -308,16 +308,16 @@ school-management-system/
     ├── eslint.config.js, .prettierrc
     └── src/
         ├── main.jsx, index.css     # @import "tailwindcss"; @theme tokens
-        ├── app/                    # App.jsx, router.jsx, providers/ (Providers, AuthProvider), guards/ (RequireAuth, RequireRole, PublicOnly, RoleRedirect)
+        ├── app/                    # App.jsx, router.jsx, providers/, guards/ (RequireAuth, RequireRole, PublicOnly, RoleRedirect), pages/ (403, 404, route error)
         ├── config/                 # env.js (validates VITE_*), firebase.js
-        ├── lib/                    # apiClient.js, queryClient.js, formErrors.js, validators.js
-        ├── constants/              # shared.js (identical to backend), ui.js (labels, tones, nav)
+        ├── lib/                    # apiClient.js, queryClient.js, queryKeys.js, envelope.js, formErrors.js, validators.js, theme.js, toastBus.js
+        ├── constants/              # shared.js (identical to backend), ui.js (labels, tone classes)
         ├── utils/                  # date.js, schedule.js, roles.js, names.js, format.js, grades.js, listParams.js
-        ├── hooks/                  # useDebounce, useListParams, useDisclosure, useConfirm, useUnsavedChangesBlocker
+        ├── hooks/                  # useDebounce, useListParams, useDisclosure, useConfirm, useDiscardConfirm, useUnsavedChangesBlocker, useTheme, ...
         ├── components/ui/          # Button, Input, Select, Textarea, Checkbox, RadioGroup, FormField, Table, DataTable, Pagination, SearchInput, Modal, ConfirmDialog, Badge, Spinner, Skeleton, EmptyState, ErrorState, Tabs, Card, StatTile, Tooltip, Dropdown, Toast
         ├── components/layout/      # AppShell, Sidebar, Topbar, NavItem, UserMenu, PageHeader, PageSkeleton, SplashScreen, DevProjectBanner, AuthLayout, navConfig.js
-        └── features/               # auth, dashboard, users, students, teachers, subjects, classes, classSubjects, enrollments, attendance, grades, schedules, announcements, profile, misc
-            └── <feature>/          # keys.js, api.js, hooks.js, schemas.js, components/, pages/  (same contract in every feature)
+        └── features/               # auth, dashboard, users, students, teachers, subjects, classes, classSubjects, enrollments, attendance, grades, schedules, announcements, profile, health
+            └── <feature>/          # keys.js, api.js, hooks.js, schemas.js, components/, pages/  (a feature has only the parts it needs)
 ```
 
 Backend layer rule: a file imports only from the layer directly below it inside its module, from `utils`/`config`, or (services only) from another module's service. HTTP vocabulary lives in routes/controllers/middleware, SQL only in repositories, `ApiError` is thrown only by services, middleware and the two error maps. Wrong status or shape → controller; wrong rule → service; wrong rows → repository.
@@ -359,11 +359,11 @@ Baked into the implementation (not optional):
 - Secrets: `.gitignore` committed first; service account only at the one ignored path; `npm run check:secrets` (`git grep private_key` must be empty) in the pre-submission gate; `.env.example` files contain placeholders only.
 - Tokens: `Authorization: Bearer` only; `verifyIdToken` on every request; MySQL user row loaded on every request (`is_active` enforced immediately); project-id parity check in `doctor` and a dev-only banner in the UI.
 - Input: zod on every params/query/body, strict objects (blocks mass assignment: `role` in the register body is a 400); parameterized SQL only; sort keys from whitelists; `LIMIT`/`OFFSET` interpolated only after integer validation; LIKE wildcards escaped.
-- Ownership: every teacher write goes through `assertCanManageClassSubject`; every attendance/grade row is checked against the active roster; students never read by client-supplied ids outside their own.
+- Ownership: every teacher write goes through `assertCanManageClassSubject`; every attendance/grade row is checked against the roster of that date (members on the day, plus anyone already marked); students never read by client-supplied ids outside their own.
 - Errors: central handler; duplicate keys → 409 with the key name; FK deletes → 409 "in use"; unknown routes return the envelope; stack traces only outside production; request id in header and logs.
 - Data: DATE as strings end to end; `decimalNumbers` so scores are numbers; ENUMs from shared constants; weekday ISO.
-- Admin safety: self-status change guard (it also guarantees an active admin remains); seed ships a second admin.
-- Reproducibility: lockfiles committed, `npm ci` in the README, `engines.node >= 22.12`, Node scripts only (no shell scripts), paths quoted, `127.0.0.1` everywhere.
+- Admin safety: self-status and self-delete guards, a locked last-active-admin check; seed ships a second admin.
+- Reproducibility: lockfiles committed, `npm install` in the README, `engines.node >= 22.22`, Node scripts only (no shell scripts), paths quoted, `127.0.0.1` everywhere.
 - Tests (`backend/tests`, run by `npm test`): health; auth middleware (401 missing/invalid token, 403 unregistered, 403 disabled); RBAC on three endpoints; register forces role `student` and compensates on MySQL failure; second active enrollment → 409; schedule conflicts (class, teacher, room, adjacent slot OK, self-update OK); list validation (`sortBy=evil` 400, `limit=1000` 400, `%` literal, `meta.total` under search); duplicate subject code → 409; `check:constants` passes; `openapi.yaml` parses and every path exists in the router.
 
 Pre-submission gate (in order): `npm test` (backend) → `npm run lint` and `npm run build` (frontend) → `check:secrets` → clean clone into a fresh folder with a brand-new Firebase project and database name, follow the README literally → Swagger sweep → the 14 manual checks of section 2 as each demo role → push → confirm on GitHub that `.env`, `node_modules` and the service account are absent and the README renders.
@@ -434,8 +434,21 @@ The code is the source of truth; `backend/docs/openapi.yaml` is checked against 
 - Success toasts fire inside the mutation hooks; create/edit form hooks are silent and the form renders every error inline.
 - No `toCreatePayload`/`toUpdatePayload` helpers: the zod schemas already produce the exact request body.
 - Select inputs for classes, teachers and subjects are native selects fed by option hooks, not searchable async selects.
-- `ClassSubjectSelectorBar` and `NotEnrolledState` live in `features/attendance/components` and are reused by grades, classes and the dashboard.
+- `ClassSubjectSelectorBar`, `ClassSubjectSelect` and `useClassSubjectSelection` live in `features/classSubjects`; `NotEnrolledState` lives in `features/enrollments/components`. Grades, schedules, classes and the dashboard import them from there.
 - Teachers only see their own classes in class pickers (the API list is unscoped by design).
+
+**QA round (2026-10-04)**
+- Enrollment history: every enrollment is a new row (the `UNIQUE(student_id, class_id)` key was dropped), so leaving and re-joining a class keeps both periods. Enroll, bulk enroll and transfer refuse classes of a past academic year (400 `past_academic_year`).
+- Rosters are dated: an attendance sheet lists the students who were in the class on that date plus anyone already marked; a grade sheet uses the assessment date the same way. One SQL fragment (`enrolledInClassOn` in `access.repository.js`) defines membership on a date. Attendance dates outside the class's academic year are refused (400 `outside_academic_year`).
+- Pending grading excludes assessments dated after today; graded and enrolled counts both come from the dated roster.
+- Reassigning a class-subject's teacher runs the timetable clash check under the same lock as slot writes (409 `SCHEDULE_CONFLICT`). The lock is per database and is released only after the write commits.
+- A class's academic year or grade level cannot change while it has enrollments or subjects (409 `class_in_use`).
+- `DELETE /users/:id` removes an account created by mistake while nothing refers to it (409 `has_history` otherwise). Creating an account whose email already has a Firebase user without a MySQL row deletes that Firebase user and creates a fresh one, so a pre-registered outsider cannot inherit it.
+- A token check that fails because Google's signing keys could not be fetched answers 503 (`details.component = 'auth'`) instead of 401, so a network blip does not sign everyone out.
+- Search matches full names ("Liam Cruz"); unknown top-level API paths answer 404 to everyone.
+- The academic-year start month is the shared constant only; the `ACADEMIC_YEAR_START_MONTH` env var is gone.
+- Helpers that skip access checks (used only by the dashboard) carry an `Unscoped` suffix.
+- Existing local databases keep the dropped unique key until `npm run db:reset` (or `ALTER TABLE enrollments DROP INDEX uq_enrollments_student_class`).
 
 **Open polish items (cosmetic, not required by the brief)**
 - Transfer modal lacks the "from A to B" confirmation sentence; homeroom teacher picker is a plain select.

@@ -43,7 +43,7 @@ routes ─▶ controller ─▶ service ─▶ repository ─▶ MySQL
   └─ path + method, role gate (authorize), request validation (zod schemas)
 ```
 
-Every module under `backend/src/modules/<name>/` has the same five files (`*.routes.js`, `*.controller.js`, `*.service.js`, `*.repository.js`, `*.schemas.js`). A bug is found by following one path: the URL names the route file, the route names the controller, and so on down. Cross-module data goes through the other module's **service**, never its SQL.
+Every feature module under `backend/src/modules/<name>/` has the same five files (`*.routes.js`, `*.controller.js`, `*.service.js`, `*.repository.js`, `*.schemas.js`); the exceptions only drop a layer they do not need: `auth` has no repository (it uses the users module), `dashboard` has no schemas, `health` is a route and a controller, and `access` is a service and a repository that hold the ownership rules every other service calls. A bug is found by following one path: the URL names the route file, the route names the controller, and so on down. Cross-module data goes through the other module's **service**, never its SQL.
 
 Cross-cutting pieces are written once:
 
@@ -86,83 +86,85 @@ erDiagram
     classes |o--o{ announcements : "targets"
 
     users {
-        bigint id PK
+        int id PK
         varchar firebase_uid UK
         varchar email UK
         enum role "admin | teacher | student"
         boolean is_active
     }
     teachers {
-        bigint id PK
-        bigint user_id FK,UK
+        int id PK
+        int user_id FK,UK
         varchar employee_number UK
     }
     students {
-        bigint id PK
-        bigint user_id FK,UK
+        int id PK
+        int user_id FK,UK
         varchar student_number UK
     }
     subjects {
-        bigint id PK
+        int id PK
         varchar code UK
         boolean is_active
     }
     classes {
-        bigint id PK
+        int id PK
         varchar name "unique per academic_year"
         tinyint grade_level
         varchar academic_year "2026-2027"
-        bigint homeroom_teacher_id FK
+        int homeroom_teacher_id FK
     }
     class_subjects {
-        bigint id PK
-        bigint class_id FK
-        bigint subject_id FK
-        bigint teacher_id FK "unique(class, subject)"
+        int id PK
+        int class_id FK
+        int subject_id FK
+        int teacher_id FK "unique(class, subject)"
     }
     enrollments {
-        bigint id PK
-        bigint student_id FK
-        bigint class_id FK
+        int id PK
+        int student_id FK
+        int class_id FK
         enum status "active | completed | transferred | withdrawn"
+        date enrolled_on
+        date left_on "null while active"
         tinyint active_flag "generated; unique(student, active_flag)"
     }
     schedules {
-        bigint id PK
-        bigint class_subject_id FK
+        int id PK
+        int class_subject_id FK
         tinyint day_of_week "1 Mon .. 7 Sun"
         time start_time
         time end_time
         varchar room
     }
     attendance {
-        bigint id PK
-        bigint student_id FK
-        bigint class_subject_id FK
+        int id PK
+        int student_id FK
+        int class_subject_id FK
         date attendance_date "unique(student, class_subject, date)"
         enum status "present | absent | late | excused"
-        bigint marked_by FK
+        int marked_by FK
     }
     assessments {
-        bigint id PK
-        bigint class_subject_id FK
+        int id PK
+        int class_subject_id FK
         varchar title
         enum type
         enum term
         decimal max_score
     }
     grades {
-        bigint id PK
-        bigint assessment_id FK
-        bigint student_id FK "unique(assessment, student)"
+        int id PK
+        int assessment_id FK
+        int student_id FK "unique(assessment, student)"
         decimal score
-        bigint graded_by FK
+        int graded_by FK
     }
     announcements {
-        bigint id PK
-        bigint author_id FK
+        int id PK
+        int author_id FK
         enum audience "all | students | teachers"
-        bigint class_id FK "null = school-wide"
+        int class_id FK "null = school-wide"
         datetime published_at
         datetime expires_at
     }
@@ -171,7 +173,7 @@ erDiagram
 Rules the database itself enforces (not just the API):
 
 - One account per e-mail and per Firebase user; a profile row belongs to exactly one user.
-- **One active enrollment per student**, via a generated `active_flag` column plus a unique key; closed enrollments stay as history.
+- **One active enrollment per student**, via a generated `active_flag` column plus a unique key; closed enrollments stay as history, and every enrollment is its own row (re-joining a class adds a row). Attendance and grade rosters are dated: the students who were in the class on that day.
 - One teacher per subject per class; one attendance mark per student per lesson per day; one grade per student per assessment.
 - Foreign keys are `RESTRICT` everywhere: history is never silently deleted. People and subjects are retired (`is_active = 0`), not removed.
 
@@ -196,7 +198,7 @@ A single-page React app with one route tree and three role areas (`/admin`, `/te
 
 ## 8. Time and dates
 
-The school time zone (`APP_TIMEZONE`) decides what "today" means, MySQL connections run in UTC, `DATE` values travel as plain `YYYY-MM-DD` strings and times as `HH:MM`. The academic year starts in August (`ACADEMIC_YEAR_START_MONTH`): 2026-10-03 belongs to `2026-2027`, 2027-05-10 also does. Weekdays are ISO (1 = Monday … 7 = Sunday) everywhere.
+The school time zone (`APP_TIMEZONE`) decides what "today" means, MySQL connections run in UTC, `DATE` values travel as plain `YYYY-MM-DD` strings and times as `HH:MM`. The academic year starts in August (`ACADEMIC_YEAR_START_MONTH` in `constants/shared.js`, read by both sides): 2026-10-03 belongs to `2026-2027`, 2027-05-10 also does. Weekdays are ISO (1 = Monday … 7 = Sunday) everywhere.
 
 ## 9. Testing
 

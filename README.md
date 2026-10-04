@@ -15,10 +15,10 @@ Skole is a web-based school management system: student, teacher and administrato
 
 | Required feature | Where to see it |
 |---|---|
-| Student, teacher and admin accounts | Admin → Users (any role); students can also self-register on the sign-up page |
+| Student, teacher and admin accounts | Admin → Users (create any role, deactivate, delete an unused account); students can also self-register on the sign-up page |
 | Firebase Authentication | Sign in / sign up / forgot password; the API verifies the Firebase ID token on every request |
 | MySQL database | 12 tables with foreign keys, unique keys and checks: [backend/database/schema.sql](backend/database/schema.sql) |
-| Backend REST API | 63 endpoints under `/api/v1`, one JSON envelope, one error catalogue |
+| Backend REST API | 64 endpoints under `/api/v1`, one JSON envelope, one error catalogue |
 | Student enrollment and profiles | Admin → Students (enroll, transfer, profile, history); students edit their own contact details |
 | Subjects and class management | Admin → Subjects, Classes |
 | Teacher assignment | Class detail → Subjects & Teachers |
