@@ -38,7 +38,7 @@ SET @s8 := (SELECT s.id FROM students s JOIN users u ON u.id = s.user_id WHERE u
 -- (only reachable when this file is executed by hand).
 -- (A NULL id would otherwise surface later as a confusing NOT NULL / FK error.)
 CREATE TEMPORARY TABLE seed_guard (
-  ok TINYINT NOT NULL,
+  ok TINYINT NOT NULL PRIMARY KEY,
   CONSTRAINT users_not_seeded CHECK (ok = 1)
 );
 INSERT INTO seed_guard (ok) VALUES (
