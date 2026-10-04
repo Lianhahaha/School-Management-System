@@ -13,6 +13,7 @@ import { Skeleton } from '../../../components/ui/Skeleton';
 import { ANNOUNCEMENT_AUDIENCE_OPTIONS, ANNOUNCEMENT_STATUS_FILTER_OPTIONS } from '../../../constants/ui';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { useListParams } from '../../../hooks/useListParams';
+import { showsFetching } from '../../../lib/liveRefresh';
 import { cx } from '../../../utils/cx';
 import { useAuth } from '../../auth/hooks';
 import { ClassSelect } from '../../classes/components/ClassSelect';
@@ -123,7 +124,10 @@ export default function AnnouncementsPage() {
   } else {
     // A page past the end (its last row was deleted) has no items but a total: Pagination moves back.
     content = (
-      <div className={cx('transition-opacity', isFetching && 'opacity-60')} aria-busy={isFetching}>
+      <div
+        className={cx('transition-opacity', showsFetching(isFetching) && 'opacity-60')}
+        aria-busy={showsFetching(isFetching)}
+      >
         <AnnouncementList announcements={data.items} renderActions={renderActions} />
         <Pagination meta={data.meta} onPageChange={list.setPage} onLimitChange={list.setLimit} />
       </div>

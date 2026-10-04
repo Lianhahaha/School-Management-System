@@ -8,6 +8,7 @@ import { FilterBar } from '../../../components/ui/FilterBar';
 import { SearchInput } from '../../../components/ui/SearchInput';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { useListParams } from '../../../hooks/useListParams';
+import { showsFetching } from '../../../lib/liveRefresh';
 import { AnnouncementList } from '../components/AnnouncementList';
 import { useAnnouncements } from '../hooks';
 
@@ -67,7 +68,7 @@ function FeedChunk({ search, page, isLast, onLoadMore, onClearSearch }) {
       <AnnouncementList announcements={data.items} label={`Announcements, page ${page}`} />
       {isLast && data.meta.page < data.meta.totalPages && (
         <div className="mt-4 flex justify-center">
-          <Button variant="secondary" onClick={onLoadMore} isLoading={isFetching}>
+          <Button variant="secondary" onClick={onLoadMore} isLoading={showsFetching(isFetching)}>
             Load more
           </Button>
         </div>

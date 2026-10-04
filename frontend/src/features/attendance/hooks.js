@@ -24,6 +24,7 @@ export function useAttendanceSheet({ classSubjectId, date }, { enabled = true } 
     queryKey: attendanceKeys.sheet({ classSubjectId, date }),
     queryFn: () => getAttendanceSheet({ classSubjectId, date }),
     enabled: enabled && Boolean(classSubjectId) && Boolean(date),
+    meta: { live: false }, // a teacher is editing this sheet
   });
 }
 

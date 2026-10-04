@@ -57,6 +57,7 @@ export function useGradeRoster(assessmentId) {
     queryKey: gradeKeys.roster(assessmentId),
     queryFn: () => getGradeRoster(assessmentId),
     enabled: Boolean(assessmentId),
+    meta: { live: false }, // a teacher is editing this sheet
   });
 }
 

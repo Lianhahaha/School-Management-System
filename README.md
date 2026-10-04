@@ -30,6 +30,7 @@ Skole is a web-based school management system: student, teacher and administrato
 | Announcements | School-wide or per class, per audience, with publish and expiry dates |
 | Separate dashboards | Admin, teacher and student each get their own content, not three skins of one page |
 | Light and dark themes | Switch in the top bar (and on the sign-in page); the choice is remembered on the device, and the system setting is followed until you pick one |
+| Live updates | The page you are looking at refreshes itself about every 20 seconds (and when you return to the tab), so other people's changes appear without a reload; the sheets a teacher is editing are left alone |
 | Search and filtering | Every list: search, whitelisted sorting, pagination and filters, kept in the URL |
 | Role-based access control | Route guards in the UI, `authorize` + ownership rules in the API (the API is the enforcement point) |
 | API documentation | Swagger UI at <http://localhost:3000/api/docs> |

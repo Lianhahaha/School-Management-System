@@ -1,5 +1,7 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router';
+import { startLiveRefresh } from '../../lib/liveRefresh';
 import { PageSkeleton } from './PageSkeleton';
 import { Sidebar } from './Sidebar';
 import { TabBar } from './TabBar';
@@ -11,10 +13,13 @@ const SIDEBAR_ID = 'app-sidebar';
  * Frame of every signed-in page: skip link, sidebar (a fixed column from `lg` up, an off-canvas
  * drawer below), top bar, the routed page in <main> and, below `lg`, the floating tab bar. Pages are lazy chunks, so the outlet sits
  * in a Suspense boundary with a skeleton. After each route change focus moves to <main>, so
- * keyboard and screen-reader users start at the new page.
+ * keyboard and screen-reader users start at the new page. While it is mounted the data on screen is
+ * re-fetched every few seconds, so other people's changes appear without a reload (lib/liveRefresh).
  */
 export function AppShell() {
   const { pathname } = useLocation();
+  const queryClient = useQueryClient();
+  useEffect(() => startLiveRefresh(queryClient), [queryClient]);
   // The drawer remembers the path it was opened on; navigating anywhere else closes it.
   const [drawerOpenedOn, setDrawerOpenedOn] = useState(null);
   if (drawerOpenedOn !== null && drawerOpenedOn !== pathname) setDrawerOpenedOn(null);

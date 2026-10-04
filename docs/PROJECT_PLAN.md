@@ -448,6 +448,7 @@ The code is the source of truth; `backend/docs/openapi.yaml` is checked against 
 - Search matches full names ("Liam Cruz"); unknown top-level API paths answer 404 to everyone.
 - The academic-year start month is the shared constant only; the `ACADEMIC_YEAR_START_MONTH` env var is gone.
 - Helpers that skip access checks (used only by the dashboard) carry an `Unscoped` suffix.
+- Live updates: `AppShell` starts `lib/liveRefresh.js`, which re-fetches the active queries every 20 seconds while the tab is visible (and on return to the tab). It skips `/auth/me` and queries marked `meta: { live: false }` (the attendance and grade sheets), stays silent when a background fetch fails, and tables do not dim for it.
 - Existing local databases keep the dropped unique key until `npm run db:reset` (or `ALTER TABLE enrollments DROP INDEX uq_enrollments_student_class`).
 
 **Open polish items (cosmetic, not required by the brief)**

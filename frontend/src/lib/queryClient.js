@@ -7,6 +7,8 @@
  *              and mutations that opt out with `meta: { silent: true }` because their form shows
  *              every error itself (sign-in, registration, profile).
  *
+ * A background refresh (lib/liveRefresh) never toasts: the next round simply tries again.
+ *
  * A 403 may mean the account changed (disabled, removed): /auth/me is re-fetched so that
  * AuthProvider can sign the user out with a message. Those account codes never toast.
  */
@@ -14,6 +16,7 @@ import { MutationCache, QueryCache, QueryClient, matchQuery } from '@tanstack/re
 import { FORCE_SIGN_OUT_CODES } from '../constants/ui';
 import { authKeys } from '../features/auth/keys';
 import { isInlineFormError } from './formErrors';
+import { isLiveRefreshing } from './liveRefresh';
 import { toastBus } from './toastBus';
 
 const MAX_RETRIES = 2;
@@ -37,6 +40,7 @@ export const queryClient = new QueryClient({
     onError: (error, query) => {
       if (matchQuery({ queryKey: authKeys.me() }, query)) return; // AuthProvider owns /auth/me failures
       refreshAccountOn403(error);
+      if (isLiveRefreshing()) return;
       if (query.state.data !== undefined && !isAccountError(error)) toastBus.error(error);
     },
   }),

@@ -1,3 +1,4 @@
+import { showsFetching } from '../../lib/liveRefresh';
 import { cx } from '../../utils/cx';
 import { EmptyState } from './EmptyState';
 import { ErrorState } from './ErrorState';
@@ -103,7 +104,7 @@ export function DataTable({
         tabIndex={0}
         role={label ? 'region' : undefined}
         aria-label={label}
-        aria-busy={isLoading || isFetching}
+        aria-busy={isLoading || showsFetching(isFetching)}
       >
         <Table caption={label}>
           <THead>
@@ -122,7 +123,11 @@ export function DataTable({
               ))}
             </Tr>
           </THead>
-          <TBody className={cx('transition-opacity', isFetching && !isLoading && 'opacity-60')}>{body}</TBody>
+          <TBody
+            className={cx('transition-opacity', showsFetching(isFetching) && !isLoading && 'opacity-60')}
+          >
+            {body}
+          </TBody>
         </Table>
       </div>
     </div>
