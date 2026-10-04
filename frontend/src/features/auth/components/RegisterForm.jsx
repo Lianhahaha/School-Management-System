@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { Button } from '../../../components/ui/Button';
 import { FormField, FormRootError } from '../../../components/ui/FormField';
 import { Input } from '../../../components/ui/Input';
+import { PasswordInput } from '../../../components/ui/PasswordInput';
 import { Select } from '../../../components/ui/Select';
 import { Textarea } from '../../../components/ui/Textarea';
 import { GENDER_OPTIONS } from '../../../constants/ui';
@@ -49,10 +50,10 @@ export function RegisterForm() {
           <Input {...register('email')} type="email" autoComplete="email" />
         </FormField>
         <FormField label="Password" hint="At least 8 characters." error={errors.password?.message} required>
-          <Input {...register('password')} type="password" autoComplete="new-password" />
+          <PasswordInput {...register('password')} autoComplete="new-password" />
         </FormField>
         <FormField label="Confirm password" error={errors.confirmPassword?.message} required>
-          <Input {...register('confirmPassword')} type="password" autoComplete="new-password" />
+          <PasswordInput {...register('confirmPassword')} autoComplete="new-password" />
         </FormField>
 
         <details open={hasDetailErrors} className="rounded-[1.25rem] bg-gray-50 px-4 py-3">

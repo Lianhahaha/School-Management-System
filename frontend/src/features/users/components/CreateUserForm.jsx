@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { FormField, FormRootError } from '../../../components/ui/FormField';
 import { Input } from '../../../components/ui/Input';
+import { PasswordInput } from '../../../components/ui/PasswordInput';
 import { Select } from '../../../components/ui/Select';
 import { Textarea } from '../../../components/ui/Textarea';
 import { GENDER_OPTIONS, ROLE_OPTIONS } from '../../../constants/ui';
@@ -123,7 +124,7 @@ export function CreateUserForm({ formId, lockedRole, mutation, onClose, trackDir
           error={errors.password?.message}
           required
         >
-          <Input {...register('password')} type="password" autoComplete="new-password" />
+          <PasswordInput {...register('password')} autoComplete="new-password" />
         </FormField>
         <FormField label="Role" error={errors.role?.message} required>
           {lockedRole ? (

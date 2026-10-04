@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { Button } from '../../../components/ui/Button';
 import { FormField, FormRootError } from '../../../components/ui/FormField';
 import { Input } from '../../../components/ui/Input';
+import { PasswordInput } from '../../../components/ui/PasswordInput';
 import { mapFirebaseError } from '../firebaseErrors';
 import { useLogin } from '../hooks';
 import { loginSchema } from '../schemas';
@@ -33,7 +34,7 @@ export function LoginForm() {
           <Input {...register('email')} type="email" autoComplete="email" />
         </FormField>
         <FormField label="Password" error={errors.password?.message} required>
-          <Input {...register('password')} type="password" autoComplete="current-password" />
+          <PasswordInput {...register('password')} autoComplete="current-password" />
         </FormField>
         <Button type="submit" isLoading={login.isPending} className="w-full">
           Sign in
