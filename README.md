@@ -79,11 +79,17 @@ npm run db:seed       # 13 demo accounts (Firebase + MySQL), subjects, classes, 
 
 ### 5. Run
 
-Two terminals:
+From the repo root, once: `npm install`. Then one command starts both:
 
 ```powershell
-cd backend;  npm run dev       # API on http://localhost:3000   (docs: /api/docs)
-cd frontend; npm run dev       # app on http://localhost:5173
+npm run dev                    # API on http://localhost:3000 (docs: /api/docs) and app on http://localhost:5173
+```
+
+Or run them separately in two terminals:
+
+```powershell
+cd backend;  npm run dev
+cd frontend; npm run dev
 ```
 
 Open <http://localhost:5173> and sign in with a demo account.

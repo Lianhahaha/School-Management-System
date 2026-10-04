@@ -1,0 +1,11 @@
+{
+  "name": "school-management-system",
+  "private": true,
+  "description": "Launcher only: starts the backend API and the frontend together. Each app keeps its own package.json.",
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,magenta --kill-others-on-fail \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
