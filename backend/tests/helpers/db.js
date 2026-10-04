@@ -1,28 +1,14 @@
 /**
- * Test database lifecycle: create the database if missing, apply schema.sql,
- * and empty every table. Test files run one after another (--test-concurrency=1)
- * because they share the single test database.
+ * Test database lifecycle: drop and recreate the test database from schema.sql before each test
+ * file, so schema changes always apply and every file starts empty. Test files run one after
+ * another (--test-concurrency=1) because they share the test database; set TEST_DB_NAME to run
+ * a second suite against its own database.
  */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import mysql from 'mysql2/promise';
 import { closePool } from '../../src/config/db.js';
 import { env } from '../../src/config/env.js';
-
-const TABLES = [
-  'grades',
-  'assessments',
-  'attendance',
-  'schedules',
-  'announcements',
-  'enrollments',
-  'class_subjects',
-  'classes',
-  'subjects',
-  'students',
-  'teachers',
-  'users',
-];
 
 export async function prepareDatabase() {
   const conn = await mysql.createConnection({
@@ -33,14 +19,13 @@ export async function prepareDatabase() {
     multipleStatements: true,
   });
   try {
+    if (!env.DB_NAME.includes('test')) throw new Error(`Refusing to reset non-test database ${env.DB_NAME}`);
+    await conn.query(`DROP DATABASE IF EXISTS \`${env.DB_NAME}\``);
     await conn.query(
       `CREATE DATABASE IF NOT EXISTS \`${env.DB_NAME}\` DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci`,
     );
     await conn.query(`USE \`${env.DB_NAME}\``);
     await conn.query(readFileSync(path.join(env.backendRoot, 'database', 'schema.sql'), 'utf8'));
-    await conn.query('SET FOREIGN_KEY_CHECKS = 0');
-    for (const table of TABLES) await conn.query(`TRUNCATE TABLE \`${table}\``);
-    await conn.query('SET FOREIGN_KEY_CHECKS = 1');
   } finally {
     await conn.end();
   }
