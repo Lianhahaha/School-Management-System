@@ -11,6 +11,7 @@ import { Select } from '../../../components/ui/Select';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { useDisclosure } from '../../../hooks/useDisclosure';
 import { useListParams } from '../../../hooks/useListParams';
+import { describeWeights } from '../../../utils/grades';
 import { SubjectFormModal } from '../components/SubjectFormModal';
 import { useDeleteSubject, useSetSubjectActive, useSubjects } from '../hooks';
 
@@ -69,6 +70,12 @@ export default function SubjectsPage() {
         ) : (
           '—'
         ),
+    },
+    {
+      key: 'grading',
+      header: 'Grading',
+      hideBelow: 'lg',
+      cell: (subject) => describeWeights(subject.gradeWeights) || 'On points',
     },
     {
       key: 'isActive',

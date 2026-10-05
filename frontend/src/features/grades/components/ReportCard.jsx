@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { Button } from '../../../components/ui/Button';
 import { APP_NAME, TERM_LABELS } from '../../../constants/ui';
 import { formatDate, todayYmd } from '../../../utils/date';
-import { formatPercent, formatScore } from '../../../utils/format';
+import { formatScore } from '../../../utils/format';
+import { averageOf, describeWeights, formatResult } from '../../../utils/grades';
 import { fullName } from '../../../utils/names';
 import { useGradeSummary } from '../hooks';
 
@@ -17,8 +18,9 @@ export function PrintReportCardButton() {
 }
 
 /**
- * A student's report card for paper: who, which class and term, and per subject the points-weighted
- * percentage, plus the overall result, for the academic year of `enrollment` (all years without one). It is mounted at the end of <body> (a portal) and shown only
+ * A student's report card for paper: who, which class and term, per subject its result (on points, or with
+ * the subject's weights per assessment type, which a note lists), and the general average, the mean of the
+ * subject results, for the academic year of `enrollment` (all years without one). It is mounted at the end of <body> (a portal) and shown only
  * when printing, in plain black on white whatever the screen theme; the app itself is hidden then
  * (see `.print-only` in index.css).
  *
@@ -34,8 +36,8 @@ export function ReportCard({ student, enrollment, studentId, term }) {
   const subjects = enrollment
     ? allYears.filter((subject) => subject.academicYear === enrollment.academicYear)
     : allYears;
-  const totalScore = subjects.reduce((sum, subject) => sum + subject.totalScore, 0);
-  const totalMaxScore = subjects.reduce((sum, subject) => sum + subject.totalMaxScore, 0);
+  const generalAverage = averageOf(subjects.map((subject) => subject.percentage));
+  const weighted = subjects.filter((subject) => subject.method === 'weighted');
 
   return createPortal(
     <article className="print-only bg-white font-sans text-[11pt] text-black">
@@ -77,7 +79,7 @@ export function ReportCard({ student, enrollment, studentId, term }) {
               <td className="py-1.5 pr-3 text-right">
                 {formatScore(subject.totalScore, subject.totalMaxScore)}
               </td>
-              <td className="py-1.5 text-right font-semibold">{formatPercent(subject.percentage / 100)}</td>
+              <td className="py-1.5 text-right font-semibold">{formatResult(subject.percentage)}</td>
             </tr>
           ))}
           {subjects.length === 0 && (
@@ -91,17 +93,27 @@ export function ReportCard({ student, enrollment, studentId, term }) {
         {subjects.length > 0 && (
           <tfoot>
             <tr className="border-t-2 border-black">
-              <td colSpan={3} className="py-2 font-semibold">
-                Overall (all points together)
+              <td colSpan={4} className="py-2 font-semibold">
+                General average (mean of the subject results)
               </td>
-              <td className="py-2 pr-3 text-right">{formatScore(totalScore, totalMaxScore)}</td>
-              <td className="py-2 text-right font-semibold">
-                {formatPercent(totalMaxScore > 0 ? totalScore / totalMaxScore : null)}
-              </td>
+              <td className="py-2 text-right font-semibold">{formatResult(generalAverage)}</td>
             </tr>
           </tfoot>
         )}
       </table>
+
+      {weighted.length > 0 && (
+        <div className="mt-3 text-[9pt]">
+          <p className="font-semibold">Weighted subjects</p>
+          <ul>
+            {weighted.map((subject) => (
+              <li key={subject.classSubjectId}>
+                {subject.subjectName}: {describeWeights(subject.gradeWeights)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <footer className="mt-10 grid grid-cols-2 gap-10 text-[10pt]">
         <p className="border-t border-black pt-1">Homeroom teacher</p>

@@ -58,20 +58,26 @@ export function findRecentGrades(studentId, limit) {
 
 const TOTALS = `COUNT(g.id) AS assessments_graded, SUM(g.score) AS total_score, SUM(a.max_score) AS total_max_score`;
 
-/** Points per class-subject (default) or per student; the percentage is computed by the caller. */
+/**
+ * Graded points per class-subject (default) or per student and class-subject, split by assessment type, so the
+ * service can apply each subject's weights (utils/grading.js).
+ */
 export function summarizeGrades({ groupBy = 'classSubject', ...filters }, scope) {
   const where = filtersToWhere(filters, scope);
   if (groupBy === 'student') {
     return query(
-      `SELECT s.id AS student_id, CONCAT(u.first_name, ' ', u.last_name) AS label, ${TOTALS} ${FROM} ${where.sql}
-        GROUP BY s.id, u.first_name, u.last_name ORDER BY u.last_name, u.first_name`,
+      `SELECT s.id AS student_id, CONCAT(u.first_name, ' ', u.last_name) AS label, cs.id AS class_subject_id,
+              cs.subject_id, a.type, ${TOTALS} ${FROM} ${where.sql}
+        GROUP BY s.id, u.first_name, u.last_name, cs.id, cs.subject_id, a.type
+        ORDER BY u.last_name, u.first_name, s.id, cs.id`,
       where.params,
     );
   }
   return query(
-    `SELECT cs.id AS class_subject_id, sub.name AS subject_name, c.name AS class_name, c.academic_year,
-            CONCAT(c.name, ' - ', sub.name) AS label, ${TOTALS} ${FROM} ${where.sql}
-      GROUP BY cs.id, c.name, c.academic_year, sub.name ORDER BY c.academic_year DESC, c.name, sub.name`,
+    `SELECT cs.id AS class_subject_id, cs.subject_id, sub.name AS subject_name, c.name AS class_name,
+            c.academic_year, CONCAT(c.name, ' - ', sub.name) AS label, a.type, ${TOTALS} ${FROM} ${where.sql}
+      GROUP BY cs.id, cs.subject_id, c.name, c.academic_year, sub.name, a.type
+      ORDER BY c.academic_year DESC, c.name, sub.name, cs.id`,
     where.params,
   );
 }
@@ -103,11 +109,11 @@ export async function findRosterStudentIds(assessmentId, conn) {
   return rows.map((row) => row.studentId);
 }
 
-/** Idempotent bulk upsert on UNIQUE(assessment, student). Needs MySQL >= 8.0.19 (row alias). */
 /**
  * Inserts or updates one grade per row. A row whose score and remarks are unchanged keeps its grader, so
  * re-saving a whole sheet to fix one score does not make the saver "graded by" for everyone. `graded_by` is
  * assigned first on purpose: MySQL applies the assignments left to right, so it still compares the old values.
+ * Idempotent on UNIQUE(assessment, student); needs MySQL >= 8.0.19 (row alias).
  */
 export async function upsertGrades(assessmentId, grades, gradedBy, conn) {
   const rows = grades.map((g) => [assessmentId, g.studentId, g.score, g.remarks ?? null, gradedBy]);

@@ -331,3 +331,23 @@ CREATE TABLE IF NOT EXISTS announcements (
   CONSTRAINT chk_announcements_expiry CHECK (expires_at IS NULL OR expires_at > published_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='Announcements with role audience and optional class scope';
+
+-- -----------------------------------------------------------------------------
+-- 13. subject_grade_weights — how much each assessment type counts towards a
+--     subject's result ("quizzes 20 %, tests 30 %, exams 50 %"). One row per
+--     type with a weight above 0; the weights of a subject add up to 100 (the
+--     API checks the sum, a CHECK cannot span rows). A subject without rows is
+--     graded on points: SUM(score) / SUM(max_score).
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS subject_grade_weights (
+  subject_id       INT UNSIGNED NOT NULL,
+  assessment_type  ENUM('quiz','test','exam','assignment','project','other') NOT NULL,
+  weight           TINYINT UNSIGNED NOT NULL COMMENT 'Percent of the subject result, 1-100',
+  created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (subject_id, assessment_type),   -- one weight per type; also serves the FK
+  CONSTRAINT fk_subject_grade_weights_subject FOREIGN KEY (subject_id) REFERENCES subjects (id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,     -- deleting a subject removes its weights explicitly first
+  CONSTRAINT chk_subject_grade_weights_weight CHECK (weight BETWEEN 1 AND 100)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Weight of each assessment type in a subject result; none = graded on points';

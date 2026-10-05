@@ -71,6 +71,7 @@ erDiagram
     teachers |o--o{ classes : "homeroom"
     classes ||--o{ class_subjects : "offers"
     subjects ||--o{ class_subjects : "taught as"
+    subjects ||--o{ subject_grade_weights : "weights results by"
     teachers ||--o{ class_subjects : "assigned to"
     students ||--o{ enrollments : "enrolled via"
     classes ||--o{ enrollments : "has roster"
@@ -177,7 +178,9 @@ Rules the database itself enforces (not just the API):
 - One teacher per subject per class; one attendance mark per student per lesson per day; one grade per student per assessment.
 - Foreign keys are `RESTRICT` everywhere: history is never silently deleted. People and subjects are retired (`is_active = 0`), not removed.
 
-Rules the service layer enforces because SQL cannot express them: schedule overlaps (class, teacher or room, per academic year, serialised with a named lock), `score <= max_score`, no attendance for future dates, only enrolled students on a sheet or grade batch.
+Rules the service layer enforces because SQL cannot express them: schedule overlaps (class, teacher or room, per academic year, serialised with a named lock), `score <= max_score`, no attendance for future dates, only enrolled students on a sheet or grade batch, a subject's grade weights adding up to 100.
+
+Results: a subject is graded on points (`SUM(score) / SUM(max_score)`) unless it has grade weights per assessment type; a student's general average is the mean of their subject results. The arithmetic is in `backend/src/utils/grading.js`.
 
 ## 6. Roles and what they can do
 

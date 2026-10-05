@@ -620,6 +620,10 @@ paths:
         Edits a subject, or retires and reactivates it with `isActive`. A retired subject cannot be assigned to
         new classes (`POST /class-subjects` rejects it) while existing history keeps working. This is the way to
         take a subject that is in use out of circulation.
+
+        `gradeWeights` sets how much each assessment type counts towards results in the subject (whole percents
+        adding up to 100, else 400); `null` puts the subject back on points. Results change immediately,
+        including past ones.
       parameters:
         - $ref: '#/components/parameters/IdPath'
       requestBody:
@@ -1524,9 +1528,14 @@ paths:
         Roles: any authenticated user (teachers: class-subjects they can see; students: their own grades only,
         and not grouped by student).
 
-        Points-weighted aggregate over graded assessments only:
-        `percentage = SUM(score) / SUM(maxScore) * 100`. `groupBy=classSubject` (default) returns one row per
-        subject, `groupBy=student` one row per student (403 for students).
+        Aggregate over graded assessments only. `groupBy=classSubject` (default) returns one row per
+        class-subject, `groupBy=student` one row per student (403 for students).
+
+        A subject's result is on points, `SUM(score) / SUM(maxScore) * 100` (`method: points`), unless the
+        subject has grade weights (`Subject.gradeWeights`): then each assessment type's points percentage counts
+        with its weight, over the types that have grades (`method: weighted`). A student row that spans several
+        class-subjects is the mean of their results (`method: average`). `totalScore` and `totalMaxScore` are
+        always the plain points.
       parameters:
         - $ref: '#/components/parameters/StudentIdFilter'
         - $ref: '#/components/parameters/ClassSubjectIdFilter'
@@ -2313,9 +2322,23 @@ components:
             updatedAt:
               $ref: '#/components/schemas/Timestamp'
     # --- Academic structure ---
+    GradeWeights:
+      type: object
+      additionalProperties: false
+      description: |
+        Percent each assessment type counts towards a subject result: whole numbers that add up to 100. In a
+        request a type left out counts 0; a response lists every type. A type weighted 0 does not count.
+      properties:
+        quiz: { type: integer, minimum: 0, maximum: 100 }
+        test: { type: integer, minimum: 0, maximum: 100 }
+        exam: { type: integer, minimum: 0, maximum: 100 }
+        assignment: { type: integer, minimum: 0, maximum: 100 }
+        project: { type: integer, minimum: 0, maximum: 100 }
+        other: { type: integer, minimum: 0, maximum: 100 }
+      example: { quiz: 20, test: 30, exam: 50, assignment: 0, project: 0, other: 0 }
     Subject:
       type: object
-      required: [id, code, name, description, isActive, createdAt, updatedAt]
+      required: [id, code, name, description, isActive, gradeWeights, createdAt, updatedAt]
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -2330,6 +2353,11 @@ components:
         isActive:
           type: boolean
           description: False for a retired subject, which cannot be assigned to new classes.
+        gradeWeights:
+          nullable: true
+          description: Weights per assessment type, or null when results in the subject are on points.
+          allOf:
+            - $ref: '#/components/schemas/GradeWeights'
         createdAt:
           $ref: '#/components/schemas/Timestamp'
         updatedAt:
@@ -2777,7 +2805,7 @@ components:
             $ref: '#/components/schemas/GradeRosterRow'
     GradeSummaryRow:
       type: object
-      required: [label, assessmentsGraded, totalScore, totalMaxScore, percentage]
+      required: [label, assessmentsGraded, totalScore, totalMaxScore, percentage, method]
       properties:
         studentId:
           $ref: '#/components/schemas/Id'
@@ -2809,8 +2837,22 @@ components:
           example: 160
         percentage:
           type: number
-          description: totalScore / totalMaxScore * 100, rounded to 2 decimals.
+          nullable: true
+          description: |
+            The result, 0-100 rounded to 2 decimals (see `method`). Null when a weighted subject has grades only
+            in types weighted 0.
           example: 87.5
+        method:
+          type: string
+          enum: [points, weighted, average]
+          description: |
+            points = totalScore / totalMaxScore * 100; weighted = the subject's grade weights per assessment type;
+            average = mean of the student's subject results (a student row spanning several class-subjects).
+        gradeWeights:
+          nullable: true
+          description: Present with `groupBy=classSubject`; the weights applied, null for a subject on points.
+          allOf:
+            - $ref: '#/components/schemas/GradeWeights'
     # --- Announcements ---
     Announcement:
       type: object
@@ -3457,6 +3499,11 @@ components:
           type: string
           maxLength: 1000
           nullable: true
+        gradeWeights:
+          nullable: true
+          description: Weights per assessment type (must add up to 100); null or left out grades on points.
+          allOf:
+            - $ref: '#/components/schemas/GradeWeights'
     UpdateSubjectRequest:
       type: object
       additionalProperties: false
@@ -3471,6 +3518,8 @@ components:
         isActive:
           type: boolean
           description: False retires the subject, true reactivates it.
+        gradeWeights:
+          $ref: '#/components/schemas/CreateSubjectRequest/properties/gradeWeights'
     CreateClassRequest:
       type: object
       additionalProperties: false

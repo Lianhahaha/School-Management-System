@@ -26,22 +26,47 @@ export function listSubjects(listQuery) {
   });
 }
 
-export async function insertSubject({ code, name, description }) {
-  const result = await run('INSERT INTO subjects (code, name, description) VALUES (?, ?, ?)', [
-    code,
-    name,
-    description ?? null,
-  ]);
+export async function insertSubject({ code, name, description }, conn) {
+  const result = await run(
+    'INSERT INTO subjects (code, name, description) VALUES (?, ?, ?)',
+    [code, name, description ?? null],
+    conn,
+  );
   return result.insertId;
 }
 
 const PATCH_COLUMNS = { code: 'code', name: 'name', description: 'description', isActive: 'is_active' };
 
-export async function updateSubject(id, fields) {
+export async function updateSubject(id, fields, conn) {
   const set = buildSet(PATCH_COLUMNS, fields);
-  if (set) await run(`UPDATE subjects SET ${set.sql} WHERE id = ?`, [...set.params, id]);
+  if (set) await run(`UPDATE subjects SET ${set.sql} WHERE id = ?`, [...set.params, id], conn);
 }
 
-export async function deleteSubject(id) {
-  return (await run('DELETE FROM subjects WHERE id = ?', [id])).affectedRows;
+export async function deleteSubject(id, conn) {
+  return (await run('DELETE FROM subjects WHERE id = ?', [id], conn)).affectedRows;
+}
+
+/** `{ subjectId, assessmentType, weight }` rows of the given subjects (only types weighted above 0 are stored). */
+export async function findGradeWeights(subjectIds, conn) {
+  if (!subjectIds.length) return [];
+  return query(
+    'SELECT subject_id, assessment_type, weight FROM subject_grade_weights WHERE subject_id IN (?)',
+    [subjectIds],
+    conn,
+  );
+}
+
+/** Replaces the subject's weights with `weights` (type -> percent); null or all zero leaves it on points. */
+export async function replaceGradeWeights(subjectId, weights, conn) {
+  await run('DELETE FROM subject_grade_weights WHERE subject_id = ?', [subjectId], conn);
+  const rows = Object.entries(weights ?? {})
+    .filter(([, weight]) => weight > 0)
+    .map(([type, weight]) => [subjectId, type, weight]);
+  if (rows.length) {
+    await run(
+      'INSERT INTO subject_grade_weights (subject_id, assessment_type, weight) VALUES ?',
+      [rows],
+      conn,
+    );
+  }
 }

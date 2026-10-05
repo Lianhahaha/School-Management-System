@@ -2,12 +2,21 @@ import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { ErrorState } from '../../../components/ui/ErrorState';
 import { Skeleton } from '../../../components/ui/Skeleton';
-import { formatPercent, formatScore } from '../../../utils/format';
+import { formatScore } from '../../../utils/format';
+import { describeWeights, formatResult, resultWidth } from '../../../utils/grades';
 import { useGradeSummary } from '../hooks';
 
+/** How the result was reached: the subject's weights, or the points. */
+function resultBasis(subject) {
+  const graded = `${subject.assessmentsGraded} graded`;
+  if (subject.method === 'weighted') return `Weighted: ${describeWeights(subject.gradeWeights)} · ${graded}`;
+  return `${formatScore(subject.totalScore, subject.totalMaxScore)} points · ${graded}`;
+}
+
 /**
- * Grades of one student: a card per class-subject (newest academic year first) with the points-weighted percentage
- * (sum of scores / sum of max scores over graded assessments) as a bar and text.
+ * Grades of one student: a card per class-subject (newest academic year first) with its result as a bar and
+ * text. The result is on points (sum of scores / sum of max scores over graded assessments) or uses the
+ * subject's weights per assessment type; the card says which.
  * Fetches its own data, so the admin's student page and the student's own pages use the same panel.
  *
  * @param {object} props
@@ -36,23 +45,21 @@ export function GradeSummaryPanel({ studentId, term, enabled = true }) {
             <p className="text-xs text-gray-600">
               {subject.className} · {subject.academicYear}
             </p>
-            <p className="mt-2 text-2xl font-semibold text-gray-900">
-              {formatPercent(subject.percentage / 100)}
-            </p>
+            <p className="mt-2 text-2xl font-semibold text-gray-900">{formatResult(subject.percentage)}</p>
             <div
               role="progressbar"
               aria-label={`${subject.subjectName}, ${subject.className} percentage`}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-valuenow={subject.percentage}
+              aria-valuenow={subject.percentage ?? undefined}
               className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100"
             >
-              <div className="h-full rounded-full bg-gray-900" style={{ width: `${subject.percentage}%` }} />
+              <div
+                className="h-full rounded-full bg-gray-900"
+                style={{ width: resultWidth(subject.percentage) }}
+              />
             </div>
-            <p className="mt-2 text-xs text-gray-600">
-              {formatScore(subject.totalScore, subject.totalMaxScore)} points · {subject.assessmentsGraded}{' '}
-              graded
-            </p>
+            <p className="mt-2 text-xs text-gray-600">{resultBasis(subject)}</p>
           </Card>
         </li>
       ))}

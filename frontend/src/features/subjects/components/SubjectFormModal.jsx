@@ -9,14 +9,26 @@ import { applyServerErrors } from '../../../lib/formErrors';
 import { changedFields } from '../../../utils/forms';
 import { useCreateSubject, useUpdateSubject } from '../hooks';
 import { createSubjectSchema, subjectDefaults, updateSubjectSchema } from '../schemas';
+import { GradeWeightsFields } from './GradeWeightsFields';
 
 const FORM_ID = 'subject-form';
-const FIELDS = ['code', 'name', 'description'];
+const FIELDS = ['code', 'name', 'description', 'weights'];
+/** The API's `gradeWeights` errors belong to the weight inputs. */
+const FIELD_MAP = { gradeWeights: 'weights' };
+
+/** The PATCH body: the text fields that changed, and `gradeWeights` when the method or a weight changed. */
+function changedBody(values, dirtyFields) {
+  const { gradingMethod, weights, ...textFields } = dirtyFields;
+  const body = changedFields(values, textFields);
+  if (gradingMethod || weights) body.gradeWeights = values.gradeWeights;
+  return body;
+}
 
 function SubjectForm({ subject, mutation, onClose }) {
   const isEdit = Boolean(subject);
   const {
     register,
+    control,
     handleSubmit,
     setValue,
     setError,
@@ -29,7 +41,7 @@ function SubjectForm({ subject, mutation, onClose }) {
   const onSubmit = (values) => {
     let request;
     if (isEdit) {
-      const body = changedFields(values, dirtyFields);
+      const body = changedBody(values, dirtyFields);
       if (Object.keys(body).length === 0) return onClose();
       request = mutation.mutateAsync({ id: subject.id, body });
     } else {
@@ -37,7 +49,7 @@ function SubjectForm({ subject, mutation, onClose }) {
     }
     return request
       .then(onClose)
-      .catch((error) => applyServerErrors(error, setError, { knownFields: FIELDS }));
+      .catch((error) => applyServerErrors(error, setError, { knownFields: FIELDS, fieldMap: FIELD_MAP }));
   };
 
   return (
@@ -63,13 +75,15 @@ function SubjectForm({ subject, mutation, onClose }) {
       <FormField label="Description" error={errors.description?.message}>
         <Textarea {...register('description')} rows={3} />
       </FormField>
+      <GradeWeightsFields control={control} register={register} errors={errors} />
     </form>
   );
 }
 
 /**
- * Create or edit a subject (edit mode when `subject` is given). The code is upper-cased when the field
- * loses focus; a duplicate code shows under the field.
+ * Create or edit a subject (edit mode when `subject` is given): code, name, description and how results
+ * are graded (on points or weighted by assessment type). The code is upper-cased when the field loses
+ * focus; a duplicate code shows under the field.
  *
  * @param {object} props
  * @param {boolean} props.open

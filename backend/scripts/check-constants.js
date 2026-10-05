@@ -60,6 +60,7 @@ const ENUM_COLUMNS = {
   'attendance.status': constants.ATTENDANCE_STATUSES,
   'assessments.type': constants.ASSESSMENT_TYPES,
   'assessments.term': constants.TERMS,
+  'subject_grade_weights.assessment_type': constants.ASSESSMENT_TYPES,
   'announcements.audience': constants.ANNOUNCEMENT_AUDIENCES,
 };
 

@@ -1,9 +1,12 @@
 /**
  * Grades: roster-with-scores per assessment, bulk entry, flat reads and summaries.
- * Summaries are points-weighted: percentage = SUM(score) / SUM(max_score) * 100 over graded assessments.
+ * A subject's result is on points (SUM(score) / SUM(max_score) * 100 over graded assessments) or, when the
+ * subject has grade weights, weighted per assessment type; a student's result over several subjects is the
+ * mean of the subject results. The arithmetic lives in utils/grading.js.
  */
 import { withTransaction } from '../../config/db.js';
 import { ApiError } from '../../utils/ApiError.js';
+import { averageOf, percentOf, subjectResult, sumPoints } from '../../utils/grading.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import { personRef } from '../../utils/shapes.js';
 import * as access from '../access/access.service.js';
@@ -12,9 +15,8 @@ import {
   getManagedAssessment,
   lockMaxScoreForGrading,
 } from '../assessments/assessments.service.js';
+import { gradeWeightsBySubject } from '../subjects/subjects.service.js';
 import * as repo from './grades.repository.js';
-
-const percentage = (score, maxScore) => (maxScore ? Math.round((score / maxScore) * 10000) / 100 : null);
 
 const toAssessmentRef = ({
   id,
@@ -50,27 +52,71 @@ const toGradeShape = (row) => ({
     lastName: row.lastName,
   },
   score: row.score,
-  percentage: percentage(row.score, row.maxScore),
+  percentage: percentOf(row.score, row.maxScore),
   remarks: row.remarks,
   gradedBy: personRef(row.gradedBy, row.graderFirstName, row.graderLastName),
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
 });
 
-const toSummaryRow = (row) => ({
-  ...(row.studentId !== undefined && { studentId: row.studentId }),
-  ...(row.classSubjectId !== undefined && { classSubjectId: row.classSubjectId }),
-  ...(row.subjectName !== undefined && {
-    subjectName: row.subjectName,
-    className: row.className,
-    academicYear: row.academicYear,
-  }),
-  label: row.label,
-  assessmentsGraded: row.assessmentsGraded,
-  totalScore: row.totalScore,
-  totalMaxScore: row.totalMaxScore,
-  percentage: percentage(row.totalScore, row.totalMaxScore),
+/** Rows grouped by `keyOf(row)`, groups in the order their first row appears: Map key -> rows. */
+function groupRows(rows, keyOf) {
+  const groups = new Map();
+  for (const row of rows) {
+    const key = keyOf(row);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+  return groups;
+}
+
+/** Counts and points of a group of per-type rows. */
+const totalsOf = (rows) => ({
+  assessmentsGraded: rows.reduce((sum, row) => sum + row.assessmentsGraded, 0),
+  totalScore: sumPoints(rows.map((row) => row.totalScore)),
+  totalMaxScore: sumPoints(rows.map((row) => row.totalMaxScore)),
 });
+
+/**
+ * Folds the per-type rows of repo.summarizeGrades into summary rows:
+ *   classSubject  one row per class-subject: its result (`method` points or weighted) and the weights used;
+ *   student       one row per student: the result of their one subject, or the mean of several (`average`).
+ */
+async function foldSummary(rows, groupBy) {
+  const weights = await gradeWeightsBySubject(rows.map((row) => row.subjectId));
+  const classSubjectResult = (typeRows) => subjectResult(typeRows, weights.get(typeRows[0].subjectId));
+
+  if (groupBy === 'student') {
+    return [...groupRows(rows, (row) => row.studentId).values()].map((studentRows) => {
+      const results = [...groupRows(studentRows, (row) => row.classSubjectId).values()].map(
+        classSubjectResult,
+      );
+      const result =
+        results.length === 1
+          ? results[0]
+          : { percentage: averageOf(results.map((r) => r.percentage)), method: 'average' };
+      return {
+        studentId: studentRows[0].studentId,
+        label: studentRows[0].label,
+        ...totalsOf(studentRows),
+        ...result,
+      };
+    });
+  }
+  return [...groupRows(rows, (row) => row.classSubjectId).values()].map((typeRows) => {
+    const first = typeRows[0];
+    return {
+      classSubjectId: first.classSubjectId,
+      subjectName: first.subjectName,
+      className: first.className,
+      academicYear: first.academicYear,
+      label: first.label,
+      ...totalsOf(typeRows),
+      ...classSubjectResult(typeRows),
+      gradeWeights: weights.get(first.subjectId),
+    };
+  });
+}
 
 /** Applies the scoping rule shared by list and summary: own grades for students, visible classes for teachers. */
 async function scopeFilters(user, filters) {
@@ -91,14 +137,13 @@ export async function getSummary(user, query) {
     throw ApiError.forbidden('group_by_student_not_allowed', 'students cannot group grades by student');
   }
   const { filters, scope } = await scopeFilters(user, query);
-  return (await repo.summarizeGrades(filters, scope)).map(toSummaryRow);
+  return foldSummary(await repo.summarizeGrades(filters, scope), filters.groupBy);
 }
 
 /** Unscoped per-subject summary of one student (dashboards; the caller did the access checks). */
 export async function summarizeStudentGradesUnscoped(studentId, classId) {
-  return (await repo.summarizeGrades({ groupBy: 'classSubject', studentId, classId }, null)).map(
-    toSummaryRow,
-  );
+  const filters = { groupBy: 'classSubject', studentId, classId };
+  return foldSummary(await repo.summarizeGrades(filters, null), filters.groupBy);
 }
 
 /** Newest grades of a student (dashboards; the caller did the access checks). */
@@ -122,7 +167,7 @@ async function buildRoster(assessment) {
       lastName: row.lastName,
       gradeId: row.gradeId,
       score: row.score,
-      percentage: row.gradeId ? percentage(row.score, assessment.maxScore) : null,
+      percentage: row.gradeId ? percentOf(row.score, assessment.maxScore) : null,
       remarks: row.remarks,
       gradedBy: personRef(row.gradedBy, row.graderFirstName, row.graderLastName),
       updatedAt: row.updatedAt,
