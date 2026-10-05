@@ -61,7 +61,7 @@ export function RadioGroup({
             />
             <span
               className={cx(
-                'inline-flex min-h-9 items-center gap-1.5 rounded-full bg-gray-100 px-3.5 text-sm text-gray-700 transition-colors ring-inset hover:bg-gray-200',
+                'inline-flex min-h-9 items-center gap-1.5 rounded-full bg-gray-100 px-3.5 text-sm text-gray-700 transition-colors ring-inset hover:bg-gray-200 pointer-coarse:min-h-11',
                 'peer-checked:font-semibold peer-checked:ring-2 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-gray-900',
                 CHECKED_CLASSES[option.tone ?? 'neutral'],
               )}

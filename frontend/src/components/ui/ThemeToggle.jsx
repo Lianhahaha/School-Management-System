@@ -21,6 +21,8 @@ export function ThemeToggle({ className }) {
       onClick={toggleTheme}
       className={cx(
         'relative inline-flex h-9 w-16 shrink-0 items-center rounded-full bg-gray-200 p-1 transition-colors hover:bg-gray-300',
+        // On touch screens an invisible margin around the drawn switch takes the tap (44 px tall).
+        'pointer-coarse:after:absolute pointer-coarse:after:-inset-1 pointer-coarse:after:content-[""]',
         className,
       )}
     >

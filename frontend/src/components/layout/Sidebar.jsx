@@ -34,7 +34,7 @@ export function Sidebar({ id, isOpen, onClose }) {
           type="button"
           onClick={onClose}
           aria-label="Close navigation menu"
-          className="-mr-2 flex size-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 lg:hidden"
+          className="-mr-2 flex size-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 lg:hidden pointer-coarse:size-11"
         >
           <X className="size-[1.125rem]" aria-hidden="true" />
         </button>

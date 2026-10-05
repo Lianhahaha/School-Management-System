@@ -35,7 +35,7 @@ export function Alert({ tone = 'info', title, role, onDismiss, className, childr
           type="button"
           onClick={onDismiss}
           aria-label="Dismiss"
-          className="-m-1.5 flex size-8 shrink-0 items-center justify-center rounded-full hover:bg-gray-900/5"
+          className="-m-1.5 flex size-8 shrink-0 items-center justify-center rounded-full hover:bg-gray-900/5 pointer-coarse:-m-2.5 pointer-coarse:size-11"
         >
           <X className="size-4" aria-hidden="true" />
         </button>

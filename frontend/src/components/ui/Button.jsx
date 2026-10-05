@@ -16,11 +16,15 @@ const VARIANTS = {
     'font-medium text-red-700 hover:bg-red-50 disabled:text-gray-400 disabled:hover:bg-transparent',
 };
 
-// Heights keep touch targets at 36 px or more (44 px for the default size).
-const SIZES = { sm: 'h-9 px-3.5 text-sm', md: 'h-11 px-5 text-[0.9375rem]', lg: 'h-12 px-6 text-base' };
+// Heights keep touch targets at 44 px or more on touch screens; with a mouse the small size is 36 px.
+const SIZES = {
+  sm: 'h-9 px-3.5 text-sm pointer-coarse:h-11',
+  md: 'h-11 px-5 text-[0.9375rem]',
+  lg: 'h-12 px-6 text-base',
+};
 
 /** A button with an icon and no label is a circle of the same height. */
-const ICON_ONLY = { sm: 'w-9 px-0', md: 'w-11 px-0', lg: 'w-12 px-0' };
+const ICON_ONLY = { sm: 'w-9 px-0 pointer-coarse:w-11', md: 'w-11 px-0', lg: 'w-12 px-0' };
 
 /**
  * @param {object} props
