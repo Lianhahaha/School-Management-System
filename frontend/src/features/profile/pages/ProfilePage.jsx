@@ -27,7 +27,7 @@ export default function ProfilePage() {
   return (
     <>
       <PageHeader title="My profile" description="Your account, school record and contact details." />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card title="Account">
           <DescriptionList
             items={[
@@ -59,7 +59,7 @@ export default function ProfilePage() {
             isLoading={resetPassword.isPending}
             onClick={sendResetEmail}
           >
-            Send me a password reset email
+            Email me a reset link
           </Button>
         </Card>
       </div>

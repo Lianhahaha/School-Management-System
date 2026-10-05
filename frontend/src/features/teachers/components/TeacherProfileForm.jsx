@@ -58,7 +58,7 @@ export function TeacherProfileForm({ teacher }) {
           <Input {...register('qualification')} autoComplete="off" />
         </FormField>
       </div>
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <Button type="submit" isLoading={updateTeacher.isPending} disabled={!isDirty}>
           Save changes
         </Button>

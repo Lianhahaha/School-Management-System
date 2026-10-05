@@ -70,7 +70,7 @@ export function StudentProfileForm({ student }) {
       <FormField label="Address" error={errors.address?.message}>
         <Textarea {...register('address')} rows={2} autoComplete="off" />
       </FormField>
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <Button type="submit" isLoading={updateStudent.isPending} disabled={!isDirty}>
           Save changes
         </Button>
