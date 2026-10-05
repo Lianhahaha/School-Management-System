@@ -1,12 +1,17 @@
-import { ChevronDown, LogOut, User } from 'lucide-react';
+import { ChevronDown, Download, LogOut, User } from 'lucide-react';
 import { useAuth } from '../../features/auth/hooks';
+import { useInstallPrompt } from '../../hooks/useInstallPrompt';
 import { fullName, initials } from '../../utils/names';
 import { roleLabel } from '../../utils/roles';
 import { Dropdown } from '../ui/Dropdown';
 
-/** Account menu in the top bar: the user's name and role, with Profile and Sign out. */
+/**
+ * Account menu in the top bar: the user's name and role, with Profile and Sign out, and "Install app"
+ * while the browser offers to install Skole.
+ */
 export function UserMenu() {
   const { me, logout } = useAuth();
+  const { canInstall, install } = useInstallPrompt();
   const name = fullName(me);
 
   return (
@@ -30,6 +35,7 @@ export function UserMenu() {
       }
       items={[
         { label: 'Profile', to: '/profile', icon: User },
+        ...(canInstall ? [{ label: 'Install app', icon: Download, onClick: install }] : []),
         { label: 'Sign out', icon: LogOut, onClick: logout },
       ]}
     />

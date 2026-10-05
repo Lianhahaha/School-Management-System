@@ -6,6 +6,8 @@ Skole is a web-based school management system: student, teacher and administrato
 
 **Live demo:** <https://skoleph.web.app> (sign in with a [demo account](#demo-accounts)). It runs on free tiers: the API sleeps after 15 idle minutes, so the first request after a pause can take about a minute, and the free MySQL service can be switched off after long inactivity. The local setup below needs none of that.
 
+Skole can be installed like an app: on Android, Chrome or Edge use the browser's install button or **Install app** in the account menu; on an iPhone use Share → **Add to Home Screen**.
+
 | Layer | Stack |
 |---|---|
 | Frontend | React 19, Vite 8, React Router 8, TanStack Query 5, Tailwind CSS 4, Firebase JS SDK (email/password) |
