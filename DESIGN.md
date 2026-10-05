@@ -259,7 +259,7 @@ The system deliberately avoids the stock admin template: no bordered cards, no w
 - Grey canvas, borderless white sheets, depth from tone instead of lines.
 - One yellow accent, reserved for the primary action and for "you are here / now".
 - A drawn highlighter stroke behind the current navigation label.
-- Status as a small squared tag in three weights (filled, outline, tinted); the text carries the meaning, never a dot.
+- Status as a small squared tag (filled, outline, tinted); the text carries the meaning, never a dot.
 - Pills everywhere: buttons, nav items, filters, search, tabs, figure rows.
 - One typeface (Onest, self-hosted), tabular figures for every number column.
 - Two themes driven by one attribute; components never branch on the theme.
@@ -289,7 +289,7 @@ Five families, each with a soft background (`-50`), a solid mark (`-600`) and a 
 
 **The Ink-on-Yellow Rule.** Anything on yellow is set in `accent-ink`, in both themes, so the marked label always reads.
 
-**The Three Weights Rule.** A status is a 6px-radius tag with a hairline inset edge, never a pill and never a dot. Filled grey is the normal on-state or a category (Active, Teacher, a class); a grey outline is off or secondary (Disabled, Not enrolled, Quiz); only attention states (amber, red) take colour, as the soft background with the text colour. A table full of statuses stays calm and the exceptions stand out.
+**The Three Weights Rule.** A status is a 6px-radius tag with a hairline inset edge, never a pill and never a dot. Filled grey is a category (Teacher, a class); a grey outline is off or secondary (Disabled, Not enrolled, Quiz); the normal on-state (Active, Present, Enrolled) takes a faint green tint so it is found at a glance, and attention states (amber, red) take their soft background with the text colour. A table full of statuses stays calm and the exceptions stand out.
 
 **The Graphite, Not Black Rule.** Dark theme surfaces are graphite (`canvas-dark`, `surface-dark`), never pure black; sheets lose their shadow and separate by tone alone.
 
@@ -363,7 +363,7 @@ Fully round, confident pills with a quick press response.
 - **States:** background and colour transition over 150ms; pressing scales to 0.97. Disabled buttons keep their shape and fade (50% opacity on filled variants, muted text on the others) and do not scale. Loading swaps the icon for a spinner, disables the button and sets `aria-busy`.
 
 ### Status pills and live tags
-- **Status tag:** 6px radius, 1px inset ring, 0.75rem weight-500 text, 8px side padding. Filled: `gray-100` with `gray-900` text and a `gray-200` ring. Outline: no fill, `gray-600` text, `gray-300` ring. Attention: the tone's `-50` background and `-700` text, ring at 25% of the text colour.
+- **Status tag:** 6px radius, 1px inset ring, 0.75rem weight-500 text, 8px side padding. Filled: `gray-100` with `gray-900` text and a `gray-200` ring. On: `green-50` with `green-700` text, ring at 20% of the text colour. Outline: no fill, `gray-600` text, `gray-300` ring. Attention: the tone's `-50` background and `-700` text, ring at 25% of the text colour.
 - **Live tag:** a yellow pill with Pencil Black 0.75rem weight-600 text ("Now", "Today"). Only for the current period or today's column.
 
 ### Sheets / Containers
@@ -432,7 +432,7 @@ Motion is short and functional, on one curve (`cubic-bezier(0.22, 1, 0.36, 1)`):
 - **Don't** put white text on yellow.
 - **Don't** add borders or outlines to sheets, or give a sheet the pop shadow.
 - **Don't** build dashboards from rows of number tiles; use figure rows inside a sheet.
-- **Don't** use coloured dots or rounded-full pills for status, and don't colour the normal state (Active, Present) green.
+- **Don't** use coloured dots or rounded-full pills for status, and keep the green of the normal state (Active, Present) a faint tint, never a saturated fill.
 - **Don't** make a blue (or any non-yellow) primary button.
 - **Don't** use pure black in the dark theme; it is graphite.
 - **Don't** add a second typeface or uppercase tracked-out labels.

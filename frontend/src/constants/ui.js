@@ -44,7 +44,7 @@ export const TONE_SOFT_CLASSES = Object.freeze({
 // ---------------------------------------------------------------------------
 
 export const ROLE_LABELS = Object.freeze({ admin: 'Administrator', teacher: 'Teacher', student: 'Student' });
-export const ROLE_TONES = Object.freeze({ admin: 'violet', teacher: 'blue', student: 'green' });
+export const ROLE_TONES = Object.freeze({ admin: 'violet', teacher: 'blue', student: 'blue' });
 export const ROLE_OPTIONS = optionsOf(ROLES, ROLE_LABELS);
 
 /** Where each role lands after signing in; also the prefix of that role's route area. */

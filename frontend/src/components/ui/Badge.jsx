@@ -3,13 +3,14 @@ import { cx } from '../../utils/cx';
 /*
  * Small status label: a squared-off tag with a hairline edge, in three weights instead of a rainbow.
  * The text always carries the meaning; the weight only says how much it matters.
- *   filled  (green, blue, violet)  the normal "on" state or a category: Active, Teacher, Grade 10 - A
- *   outline (gray)                 off or secondary: Disabled, Not enrolled, Quiz
- *   tinted  (amber, red)           needs attention: Late, Absent, 3/8 graded
+ *   filled  (blue, violet)  a category: Teacher, Grade 10 - A
+ *   outline (gray)          off or secondary: Disabled, Not enrolled, Quiz
+ *   tinted  (green)         a faint "on": Active, Present, Enrolled, so it can be found at a glance
+ *   tinted  (amber, red)    needs attention: Late, Absent, 3/8 graded
  */
 const TONE_CLASSES = {
   gray: 'text-gray-600 ring-gray-300',
-  green: 'bg-gray-100 text-gray-900 ring-gray-200',
+  green: 'bg-green-50 text-green-700 ring-current/20',
   blue: 'bg-gray-100 text-gray-900 ring-gray-200',
   violet: 'bg-gray-100 text-gray-900 ring-gray-200',
   amber: 'bg-amber-50 text-amber-700 ring-current/25',
