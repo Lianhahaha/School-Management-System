@@ -67,7 +67,7 @@ export function AnnouncementCard({ announcement, actions, bare = false }) {
         <div className="mt-3">
           <p
             className={cx(
-              'text-sm leading-relaxed break-words whitespace-pre-line text-gray-700',
+              'max-w-[70ch] text-sm leading-relaxed break-words whitespace-pre-line text-gray-700',
               !isExpanded && 'line-clamp-3',
             )}
           >
