@@ -104,8 +104,10 @@ const isGeneratedNumberCollision = (error, profile) =>
  *
  *   1. email already in MySQL        -> 409 CONFLICT (key users.uq_users_email)
  *   2. Firebase account for the email -> see createFirebaseUser
- *   3. users + profile rows in ONE transaction (a generated business number that collides is regenerated once)
- *   4. MySQL failed -> delete the Firebase user this call created (no orphans)
+ *   3. users + profile rows in ONE transaction (a generated business number that collides with a parallel
+ *      sign-up is regenerated, up to 5 attempts)
+ *   4. MySQL write failed -> delete the Firebase user this call created (no orphans); a failure after the
+ *      commit leaves both in place
  *
  * @param {{ email: string, password: string, role: 'admin'|'teacher'|'student', firstName: string,
  *           lastName: string, phone?: string, profile?: object }} input
@@ -128,18 +130,29 @@ export async function createUserAccount(input, { trusted }) {
       return userId;
     });
 
+  // Only a failed MySQL write removes the Firebase user: once the rows are committed, the account exists,
+  // and an error while reading it back must not leave a row whose Firebase user is gone.
+  let userId;
   try {
-    let userId;
-    try {
-      userId = await insertAll();
-    } catch (error) {
-      if (!isGeneratedNumberCollision(error, input.profile)) throw error;
-      userId = await insertAll();
-    }
-    return await getAccount(userId);
+    userId = await insertWithFreshNumber(insertAll, input.profile);
   } catch (error) {
     await deleteFirebaseUserOrLog(uid, 'could not delete Firebase user after a failure');
     throw error;
+  }
+  return getAccount(userId);
+}
+
+/** Tries a generated student or employee number this many times when parallel sign-ups take the same one. */
+const GENERATED_NUMBER_ATTEMPTS = 5;
+
+/** Runs `insert`, regenerating the business number (a new attempt reads the new maximum) while it collides. */
+async function insertWithFreshNumber(insert, profile) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await insert();
+    } catch (error) {
+      if (attempt >= GENERATED_NUMBER_ATTEMPTS || !isGeneratedNumberCollision(error, profile)) throw error;
+    }
   }
 }
 
