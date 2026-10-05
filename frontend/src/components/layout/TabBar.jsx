@@ -6,7 +6,9 @@ import { NavBadge } from './NavBadge';
 import { NAV } from './navConfig';
 import { useNavBadges } from './useNavBadges';
 
-const ITEM = 'flex min-h-14 flex-1 flex-col items-center justify-center gap-1 text-xs font-medium';
+const ITEM = 'flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 text-xs font-medium';
+// The label never runs into its neighbour: a step smaller and tighter on the narrowest phones, cut with … as a last resort.
+const LABEL = 'max-w-full truncate px-0.5 max-[22.5rem]:px-0 max-[22.5rem]:text-[0.6875rem] max-[22.5rem]:tracking-tight';
 const CHIP = 'flex h-8 w-12 items-center justify-center rounded-full transition-colors';
 
 /**
@@ -48,7 +50,7 @@ export function TabBar({ menuId, isMenuOpen, onMoreClick }) {
                       />
                     )}
                   </span>
-                  {short ?? label}
+                  <span className={LABEL}>{short ?? label}</span>
                 </>
               )}
             </NavLink>
@@ -65,7 +67,7 @@ export function TabBar({ menuId, isMenuOpen, onMoreClick }) {
             <span className={CHIP}>
               <Ellipsis className="size-5" aria-hidden="true" />
             </span>
-            More
+            <span className={LABEL}>More</span>
           </button>
         </li>
       </ul>

@@ -152,7 +152,7 @@ export default function CalendarPage() {
           )
         }
       />
-      <div className="mb-4 flex items-center gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <Button
           variant="secondary"
           size="sm"

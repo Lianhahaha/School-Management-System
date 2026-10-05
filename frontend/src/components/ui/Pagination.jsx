@@ -66,7 +66,7 @@ export function Pagination({ meta, onPageChange, onLimitChange }) {
           />
         </label>
 
-        <ul className="flex items-center gap-1">
+        <ul className="flex flex-wrap items-center justify-center gap-1">
           <li>
             <Button
               variant="ghost"
@@ -78,7 +78,7 @@ export function Pagination({ meta, onPageChange, onLimitChange }) {
             />
           </li>
           {pageItems(page, totalPages).map((item, index) => (
-            <li key={item === ELLIPSIS ? `gap-${index}` : item}>
+            <li key={item === ELLIPSIS ? `gap-${index}` : item} className="max-sm:hidden">
               {item === ELLIPSIS ? (
                 <span aria-hidden="true" className="px-2 text-gray-400">
                   {ELLIPSIS}
@@ -97,6 +97,14 @@ export function Pagination({ meta, onPageChange, onLimitChange }) {
               )}
             </li>
           ))}
+          {/* Phones: "3 / 12" between the arrows instead of the page buttons, so the row fits. */}
+          <li className="tabular px-2 text-sm text-gray-700 sm:hidden" aria-current="page">
+            <span className="sr-only">Page </span>
+            {page}
+            <span aria-hidden="true"> / </span>
+            <span className="sr-only"> of </span>
+            {totalPages}
+          </li>
           <li>
             <Button
               variant="ghost"

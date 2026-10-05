@@ -245,6 +245,8 @@
   body {
     @apply bg-canvas text-gray-900 antialiased;
     font-feature-settings: 'cv11', 'ss01';
+    /* A long email or link breaks onto the next line instead of pushing the page wider than a phone. */
+    overflow-wrap: break-word;
   }
 
   ::selection {
@@ -287,7 +289,8 @@
 @layer components {
   /* A sheet: the white surface every block of content sits on. Borderless; the page tone frames it. */
   .sheet {
-    @apply rounded-card bg-surface shadow-card;
+    /* min-w-0: as a grid or flex item a sheet shrinks to its column instead of growing to its content. */
+    @apply min-w-0 rounded-card bg-surface shadow-card;
   }
 
   /*

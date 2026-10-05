@@ -35,9 +35,9 @@ export function StatTile({ label, value, hint, icon: Icon, tone, to }) {
         <span className="block text-sm leading-snug font-medium text-gray-900 sm:text-[0.9375rem]">
           {label}
         </span>
-        {hint && <span className="hidden truncate text-xs text-gray-500 sm:block">{hint}</span>}
+        {hint && <span className="block truncate text-xs text-gray-500">{hint}</span>}
       </span>
-      <span className="tabular text-lg font-semibold text-gray-900">{value}</span>
+      <span className="tabular shrink-0 text-lg font-semibold text-gray-900">{value}</span>
       {to && <ChevronRight className="-mr-1 size-4 shrink-0 text-gray-500" aria-hidden="true" />}
     </>
   );
