@@ -2,17 +2,17 @@
 name: Skole
 description: A calm school workspace where one warm yellow highlighter marks the thing to do and the thing happening now.
 colors:
-  canvas: "#f3f3f1"
-  surface: "#ffffff"
-  gray-100: "#ebebe8"
-  gray-200: "#e2e2de"
-  gray-300: "#d0d0cb"
-  gray-400: "#a3a3a6"
-  gray-500: "#636368"
-  gray-600: "#56565b"
-  gray-700: "#3e3e43"
-  gray-800: "#2a2a2e"
-  ink: "#18181b"
+  canvas: "#eeece6"
+  surface: "#fcfbf8"
+  gray-100: "#e8e5de"
+  gray-200: "#dfdbd3"
+  gray-300: "#cec9bf"
+  gray-400: "#9c978e"
+  gray-500: "#55524c"
+  gray-600: "#45433e"
+  gray-700: "#383632"
+  gray-800: "#282623"
+  ink: "#1b1a17"
   accent: "#ffc629"
   accent-hover: "#f5b800"
   accent-ink: "#1f1a05"
@@ -35,13 +35,13 @@ colors:
   violet-700: "#6340a8"
   on-danger: "#ffffff"
   canvas-dark: "#17181b"
-  surface-dark: "#202125"
+  surface-dark: "#24252a"
   gray-100-dark: "#2a2b30"
   gray-200-dark: "#303137"
   gray-300-dark: "#3e3f46"
-  gray-400-dark: "#6f7078"
-  gray-500-dark: "#9d9ea5"
-  gray-600-dark: "#b5b6bc"
+  gray-400-dark: "#80818a"
+  gray-500-dark: "#b0b1b8"
+  gray-600-dark: "#c3c4c9"
   gray-700-dark: "#cbcbd0"
   gray-800-dark: "#dededf"
   ink-dark: "#ecece9"
@@ -102,12 +102,13 @@ typography:
     fontWeight: 400
   label-table:
     fontFamily: "Onest, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "0.8125rem"
+    fontSize: "0.875rem"
     fontWeight: 500
   label:
     fontFamily: "Onest, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "0.75rem"
+    fontSize: "0.8125rem"
     fontWeight: 500
+    letterSpacing: "0.01em"
   label-tab:
     fontFamily: "Onest, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.6875rem"
@@ -274,9 +275,9 @@ A calm neutral ramp with a hint of warmth, one saturated yellow, and five muted 
 - **Yellow Wash** (`accent-soft`) and **Yellow Rim** (`accent-line`): the tinted background and inset ring of a period that is happening now, and the text selection colour. In dark they become translucent yellow (`accent-soft-dark`, `accent-line-dark`).
 
 ### Neutral
-- **Paper Grey** (`canvas`): the page itself, the desktop sidebar and the translucent sticky top bar. It also sets the browser `theme-color`.
-- **Sheet White** (`surface`): every content sheet, dialogs, menus, the phone tab bar, inputs, and the knob of the theme switch.
-- **Pill Grey** (`gray-100`): secondary buttons, figure rows, segmented tab tracks, neutral status pills, period rows, skeletons, close buttons. `gray-200` is its hover and the theme switch track.
+- **Linen** (`canvas`): a soft warm page tone that sits with the yellow and keeps white from glaring; the page itself, the desktop sidebar and the translucent sticky top bar. It also sets the browser `theme-color`.
+- **Paper** (`surface`, an off-white, not pure white): every content sheet, the dashboard figure tiles (with a `gray-200` hairline), dialogs, menus, the phone tab bar, inputs, and the knob of the theme switch.
+- **Pill Grey** (`gray-100`): secondary buttons, segmented tab tracks, neutral status pills, period rows, skeletons, close buttons. `gray-200` is its hover and the theme switch track.
 - **Rule Grey** (`gray-200` / `gray-300`): table row dividers (`gray-200`) and input borders and quiet link underlines (`gray-300`). `gray-400` is the hovered input border.
 - **Muted Ink** (`gray-500` / `gray-600` / `gray-700`): placeholders, table headers, totals and hints (`gray-500`); descriptions and idle nav labels (`gray-600`); table cells and secondary text (`gray-700`).
 - **Ink** (`ink`): headings, primary text, the focus ring, the brand tile, the focused input border.
@@ -307,8 +308,8 @@ Five families, each with a soft background (`-50`), a solid mark (`-600`) and a 
 - **Title** (600, 1rem): sheet titles, with an optional running total in 0.875rem regular `gray-500`.
 - **Body** (400, 0.9375rem): page descriptions, table cells, inputs, nav items, default buttons.
 - **Body small** (400 or 500, 0.875rem): card descriptions, form labels (500, `gray-800`), alerts, small buttons, breadcrumbs.
-- **Label, table** (500, 0.8125rem, `gray-500`): table column headers, sentence case.
-- **Label** (500, 0.75rem): status pills, live tags, field hints and errors.
+- **Label, table** (500, 0.875rem, `gray-500`): table column headers and detail labels, sentence case.
+- **Label** (500, 0.8125rem, +0.01em tracking): status tags, live tags, field hints and errors, dates and other metadata. Nothing in the app is smaller than 13px.
 - **Label, tab bar** (500, 0.6875rem): the phone tab bar captions under their icons.
 
 ### Named Rules
@@ -336,7 +337,7 @@ Skole is flat by default and gets its depth from tone: white sheets on a grey pa
 
 ### Shadow Vocabulary
 - **Sheet** (`box-shadow: 0 1px 2px rgb(24 24 27 / 0.04)`; `none` in dark): every content sheet.
-- **Pop** (`box-shadow: 0 12px 32px -12px rgb(24 24 27 / 0.28), 0 2px 6px rgb(24 24 27 / 0.06)`; in dark `0 16px 40px -12px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.06)`): dialogs, menus, toasts, the phone tab bar and the open drawer. In dark, the hairline white ring outlines the floating layer against graphite.
+- **Pop** (`box-shadow: 0 12px 32px -12px rgb(27 26 23 / 0.28), 0 2px 6px rgb(27 26 23 / 0.06)`; in dark `0 16px 40px -12px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.06)`): dialogs, menus, toasts, the phone tab bar and the open drawer. In dark, the hairline white ring outlines the floating layer against graphite.
 - **Knob** (`box-shadow: 0 1px 3px rgb(24 24 27 / 0.1)` to `0.2`): the white segment of the active tab and the theme switch knob, lifting a white chip off a grey track.
 
 ### Named Rules
@@ -363,12 +364,12 @@ Fully round, confident pills with a quick press response.
 - **States:** background and colour transition over 150ms; pressing scales to 0.97. Disabled buttons keep their shape and fade (50% opacity on filled variants, muted text on the others) and do not scale. Loading swaps the icon for a spinner, disables the button and sets `aria-busy`.
 
 ### Status pills and live tags
-- **Status tag:** 6px radius, 1px inset ring, 0.75rem weight-500 text, 8px side padding. Filled: `gray-100` with `gray-900` text and a `gray-200` ring. On: `green-50` with `green-700` text, ring at 20% of the text colour. Outline: no fill, `gray-600` text, `gray-300` ring. Attention: the tone's `-50` background and `-700` text, ring at 25% of the text colour.
-- **Live tag:** a yellow pill with Pencil Black 0.75rem weight-600 text ("Now", "Today"). Only for the current period or today's column.
+- **Status tag:** 6px radius, 1px inset ring, 0.8125rem weight-500 text, 8px side padding. Filled: `gray-100` with `gray-900` text and a `gray-200` ring. On: `green-50` with `green-700` text, ring at 20% of the text colour. Outline: no fill, `gray-600` text, `gray-300` ring. Attention: the tone's `-50` background and `-700` text, ring at 25% of the text colour.
+- **Live tag:** a yellow pill with Pencil Black 0.8125rem weight-600 text ("Now", "Today"). Only for the current period or today's column.
 
 ### Sheets / Containers
 - **Corner Style:** 22px.
-- **Background:** Sheet White on Paper Grey.
+- **Background:** Paper on Linen.
 - **Shadow Strategy:** the sheet shadow only (see Elevation & Depth).
 - **Border:** none.
 - **Internal Padding:** 20px; the optional header carries the title, running total, description and right-aligned actions. Table sheets drop body padding so rows run edge to edge with 20px end gutters.
@@ -377,11 +378,11 @@ Fully round, confident pills with a quick press response.
 The replacement for stat tiles: a Pill Grey pill row, at least 56px high, with a leading round icon chip (40px from `sm`, 32px on phones; white, or the tone's soft colours when the figure carries a state), the label and an optional hint, the value at the right in 1.125rem weight-600 tabular figures, and a chevron when the row links somewhere. Linked rows darken to `gray-200` on hover. Rows stack inside a sheet so a dashboard reads as a list of answers.
 
 ### Inputs / Fields
-- **Style:** Sheet White, 1px `gray-300` border, 14px corners, at least 44px high, 14px side padding, 0.9375rem ink text, `gray-500` placeholder. Selects use the app's own chevron drawn in `gray-500`, which follows the theme.
+- **Style:** Paper, 1px `gray-300` border, 14px corners, at least 44px high, 14px side padding, 0.9375rem ink text, `gray-500` placeholder. Selects use the app's own chevron drawn in `gray-500`, which follows the theme.
 - **Hover / Focus:** hover darkens the border to `gray-400`; focus turns it ink. Inputs show no separate outline ring.
-- **Error / Disabled / Read-only:** `aria-invalid` turns the border `red-600` and the field shows a 0.75rem red message under it. Disabled and read-only fields take the Paper Grey fill; disabled text is `gray-500`.
+- **Error / Disabled / Read-only:** `aria-invalid` turns the border `red-600` and the field shows a 0.8125rem red message under it. Disabled and read-only fields take the Linen fill; disabled text is `gray-500`.
 - **Search and filters:** on list pages the search box and filter selects become borderless white pills on the grey page (a 16px search icon inside the search box), gaining a `gray-300` border on hover; filters sit side by side from `sm` up.
-- **Labels:** 0.875rem weight 500 above the field, required fields marked with a red asterisk, hints in 0.75rem `gray-500`.
+- **Labels:** 0.875rem weight 500 above the field, required fields marked with a red asterisk, hints in 0.8125rem `gray-500`.
 - **Checkboxes:** native, 18px, tinted with the accent.
 
 ### Navigation
@@ -398,7 +399,7 @@ The current page's nav label sits on a yellow band drawn behind the text (inset 
 The period running now is a period row with the Yellow Wash fill, a 2px inset Yellow Rim ring, `aria-current="time"` and a "Now" live tag; the highlight follows the clock minute by minute. Today's column in the weekly timetable gets a 2px inset yellow ring and a "Today" live tag.
 
 ### Dialogs, menus and toasts
-- **Dialog:** the native modal dialog, Sheet White with 28px corners and the pop shadow over a 40% ink backdrop with a 2px blur; 24px padding, a round grey 40px close button, actions right-aligned in the footer. Page scrolling locks while it is open.
+- **Dialog:** the native modal dialog, Paper with 28px corners and the pop shadow over the dark scrim (`--scrim`) with a 12px blur; 24px padding, a round grey 40px close button, actions right-aligned in the footer. Page scrolling locks while it is open.
 - **Menu:** a white 20px-cornered panel with the pop shadow and 6px padding; items are 40px rows with 12px corners and an optional 16px icon.
 - **Toast:** an alert in the tone's soft colours with 20px corners, the pop shadow and a light backdrop blur, entering with a 200ms rise and fade. Success and info stay 4 seconds, errors 8.
 - **Alert (inline):** the tone's soft background and text colour, 14px corners, a 16px leading tone icon, optional bold title and round dismiss button.

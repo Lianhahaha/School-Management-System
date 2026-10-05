@@ -37,18 +37,21 @@
 :root {
   color-scheme: light;
 
-  /* Neutrals, cool grey with a hint of warmth. */
-  --n-50: #f3f3f1;
-  --n-100: #ebebe8;
-  --n-200: #e2e2de;
-  --n-300: #d0d0cb;
-  --n-400: #a3a3a6;
-  --n-500: #55555a;
-  --n-600: #46464b;
-  --n-700: #3e3e43;
-  --n-800: #2a2a2e;
-  --n-900: #18181b;
-  --surface: #ffffff;
+  /*
+   * Neutrals: warm paper greys that sit with the yellow. The page is a soft linen and the sheets an
+   * off-white, so nothing glares; secondary text stays at 7:1 or more on both.
+   */
+  --n-50: #eeece6;
+  --n-100: #e8e5de;
+  --n-200: #dfdbd3;
+  --n-300: #cec9bf;
+  --n-400: #9c978e;
+  --n-500: #55524c;
+  --n-600: #45433e;
+  --n-700: #383632;
+  --n-800: #282623;
+  --n-900: #1b1a17;
+  --surface: #fcfbf8;
 
   --accent: #ffc629;
   --accent-hover: #f5b800;
@@ -76,12 +79,12 @@
   --violet-700: #6340a8;
   --on-danger: #ffffff;
 
-  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23636368' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2355524c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 
-  --sheet-shadow: 0 1px 2px rgb(24 24 27 / 0.04);
-  --pop-shadow: 0 12px 32px -12px rgb(24 24 27 / 0.28), 0 2px 6px rgb(24 24 27 / 0.06);
+  --sheet-shadow: 0 1px 2px rgb(27 26 23 / 0.05);
+  --pop-shadow: 0 12px 32px -12px rgb(27 26 23 / 0.28), 0 2px 6px rgb(27 26 23 / 0.06);
   /* Behind dialogs and the phone drawer: a soft dark veil (with a blur), never a light wash. */
-  --scrim: rgb(24 24 27 / 0.32);
+  --scrim: rgb(27 26 23 / 0.32);
 }
 
 /* Soft dark: graphite, never black; the same yellow with dark text on it. */
