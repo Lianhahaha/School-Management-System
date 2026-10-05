@@ -15,6 +15,7 @@ import { useListParams } from '../../../hooks/useListParams';
 import { isWithinDays, relativeTime } from '../../../utils/date';
 import { fullName } from '../../../utils/names';
 import { ClassSelect } from '../../classes/components/ClassSelect';
+import { EnrollStudentsModal } from '../../enrollments/components/EnrollStudentsModal';
 import { UserFormModal } from '../../users/components/UserFormModal';
 import { UserStatusBadge } from '../../users/components/UserStatusBadge';
 import { StudentClassButton, StudentClassModals } from '../components/StudentClassModals';
@@ -32,6 +33,7 @@ export default function StudentsListPage() {
   });
   const { data, isPending, isFetching, error, refetch } = useStudents(list.apiParams);
   const createModal = useDisclosure();
+  const enrollModal = useDisclosure();
   const [classTarget, setClassTarget] = useState(null);
 
   const columns = [
@@ -80,7 +82,14 @@ export default function StudentsListPage() {
         total={data?.meta?.total}
         title="Students"
         description="All registered students and their current class"
-        actions={<Button onClick={createModal.open}>Add student</Button>}
+        actions={
+          <>
+            <Button variant="secondary" onClick={enrollModal.open}>
+              Enroll several
+            </Button>
+            <Button onClick={createModal.open}>Add student</Button>
+          </>
+        }
       />
 
       <FilterBar onClear={list.hasActiveFilters ? list.clearFilters : undefined}>
@@ -149,6 +158,7 @@ export default function StudentsListPage() {
 
       <UserFormModal open={createModal.isOpen} onClose={createModal.close} lockedRole="student" />
       <StudentClassModals student={classTarget} onClose={() => setClassTarget(null)} />
+      <EnrollStudentsModal open={enrollModal.isOpen} onClose={enrollModal.close} />
     </>
   );
 }
