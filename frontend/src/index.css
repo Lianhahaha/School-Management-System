@@ -331,7 +331,19 @@
 }
 
 /* Printing a page (the timetable's "Print timetable" button): only the page content, no app shell. */
+/*
+ * Documents made for paper (the report card) are rendered into <body> with `.print-only`: invisible
+ * on screen, and while one is mounted the printout shows it instead of the app.
+ */
+.print-only {
+  display: none;
+}
+
 @media print {
+  @page {
+    margin: 16mm;
+  }
+
   #app-sidebar,
   #app-topbar,
   #app-tabbar {
@@ -340,5 +352,17 @@
 
   #app-content {
     padding-left: 0;
+  }
+
+  body:has(> .print-only) {
+    background: white;
+  }
+
+  body:has(> .print-only) > #root {
+    display: none;
+  }
+
+  .print-only {
+    display: block;
   }
 }

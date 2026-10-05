@@ -8,9 +8,10 @@ import { useAuth } from '../../auth/hooks';
 import { NotEnrolledState } from '../../enrollments/components/NotEnrolledState';
 import { listGrades } from '../api';
 import { GradesBySubject } from '../components/GradesBySubject';
+import { PrintReportCardButton, ReportCard } from '../components/ReportCard';
 import { STUDENT_GRADES_CSV_COLUMNS } from '../csv';
 
-/** A student's own grades per subject, optionally for one term. */
+/** A student's own grades per subject, optionally for one term, with CSV download and a printable report card. */
 export default function StudentGradesPage() {
   const { me } = useAuth();
   const list = useListParams({ filters: ['term'] });
@@ -39,11 +40,20 @@ export default function StudentGradesPage() {
                   fetchAllPages(listGrades, { ...(term && { term }), sortBy: 'assessedOn', sortOrder: 'asc' })
                 }
               />
+              <PrintReportCardButton />
             </>
           )
         }
       />
       {me.currentEnrollment ? <GradesBySubject term={term || undefined} /> : <NotEnrolledState />}
+      {me.currentEnrollment && (
+        <ReportCard
+          student={{ ...me, studentNumber: me.profile?.studentNumber }}
+          enrollment={me.currentEnrollment}
+          studentId="me"
+          term={term || undefined}
+        />
+      )}
     </>
   );
 }

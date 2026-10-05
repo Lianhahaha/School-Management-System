@@ -11,6 +11,7 @@ import { fullName } from '../../../utils/names';
 import { AttendanceSummaryPanel } from '../../attendance/components/AttendanceSummaryPanel';
 import { EnrollmentHistoryTable } from '../../enrollments/components/EnrollmentHistoryTable';
 import { GradeSummaryPanel } from '../../grades/components/GradeSummaryPanel';
+import { PrintReportCardButton, ReportCard } from '../../grades/components/ReportCard';
 import { UserStatusBadge } from '../../users/components/UserStatusBadge';
 import { StudentClassButton, StudentClassModals } from '../components/StudentClassModals';
 import { StudentProfileForm } from '../components/StudentProfileForm';
@@ -93,7 +94,15 @@ export default function StudentDetailPage() {
           {
             id: 'grades',
             label: 'Grades',
-            content: <GradeSummaryPanel studentId={student.id} />,
+            content: (
+              <div className="space-y-4">
+                <div className="flex justify-end">
+                  <PrintReportCardButton />
+                </div>
+                <GradeSummaryPanel studentId={student.id} />
+                <ReportCard student={student} enrollment={student.currentEnrollment} studentId={student.id} />
+              </div>
+            ),
           },
         ]}
       />
