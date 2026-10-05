@@ -77,7 +77,7 @@ export default function StudentDetailPage() {
                 title="Profile"
                 description="Changes are saved to the student's account and school record."
               >
-                <StudentProfileForm student={student} />
+                <StudentProfileForm key={student.id} student={student} />
               </Card>
             ),
           },

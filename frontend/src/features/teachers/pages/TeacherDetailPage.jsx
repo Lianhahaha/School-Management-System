@@ -56,7 +56,7 @@ export default function TeacherDetailPage() {
                 title="Profile"
                 description="Changes are saved to the teacher's account and staff record."
               >
-                <TeacherProfileForm teacher={teacher} />
+                <TeacherProfileForm key={teacher.id} teacher={teacher} />
               </Card>
             ),
           },
