@@ -57,9 +57,14 @@ function withTimetableLock(work) {
   return withLockedTransaction(acquire, repo.releaseTimetableLock, work);
 }
 
-/** Runs `write(conn)` once the slot is proven free of class, teacher and room clashes. */
-function writeIfFree(slot, excludeId, write) {
+/**
+ * Runs `write(conn)` once the slot is proven free of class, teacher and room clashes. `getSlot(conn)` builds
+ * the slot inside the lock, so an edit is checked against the row as it is now, not as it was before a
+ * concurrent edit of the same slot committed.
+ */
+function writeIfFree(getSlot, excludeId, write) {
   return withTimetableLock(async (conn) => {
+    const slot = await getSlot(conn);
     const conflicts = toConflicts(await repo.findOverlaps({ ...slot, excludeId }, conn));
     if (conflicts.length) throw ApiError.scheduleConflict(conflicts);
     return write(conn);
@@ -109,23 +114,30 @@ export async function getSchedule(user, id) {
 
 export async function createSchedule(body) {
   const slot = { ...body, room: normalizeRoom(body.room) };
-  const id = await writeIfFree(slot, 0, (conn) => repo.insertSchedule(slot, conn));
+  const id = await writeIfFree(
+    () => slot,
+    0,
+    (conn) => repo.insertSchedule(slot, conn),
+  );
   return toScheduleShape(await repo.findScheduleById(id));
 }
 
 export async function updateSchedule(id, patch) {
-  const existing = ApiError.assertFound(await repo.findScheduleById(id), 'schedule', id);
   const fields = 'room' in patch ? { ...patch, room: normalizeRoom(patch.room) } : patch;
-  const slot = {
-    classSubjectId: existing.classSubjectId,
-    dayOfWeek: existing.dayOfWeek,
-    startTime: existing.startTime,
-    endTime: existing.endTime,
-    room: existing.room,
-    ...fields,
+  const mergedSlot = async (conn) => {
+    const existing = ApiError.assertFound(await repo.findScheduleById(id, conn), 'schedule', id);
+    const slot = {
+      classSubjectId: existing.classSubjectId,
+      dayOfWeek: existing.dayOfWeek,
+      startTime: existing.startTime,
+      endTime: existing.endTime,
+      room: existing.room,
+      ...fields,
+    };
+    assertTimeOrder(slot);
+    return slot;
   };
-  assertTimeOrder(slot);
-  await writeIfFree(slot, id, (conn) => repo.updateSchedule(id, fields, conn));
+  await writeIfFree(mergedSlot, id, (conn) => repo.updateSchedule(id, fields, conn));
   return toScheduleShape(await repo.findScheduleById(id));
 }
 

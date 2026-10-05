@@ -1,6 +1,7 @@
 import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
+import { setTimeout as delay } from 'node:timers/promises';
 import mysql from 'mysql2/promise';
 import { query } from '../src/config/db.js';
 import { env } from '../src/config/env.js';
@@ -208,6 +209,44 @@ describe('teacher reassignment and the timetable lock', () => {
       createSlot(school.csB.id, { dayOfWeek: 3, room: 'C1' }),
     ]);
     assert.deepEqual(statuses.map((res) => res.status).sort(), [201, 409]);
+  });
+
+  it('checks a slot edit against the row as it is inside the lock, not as it was before a concurrent edit', async () => {
+    // Room R9 is taken on Tuesday 11-12 by another class and teacher. Slot S (Tuesday 09-10, no room) gets
+    // two edits at once: one adds room R9, the other moves it to 11-12. Each alone is fine; together they
+    // would double-book R9, so whichever runs second must be refused.
+    const other = await assignTeacher(school.admin, {
+      classId: (await makeClass(school.admin)).id,
+      subjectId: (await makeSubject(school.admin)).id,
+      teacherId: (await makeUser('teacher')).teacherId,
+    });
+    assert.equal(
+      (await createSlot(other.id, { dayOfWeek: 2, startTime: '11:00', endTime: '12:00', room: 'R9' })).status,
+      201,
+    );
+    const slot = (await createSlot(school.csA.id, { dayOfWeek: 2 })).body.data;
+    const edit = (body) => api.patch(`/api/v1/schedules/${slot.id}`).set(as(school.admin)).send(body);
+
+    const holder = await mysql.createConnection({
+      host: env.DB_HOST,
+      port: env.DB_PORT,
+      user: env.DB_USER,
+      password: env.DB_PASSWORD,
+      database: env.DB_NAME,
+    });
+    let results;
+    try {
+      await holder.query("SELECT GET_LOCK(CONCAT(DATABASE(), ':timetable'), 0)");
+      const pending = Promise.all([edit({ room: 'R9' }), edit({ startTime: '11:00', endTime: '12:00' })]);
+      await delay(300); // both requests are now queued on the lock
+      await holder.query("SELECT RELEASE_LOCK(CONCAT(DATABASE(), ':timetable'))");
+      results = await pending;
+    } finally {
+      await holder.end();
+    }
+    assert.deepEqual(results.map((res) => res.status).sort(), [200, 409]);
+    const [stored] = await query('SELECT start_time, room FROM schedules WHERE id = ?', [slot.id]);
+    assert.ok(!(stored.room === 'R9' && String(stored.startTime).startsWith('11:00')), 'R9 is double-booked');
   });
 
   it('waits for the timetable lock like slot edits do (503 while another session holds it)', async () => {
