@@ -24,7 +24,7 @@ export function StudentProfileForm({ student }) {
     setError,
     formState: { errors, dirtyFields, isDirty },
   } = useForm({ resolver: zodResolver(updateStudentSchema), defaultValues: studentDefaults(student) });
-  useUnsavedChangesBlocker(isDirty);
+  useUnsavedChangesBlocker(isDirty, { includeSearch: true }); // another tab (?tab=) unmounts the form
 
   const onSubmit = (values) =>
     updateStudent

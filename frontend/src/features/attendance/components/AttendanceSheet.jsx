@@ -73,7 +73,8 @@ export function AttendanceSheet({ sheet, canSave, onReload }) {
   );
   const hasUnmarked = records.some((record) => record.attendanceId === null);
   const canSubmit = canSave && (hasEdits || hasUnmarked);
-  useUnsavedChangesBlocker(canSave && hasEdits);
+  // The lesson and date live in the query string: changing them would drop the marks.
+  useUnsavedChangesBlocker(canSave && hasEdits, { includeSearch: true });
 
   const counts = Object.fromEntries(Object.keys(LETTERS).map((status) => [status, 0]));
   for (const { status } of Object.values(draft)) counts[status] += 1;

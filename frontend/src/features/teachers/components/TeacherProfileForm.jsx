@@ -21,7 +21,7 @@ export function TeacherProfileForm({ teacher }) {
     setError,
     formState: { errors, dirtyFields, isDirty },
   } = useForm({ resolver: zodResolver(updateTeacherSchema), defaultValues: teacherDefaults(teacher) });
-  useUnsavedChangesBlocker(isDirty);
+  useUnsavedChangesBlocker(isDirty, { includeSearch: true }); // another tab (?tab=) unmounts the form
 
   const onSubmit = (values) =>
     updateTeacher
