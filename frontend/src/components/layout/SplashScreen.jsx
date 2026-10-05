@@ -19,7 +19,8 @@ export function SplashScreen({ variant = 'loading', onRetry, onSignOut }) {
         <div role="alert" className="max-w-sm">
           <h1 className="text-lg font-semibold text-gray-900">Can't reach the server</h1>
           <p className="mt-2 text-sm text-gray-600">
-            Your account could not be loaded. Check your connection and try again.
+            Your account could not be loaded. The server may still be starting up, so wait a few seconds,
+            check your connection and try again.
           </p>
           <div className="mt-6 flex justify-center gap-3">
             <Button icon={RefreshCw} onClick={onRetry}>

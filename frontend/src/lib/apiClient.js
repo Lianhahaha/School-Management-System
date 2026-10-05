@@ -1,7 +1,8 @@
 /**
  * The only module that talks to the backend over HTTP.
  *
- * Every request carries the Firebase ID token. A 401 is retried once with a forcibly
+ * Every request carries the Firebase ID token and is timed by lib/serverWake (a slow answer means the
+ * free server is waking up, and the user is told). A 401 is retried once with a forcibly
  * refreshed token; a second 401 means the session is dead and the user is signed out.
  * Failures become `ApiError`, successes resolve with the whole envelope `{ data, meta? }` (a 204 No
  * Content resolves `{ data: null }`).
@@ -18,6 +19,7 @@ import { env } from '../config/env';
 import { ERROR_CODES } from '../constants/shared';
 import { SESSION_EXPIRED_MESSAGE } from '../constants/ui';
 import { toApiParams } from '../utils/listParams';
+import { trackSlow } from './serverWake';
 
 /** Error codes raised by this client itself; every other code comes from the backend's ERROR_CODES. */
 export const CLIENT_ERROR_CODES = Object.freeze({
@@ -97,11 +99,13 @@ async function send(path, { method, body, params, needsAuth }, forceRefresh) {
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (needsAuth) headers.Authorization = `Bearer ${await getToken(forceRefresh)}`;
   try {
-    return await fetch(buildUrl(path, params), {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
+    return await trackSlow(() =>
+      fetch(buildUrl(path, params), {
+        method,
+        headers,
+        body: body === undefined ? undefined : JSON.stringify(body),
+      }),
+    );
   } catch {
     throw networkError();
   }
