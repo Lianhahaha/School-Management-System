@@ -1,6 +1,7 @@
 import { ExternalLink } from 'lucide-react';
 import { NavLink } from 'react-router';
 import { cx } from '../../utils/cx';
+import { NavBadge } from './NavBadge';
 
 const BASE = 'flex min-h-11 w-full items-center gap-3 rounded-full px-3.5 text-[0.9375rem] transition-colors';
 const IDLE = 'font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900';
@@ -14,8 +15,9 @@ const ACTIVE = 'font-semibold text-gray-900';
  *   neither a button that calls `onClick`
  * @param {object} props
  * @param {import('react').ElementType} props.icon lucide icon
+ * @param {{ count: number, label: string }} [props.badge] count shown at the end of an in-app link
  */
-export function NavItem({ to, href, end, icon: Icon, onClick, children }) {
+export function NavItem({ to, href, end, icon: Icon, badge, onClick, children }) {
   const icon = <Icon className="size-[1.125rem] shrink-0" aria-hidden="true" />;
 
   if (to) {
@@ -30,6 +32,7 @@ export function NavItem({ to, href, end, icon: Icon, onClick, children }) {
           <>
             {icon}
             <span className={isActive ? 'highlight' : undefined}>{children}</span>
+            {badge && <NavBadge count={badge.count} label={badge.label} className="ml-auto" />}
           </>
         )}
       </NavLink>

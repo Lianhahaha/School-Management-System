@@ -24,6 +24,9 @@ const optionsOf = (values, labels) => values.map((value) => ({ value, label: lab
 
 export const APP_NAME = 'Skole';
 
+/** An account created this many days ago or less carries a "New" tag in lists. */
+export const NEW_ACCOUNT_DAYS = 7;
+
 // ---------------------------------------------------------------------------
 // Tones: the status colour families (gray, green, amber, red, blue, violet). Badge turns a tone
 // into one of three weights (filled, outline, tinted); alerts, icon chips and timetable slots use

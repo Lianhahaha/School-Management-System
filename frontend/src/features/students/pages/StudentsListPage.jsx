@@ -9,9 +9,10 @@ import { FilterBar } from '../../../components/ui/FilterBar';
 import { Pagination } from '../../../components/ui/Pagination';
 import { SearchInput } from '../../../components/ui/SearchInput';
 import { Select } from '../../../components/ui/Select';
-import { GRADE_LEVEL_OPTIONS, USER_STATUS_FILTER_OPTIONS } from '../../../constants/ui';
+import { GRADE_LEVEL_OPTIONS, NEW_ACCOUNT_DAYS, USER_STATUS_FILTER_OPTIONS } from '../../../constants/ui';
 import { useDisclosure } from '../../../hooks/useDisclosure';
 import { useListParams } from '../../../hooks/useListParams';
+import { isWithinDays, relativeTime } from '../../../utils/date';
 import { fullName } from '../../../utils/names';
 import { ClassSelect } from '../../classes/components/ClassSelect';
 import { UserFormModal } from '../../users/components/UserFormModal';
@@ -40,9 +41,16 @@ export default function StudentsListPage() {
       header: 'Name',
       sortKey: 'lastName',
       cell: (student) => (
-        <Link to={String(student.id)} className="link">
-          {fullName(student)}
-        </Link>
+        <span className="inline-flex flex-wrap items-center gap-2">
+          <Link to={String(student.id)} className="link">
+            {fullName(student)}
+          </Link>
+          {isWithinDays(student.createdAt, NEW_ACCOUNT_DAYS) && (
+            <Badge tone="blue" title={`Signed up ${relativeTime(student.createdAt)}`}>
+              New
+            </Badge>
+          )}
+        </span>
       ),
     },
     { key: 'email', header: 'Email', hideBelow: 'md' },

@@ -70,6 +70,12 @@ export function currentAcademicYear() {
   return `${startYear}-${startYear + 1}`;
 }
 
+/** True when the ISO timestamp lies within the last `days` days. */
+export function isWithinDays(iso, days) {
+  if (!iso) return false;
+  return Date.now() - new Date(iso).getTime() <= days * 24 * 60 * 60 * 1000;
+}
+
 /** ISO timestamp -> '2 hours ago' / 'in 3 days' / 'just now'. */
 export function relativeTime(iso) {
   if (!iso) return EMPTY;

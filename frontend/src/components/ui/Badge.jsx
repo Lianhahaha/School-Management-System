@@ -20,10 +20,12 @@ const TONE_CLASSES = {
 /**
  * @param {object} props
  * @param {'gray'|'green'|'amber'|'red'|'blue'|'violet'} [props.tone]
+ * Other props (title, aria-*) go to the span.
  */
-export function Badge({ tone = 'gray', className, children }) {
+export function Badge({ tone = 'gray', className, children, ...props }) {
   return (
     <span
+      {...props}
       className={cx(
         'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs leading-4 font-medium whitespace-nowrap ring-1 ring-inset',
         TONE_CLASSES[tone] ?? TONE_CLASSES.gray,

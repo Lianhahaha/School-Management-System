@@ -4,6 +4,7 @@ import { cx } from '../../utils/cx';
 import { Brand } from './Brand';
 import { NAV } from './navConfig';
 import { NavItem } from './NavItem';
+import { useNavBadges } from './useNavBadges';
 
 /**
  * Left navigation: the current role's entries from navConfig, then Profile and Sign out.
@@ -18,6 +19,7 @@ import { NavItem } from './NavItem';
  */
 export function Sidebar({ id, isOpen, onClose }) {
   const { role, logout } = useAuth();
+  const badges = useNavBadges();
 
   return (
     <aside
@@ -42,9 +44,9 @@ export function Sidebar({ id, isOpen, onClose }) {
 
       <nav aria-label="Main" className="flex-1 overflow-y-auto px-3 py-4">
         <ul className="space-y-0.5">
-          {NAV[role].map(({ label, to, icon, end }) => (
+          {NAV[role].map(({ label, to, icon, end, badge }) => (
             <li key={to}>
-              <NavItem to={to} end={end} icon={icon} onClick={onClose}>
+              <NavItem to={to} end={end} icon={icon} badge={badges[badge]} onClick={onClose}>
                 {label}
               </NavItem>
             </li>

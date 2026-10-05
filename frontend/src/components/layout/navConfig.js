@@ -3,7 +3,8 @@
  * to its own area. This only decides what is shown; RequireRole guards the routes and the backend
  * enforces access. `end` makes a link active only on an exact match (the dashboards).
  * `tab` puts the entry in the phone's bottom tab bar (four per role, the rest sit under "More");
- * `short` is its label there when the full one is too long.
+ * `short` is its label there when the full one is too long. `badge` names a count from useNavBadges
+ * shown beside the entry while it is above zero.
  */
 import {
   Award,
@@ -23,7 +24,7 @@ export const NAV = Object.freeze({
   admin: [
     { label: 'Dashboard', short: 'Home', to: ROLE_HOME.admin, icon: LayoutDashboard, end: true, tab: true },
     { label: 'Users', to: '/admin/users', icon: Users },
-    { label: 'Students', to: '/admin/students', icon: GraduationCap, tab: true },
+    { label: 'Students', to: '/admin/students', icon: GraduationCap, tab: true, badge: 'unenrolledStudents' },
     { label: 'Teachers', to: '/admin/teachers', icon: BookUser },
     { label: 'Subjects', to: '/admin/subjects', icon: BookOpen },
     { label: 'Classes', to: '/admin/classes', icon: School, tab: true },

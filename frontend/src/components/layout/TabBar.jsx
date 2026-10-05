@@ -2,7 +2,9 @@ import { Ellipsis } from 'lucide-react';
 import { NavLink } from 'react-router';
 import { useAuth } from '../../features/auth/hooks';
 import { cx } from '../../utils/cx';
+import { NavBadge } from './NavBadge';
 import { NAV } from './navConfig';
+import { useNavBadges } from './useNavBadges';
 
 const ITEM = 'flex min-h-14 flex-1 flex-col items-center justify-center gap-1 text-[0.6875rem] font-medium';
 const CHIP = 'flex h-8 w-12 items-center justify-center rounded-full transition-colors';
@@ -18,6 +20,7 @@ const CHIP = 'flex h-8 w-12 items-center justify-center rounded-full transition-
 export function TabBar({ menuId, isMenuOpen, onMoreClick }) {
   const { role } = useAuth();
   const tabs = NAV[role].filter((entry) => entry.tab);
+  const badges = useNavBadges();
 
   return (
     <nav
@@ -26,7 +29,7 @@ export function TabBar({ menuId, isMenuOpen, onMoreClick }) {
       className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 rounded-[1.75rem] bg-surface px-1.5 shadow-pop lg:hidden"
     >
       <ul className="flex">
-        {tabs.map(({ label, short, to, icon: Icon, end }) => (
+        {tabs.map(({ label, short, to, icon: Icon, end, badge }) => (
           <li key={to} className="flex flex-1">
             <NavLink
               to={to}
@@ -35,8 +38,15 @@ export function TabBar({ menuId, isMenuOpen, onMoreClick }) {
             >
               {({ isActive }) => (
                 <>
-                  <span className={cx(CHIP, isActive && 'bg-accent text-accent-ink')}>
+                  <span className={cx(CHIP, 'relative', isActive && 'bg-accent text-accent-ink')}>
                     <Icon className="size-5" aria-hidden="true" />
+                    {badge && badges[badge] && (
+                      <NavBadge
+                        count={badges[badge].count}
+                        label={badges[badge].label}
+                        className="absolute -top-1 -right-1 min-w-4 px-1 text-[0.625rem] leading-4 ring-2 ring-surface"
+                      />
+                    )}
                   </span>
                   {short ?? label}
                 </>
