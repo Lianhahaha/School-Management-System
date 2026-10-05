@@ -129,6 +129,16 @@ export async function upsertGrades(assessmentId, grades, gradedBy, conn) {
   );
 }
 
+/** Map studentId -> `{ score, remarks }` of the recorded grades of these students (before a save). */
+export async function findGradesOf(assessmentId, studentIds, conn) {
+  const rows = await query(
+    'SELECT student_id, score, remarks FROM grades WHERE assessment_id = ? AND student_id IN (?)',
+    [assessmentId, studentIds],
+    conn,
+  );
+  return new Map(rows.map((row) => [row.studentId, { score: row.score, remarks: row.remarks }]));
+}
+
 export async function deleteGrade(id) {
   return (await run('DELETE FROM grades WHERE id = ?', [id])).affectedRows;
 }

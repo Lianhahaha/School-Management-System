@@ -3,6 +3,7 @@ import { ApiError } from '../../utils/ApiError.js';
 import { addDaysYmd, todayYmd } from '../../utils/dates.js';
 import { classSubjectRef } from '../../utils/shapes.js';
 import * as access from '../access/access.service.js';
+import { changedList, changesOf, record } from '../activity/activity.service.js';
 import * as repo from './assessments.repository.js';
 
 const toAssessmentShape = (row) => ({
@@ -40,14 +41,33 @@ export async function getManagedAssessment(user, id) {
   return toAssessmentShape(row);
 }
 
+/** "Quiz 1 of Mathematics · Grade 10 - A" for the activity log. */
+export const describeAssessment = (assessment) =>
+  `${assessment.title} of ${assessment.classSubject.subjectName} · ${assessment.classSubject.className}`;
+
+const assessmentFields = ({ title, type, term, maxScore, assessedOn }) => ({
+  title,
+  type,
+  term,
+  maxScore,
+  assessedOn,
+});
+
 export async function createAssessment(user, body) {
   await access.assertCanManageClassSubject(user, body.classSubjectId);
   const id = await repo.insertAssessment({ ...body, assessedOn: body.assessedOn ?? todayYmd() });
-  return toAssessmentShape(await repo.findAssessmentById(id));
+  const assessment = toAssessmentShape(await repo.findAssessmentById(id));
+  await record({
+    action: 'assessment.create',
+    entityId: id,
+    summary: `Created ${describeAssessment(assessment)} (out of ${assessment.maxScore})`,
+    details: assessmentFields(assessment),
+  });
+  return assessment;
 }
 
 export async function updateAssessment(user, id, patch) {
-  await getManagedAssessment(user, id);
+  const before = await getManagedAssessment(user, id);
   await withTransaction(async (conn) => {
     if (patch.maxScore !== undefined) {
       // Lock first: a grade save running now finishes before the check, and none starts until this commits.
@@ -62,7 +82,17 @@ export async function updateAssessment(user, id, patch) {
     }
     await repo.updateAssessment(id, patch, conn);
   });
-  return toAssessmentShape(await repo.findAssessmentById(id));
+  const assessment = toAssessmentShape(await repo.findAssessmentById(id));
+  const changes = changesOf(assessmentFields(before), assessmentFields(assessment));
+  if (changes) {
+    await record({
+      action: 'assessment.update',
+      entityId: id,
+      summary: `Updated the ${changedList(changes)} of ${describeAssessment(assessment)}`,
+      details: { changes },
+    });
+  }
+  return assessment;
 }
 
 /**
@@ -75,8 +105,18 @@ export async function lockMaxScoreForGrading(id, conn) {
 
 /** Deletes the assessment and its grades in one transaction (the UI confirms with the graded count first). */
 export async function deleteAssessment(user, id) {
-  await getManagedAssessment(user, id);
+  const assessment = await getManagedAssessment(user, id);
   await withTransaction((conn) => repo.deleteAssessmentWithGrades(id, conn));
+  await record({
+    action: 'assessment.delete',
+    entityId: id,
+    summary: `Deleted ${describeAssessment(assessment)}${
+      assessment.gradedCount
+        ? ` and its ${assessment.gradedCount} grade${assessment.gradedCount === 1 ? '' : 's'}`
+        : ''
+    }`,
+    details: { ...assessmentFields(assessment), gradedCount: assessment.gradedCount },
+  });
   return { id };
 }
 

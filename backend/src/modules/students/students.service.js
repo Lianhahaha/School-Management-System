@@ -7,6 +7,7 @@ import { ApiError } from '../../utils/ApiError.js';
 import { todayYmd } from '../../utils/dates.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import * as access from '../access/access.service.js';
+import { changedList, changesOf, nameOf, record } from '../activity/activity.service.js';
 import * as repo from './students.repository.js';
 
 /** The student-specific columns, as exposed in `profile` and inside the student shape. */
@@ -85,8 +86,19 @@ export async function getStudent(user, idOrMe) {
 }
 
 /** Admin edit, and the student's own contact update: users + students columns in one statement. */
+/** Admins edit any student; a student edits their own contact details (through PATCH /auth/me). */
 export async function updateStudent(id, patch) {
-  ApiError.assertFound(await repo.findStudentById(id), 'student', id);
+  const before = ApiError.assertFound(await repo.findStudentById(id), 'student', id);
   await withTransaction((conn) => repo.updateStudent(id, patch, conn));
-  return toStudentShape(await repo.findStudentById(id));
+  const student = toStudentShape(await repo.findStudentById(id));
+  const changes = changesOf(before, patch);
+  if (changes) {
+    await record({
+      action: 'student.update',
+      entityId: id,
+      summary: `Updated the ${changedList(changes)} of student ${nameOf(student)}`,
+      details: { studentNumber: student.studentNumber, changes },
+    });
+  }
+  return student;
 }

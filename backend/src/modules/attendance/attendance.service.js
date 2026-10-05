@@ -4,6 +4,7 @@ import { academicYearOf, isAfterToday } from '../../utils/dates.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import { classSubjectRef, personRef, ratio } from '../../utils/shapes.js';
 import * as access from '../access/access.service.js';
+import { nameOf, record } from '../activity/activity.service.js';
 import { assertSchoolDay, holidayOn } from '../calendar/calendar.service.js';
 import { getClassSubjectRefUnscoped } from '../classSubjects/classSubjects.service.js';
 import * as repo from './attendance.repository.js';
@@ -128,6 +129,7 @@ function assertMarkableDate(date, academicYear) {
  */
 export async function saveSheet(user, { classSubjectId, date, records }) {
   await access.assertCanManageClassSubject(user, classSubjectId);
+  let previous;
   const classSubject = await getClassSubjectRefUnscoped(classSubjectId); // 404 for an unknown class-subject (admins)
   assertMarkableDate(date, classSubject.academicYear);
   await assertSchoolDay(date);
@@ -140,19 +142,82 @@ export async function saveSheet(user, { classSubjectId, date, records }) {
         invalidStudentIds,
       });
     }
+    previous = await repo.findMarksOf(
+      classSubjectId,
+      date,
+      records.map((r) => r.studentId),
+      conn,
+    );
     await repo.upsertAttendance(classSubjectId, date, records, user.id, conn);
   });
-  return buildSheet(classSubjectId, date);
+  const sheet = await buildSheet(classSubjectId, date);
+  await recordSheetChanges(sheet, records, previous);
+  return sheet;
+}
+
+/**
+ * Logs a sheet save: how many marks are new or changed, and per student every changed mark and every new
+ * mark that is not "present" (who was absent, late or excused is what a later question is about).
+ */
+async function recordSheetChanges(sheet, records, previous) {
+  const nameOfStudent = new Map(sheet.records.map((row) => [row.studentId, nameOf(row)]));
+  const added = records.filter((r) => !previous.has(r.studentId));
+  const changed = records.filter((r) => previous.has(r.studentId) && previous.get(r.studentId) !== r.status);
+  if (!added.length && !changed.length) return;
+  const marks = [...changed, ...added.filter((r) => r.status !== 'present')].map((r) => ({
+    studentId: r.studentId,
+    student: nameOfStudent.get(r.studentId),
+    from: previous.get(r.studentId) ?? null,
+    to: r.status,
+  }));
+  const { subjectName, className } = sheet.classSubject;
+  const parts = [added.length && `${added.length} new`, changed.length && `${changed.length} changed`];
+  await record({
+    action: 'attendance.save',
+    entityId: sheet.classSubjectId,
+    summary: `Marked attendance for ${subjectName} · ${className} on ${sheet.date}: ${parts.filter(Boolean).join(', ')}`,
+    details: { date: sheet.date, marks },
+  });
 }
 
 export async function updateAttendance(user, id, patch) {
   const existing = ApiError.assertFound(await repo.findAttendanceById(id), 'attendance record', id);
   await access.assertCanManageClassSubject(user, existing.classSubjectId);
   await repo.updateAttendance(id, { ...patch, markedBy: user.id });
-  return toAttendanceShape(await repo.findAttendanceById(id));
+  const updated = toAttendanceShape(await repo.findAttendanceById(id));
+  if (updated.status !== existing.status || updated.remarks !== existing.remarks) {
+    await record({
+      action: 'attendance.update',
+      entityId: updated.classSubjectId,
+      summary: `Changed ${nameOf(updated.student)}'s mark in ${updated.classSubject.subjectName} · ${updated.classSubject.className} on ${updated.attendanceDate} from ${existing.status} to ${updated.status}`,
+      details: {
+        date: updated.attendanceDate,
+        marks: [
+          {
+            studentId: updated.studentId,
+            student: nameOf(updated.student),
+            from: existing.status,
+            to: updated.status,
+          },
+        ],
+      },
+    });
+  }
+  return updated;
 }
 
 export async function deleteAttendance(id) {
+  const existing = await repo.findAttendanceById(id);
   if (!(await repo.deleteAttendance(id))) throw ApiError.notFound('attendance record', id);
+  const mark = toAttendanceShape(existing);
+  await record({
+    action: 'attendance.delete',
+    entityId: mark.classSubjectId,
+    summary: `Removed ${nameOf(mark.student)}'s ${mark.status} mark in ${mark.classSubject.subjectName} · ${mark.classSubject.className} on ${mark.attendanceDate}`,
+    details: {
+      date: mark.attendanceDate,
+      marks: [{ studentId: mark.studentId, student: nameOf(mark.student), from: mark.status, to: null }],
+    },
+  });
   return { id };
 }

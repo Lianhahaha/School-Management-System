@@ -8,6 +8,7 @@
  */
 import { currentAcademicYear } from '../utils/date';
 import {
+  ACTIVITY_AREAS,
   ANNOUNCEMENT_AUDIENCES,
   ANNOUNCEMENT_STATUSES,
   ASSESSMENT_TYPES,
@@ -120,6 +121,19 @@ export const ANNOUNCEMENT_STATUS_FILTER_OPTIONS = Object.freeze([
   ...ANNOUNCEMENT_STATUS_OPTIONS,
   { value: 'all', label: 'All' },
 ]);
+
+export const ACTIVITY_AREA_LABELS = Object.freeze({
+  accounts: 'Accounts',
+  enrollments: 'Enrollments',
+  classes: 'Classes and teachers',
+  subjects: 'Subjects',
+  timetable: 'Timetable',
+  attendance: 'Attendance',
+  grades: 'Grades',
+  announcements: 'Announcements',
+  calendar: 'Calendar',
+});
+export const ACTIVITY_AREA_OPTIONS = optionsOf(ACTIVITY_AREAS, ACTIVITY_AREA_LABELS);
 
 /** Holidays mean no classes (attendance cannot be marked); events are informational. */
 export const CALENDAR_EVENT_TYPE_LABELS = Object.freeze({ holiday: 'No classes', event: 'School event' });

@@ -33,6 +33,19 @@ export const ANNOUNCEMENT_STATUSES = Object.freeze(['active', 'scheduled', 'expi
 /** School calendar entries: `holiday` = no classes (attendance cannot be marked), `event` = classes as usual. */
 export const CALENDAR_EVENT_TYPES = Object.freeze(['holiday', 'event']);
 
+/** Parts of the school the activity log groups changes by (its filter). */
+export const ACTIVITY_AREAS = Object.freeze([
+  'accounts',
+  'enrollments',
+  'classes',
+  'subjects',
+  'timetable',
+  'attendance',
+  'grades',
+  'announcements',
+  'calendar',
+]);
+
 /** ISO 8601 weekday numbers: 1 = Monday … 7 = Sunday. */
 export const DAYS_OF_WEEK = Object.freeze([1, 2, 3, 4, 5, 6, 7]);
 

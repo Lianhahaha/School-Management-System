@@ -2,6 +2,7 @@ import { ApiError } from '../../utils/ApiError.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import { classSubjectRef, personRef } from '../../utils/shapes.js';
 import * as access from '../access/access.service.js';
+import { nameOf, record } from '../activity/activity.service.js';
 import { writeIfTeacherFree } from '../schedules/schedules.service.js';
 import { assertActiveSubject } from '../subjects/subjects.service.js';
 import { assertActiveTeacher } from '../teachers/teachers.service.js';
@@ -37,19 +38,53 @@ export async function createClassSubject(body) {
   await assertActiveTeacher(body.teacherId);
   await assertActiveSubject(body.subjectId);
   const id = await repo.insertClassSubject(body);
-  return toClassSubjectShape(await repo.findClassSubjectById(id));
+  const assignment = toClassSubjectShape(await repo.findClassSubjectById(id));
+  await record({
+    action: 'assignment.create',
+    entityId: id,
+    summary: `Assigned ${nameOf(assignment.teacher)} to teach ${assignment.subjectName} in ${assignment.className}`,
+    details: lessonOf(assignment),
+  });
+  return assignment;
 }
+
+/** Names of a class-subject for the activity log. */
+const lessonOf = (assignment) => ({
+  className: assignment.className,
+  academicYear: assignment.academicYear,
+  subjectName: assignment.subjectName,
+  teacher: nameOf(assignment.teacher),
+});
 
 /** The new teacher takes over the timetable slots, so a clash with their other lessons is a 409. */
 export async function reassignTeacher(id, teacherId) {
-  ApiError.assertFound(await repo.findClassSubjectById(id), 'class subject', id);
+  const before = toClassSubjectShape(
+    ApiError.assertFound(await repo.findClassSubjectById(id), 'class subject', id),
+  );
   await assertActiveTeacher(teacherId);
   await writeIfTeacherFree(id, teacherId, (conn) => repo.updateTeacher(id, teacherId, conn));
-  return toClassSubjectShape(await repo.findClassSubjectById(id));
+  const assignment = toClassSubjectShape(await repo.findClassSubjectById(id));
+  if (before.teacherId !== assignment.teacherId) {
+    await record({
+      action: 'assignment.reassign',
+      entityId: id,
+      summary: `${assignment.subjectName} in ${assignment.className}: ${nameOf(before.teacher)} replaced by ${nameOf(assignment.teacher)}`,
+      details: { ...lessonOf(assignment), previousTeacher: nameOf(before.teacher) },
+    });
+  }
+  return assignment;
 }
 
 export async function deleteClassSubject(id) {
+  const row = await repo.findClassSubjectById(id);
   if (!(await repo.deleteClassSubject(id))) throw ApiError.notFound('class subject', id);
+  const assignment = toClassSubjectShape(row);
+  await record({
+    action: 'assignment.delete',
+    entityId: id,
+    summary: `Removed ${assignment.subjectName} (${nameOf(assignment.teacher)}) from ${assignment.className}`,
+    details: lessonOf(assignment),
+  });
   return { id };
 }
 

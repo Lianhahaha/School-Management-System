@@ -9,6 +9,7 @@ import { ApiError } from '../../utils/ApiError.js';
 import { nowSeconds, parseIsoDateTime } from '../../utils/dates.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import * as access from '../access/access.service.js';
+import { changedList, changesOf, record } from '../activity/activity.service.js';
 import * as repo from './announcements.repository.js';
 
 const toAnnouncementShape = (row) => ({
@@ -89,8 +90,23 @@ export async function createAnnouncement(user, body) {
   const expiresAt = body.expiresAt ? parseIsoDateTime(body.expiresAt) : null;
   assertExpiryAfterPublish(publishedAt, expiresAt);
   const id = await repo.insertAnnouncement({ ...body, authorId: user.id, publishedAt, expiresAt });
-  return toAnnouncementShape(await repo.findAnnouncementById(id));
+  const announcement = toAnnouncementShape(await repo.findAnnouncementById(id));
+  await record({
+    action: 'announcement.create',
+    entityId: id,
+    summary: `Published "${announcement.title}" for ${audienceOf(announcement)}`,
+    details: {
+      title: announcement.title,
+      audience: announcement.audience,
+      className: announcement.className,
+    },
+  });
+  return announcement;
 }
+
+/** "everyone", "students of Grade 10 - A", ... for the activity log. */
+const audienceOf = ({ audience, className }) =>
+  `${audience === 'all' ? 'everyone' : audience}${className ? ` of ${className}` : ''}`;
 
 export async function updateAnnouncement(user, id, patch) {
   const existing = ApiError.assertFound(await repo.findAnnouncementById(id), 'announcement', id);
@@ -106,12 +122,31 @@ export async function updateAnnouncement(user, id, patch) {
     'expiresAt' in fields ? fields.expiresAt : existing.expiresAt,
   );
   await repo.updateAnnouncement(id, fields);
-  return toAnnouncementShape(await repo.findAnnouncementById(id));
+  const announcement = toAnnouncementShape(await repo.findAnnouncementById(id));
+  // The body can be long: the log keeps that it changed, not the text.
+  const { body, ...otherFields } = fields;
+  const changes = changesOf(existing, otherFields) ?? {};
+  if (body !== undefined && body !== existing.body) changes.body = { from: '…', to: '…' };
+  if (Object.keys(changes).length) {
+    await record({
+      action: 'announcement.update',
+      entityId: id,
+      summary: `Updated the ${changedList(changes)} of "${announcement.title}"`,
+      details: { changes },
+    });
+  }
+  return announcement;
 }
 
 export async function deleteAnnouncement(user, id) {
   const existing = ApiError.assertFound(await repo.findAnnouncementById(id), 'announcement', id);
   access.assertIsAuthor(user, existing.authorId);
   await repo.deleteAnnouncement(id);
+  await record({
+    action: 'announcement.delete',
+    entityId: id,
+    summary: `Deleted the announcement "${existing.title}"`,
+    details: { title: existing.title, audience: existing.audience, className: existing.className },
+  });
   return { id };
 }

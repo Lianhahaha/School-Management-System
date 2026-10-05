@@ -371,3 +371,29 @@ CREATE TABLE IF NOT EXISTS calendar_events (
   CONSTRAINT chk_calendar_events_dates CHECK (ends_on >= starts_on)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='School calendar: holidays and events';
+
+-- -----------------------------------------------------------------------------
+-- 15. activity_log — who changed what and when: one row per change made
+--     through the API (grades saved, enrollments, account status, ...), with
+--     a readable summary and the details (before / after values) as JSON.
+--     No foreign keys on purpose: the log outlives the rows it mentions, so
+--     the actor's name and role are copied in. actor_id NULL = the system
+--     (seed script).
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS activity_log (
+  id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  actor_id    INT UNSIGNED NULL COMMENT 'users.id at the time; NULL for the system',
+  actor_name  VARCHAR(201) NOT NULL COMMENT 'Copied: "First Last", or "System"',
+  actor_role  ENUM('admin','teacher','student') NULL,
+  action      VARCHAR(40)  NOT NULL COMMENT 'e.g. grades.save, enrollment.transfer, user.deactivate',
+  area        VARCHAR(20)  NOT NULL COMMENT 'One of ACTIVITY_AREAS (filter)',
+  entity_id   INT UNSIGNED NULL COMMENT 'Id of the record the action names (its type is the action prefix)',
+  summary     VARCHAR(255) NOT NULL,
+  details     JSON NULL COMMENT 'Before / after values and names, for the detail view',
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_activity_log_created (created_at),            -- newest first, date ranges
+  KEY idx_activity_log_area    (area, created_at),      -- filter by area
+  KEY idx_activity_log_actor   (actor_id, created_at)   -- "what did this person change"
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Audit trail of changes made through the API';

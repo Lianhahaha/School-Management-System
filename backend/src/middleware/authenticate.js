@@ -7,7 +7,8 @@
  *      e.g. Google's signing keys cannot be downloaded; the session stays valid
  *   4. no users row for the Firebase uid     -> 403 USER_NOT_REGISTERED
  *   5. users.is_active = 0                   -> 403 ACCOUNT_DISABLED
- *   6. req.user = { id, firebaseUid, email, firstName, lastName, role, studentId, teacherId, activeClassId }
+ *   6. req.user = { id, firebaseUid, email, firstName, lastName, role, studentId, teacherId, activeClassId },
+ *      also kept as the request context's user (utils/requestContext) for the activity log
  *
  * The MySQL row is loaded on every request on purpose: a deactivated user's
  * still-valid token must stop working immediately.
@@ -16,6 +17,7 @@ import { firebase } from '../config/firebase.js';
 import { findAuthContextByFirebaseUid } from '../modules/users/users.repository.js';
 import { ApiError } from '../utils/ApiError.js';
 import { tokenVerificationError } from '../utils/firebaseErrorMap.js';
+import { runWithContext } from '../utils/requestContext.js';
 
 export async function authenticate(req, _res, next) {
   const header = req.get('Authorization') ?? '';
@@ -35,5 +37,5 @@ export async function authenticate(req, _res, next) {
   if (!user.isActive) return next(ApiError.accountDisabled());
 
   req.user = user;
-  next();
+  runWithContext({ user }, () => next());
 }

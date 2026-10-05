@@ -5,6 +5,7 @@
 import { withTransaction } from '../../config/db.js';
 import { ASSESSMENT_TYPES } from '../../constants/shared.js';
 import { ApiError } from '../../utils/ApiError.js';
+import { changedList, changesOf, record } from '../activity/activity.service.js';
 import * as repo from './subjects.repository.js';
 
 /** Map subjectId -> weights of every assessment type (0 when not weighted), or null for a subject on points. */
@@ -44,17 +45,41 @@ export async function createSubject({ gradeWeights, ...body }) {
     if (gradeWeights) await repo.replaceGradeWeights(subjectId, gradeWeights, conn);
     return subjectId;
   });
-  return getSubject(id);
+  const subject = await getSubject(id);
+  await record({
+    action: 'subject.create',
+    entityId: id,
+    summary: `Created the subject ${subject.code} · ${subject.name}`,
+    details: { code: subject.code, name: subject.name, gradeWeights: subject.gradeWeights },
+  });
+  return subject;
 }
 
 /** `gradeWeights` replaces the subject's weights; null puts it back on points. */
 export async function updateSubject(id, patch) {
-  await getSubject(id);
+  const before = await getSubject(id);
   await withTransaction(async (conn) => {
     await repo.updateSubject(id, patch, conn);
     if ('gradeWeights' in patch) await repo.replaceGradeWeights(id, patch.gradeWeights, conn);
   });
-  return getSubject(id);
+  const subject = await getSubject(id);
+  // Compared on the stored values, so weights sent with zeros left out still match.
+  const changes = changesOf(
+    before,
+    Object.fromEntries(Object.keys(patch).map((field) => [field, subject[field]])),
+  );
+  if (changes) {
+    const retired = 'isActive' in changes && Object.keys(changes).length === 1;
+    await record({
+      action: 'subject.update',
+      entityId: id,
+      summary: retired
+        ? `${subject.isActive ? 'Reactivated' : 'Retired'} the subject ${subject.code} · ${subject.name}`
+        : `Updated the ${changedList(changes)} of the subject ${subject.code} · ${subject.name}`,
+      details: { code: subject.code, changes },
+    });
+  }
+  return subject;
 }
 
 /**
@@ -62,9 +87,16 @@ export async function updateSubject(id, patch) {
  * its weights back); retire it with isActive=false.
  */
 export async function deleteSubject(id) {
+  const subject = await repo.findSubjectById(id);
   await withTransaction(async (conn) => {
     await repo.replaceGradeWeights(id, null, conn);
     if (!(await repo.deleteSubject(id, conn))) throw ApiError.notFound('subject', id);
+  });
+  await record({
+    action: 'subject.delete',
+    entityId: id,
+    summary: `Deleted the subject ${subject.code} · ${subject.name}`,
+    details: { code: subject.code, name: subject.name },
   });
   return { id };
 }

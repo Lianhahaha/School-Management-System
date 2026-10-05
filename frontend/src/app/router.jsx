@@ -52,6 +52,7 @@ const adminRoutes = [
   { path: 'grades/assessments/:assessmentId', element: gradeSheetPage },
   { path: 'announcements', element: announcementsPage },
   { path: 'calendar', element: calendarPage },
+  { path: 'activity', element: page(() => import('../features/activity/pages/ActivityPage')) },
 ];
 
 const teacherRoutes = [

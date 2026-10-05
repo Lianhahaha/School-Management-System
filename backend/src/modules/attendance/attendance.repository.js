@@ -145,6 +145,17 @@ export async function upsertAttendance(classSubjectId, date, records, markedBy, 
   );
 }
 
+/** Map studentId -> status of these students' marks for one lesson and date (before a save). */
+export async function findMarksOf(classSubjectId, date, studentIds, conn) {
+  const rows = await query(
+    `SELECT student_id, status FROM attendance
+      WHERE class_subject_id = ? AND attendance_date = ? AND student_id IN (?)`,
+    [classSubjectId, date, studentIds],
+    conn,
+  );
+  return new Map(rows.map((row) => [row.studentId, row.status]));
+}
+
 const PATCH_COLUMNS = { status: 'status', remarks: 'remarks', markedBy: 'marked_by' };
 
 export async function updateAttendance(id, fields) {

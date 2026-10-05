@@ -4,6 +4,7 @@
  */
 import { ApiError } from '../../utils/ApiError.js';
 import { addDaysYmd, todayYmd } from '../../utils/dates.js';
+import { changedList, changesOf, record } from '../activity/activity.service.js';
 import * as repo from './calendar.repository.js';
 
 /** Longest entry accepted: a year, which no real holiday or event comes near, so a mistyped year is caught. */
@@ -41,21 +42,53 @@ export async function getEvent(id) {
   return toEventShape(ApiError.assertFound(await repo.findEventById(id), 'calendar event', id));
 }
 
+/** "Christmas break (no classes, 2026-12-21 to 2027-01-01)" for the activity log. */
+const describeEvent = (event) =>
+  `${event.title} (${event.type === 'holiday' ? 'no classes' : 'school event'}, ${
+    event.endsOn === event.startsOn ? event.startsOn : `${event.startsOn} to ${event.endsOn}`
+  })`;
+
+const eventFields = ({ title, type, startsOn, endsOn }) => ({ title, type, startsOn, endsOn });
+
 export async function createEvent(body) {
   const endsOn = body.endsOn ?? body.startsOn;
   assertDates(body.startsOn, endsOn);
-  return getEvent(await repo.insertEvent({ ...body, endsOn }));
+  const event = await getEvent(await repo.insertEvent({ ...body, endsOn }));
+  await record({
+    action: 'calendar.create',
+    entityId: event.id,
+    summary: `Added ${describeEvent(event)} to the calendar`,
+    details: eventFields(event),
+  });
+  return event;
 }
 
 export async function updateEvent(id, patch) {
   const existing = await getEvent(id);
   assertDates(patch.startsOn ?? existing.startsOn, patch.endsOn ?? existing.endsOn);
   await repo.updateEvent(id, patch);
-  return getEvent(id);
+  const event = await getEvent(id);
+  const changes = changesOf(existing, patch);
+  if (changes) {
+    await record({
+      action: 'calendar.update',
+      entityId: id,
+      summary: `Updated the ${changedList(changes)} of ${describeEvent(event)}`,
+      details: { changes },
+    });
+  }
+  return event;
 }
 
 export async function deleteEvent(id) {
+  const existing = await repo.findEventById(id);
   if (!(await repo.deleteEvent(id))) throw ApiError.notFound('calendar event', id);
+  await record({
+    action: 'calendar.delete',
+    entityId: id,
+    summary: `Removed ${describeEvent(existing)} from the calendar`,
+    details: eventFields(existing),
+  });
   return { id };
 }
 

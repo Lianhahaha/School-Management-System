@@ -10,6 +10,7 @@ import { ApiError } from '../../utils/ApiError.js';
 import { todayYmd } from '../../utils/dates.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import * as access from '../access/access.service.js';
+import { nameOf, record } from '../activity/activity.service.js';
 import { assertEnrollableClass } from '../classes/classes.service.js';
 import * as repo from './enrollments.repository.js';
 
@@ -75,7 +76,14 @@ export async function enroll({ studentId, classId }) {
     if (active) throw alreadyEnrolled(active);
     return repo.insertEnrollment(studentId, classId, todayYmd(), conn);
   });
-  return toEnrollmentShape(await repo.findEnrollmentById(id));
+  const enrollment = toEnrollmentShape(await repo.findEnrollmentById(id));
+  await record({
+    action: 'enrollment.create',
+    entityId: id,
+    summary: `Enrolled ${nameOf(enrollment.student)} in ${enrollment.class.name}, ${enrollment.class.academicYear}`,
+    details: { student: nameOf(enrollment.student), className: enrollment.class.name },
+  });
+  return enrollment;
 }
 
 /** All-or-nothing: nothing is written when the class or any student is invalid or already enrolled. */
@@ -101,12 +109,21 @@ export async function enrollMany({ classId, studentIds }) {
     }
     return created;
   });
-  const enrollments = await Promise.all(ids.map((id) => repo.findEnrollmentById(id)));
-  return { classId, created: ids.length, enrollments: enrollments.map(toEnrollmentShape) };
+  const enrollments = (await Promise.all(ids.map((id) => repo.findEnrollmentById(id)))).map(
+    toEnrollmentShape,
+  );
+  const { class: klass } = enrollments[0];
+  await record({
+    action: 'enrollment.create',
+    summary: `Enrolled ${ids.length} student${ids.length === 1 ? '' : 's'} in ${klass.name}, ${klass.academicYear}`,
+    details: { className: klass.name, students: enrollments.map((enrollment) => nameOf(enrollment.student)) },
+  });
+  return { classId, created: ids.length, enrollments };
 }
 
 /** Move a student to another class: close the active row as `transferred`, then open the new one. */
 export async function transfer({ studentId, classId }) {
+  let fromClass;
   const id = await withTransaction(async (conn) => {
     await assertEnrollable([studentId], conn);
     await assertEnrollableClass(classId, conn);
@@ -122,9 +139,17 @@ export async function transfer({ studentId, classId }) {
     // One date for both rows: the student leaves the old class and joins the new one on the same day.
     const today = todayYmd();
     await repo.closeEnrollment(active.id, 'transferred', today, conn);
+    fromClass = active.className;
     return repo.insertEnrollment(studentId, classId, today, conn);
   });
-  return toEnrollmentShape(await repo.findEnrollmentById(id));
+  const enrollment = toEnrollmentShape(await repo.findEnrollmentById(id));
+  await record({
+    action: 'enrollment.transfer',
+    entityId: id,
+    summary: `Moved ${nameOf(enrollment.student)} from ${fromClass} to ${enrollment.class.name}`,
+    details: { student: nameOf(enrollment.student), fromClass, toClass: enrollment.class.name },
+  });
+  return enrollment;
 }
 
 /** Close an active enrollment as `completed` or `withdrawn`. Closed rows cannot be changed. */
@@ -143,7 +168,14 @@ export async function setStatus(id, status) {
       throw alreadyClosed((await repo.findEnrollmentById(id, conn)).status);
     }
   });
-  return toEnrollmentShape(await repo.findEnrollmentById(id));
+  const enrollment = toEnrollmentShape(await repo.findEnrollmentById(id));
+  await record({
+    action: 'enrollment.close',
+    entityId: id,
+    summary: `Closed ${nameOf(enrollment.student)}'s enrollment in ${enrollment.class.name} as ${status}`,
+    details: { student: nameOf(enrollment.student), className: enrollment.class.name, status },
+  });
+  return enrollment;
 }
 
 /** Withdraw the student's active enrollment, if any (used when an account is deactivated). */

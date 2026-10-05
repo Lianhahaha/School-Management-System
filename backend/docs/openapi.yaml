@@ -105,6 +105,8 @@ tags:
     description: Scores per assessment, bulk entry, gradebook and summaries.
   - name: announcements
     description: Announcements by audience and class with a publication window.
+  - name: activity
+    description: Audit trail of who changed what and when.
   - name: calendar
     description: School calendar of holidays (no classes) and school events.
   - name: dashboard
@@ -1797,6 +1799,51 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /activity:
+    get:
+      tags: [activity]
+      operationId: listActivity
+      summary: List the activity log
+      description: |
+        Roles: admin.
+
+        Every change made through the API is logged after it succeeds: accounts (created, signed up, edited,
+        activated, deactivated, deleted), enrollments, classes and teacher assignments, subjects, timetable
+        periods, assessments, grades (each new or changed score with the previous one), attendance (changed
+        marks and every new mark that is not present), announcements and calendar entries. Newest first.
+
+        `search` matches the summary, the actor's name and the details (for example the names of the students
+        in a grade save). `dateFrom` / `dateTo` are school days in the school's time zone. The actor is copied
+        into each entry, so entries outlive the accounts they mention; `actor` is null for the system (the seed
+        script).
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Search'
+        - name: sortBy
+          in: query
+          description: Sort field.
+          schema:
+            type: string
+            enum: [createdAt]
+        - $ref: '#/components/parameters/SortOrder'
+        - name: area
+          in: query
+          description: Only entries of this part of the school.
+          schema:
+            $ref: '#/components/schemas/ActivityArea'
+        - name: actorId
+          in: query
+          description: Only changes made by this user.
+          schema:
+            $ref: '#/components/schemas/Id'
+        - $ref: '#/components/parameters/DateFromFilter'
+        - $ref: '#/components/parameters/DateToFilter'
+      responses:
+        '200': { $ref: '#/components/responses/ActivityListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /calendar-events:
     get:
       tags: [calendar]
@@ -2170,6 +2217,10 @@ components:
       type: string
       enum: [active, scheduled, expired]
       description: Computed from `publishedAt` and `expiresAt`.
+    ActivityArea:
+      type: string
+      enum: [accounts, enrollments, classes, subjects, timetable, attendance, grades, announcements, calendar]
+      description: The part of the school an activity entry belongs to.
     CalendarEventType:
       type: string
       enum: [holiday, event]
@@ -3082,6 +3133,50 @@ components:
         createdAt:
           $ref: '#/components/schemas/Timestamp'
         updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+    # --- Activity log ---
+    ActivityEntry:
+      type: object
+      required: [id, actor, actorName, action, area, entityId, summary, details, createdAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        actor:
+          type: object
+          nullable: true
+          description: Who made the change, as at that moment; null for the system.
+          required: [id, name, role]
+          properties:
+            id:
+              $ref: '#/components/schemas/Id'
+            name:
+              type: string
+            role:
+              $ref: '#/components/schemas/Role'
+        actorName:
+          type: string
+          description: The actor's name, or "System".
+        action:
+          type: string
+          description: '`<record type>.<verb>`, for example `grades.save`, `enrollment.transfer`, `user.deactivate`.'
+          example: grades.save
+        area:
+          $ref: '#/components/schemas/ActivityArea'
+        entityId:
+          type: integer
+          nullable: true
+          description: Id of the record the action names (an assessment for `grades.*`, a class-subject for `attendance.*`).
+        summary:
+          type: string
+          example: 'Graded Quiz 1 of Mathematics · Grade 10 - A: 2 new, 1 changed'
+        details:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: |
+            Names and values for the detail view: `changes` ({ field: { from, to } }) for edits, a list of
+            `{ studentId, student, from, to }` under `changes` (grades) or `marks` (attendance).
+        createdAt:
           $ref: '#/components/schemas/Timestamp'
     # --- Calendar ---
     CalendarEvent:
@@ -4875,6 +4970,21 @@ components:
                     type: array
                     items:
                       $ref: '#/components/schemas/Announcement'
+    ActivityListResponse:
+      description: A page of activity entries, newest first.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/PagedEnvelope'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ActivityEntry'
     ImportReportResponse:
       description: The checks of every row and, when accounts were created, the outcome per row.
       headers:

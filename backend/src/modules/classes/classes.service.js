@@ -2,6 +2,7 @@ import { ApiError } from '../../utils/ApiError.js';
 import { currentAcademicYear } from '../../utils/dates.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import { personRef } from '../../utils/shapes.js';
+import { changedList, changesOf, nameOf, record } from '../activity/activity.service.js';
 import { assertActiveTeacher } from '../teachers/teachers.service.js';
 import * as repo from './classes.repository.js';
 
@@ -49,7 +50,14 @@ export async function assertEnrollableClass(classId, conn) {
 
 export async function createClass(body) {
   if (body.homeroomTeacherId) await assertActiveTeacher(body.homeroomTeacherId);
-  return getClass(await repo.insertClass(body));
+  const klass = await getClass(await repo.insertClass(body));
+  await record({
+    action: 'class.create',
+    entityId: klass.id,
+    summary: `Created the class ${klass.name}, ${klass.academicYear}`,
+    details: { name: klass.name, gradeLevel: klass.gradeLevel, academicYear: klass.academicYear },
+  });
+  return klass;
 }
 
 export async function updateClass(id, patch) {
@@ -63,10 +71,35 @@ export async function updateClass(id, patch) {
   }
   if (patch.homeroomTeacherId) await assertActiveTeacher(patch.homeroomTeacherId);
   await repo.updateClass(id, patch);
-  return getClass(id);
+  const klass = await getClass(id);
+  const changes = changesOf(logView(existing), logView(klass));
+  if (changes) {
+    await record({
+      action: 'class.update',
+      entityId: id,
+      summary: `Updated the ${changedList(changes)} of ${klass.name}, ${klass.academicYear}`,
+      details: { changes },
+    });
+  }
+  return klass;
 }
 
+/** The fields of a class the activity log compares, the homeroom teacher by name. */
+const logView = (klass) => ({
+  name: klass.name,
+  gradeLevel: klass.gradeLevel,
+  academicYear: klass.academicYear,
+  homeroomTeacher: klass.homeroomTeacher ? nameOf(klass.homeroomTeacher) : null,
+});
+
 export async function deleteClass(id) {
+  const klass = await repo.findClassById(id);
   if (!(await repo.deleteClass(id))) throw ApiError.notFound('class', id);
+  await record({
+    action: 'class.delete',
+    entityId: id,
+    summary: `Deleted the class ${klass.name}, ${klass.academicYear}`,
+    details: { name: klass.name, academicYear: klass.academicYear },
+  });
   return { id };
 }

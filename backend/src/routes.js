@@ -6,6 +6,7 @@
  */
 import { Router } from 'express';
 import { authenticate } from './middleware/authenticate.js';
+import { activityRoutes } from './modules/activity/activity.routes.js';
 import { announcementsRoutes } from './modules/announcements/announcements.routes.js';
 import { assessmentsRoutes } from './modules/assessments/assessments.routes.js';
 import { attendanceRoutes } from './modules/attendance/attendance.routes.js';
@@ -46,3 +47,4 @@ apiRouter.use('/schedules', authenticate, schedulesRoutes);
 apiRouter.use('/announcements', authenticate, announcementsRoutes);
 apiRouter.use('/calendar-events', authenticate, calendarRoutes);
 apiRouter.use('/dashboard', authenticate, dashboardRoutes);
+apiRouter.use('/activity', authenticate, activityRoutes);

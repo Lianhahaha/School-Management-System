@@ -7,6 +7,7 @@ import { firebase } from '../../config/firebase.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { currentAcademicYear } from '../../utils/dates.js';
 import { logger } from '../../utils/logger.js';
+import { changedList, changesOf, nameOf, record } from '../activity/activity.service.js';
 import { teacherHasAssignments } from '../classSubjects/classSubjects.service.js';
 import { closeActiveForStudent } from '../enrollments/enrollments.service.js';
 import * as studentsService from '../students/students.service.js';
@@ -51,9 +52,19 @@ export async function listUsers(listQuery) {
 }
 
 export async function updateUser(id, patch) {
-  ApiError.assertFound(await repo.findUserById(id), 'user', id);
+  const before = ApiError.assertFound(await repo.findUserById(id), 'user', id);
   await repo.updateUser(id, patch);
-  return getAccount(id);
+  const account = await getAccount(id);
+  const changes = changesOf(before, patch);
+  if (changes) {
+    await record({
+      action: 'user.update',
+      entityId: id,
+      summary: `Updated the ${changedList(changes)} of ${nameOf(account)}`,
+      details: { email: account.email, changes },
+    });
+  }
+  return account;
 }
 
 async function findFirebaseUserByEmail(email) {
@@ -139,7 +150,26 @@ export async function createUserAccount(input, { trusted }) {
     await deleteFirebaseUserOrLog(uid, 'could not delete Firebase user after a failure');
     throw error;
   }
-  return getAccount(userId);
+  const account = await getAccount(userId);
+  const details = { email, role: input.role };
+  if (trusted) {
+    await record({
+      action: 'user.create',
+      entityId: userId,
+      summary: `Created the ${input.role} account of ${nameOf(account)} (${email})`,
+      details,
+    });
+  } else {
+    // A public sign-up has no signed-in user: the new account is its own actor.
+    await record({
+      action: 'user.register',
+      entityId: userId,
+      summary: `${nameOf(account)} signed up as a student (${email})`,
+      details,
+      actor: account,
+    });
+  }
+  return account;
 }
 
 /** Tries a generated student or employee number this many times when parallel sign-ups take the same one. */
@@ -200,6 +230,17 @@ export async function setStatus(actor, id, isActive) {
   await firebase.updateUser(target.firebaseUid, { disabled: !isActive });
   if (!isActive) await firebase.revokeRefreshTokens(target.firebaseUid);
 
+  if (target.isActive !== isActive) {
+    const withdrawn = !isActive && target.role === 'student' && target.currentEnrollment;
+    await record({
+      action: isActive ? 'user.activate' : 'user.deactivate',
+      entityId: id,
+      summary: `${isActive ? 'Reactivated' : 'Deactivated'} the ${target.role} account of ${nameOf(target)}${
+        withdrawn ? ` (withdrawn from ${target.currentEnrollment.className})` : ''
+      }`,
+      details: { email: target.email, role: target.role },
+    });
+  }
   return getAccount(id);
 }
 
@@ -237,5 +278,11 @@ export async function deleteUser(actor, id) {
     target.firebaseUid,
     'could not delete the Firebase user of a deleted account',
   );
+  await record({
+    action: 'user.delete',
+    entityId: id,
+    summary: `Deleted the unused ${target.role} account of ${nameOf(target)} (${target.email})`,
+    details: { email: target.email, role: target.role },
+  });
   return { id };
 }

@@ -14,6 +14,7 @@ import {
   CalendarRange,
   ClipboardCheck,
   GraduationCap,
+  History,
   LayoutDashboard,
   Megaphone,
   School,
@@ -33,6 +34,7 @@ export const NAV = Object.freeze({
     { label: 'Grades', to: '/admin/grades', icon: Award },
     { label: 'Announcements', to: '/admin/announcements', icon: Megaphone, badge: 'newAnnouncements' },
     { label: 'Calendar', to: '/admin/calendar', icon: CalendarRange },
+    { label: 'Activity', to: '/admin/activity', icon: History },
   ],
   teacher: [
     { label: 'Dashboard', short: 'Home', to: ROLE_HOME.teacher, icon: LayoutDashboard, end: true, tab: true },

@@ -185,6 +185,8 @@ Rules the database itself enforces (not just the API):
 
 Rules the service layer enforces because SQL cannot express them: schedule overlaps (class, teacher or room, per academic year, serialised with a named lock), `score <= max_score`, no attendance for future dates, only enrolled students on a sheet or grade batch, a subject's grade weights adding up to 100.
 
+Activity log: services call `activity.record()` after each successful change; the actor is read from the request context that `authenticate` opens (`utils/requestContext.js`), and a failed log write never fails the request.
+
 Results: a subject is graded on points (`SUM(score) / SUM(max_score)`) unless it has grade weights per assessment type; a student's general average is the mean of their subject results. The arithmetic is in `backend/src/utils/grading.js`.
 
 ## 6. Roles and what they can do

@@ -7,6 +7,7 @@ import { ApiError } from '../../utils/ApiError.js';
 import { todayYmd } from '../../utils/dates.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import * as access from '../access/access.service.js';
+import { changedList, changesOf, nameOf, record } from '../activity/activity.service.js';
 import * as repo from './teachers.repository.js';
 
 /** The teacher-specific columns, as exposed in `profile` and inside the teacher shape. */
@@ -80,7 +81,17 @@ export async function getTeacher(user, idOrMe) {
 }
 
 export async function updateTeacher(id, patch) {
-  ApiError.assertFound(await repo.findTeacherById(id), 'teacher', id);
+  const before = ApiError.assertFound(await repo.findTeacherById(id), 'teacher', id);
   await withTransaction((conn) => repo.updateTeacher(id, patch, conn));
-  return toTeacherShape(await repo.findTeacherById(id));
+  const teacher = toTeacherShape(await repo.findTeacherById(id));
+  const changes = changesOf(before, patch);
+  if (changes) {
+    await record({
+      action: 'teacher.update',
+      entityId: id,
+      summary: `Updated the ${changedList(changes)} of teacher ${nameOf(teacher)}`,
+      details: { employeeNumber: teacher.employeeNumber, changes },
+    });
+  }
+  return teacher;
 }

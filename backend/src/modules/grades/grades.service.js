@@ -10,7 +10,9 @@ import { averageOf, percentOf, subjectResult, sumPoints } from '../../utils/grad
 import { resolveMe } from '../../utils/resolveMe.js';
 import { personRef } from '../../utils/shapes.js';
 import * as access from '../access/access.service.js';
+import { nameOf, record } from '../activity/activity.service.js';
 import {
+  describeAssessment,
   getAssessment,
   getManagedAssessment,
   lockMaxScoreForGrading,
@@ -193,6 +195,7 @@ export async function getRoster(user, assessmentId) {
 /** Idempotent bulk upsert of the listed students only; the whole batch is rejected when any row is invalid. */
 export async function saveGrades(user, assessmentId, { grades }) {
   await getManagedAssessment(user, assessmentId); // 404 or 403 before anything is locked
+  let previous;
   await withTransaction(async (conn) => {
     // Checked against the max score as it is now, locked so a concurrent edit cannot lower it under us.
     const maxScore = await lockMaxScoreForGrading(assessmentId, conn);
@@ -213,15 +216,55 @@ export async function saveGrades(user, assessmentId, { grades }) {
         invalidStudentIds,
       });
     }
+    previous = await repo.findGradesOf(
+      assessmentId,
+      grades.map((grade) => grade.studentId),
+      conn,
+    );
     await repo.upsertGrades(assessmentId, grades, user.id, conn);
   });
   // The max score may have changed since `assessment` was read: build the roster from the current row.
-  return buildRoster(await getAssessment(user, assessmentId));
+  const assessment = await getAssessment(user, assessmentId);
+  const roster = await buildRoster(assessment);
+  await recordGradeChanges(assessment, roster, grades, previous);
+  return roster;
+}
+
+/** Logs the new and changed scores of a save, with each student's previous score (unchanged rows are left out). */
+async function recordGradeChanges(assessment, roster, grades, previous) {
+  const nameOfStudent = new Map(roster.records.map((record) => [record.studentId, nameOf(record)]));
+  const changes = grades
+    .map((grade) => ({ grade, before: previous.get(grade.studentId) }))
+    .filter(
+      ({ grade, before }) =>
+        !before || before.score !== grade.score || (before.remarks ?? null) !== (grade.remarks ?? null),
+    )
+    .map(({ grade, before }) => ({
+      studentId: grade.studentId,
+      student: nameOfStudent.get(grade.studentId),
+      from: before ? before.score : null,
+      to: grade.score,
+    }));
+  if (!changes.length) return;
+  const added = changes.filter((change) => change.from === null).length;
+  const parts = [added && `${added} new`, changes.length - added && `${changes.length - added} changed`];
+  await record({
+    action: 'grades.save',
+    entityId: assessment.id,
+    summary: `Graded ${describeAssessment(assessment)}: ${parts.filter(Boolean).join(', ')}`,
+    details: { assessment: assessment.title, maxScore: assessment.maxScore, changes },
+  });
 }
 
 export async function deleteGrade(user, id) {
   const grade = ApiError.assertFound(await repo.findGradeById(id), 'grade', id);
   await access.assertCanManageClassSubject(user, grade.classSubjectId);
   await repo.deleteGrade(id);
+  await record({
+    action: 'grades.delete',
+    entityId: grade.assessmentId,
+    summary: `Cleared ${nameOf(grade)}'s grade on ${grade.title} of ${grade.subjectName} · ${grade.className} (was ${grade.score} / ${grade.maxScore})`,
+    details: { student: nameOf(grade), assessment: grade.title, from: grade.score, to: null },
+  });
   return { id };
 }

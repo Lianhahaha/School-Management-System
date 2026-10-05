@@ -3,6 +3,7 @@ import { ApiError } from '../../utils/ApiError.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import { classSubjectRef, personRef } from '../../utils/shapes.js';
 import * as access from '../access/access.service.js';
+import { changedList, changesOf, record } from '../activity/activity.service.js';
 import * as repo from './schedules.repository.js';
 
 const toScheduleShape = (row) => ({
@@ -112,6 +113,16 @@ export async function getSchedule(user, id) {
   return toScheduleShape(row);
 }
 
+/** "Math · Grade 10 - A, Monday 08:00-09:00 (Room 4)" for the activity log. */
+const describeSlot = (slot) =>
+  `${slot.classSubject.subjectName} · ${slot.classSubject.className}, ${DAY_NAMES[slot.dayOfWeek]} ${slot.startTime}-${slot.endTime}${
+    slot.room ? ` (${slot.room})` : ''
+  }`;
+
+const DAY_NAMES = [null, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+const slotFields = ({ dayOfWeek, startTime, endTime, room }) => ({ dayOfWeek, startTime, endTime, room });
+
 export async function createSchedule(body) {
   const slot = { ...body, room: normalizeRoom(body.room) };
   const id = await writeIfFree(
@@ -119,7 +130,14 @@ export async function createSchedule(body) {
     0,
     (conn) => repo.insertSchedule(slot, conn),
   );
-  return toScheduleShape(await repo.findScheduleById(id));
+  const schedule = toScheduleShape(await repo.findScheduleById(id));
+  await record({
+    action: 'schedule.create',
+    entityId: id,
+    summary: `Added the period ${describeSlot(schedule)}`,
+    details: slotFields(schedule),
+  });
+  return schedule;
 }
 
 export async function updateSchedule(id, patch) {
@@ -137,11 +155,30 @@ export async function updateSchedule(id, patch) {
     assertTimeOrder(slot);
     return slot;
   };
+  const before = await repo.findScheduleById(id);
   await writeIfFree(mergedSlot, id, (conn) => repo.updateSchedule(id, fields, conn));
-  return toScheduleShape(await repo.findScheduleById(id));
+  const schedule = toScheduleShape(await repo.findScheduleById(id));
+  const changes = before && changesOf(slotFields(before), slotFields(schedule));
+  if (changes) {
+    await record({
+      action: 'schedule.update',
+      entityId: id,
+      summary: `Changed the ${changedList(changes).replace('day of week', 'day')} of the period, now ${describeSlot(schedule)}`,
+      details: { changes },
+    });
+  }
+  return schedule;
 }
 
 export async function deleteSchedule(id) {
+  const row = await repo.findScheduleById(id);
   if (!(await repo.deleteSchedule(id))) throw ApiError.notFound('schedule', id);
+  const schedule = toScheduleShape(row);
+  await record({
+    action: 'schedule.delete',
+    entityId: id,
+    summary: `Removed the period ${describeSlot(schedule)}`,
+    details: slotFields(schedule),
+  });
   return { id };
 }

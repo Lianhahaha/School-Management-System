@@ -59,6 +59,36 @@ export function addDaysYmd(ymd, days) {
   return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
 }
 
+const partsFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: env.APP_TIMEZONE,
+  hourCycle: 'h23',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+});
+
+/** How far APP_TIMEZONE's wall clock is ahead of UTC at `instant`, in ms. */
+function zoneOffsetMs(instant) {
+  const parts = Object.fromEntries(
+    partsFormatter.formatToParts(instant).map((part) => [part.type, part.value]),
+  );
+  const wallClock = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+  return wallClock - Math.floor(instant.getTime() / 1000) * 1000;
+}
+
+/** The instant at which the school day `ymd` begins in APP_TIMEZONE (for filtering DATETIME columns in UTC). */
+export function startOfDayUtc(ymd) {
+  const [year, month, day] = ymd.split('-').map(Number);
+  const midnightAsUtc = Date.UTC(year, month - 1, day);
+  // Twice, so a daylight-saving change between the guess and the answer settles.
+  let instant = midnightAsUtc - zoneOffsetMs(new Date(midnightAsUtc));
+  instant = midnightAsUtc - zoneOffsetMs(new Date(instant));
+  return new Date(instant);
+}
+
 /** Parses an ISO-8601 date-time into a Date truncated to whole seconds (DATETIME columns have no fraction). */
 export function parseIsoDateTime(iso) {
   return new Date(Math.floor(new Date(iso).getTime() / 1000) * 1000);
