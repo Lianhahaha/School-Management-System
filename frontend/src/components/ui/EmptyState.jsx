@@ -17,7 +17,7 @@ export function EmptyState({ icon: Icon = Inbox, title, description, action, com
     <div
       className={cx(
         compact
-          ? 'flex items-center gap-3 rounded-[1.25rem] bg-gray-50 p-3 text-left'
+          ? 'flex items-center gap-3 rounded-[1.25rem] bg-well p-3 text-left ring-1 ring-well-edge ring-inset'
           : 'flex flex-col items-center px-6 py-12 text-center',
         className,
       )}
@@ -25,7 +25,7 @@ export function EmptyState({ icon: Icon = Inbox, title, description, action, com
       <span
         className={cx(
           'flex shrink-0 items-center justify-center rounded-full text-gray-600',
-          compact ? 'size-10 bg-surface' : 'size-14 bg-gray-100',
+          compact ? 'size-10 bg-well-chip' : 'size-14 bg-gray-100',
         )}
       >
         <Icon className={compact ? 'size-5' : 'size-6'} aria-hidden="true" />
