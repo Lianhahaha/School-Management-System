@@ -21,7 +21,7 @@ Skole can be installed like an app: on Android, Chrome or Edge use the browser's
 
 | Required feature | Where to see it |
 |---|---|
-| Student, teacher and admin accounts | Admin → Users (create any role, deactivate, delete an unused account); students can also self-register on the sign-up page |
+| Student, teacher and admin accounts | Admin → Users (create any role, deactivate, delete an unused account); students can also self-register on the sign-up page; Admin → Students → Import creates up to 200 students from a CSV file (template included), each checked before anything is created |
 | Firebase Authentication | Sign in / sign up / forgot password; the API verifies the Firebase ID token on every request |
 | MySQL database | 12 tables with foreign keys, unique keys and checks: [backend/database/schema.sql](backend/database/schema.sql) |
 | Backend REST API | 64 endpoints under `/api/v1`, one JSON envelope, one error catalogue |

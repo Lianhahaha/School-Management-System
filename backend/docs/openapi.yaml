@@ -81,6 +81,8 @@ tags:
     description: Self-registration and the signed-in user's own account.
   - name: users
     description: Account administration for every role, including activation.
+  - name: imports
+    description: Bulk creation of student accounts from spreadsheet rows.
   - name: students
     description: Student directory and profiles.
   - name: teachers
@@ -350,6 +352,47 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /imports/students:
+    post:
+      tags: [imports]
+      operationId: importStudents
+      summary: Import student accounts from spreadsheet rows
+      description: |
+        Roles: admin.
+
+        Each row is one new student: `email`, `firstName`, `lastName` and optionally `phone`, `studentNumber`,
+        `admissionDate`, `dateOfBirth`, `gender` (any case), `address`, `guardianName`, `guardianPhone` and
+        `className`, the name of a class of the current academic year to enroll the student in. Cells are sent
+        as text; blank cells may be empty strings. `line` is the spreadsheet line, used in the answer.
+
+        With `dryRun: true` every row is checked (formats, duplicates within the batch, emails and student
+        numbers already in use, the class name) and nothing is written: `problems` lists each failing line
+        with its fields. Without it the same checks run first; if any row fails nothing is written (400,
+        `details.reason = import_invalid`, `details.problems`). Otherwise every row becomes an account with
+        `password` as its temporary password (students can change it with "Forgot password"), enrolled in its
+        class when one is named. Accounts are created one after another, so `results` reports each line:
+        `created` (with a `message` when the enrollment failed) or `failed`. Send a long file in several calls
+        to show progress; at most 200 rows per call.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportStudentsRequest'
+            example:
+              dryRun: true
+              rows:
+                - line: 2
+                  email: maria.santos@school.test
+                  firstName: Maria
+                  lastName: Santos
+                  className: Grade 10 - A
+      responses:
+        '200': { $ref: '#/components/responses/ImportReportResponse' }
+        '201': { $ref: '#/components/responses/ImportReportResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /users/{id}/status:
     patch:
       tags: [users]
@@ -3796,6 +3839,101 @@ components:
           description: False retires the subject, true reactivates it.
         gradeWeights:
           $ref: '#/components/schemas/CreateSubjectRequest/properties/gradeWeights'
+    ImportStudentsRequest:
+      type: object
+      additionalProperties: false
+      required: [rows]
+      properties:
+        dryRun:
+          type: boolean
+          default: false
+          description: Check the rows without writing anything.
+        password:
+          description: Temporary password of every account created; required unless `dryRun`.
+          allOf:
+            - $ref: '#/components/schemas/Password'
+        rows:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            type: object
+            additionalProperties: false
+            required: [line]
+            properties:
+              line:
+                { type: integer, minimum: 1, description: Spreadsheet line of the row; unique in the call. }
+              email: { type: string, maxLength: 500 }
+              firstName: { type: string, maxLength: 500 }
+              lastName: { type: string, maxLength: 500 }
+              phone: { type: string, maxLength: 500 }
+              studentNumber: { type: string, maxLength: 500 }
+              admissionDate: { type: string, maxLength: 500 }
+              dateOfBirth: { type: string, maxLength: 500 }
+              gender: { type: string, maxLength: 500 }
+              address: { type: string, maxLength: 500 }
+              guardianName: { type: string, maxLength: 500 }
+              guardianPhone: { type: string, maxLength: 500 }
+              className: { type: string, maxLength: 500 }
+    ImportProblem:
+      type: object
+      required: [line, errors]
+      properties:
+        line:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: object
+            required: [field, message]
+            properties:
+              field:
+                type: string
+                example: email
+              message:
+                type: string
+                example: already has an account
+    ImportReport:
+      type: object
+      required: [dryRun, total, valid, problems]
+      properties:
+        dryRun:
+          type: boolean
+        total:
+          type: integer
+          description: Rows received.
+        valid:
+          type: integer
+          description: Rows without problems.
+        problems:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportProblem'
+        results:
+          type: array
+          description: Present when accounts were created, one entry per row.
+          items:
+            type: object
+            required: [line, status]
+            properties:
+              line:
+                type: integer
+              status:
+                type: string
+                enum: [created, failed]
+              studentId:
+                $ref: '#/components/schemas/Id'
+              studentNumber:
+                $ref: '#/components/schemas/StudentNumber'
+              email:
+                type: string
+              className:
+                type: string
+                nullable: true
+                description: The class the student was enrolled in, or null.
+              message:
+                type: string
+                description: Why the row failed, or why a created student was not enrolled.
     CreateCalendarEventRequest:
       type: object
       additionalProperties: false
@@ -4737,6 +4875,16 @@ components:
                     type: array
                     items:
                       $ref: '#/components/schemas/Announcement'
+    ImportReportResponse:
+      description: The checks of every row and, when accounts were created, the outcome per row.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/ImportReport' } } }
     CalendarEventResponse:
       description: The calendar entry.
       headers:

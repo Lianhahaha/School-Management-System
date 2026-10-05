@@ -1,5 +1,6 @@
 /**
- * CSV export in the browser: build the text from rows and hand it to the user as a download.
+ * CSV in the browser: parse an uploaded file (parseCsv), and build text from rows and hand it to the user
+ * as a download (export).
  * Spreadsheets (Excel, Google Sheets, Numbers) open the file directly; a byte-order mark makes Excel
  * read it as UTF-8, so names with accents survive.
  *
@@ -27,6 +28,53 @@ export function toCsv(columns, rows) {
   const lines = [columns.map((column) => cell(column.header)).join(',')];
   for (const row of rows) lines.push(columns.map((column) => cell(column.value(row))).join(','));
   return lines.join('\r\n');
+}
+
+/**
+ * Parses CSV text (RFC 4180: quoted cells may hold commas, line breaks and doubled quotes) into rows of
+ * cells. A byte-order mark is dropped, CRLF and LF both end a row, and rows whose cells are all blank are
+ * left out. Semicolon-separated files (a common European Excel export) are read too, when the first line
+ * has semicolons and no commas.
+ * @param {string} text
+ * @returns {string[][]}
+ */
+export function parseCsv(text) {
+  const source = text.replace(/^\uFEFF/, '');
+  const firstLine = source.slice(0, source.search(/\r?\n|$/));
+  const separator = firstLine.includes(';') && !firstLine.includes(',') ? ';' : ',';
+  const rows = [];
+  let row = [];
+  let value = '';
+  let inQuotes = false;
+  for (let i = 0; i < source.length; i += 1) {
+    const char = source[i];
+    if (inQuotes) {
+      if (char === '"' && source[i + 1] === '"') {
+        value += '"';
+        i += 1;
+      } else if (char === '"') {
+        inQuotes = false;
+      } else {
+        value += char;
+      }
+    } else if (char === '"') {
+      inQuotes = true;
+    } else if (char === separator) {
+      row.push(value);
+      value = '';
+    } else if (char === '\n' || char === '\r') {
+      if (char === '\r' && source[i + 1] === '\n') i += 1;
+      row.push(value);
+      rows.push(row);
+      row = [];
+      value = '';
+    } else {
+      value += char;
+    }
+  }
+  row.push(value);
+  rows.push(row);
+  return rows.filter((cells) => cells.some((cell) => cell.trim() !== ''));
 }
 
 /** "Algebra Quiz 1 / Grade 10" -> "algebra-quiz-1-grade-10", for file names. */
