@@ -18,7 +18,7 @@ export function PrintReportCardButton() {
 
 /**
  * A student's report card for paper: who, which class and term, and per subject the points-weighted
- * percentage, plus the overall result. It is mounted at the end of <body> (a portal) and shown only
+ * percentage, plus the overall result, for the academic year of `enrollment` (all years without one). It is mounted at the end of <body> (a portal) and shown only
  * when printing, in plain black on white whatever the screen theme; the app itself is hidden then
  * (see `.print-only` in index.css).
  *
@@ -29,7 +29,11 @@ export function PrintReportCardButton() {
  * @param {string} [props.term] 'term1' | 'term2' | 'term3'; omit for all terms
  */
 export function ReportCard({ student, enrollment, studentId, term }) {
-  const { data: subjects = [] } = useGradeSummary({ studentId, term, groupBy: 'classSubject' });
+  const { data: allYears = [] } = useGradeSummary({ studentId, term, groupBy: 'classSubject' });
+  // The summary covers every year the student has grades in; the card is about the class it names.
+  const subjects = enrollment
+    ? allYears.filter((subject) => subject.academicYear === enrollment.academicYear)
+    : allYears;
   const totalScore = subjects.reduce((sum, subject) => sum + subject.totalScore, 0);
   const totalMaxScore = subjects.reduce((sum, subject) => sum + subject.totalMaxScore, 0);
 
