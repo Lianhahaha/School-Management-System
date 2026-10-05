@@ -48,14 +48,14 @@ export function AnnouncementCard({ announcement, actions, bare = false }) {
             {fullName(author)} ({roleLabel(author.role)}) ·{' '}
           </>
         )}
-        {isScheduled ? 'publishes ' : 'published '}
+        {isScheduled ? 'Publishes ' : 'Published '}
         <time dateTime={publishedAt} title={formatDateTime(publishedAt)}>
           {relativeTime(publishedAt)}
         </time>
         {expiresAt && (
           <>
             {' · '}
-            {status === 'expired' ? 'expired ' : 'expires '}
+            {status === 'expired' ? 'Expired ' : 'Expires '}
             <time dateTime={expiresAt} title={formatDateTime(expiresAt)}>
               {formatDateTime(expiresAt)}
             </time>
