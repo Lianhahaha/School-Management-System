@@ -22,7 +22,9 @@ export const isLiveRefreshing = () => isRefreshing;
 export const showsFetching = (isFetching) => isFetching && !isRefreshing;
 
 const isAuthMe = (query) => query.queryKey[0] === authKeys.all[0];
-const isLive = (query) => query.meta?.live !== false && !isAuthMe(query);
+
+/** True for the queries this loop refreshes (everything but /auth/me and `meta: { live: false }`). */
+export const isLiveQuery = (query) => query.meta?.live !== false && !isAuthMe(query);
 
 /** Starts the refresh loop for `queryClient`; returns a function that stops it. */
 export function startLiveRefresh(queryClient) {
@@ -30,7 +32,7 @@ export function startLiveRefresh(queryClient) {
     if (isRefreshing || document.hidden || !navigator.onLine || queryClient.isMutating() > 0) return;
     isRefreshing = true;
     try {
-      await queryClient.refetchQueries({ type: 'active', predicate: isLive });
+      await queryClient.refetchQueries({ type: 'active', predicate: isLiveQuery });
     } finally {
       isRefreshing = false;
     }
