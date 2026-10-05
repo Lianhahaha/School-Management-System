@@ -56,21 +56,27 @@ export function downloadCsv(name, columns, rows) {
   URL.revokeObjectURL(url);
 }
 
-/** Stop after this many pages (100 rows each), so an export never runs away. */
-const MAX_EXPORT_PAGES = 50;
+/** At most this many pages (100 rows each, 20 000 rows) are fetched for one export. */
+const MAX_EXPORT_PAGES = 200;
 
 /**
- * Every row of a paginated list endpoint, page by page, for exports.
- * @param {(params: object) => Promise<{ items: object[], meta: { totalPages: number } }>} fetchPage e.g. listGrades
+ * Every row of a paginated list endpoint, page by page, for exports. It never returns part of a list:
+ * a list longer than the export limit is refused with a message, instead of a file that silently stops.
+ * @param {(params: object) => Promise<{ items: object[], meta: { total: number, totalPages: number } }>} fetchPage
+ *   e.g. listGrades
  * @param {object} params list filters; `page` and `limit` are set here
  * @returns {Promise<object[]>}
  */
 export async function fetchAllPages(fetchPage, params) {
   const rows = [];
-  for (let page = 1; page <= MAX_EXPORT_PAGES; page += 1) {
+  for (let page = 1; ; page += 1) {
     const { items, meta } = await fetchPage({ ...params, page, limit: PAGINATION.MAX_LIMIT });
+    if (meta.totalPages > MAX_EXPORT_PAGES) {
+      throw new Error(
+        `${meta.total} rows are too many for one file. Narrow the dates or filters and download again.`,
+      );
+    }
     rows.push(...items);
-    if (page >= meta.totalPages) break;
+    if (!(page < meta.totalPages)) return rows; // also stops if a response ever lacks totalPages
   }
-  return rows;
 }
