@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react';
 import { cx } from '../../utils/cx';
 
 /*
@@ -5,12 +6,12 @@ import { cx } from '../../utils/cx';
  * The text always carries the meaning; the weight only says how much it matters.
  *   filled  (blue, violet)  a category: Teacher, Grade 10 - A
  *   outline (gray)          off or secondary: Disabled, Not enrolled, Quiz
- *   solid   (green)         "on": Active, Present, Enrolled, a hard fill so it is found at a glance
+ *   positive (green)        "on": Active, Present, Enrolled, a soft green fill with a check
  *   solid   (amber, red)    needs attention: Late, Absent, 3/8 graded
  */
 const TONE_CLASSES = {
   gray: 'text-gray-700 ring-gray-400',
-  green: 'bg-solid-green text-white ring-black/10',
+  green: 'badge-positive text-white ring-black/5',
   blue: 'bg-gray-200 text-gray-900 ring-gray-300',
   violet: 'bg-gray-200 text-gray-900 ring-gray-300',
   amber: 'bg-solid-amber text-accent-ink ring-black/10',
@@ -32,6 +33,7 @@ export function Badge({ tone = 'gray', className, children, ...props }) {
         className,
       )}
     >
+      {tone === 'green' && <Check className="-ml-0.5 size-3 shrink-0" strokeWidth={3} aria-hidden="true" />}
       {children}
     </span>
   );

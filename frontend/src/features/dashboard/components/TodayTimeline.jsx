@@ -1,4 +1,4 @@
-import { CalendarOff, Check } from 'lucide-react';
+import { CalendarOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Badge } from '../../../components/ui/Badge';
@@ -62,10 +62,7 @@ export function TodayTimeline({ periods }) {
                   </p>
                 </div>
                 {period.attendanceMarked ? (
-                  <Badge tone="green" className="gap-1">
-                    <Check className="size-3" aria-hidden="true" />
-                    Marked
-                  </Badge>
+                  <Badge tone="green">Marked</Badge>
                 ) : (
                   <Button
                     as={Link}
