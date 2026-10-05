@@ -60,7 +60,7 @@ export function AppShell() {
         <div
           aria-hidden="true"
           onClick={closeDrawer}
-          className="fixed inset-0 z-40 bg-gray-900/40 backdrop-blur-[2px] lg:hidden"
+          className="fixed inset-0 z-40 bg-scrim backdrop-blur-md lg:hidden"
         />
       )}
       <Sidebar id={SIDEBAR_ID} isOpen={isDrawerOpen} onClose={closeDrawer} />

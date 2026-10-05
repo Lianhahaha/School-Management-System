@@ -80,6 +80,8 @@
 
   --sheet-shadow: 0 1px 2px rgb(24 24 27 / 0.04);
   --pop-shadow: 0 12px 32px -12px rgb(24 24 27 / 0.28), 0 2px 6px rgb(24 24 27 / 0.06);
+  /* Behind dialogs and the phone drawer: a soft dark veil (with a blur), never a light wash. */
+  --scrim: rgb(24 24 27 / 0.32);
 }
 
 /* Soft dark: graphite, never black; the same yellow with dark text on it. */
@@ -127,6 +129,7 @@
 
   --sheet-shadow: none;
   --pop-shadow: 0 16px 40px -12px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.06);
+  --scrim: rgb(0 0 0 / 0.55);
 }
 
 @theme {
@@ -174,6 +177,7 @@
   --radius-control: 0.875rem;
   --shadow-card: var(--sheet-shadow);
   --shadow-pop: var(--pop-shadow);
+  --color-scrim: var(--scrim);
 
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 

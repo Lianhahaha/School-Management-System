@@ -60,7 +60,7 @@ export function Modal({ open, onClose, title, description, footer, size = 'md', 
         if (event.target === event.currentTarget) onClose(); // the backdrop is part of the dialog box
       }}
       className={cx(
-        'm-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] flex-col rounded-[1.75rem] bg-surface p-0 text-gray-900 shadow-pop backdrop:bg-gray-900/40 backdrop:backdrop-blur-[2px] open:flex',
+        'm-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] flex-col rounded-[1.75rem] bg-surface p-0 text-gray-900 shadow-pop backdrop:bg-scrim backdrop:backdrop-blur-md open:flex',
         SIZES[size],
       )}
     >
