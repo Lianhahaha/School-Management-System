@@ -3,6 +3,7 @@ import { resolveMe } from '../../utils/resolveMe.js';
 import { classSubjectRef, personRef } from '../../utils/shapes.js';
 import * as access from '../access/access.service.js';
 import { nameOf, record } from '../activity/activity.service.js';
+import { notifyTeacher } from '../notifications/notifications.service.js';
 import { writeIfTeacherFree } from '../schedules/schedules.service.js';
 import { assertActiveSubject } from '../subjects/subjects.service.js';
 import { assertActiveTeacher } from '../teachers/teachers.service.js';
@@ -45,8 +46,17 @@ export async function createClassSubject(body) {
     summary: `Assigned ${nameOf(assignment.teacher)} to teach ${assignment.subjectName} in ${assignment.className}`,
     details: lessonOf(assignment),
   });
+  await notifyTeacher(assignment.teacherId, teachingNote(assignment));
   return assignment;
 }
+
+/** The note a teacher gets when a lesson is given to them. */
+const teachingNote = (assignment) => ({
+  type: 'teaching',
+  title: `You now teach ${assignment.subjectName} in ${assignment.className}`,
+  body: assignment.academicYear,
+  link: '/teacher/classes',
+});
 
 /** Names of a class-subject for the activity log. */
 const lessonOf = (assignment) => ({
@@ -71,6 +81,7 @@ export async function reassignTeacher(id, teacherId) {
       summary: `${assignment.subjectName} in ${assignment.className}: ${nameOf(before.teacher)} replaced by ${nameOf(assignment.teacher)}`,
       details: { ...lessonOf(assignment), previousTeacher: nameOf(before.teacher) },
     });
+    await notifyTeacher(assignment.teacherId, teachingNote(assignment));
   }
   return assignment;
 }

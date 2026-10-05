@@ -397,3 +397,27 @@ CREATE TABLE IF NOT EXISTS activity_log (
   KEY idx_activity_log_actor   (actor_id, created_at)   -- "what did this person change"
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='Audit trail of changes made through the API';
+
+-- -----------------------------------------------------------------------------
+-- 16. notifications — in-app messages to one user about something that
+--     concerns them: a grade recorded, an absence, a new class, a lesson to
+--     teach, a student sign-up (admins). Read when read_at is set.
+--     Announcements are not copied here; the app counts the new ones itself.
+--     Deleting an (unused) account deletes its notifications first.
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS notifications (
+  id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id     INT UNSIGNED NOT NULL COMMENT 'Recipient',
+  type        ENUM('grade','attendance','enrollment','teaching','signup') NOT NULL,
+  title       VARCHAR(200) NOT NULL,
+  body        VARCHAR(300) NULL,
+  link        VARCHAR(200) NULL COMMENT 'In-app path the notification opens',
+  read_at     DATETIME NULL COMMENT 'NULL = unread',
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_notifications_user_created (user_id, created_at),   -- the bell's list, newest first
+  KEY idx_notifications_user_read    (user_id, read_at),      -- the unread count
+  CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users (id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='In-app notifications per user';

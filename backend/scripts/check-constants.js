@@ -63,6 +63,7 @@ const ENUM_COLUMNS = {
   'subject_grade_weights.assessment_type': constants.ASSESSMENT_TYPES,
   'calendar_events.type': constants.CALENDAR_EVENT_TYPES,
   'activity_log.actor_role': constants.ROLES,
+  'notifications.type': constants.NOTIFICATION_TYPES,
   'announcements.audience': constants.ANNOUNCEMENT_AUDIENCES,
 };
 

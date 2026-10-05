@@ -1,4 +1,5 @@
 import { useAuth } from '../../features/auth/hooks';
+import { NotificationBell } from '../../features/notifications/components/NotificationBell';
 import { SearchButton } from '../../features/search/components/SearchButton';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { Brand } from './Brand';
@@ -7,7 +8,7 @@ import { UserMenu } from './UserMenu';
 
 /**
  * Top bar: the wordmark below `lg` (the sidebar carries it from `lg` up), when the data was last
- * refreshed (from `md` up), the admin's search, the theme switch and the user menu. On phones the full menu opens from the tab bar's "More".
+ * refreshed (from `md` up), the admin's search, the notification bell, the theme switch and the user menu. On phones the full menu opens from the tab bar's "More".
  */
 export function Topbar() {
   const { role } = useAuth();
@@ -21,6 +22,7 @@ export function Topbar() {
       <LastUpdated className="max-md:hidden lg:-ml-2" />
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
         {role === 'admin' && <SearchButton />}
+        <NotificationBell />
         <ThemeToggle />
         <UserMenu />
       </div>

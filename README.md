@@ -32,6 +32,7 @@ Skole can be installed like an app: on Android, Chrome or Edge use the browser's
 | Grade management | Assessments with a maximum score, grade sheets, per-subject results for students; Admin → Subjects can weight a subject by assessment type (for example quizzes 20 %, exams 80 %); a score-spread chart on every grade sheet and each student's results over time per subject |
 | Class schedules | Weekly timetables per class, teacher and student, with clash detection (class, teacher, room) |
 | Announcements | School-wide or per class, per audience, with publish and expiry dates |
+| Notifications | The bell in the top bar, with a red count: students hear about new or changed grades, absences and a new class; teachers about lessons and homeroom classes they get; admins about students who signed up and need a class; new announcements are listed there too |
 | Activity history | Admin → Activity: who changed what and when (grades with the previous score, attendance marks, enrollments, accounts, classes, timetable, announcements, calendar), searchable by name and filterable by area and day |
 | School calendar | Admin → Calendar: holidays (no classes, attendance can't be marked) and school events; every role sees the calendar, the next 30 days on its dashboard and this week's entries on its timetable |
 | Separate dashboards | Admin, teacher and student each get their own content, not three skins of one page; admins and teachers see the students who need attention (attendance under 80 % or an average under 75 %) |

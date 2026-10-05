@@ -269,6 +269,7 @@ describe('OpenAPI specification', () => {
       AnnouncementStatus: shared.ANNOUNCEMENT_STATUSES,
       CalendarEventType: shared.CALENDAR_EVENT_TYPES,
       ActivityArea: shared.ACTIVITY_AREAS,
+      NotificationType: shared.NOTIFICATION_TYPES,
       DayOfWeek: shared.DAYS_OF_WEEK,
       ErrorCode: Object.keys(shared.ERROR_CODES),
     };

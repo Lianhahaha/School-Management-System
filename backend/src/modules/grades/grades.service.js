@@ -11,6 +11,7 @@ import { resolveMe } from '../../utils/resolveMe.js';
 import { personRef } from '../../utils/shapes.js';
 import * as access from '../access/access.service.js';
 import { nameOf, record } from '../activity/activity.service.js';
+import { notifyStudents } from '../notifications/notifications.service.js';
 import {
   describeAssessment,
   getAssessment,
@@ -254,6 +255,17 @@ async function recordGradeChanges(assessment, roster, grades, previous) {
     summary: `Graded ${describeAssessment(assessment)}: ${parts.filter(Boolean).join(', ')}`,
     details: { assessment: assessment.title, maxScore: assessment.maxScore, changes },
   });
+  await notifyStudents(
+    changes.map((change) => ({
+      studentId: change.studentId,
+      type: 'grade',
+      title: `${change.from === null ? 'New grade' : 'Grade updated'}: ${assessment.title}`,
+      body: `${assessment.classSubject.subjectName} · ${change.to} / ${assessment.maxScore}${
+        change.from === null ? '' : ` (was ${change.from})`
+      }`,
+      link: '/student/grades',
+    })),
+  );
 }
 
 export async function deleteGrade(user, id) {

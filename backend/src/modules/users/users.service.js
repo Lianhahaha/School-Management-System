@@ -8,6 +8,7 @@ import { ApiError } from '../../utils/ApiError.js';
 import { currentAcademicYear } from '../../utils/dates.js';
 import { logger } from '../../utils/logger.js';
 import { changedList, changesOf, nameOf, record } from '../activity/activity.service.js';
+import * as notifications from '../notifications/notifications.service.js';
 import { teacherHasAssignments } from '../classSubjects/classSubjects.service.js';
 import { closeActiveForStudent } from '../enrollments/enrollments.service.js';
 import * as studentsService from '../students/students.service.js';
@@ -168,6 +169,12 @@ export async function createUserAccount(input, { trusted }) {
       details,
       actor: account,
     });
+    await notifications.notifyAdmins({
+      type: 'signup',
+      title: `New student sign-up: ${nameOf(account)}`,
+      body: `${email} · needs a class`,
+      link: `/admin/students/${account.studentId}`,
+    });
   }
   return account;
 }
@@ -267,6 +274,7 @@ export async function deleteUser(actor, id) {
       if (await repo.hasHistory(id, conn)) throw hasHistoryConflict();
       if (target.role === 'student') await studentsService.deleteProfile(id, conn);
       if (target.role === 'teacher') await teachersService.deleteProfile(id, conn);
+      await notifications.deleteForUser(id, conn);
       if (!(await repo.deleteUser(id, conn))) throw ApiError.notFound('user', id);
     });
   } catch (error) {

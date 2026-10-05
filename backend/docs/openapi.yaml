@@ -111,6 +111,8 @@ tags:
     description: School calendar of holidays (no classes) and school events.
   - name: dashboard
     description: One role-specific dashboard payload.
+  - name: notifications
+    description: In-app notifications of the signed-in user.
   - name: health
     description: Liveness and database check.
 security:
@@ -1844,6 +1846,114 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /notifications:
+    get:
+      tags: [notifications]
+      operationId: listNotifications
+      summary: List my notifications
+      description: |
+        Roles: any authenticated user (always their own notifications).
+
+        Newest first. Students hear about grades recorded or changed, absences and late marks, and a new
+        class; teachers about lessons they now teach and homeroom classes; admins about students who signed up
+        on their own and need a class. Nobody is notified of their own action. `unread=true` lists only unread
+        ones.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: sortBy
+          in: query
+          description: Sort field.
+          schema:
+            type: string
+            enum: [createdAt]
+        - $ref: '#/components/parameters/SortOrder'
+        - name: unread
+          in: query
+          description: Only unread notifications.
+          schema:
+            type: string
+            enum: ['true', 'false']
+      responses:
+        '200': { $ref: '#/components/responses/NotificationListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /notifications/unread-count:
+    get:
+      tags: [notifications]
+      operationId: countUnreadNotifications
+      summary: Count my unread notifications
+      description: |
+        Roles: any authenticated user. What the bell's dot shows; cheap enough to poll.
+      responses:
+        '200':
+          description: The number of unread notifications.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [count]
+                        properties:
+                          count:
+                            type: integer
+                            example: 3
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /notifications/read:
+    post:
+      tags: [notifications]
+      operationId: markNotificationsRead
+      summary: Mark my notifications read
+      description: |
+        Roles: any authenticated user. Marks the listed notifications read, or all unread ones when `ids` is
+        left out. Ids of other users' notifications are ignored. Answers how many were marked.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 200
+                  uniqueItems: true
+                  items:
+                    $ref: '#/components/schemas/Id'
+            example:
+              ids: [41, 42]
+      responses:
+        '200':
+          description: How many notifications were marked read.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [updated]
+                        properties:
+                          updated:
+                            type: integer
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /calendar-events:
     get:
       tags: [calendar]
@@ -2217,6 +2327,10 @@ components:
       type: string
       enum: [active, scheduled, expired]
       description: Computed from `publishedAt` and `expiresAt`.
+    NotificationType:
+      type: string
+      enum: [grade, attendance, enrollment, teaching, signup]
+      description: What a notification is about.
     ActivityArea:
       type: string
       enum: [accounts, enrollments, classes, subjects, timetable, attendance, grades, announcements, calendar]
@@ -3133,6 +3247,35 @@ components:
         createdAt:
           $ref: '#/components/schemas/Timestamp'
         updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+    # --- Notifications ---
+    Notification:
+      type: object
+      required: [id, type, title, body, link, isRead, readAt, createdAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        type:
+          $ref: '#/components/schemas/NotificationType'
+        title:
+          type: string
+          example: 'New grade: Quiz 1'
+        body:
+          type: string
+          nullable: true
+          example: Mathematics · 18 / 20
+        link:
+          type: string
+          nullable: true
+          description: In-app path the notification opens.
+          example: /student/grades
+        isRead:
+          type: boolean
+        readAt:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+        createdAt:
           $ref: '#/components/schemas/Timestamp'
     # --- Activity log ---
     ActivityEntry:
@@ -4970,6 +5113,21 @@ components:
                     type: array
                     items:
                       $ref: '#/components/schemas/Announcement'
+    NotificationListResponse:
+      description: A page of the caller's notifications, newest first.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/PagedEnvelope'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Notification'
     ActivityListResponse:
       description: A page of activity entries, newest first.
       headers:

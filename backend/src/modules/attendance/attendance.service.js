@@ -5,6 +5,7 @@ import { resolveMe } from '../../utils/resolveMe.js';
 import { classSubjectRef, personRef, ratio } from '../../utils/shapes.js';
 import * as access from '../access/access.service.js';
 import { nameOf, record } from '../activity/activity.service.js';
+import { notifyStudents } from '../notifications/notifications.service.js';
 import { assertSchoolDay, holidayOn } from '../calendar/calendar.service.js';
 import { getClassSubjectRefUnscoped } from '../classSubjects/classSubjects.service.js';
 import * as repo from './attendance.repository.js';
@@ -178,6 +179,7 @@ async function recordSheetChanges(sheet, records, previous) {
     summary: `Marked attendance for ${subjectName} · ${className} on ${sheet.date}: ${parts.filter(Boolean).join(', ')}`,
     details: { date: sheet.date, marks },
   });
+  await notifyAbsences(sheet, marks);
 }
 
 export async function updateAttendance(user, id, patch) {
@@ -202,8 +204,24 @@ export async function updateAttendance(user, id, patch) {
         ],
       },
     });
+    await notifyAbsences(updated, [{ studentId: updated.studentId, to: updated.status }]);
   }
   return updated;
+}
+
+/** Tells each student marked absent or late (new marks, or marks changed to it) about it. */
+function notifyAbsences({ classSubject, date, attendanceDate }, marks) {
+  return notifyStudents(
+    marks
+      .filter((mark) => mark.to === 'absent' || mark.to === 'late')
+      .map((mark) => ({
+        studentId: mark.studentId,
+        type: 'attendance',
+        title: `Marked ${mark.to} in ${classSubject.subjectName}`,
+        body: `${date ?? attendanceDate} · ${classSubject.className}`,
+        link: '/student/attendance',
+      })),
+  );
 }
 
 export async function deleteAttendance(id) {

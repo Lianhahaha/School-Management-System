@@ -33,6 +33,9 @@ export const ANNOUNCEMENT_STATUSES = Object.freeze(['active', 'scheduled', 'expi
 /** School calendar entries: `holiday` = no classes (attendance cannot be marked), `event` = classes as usual. */
 export const CALENDAR_EVENT_TYPES = Object.freeze(['holiday', 'event']);
 
+/** What an in-app notification is about (its icon): a grade, an absence, a class, a lesson to teach, a sign-up. */
+export const NOTIFICATION_TYPES = Object.freeze(['grade', 'attendance', 'enrollment', 'teaching', 'signup']);
+
 /** Parts of the school the activity log groups changes by (its filter). */
 export const ACTIVITY_AREAS = Object.freeze([
   'accounts',

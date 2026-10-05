@@ -3,6 +3,7 @@ import { currentAcademicYear } from '../../utils/dates.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import { personRef } from '../../utils/shapes.js';
 import { changedList, changesOf, nameOf, record } from '../activity/activity.service.js';
+import { notifyTeacher } from '../notifications/notifications.service.js';
 import { assertActiveTeacher } from '../teachers/teachers.service.js';
 import * as repo from './classes.repository.js';
 
@@ -57,6 +58,7 @@ export async function createClass(body) {
     summary: `Created the class ${klass.name}, ${klass.academicYear}`,
     details: { name: klass.name, gradeLevel: klass.gradeLevel, academicYear: klass.academicYear },
   });
+  if (klass.homeroomTeacher) await notifyTeacher(klass.homeroomTeacher.id, homeroomNote(klass));
   return klass;
 }
 
@@ -80,9 +82,20 @@ export async function updateClass(id, patch) {
       summary: `Updated the ${changedList(changes)} of ${klass.name}, ${klass.academicYear}`,
       details: { changes },
     });
+    if (changes.homeroomTeacher && klass.homeroomTeacher) {
+      await notifyTeacher(klass.homeroomTeacher.id, homeroomNote(klass));
+    }
   }
   return klass;
 }
+
+/** The note a teacher gets when a class becomes theirs as homeroom teacher. */
+const homeroomNote = (klass) => ({
+  type: 'teaching',
+  title: `You are now the homeroom teacher of ${klass.name}`,
+  body: klass.academicYear,
+  link: '/teacher/classes',
+});
 
 /** The fields of a class the activity log compares, the homeroom teacher by name. */
 const logView = (klass) => ({

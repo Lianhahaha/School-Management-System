@@ -11,6 +11,7 @@ import { todayYmd } from '../../utils/dates.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import * as access from '../access/access.service.js';
 import { nameOf, record } from '../activity/activity.service.js';
+import { notifyStudents } from '../notifications/notifications.service.js';
 import { assertEnrollableClass } from '../classes/classes.service.js';
 import * as repo from './enrollments.repository.js';
 
@@ -83,6 +84,15 @@ export async function enroll({ studentId, classId }) {
     summary: `Enrolled ${nameOf(enrollment.student)} in ${enrollment.class.name}, ${enrollment.class.academicYear}`,
     details: { student: nameOf(enrollment.student), className: enrollment.class.name },
   });
+  await notifyStudents([
+    {
+      studentId: enrollment.studentId,
+      type: 'enrollment',
+      title: `You are enrolled in ${enrollment.class.name}`,
+      body: enrollment.class.academicYear,
+      link: '/student/class',
+    },
+  ]);
   return enrollment;
 }
 
@@ -118,6 +128,15 @@ export async function enrollMany({ classId, studentIds }) {
     summary: `Enrolled ${ids.length} student${ids.length === 1 ? '' : 's'} in ${klass.name}, ${klass.academicYear}`,
     details: { className: klass.name, students: enrollments.map((enrollment) => nameOf(enrollment.student)) },
   });
+  await notifyStudents(
+    enrollments.map((enrollment) => ({
+      studentId: enrollment.studentId,
+      type: 'enrollment',
+      title: `You are enrolled in ${enrollment.class.name}`,
+      body: enrollment.class.academicYear,
+      link: '/student/class',
+    })),
+  );
   return { classId, created: ids.length, enrollments };
 }
 
@@ -149,6 +168,15 @@ export async function transfer({ studentId, classId }) {
     summary: `Moved ${nameOf(enrollment.student)} from ${fromClass} to ${enrollment.class.name}`,
     details: { student: nameOf(enrollment.student), fromClass, toClass: enrollment.class.name },
   });
+  await notifyStudents([
+    {
+      studentId: enrollment.studentId,
+      type: 'enrollment',
+      title: `You moved to ${enrollment.class.name}`,
+      body: `From ${fromClass}`,
+      link: '/student/class',
+    },
+  ]);
   return enrollment;
 }
 
