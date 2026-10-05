@@ -11,9 +11,9 @@ const VARIANTS = {
   ghost:
     'font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 disabled:text-gray-400 disabled:hover:bg-transparent',
   danger: 'bg-red-600 font-semibold text-on-danger hover:bg-red-700 disabled:opacity-50',
-  /** A destructive row action (Deactivate): bare cherry-red text, no fill even on hover; it confirms before acting. */
+  /** A destructive row action that still sits quietly in a table (Deactivate); it confirms before acting. */
   dangerGhost:
-    'font-semibold text-cherry decoration-2 underline-offset-4 hover:text-cherry-hover hover:underline disabled:text-gray-400 disabled:no-underline',
+    'font-medium text-red-700 hover:bg-red-50 disabled:text-gray-400 disabled:hover:bg-transparent',
 };
 
 // Heights keep touch targets at 44 px or more on touch screens; with a mouse the small size is 36 px.
