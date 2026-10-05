@@ -1,6 +1,7 @@
 import { ClipboardCheck } from 'lucide-react';
 import { Link } from 'react-router';
 import { Button } from '../../../components/ui/Button';
+import { AtRiskCard } from '../components/AtRiskCard';
 import { DashboardView } from '../components/DashboardView';
 import { PendingGradingCard } from '../components/PendingGradingCard';
 import { RecentAnnouncementsCard } from '../components/RecentAnnouncementsCard';
@@ -11,7 +12,10 @@ import { TodayTimeline } from '../components/TodayTimeline';
 const todayLabel = () =>
   new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 
-/** /teacher: "What do I do today?" Today's periods first, then grading, classes and announcements. */
+/**
+ * /teacher: "What do I do today?" Today's periods first, then grading, the students of their classes who need
+ * attention, classes and announcements.
+ */
 export default function TeacherDashboardPage() {
   return (
     <DashboardView
@@ -33,6 +37,7 @@ export default function TeacherDashboardPage() {
           <div className="space-y-6">
             <SessionsProgressCard attendance={data.attendanceToday} />
             <PendingGradingCard assessments={data.pendingGrading} />
+            <AtRiskCard atRisk={data.atRisk} />
             <RecentAnnouncementsCard announcements={data.recentAnnouncements} to="/teacher/announcements" />
           </div>
         </div>

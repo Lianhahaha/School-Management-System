@@ -146,6 +146,17 @@ export async function summarizeStudentGradesUnscoped(studentId, classId) {
   return foldSummary(await repo.summarizeGrades(filters, null), filters.groupBy);
 }
 
+/**
+ * Each student's result in an academic year, within `scope` (a class scope fragment on cs.class_id, null for
+ * all): the mean of their subject results, or their one subject's result (dashboards; no access check).
+ * @returns {Promise<Map<number, number | null>>} studentId -> percentage
+ */
+export async function studentResultsUnscoped(academicYear, scope) {
+  const filters = { groupBy: 'student', academicYear };
+  const rows = await foldSummary(await repo.summarizeGrades(filters, scope), filters.groupBy);
+  return new Map(rows.map((row) => [row.studentId, row.percentage]));
+}
+
 /** Newest grades of a student (dashboards; the caller did the access checks). */
 export async function recentGradesUnscoped(studentId, limit = 5) {
   return (await repo.findRecentGrades(studentId, limit)).map(toGradeShape);

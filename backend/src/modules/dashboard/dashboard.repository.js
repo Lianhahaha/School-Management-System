@@ -3,6 +3,7 @@
  * composed from the owning modules' services.
  */
 import { query } from '../../config/db.js';
+import { WhereBuilder } from '../../utils/sql.js';
 
 export async function findAdminCounts(academicYear) {
   const rows = await query(
@@ -33,6 +34,22 @@ export function findEnrollmentsByGrade() {
        FROM enrollments e JOIN classes c ON c.id = e.class_id
       WHERE e.status = 'active'
       GROUP BY c.grade_level ORDER BY c.grade_level`,
+  );
+}
+
+/** Active students enrolled in a class of the academic year, within `scope` (a fragment on e.class_id, null = all). */
+export function findEnrolledStudents(academicYear, scope) {
+  const where = new WhereBuilder()
+    .add("e.status = 'active' AND u.is_active = 1 AND c.academic_year = ?", academicYear)
+    .addScope(scope);
+  return query(
+    `SELECT s.id AS student_id, s.student_number, u.first_name, u.last_name, e.class_id, c.name AS class_name
+       FROM enrollments e
+       JOIN students s ON s.id = e.student_id
+       JOIN users u ON u.id = s.user_id
+       JOIN classes c ON c.id = e.class_id
+      ${where.sql}`,
+    where.params,
   );
 }
 

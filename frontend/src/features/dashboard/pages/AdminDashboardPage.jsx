@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { Button } from '../../../components/ui/Button';
 import { AdminAttendanceCard } from '../components/AdminAttendanceCard';
 import { AdminCountTiles } from '../components/AdminCountTiles';
+import { AtRiskCard } from '../components/AtRiskCard';
 import { DashboardView } from '../components/DashboardView';
 import { EnrollmentByGradeCard } from '../components/EnrollmentByGradeCard';
 import { RecentAnnouncementsCard } from '../components/RecentAnnouncementsCard';
@@ -11,7 +12,7 @@ import { UpcomingAssessmentsCard } from '../components/UpcomingAssessmentsCard';
 
 /**
  * /admin: "Is the school running?" The setup checklist while the school is still being set up, then
- * counts, today's attendance, enrollment by grade, what is next.
+ * counts, the students who need attention, today's attendance, enrollment by grade, what is next.
  */
 export default function AdminDashboardPage() {
   return (
@@ -42,6 +43,7 @@ export default function AdminDashboardPage() {
           <AdminCountTiles counts={data.counts} />
           <div className="grid items-start gap-6 lg:grid-cols-2">
             <div className="space-y-6">
+              <AtRiskCard atRisk={data.atRisk} studentPath={(id) => `/admin/students/${id}`} />
               <AdminAttendanceCard attendance={data.attendanceToday} />
               <UpcomingAssessmentsCard assessments={data.upcomingAssessments} />
             </div>

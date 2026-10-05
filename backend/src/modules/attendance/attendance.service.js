@@ -54,9 +54,12 @@ const toSummaryRow = (row) => ({
   rate: ratio(row.present + row.late, row.total),
 });
 
-/** Unscoped summary for callers that did their own access checks (dashboards). rate = (present + late) / total. */
-export async function summarizeAttendanceUnscoped(filters) {
-  const rows = (await repo.summarizeAttendance(filters, null)).map(toSummaryRow);
+/**
+ * Summary for callers that did their own access checks (dashboards), optionally limited by `scope` (a class
+ * scope fragment on cs.class_id). rate = (present + late) / total.
+ */
+export async function summarizeAttendanceUnscoped(filters, scope = null) {
+  const rows = (await repo.summarizeAttendance(filters, scope)).map(toSummaryRow);
   return filters.groupBy && filters.groupBy !== 'none' ? rows : rows[0];
 }
 

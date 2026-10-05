@@ -2940,9 +2940,83 @@ components:
           nullable: true
         publishedAt:
           $ref: '#/components/schemas/Timestamp'
+    AtRiskStudents:
+      type: object
+      description: |
+        Students enrolled this academic year, in the classes the caller can see (all classes for an admin; the
+        classes a teacher teaches or leads), whose attendance rate is below `attendanceRateBelow` after at least
+        `minAttendanceMarks` marks, or whose general average (the mean of their subject results, see
+        `GET /grades/summary`) is below `gradeAverageBelow`. Both figures cover the current academic year in those
+        classes. Worst first: two reasons before one, then the furthest below its line.
+      required: [attendanceRateBelow, minAttendanceMarks, gradeAverageBelow, total, students]
+      properties:
+        attendanceRateBelow:
+          type: number
+          example: 0.8
+        minAttendanceMarks:
+          type: integer
+          example: 5
+        gradeAverageBelow:
+          type: number
+          example: 75
+        total:
+          type: integer
+          description: Students flagged; `students` holds the first 10.
+        students:
+          type: array
+          maxItems: 10
+          items:
+            type: object
+            required:
+              [
+                studentId,
+                studentNumber,
+                firstName,
+                lastName,
+                classId,
+                className,
+                attendance,
+                gradeAverage,
+                reasons,
+              ]
+            properties:
+              studentId:
+                $ref: '#/components/schemas/Id'
+              studentNumber:
+                $ref: '#/components/schemas/StudentNumber'
+              firstName:
+                type: string
+              lastName:
+                type: string
+              classId:
+                $ref: '#/components/schemas/Id'
+              className:
+                type: string
+              attendance:
+                type: object
+                nullable: true
+                description: Null when nothing is marked yet this year.
+                required: [rate, marks]
+                properties:
+                  rate:
+                    type: number
+                    description: (present + late) / marks, 4 decimals.
+                  marks:
+                    type: integer
+              gradeAverage:
+                type: number
+                nullable: true
+                description: 0-100; null when nothing that counts is graded yet.
+              reasons:
+                type: array
+                minItems: 1
+                items:
+                  type: string
+                  enum: [attendance, grades]
     AdminDashboard:
       type: object
-      required: [role, counts, attendanceToday, enrollmentsByGrade, upcomingAssessments, recentAnnouncements]
+      required:
+        [role, counts, attendanceToday, enrollmentsByGrade, upcomingAssessments, recentAnnouncements, atRisk]
       properties:
         role:
           type: string
@@ -3013,6 +3087,8 @@ components:
           description: Latest active announcements, at most 5.
           items:
             $ref: '#/components/schemas/AnnouncementBrief'
+        atRisk:
+          $ref: '#/components/schemas/AtRiskStudents'
     TeacherDashboard:
       type: object
       required:
@@ -3025,6 +3101,7 @@ components:
           attendanceToday,
           pendingGrading,
           recentAnnouncements,
+          atRisk,
         ]
       properties:
         role:
@@ -3139,6 +3216,8 @@ components:
           description: Latest active announcements visible to the teacher, at most 5.
           items:
             $ref: '#/components/schemas/AnnouncementBrief'
+        atRisk:
+          $ref: '#/components/schemas/AtRiskStudents'
     StudentDashboard:
       type: object
       required:

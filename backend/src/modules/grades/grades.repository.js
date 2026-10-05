@@ -27,6 +27,7 @@ function filtersToWhere(filters, scope) {
     .addIf(filters.assessmentId, 'g.assessment_id = ?')
     .addIf(filters.classSubjectId, 'a.class_subject_id = ?')
     .addIf(filters.classId, 'cs.class_id = ?')
+    .addIf(filters.academicYear, 'c.academic_year = ?') // internal (dashboards), not an API filter
     .addIf(filters.term, 'a.term = ?')
     .addIf(filters.type, 'a.type = ?')
     .addScope(scope);
