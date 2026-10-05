@@ -43,8 +43,8 @@
   --n-200: #e2e2de;
   --n-300: #d0d0cb;
   --n-400: #a3a3a6;
-  --n-500: #636368;
-  --n-600: #56565b;
+  --n-500: #55555a;
+  --n-600: #46464b;
   --n-700: #3e3e43;
   --n-800: #2a2a2e;
   --n-900: #18181b;
@@ -92,13 +92,13 @@
   --n-100: #2a2b30;
   --n-200: #303137;
   --n-300: #3e3f46;
-  --n-400: #6f7078;
-  --n-500: #9d9ea5;
-  --n-600: #b5b6bc;
+  --n-400: #80818a;
+  --n-500: #b0b1b8;
+  --n-600: #c3c4c9;
   --n-700: #cbcbd0;
   --n-800: #dededf;
   --n-900: #ecece9;
-  --surface: #202125;
+  --surface: #24252a;
 
   --accent: #ffc629;
   --accent-hover: #ffd35a;
@@ -134,6 +134,12 @@
 
 @theme {
   --font-sans: 'Onest', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* The smallest text (hints, dates, tags) is 13 px, medium and slightly tracked, so it stays legible. */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.125rem;
+  --text-xs--letter-spacing: 0.01em;
+  --text-xs--font-weight: 500;
 
   --color-gray-50: var(--n-50);
   --color-gray-100: var(--n-100);
@@ -285,7 +291,7 @@
    * `sm` up and capped so a whole filter row fits on one line; a w-* class still wins.
    */
   .filter-bar > select.form-control {
-    @apply rounded-full border-transparent hover:border-gray-300 sm:w-auto sm:max-w-44;
+    @apply rounded-full border-transparent hover:border-gray-300 sm:w-auto sm:max-w-56;
   }
 
   /* In-text link: ink with a quiet underline that turns into the yellow highlighter on hover. */

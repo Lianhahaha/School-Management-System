@@ -24,7 +24,7 @@ export function TeacherClassesCard({ classSubjects, homeroomClasses }) {
         <div className="space-y-5">
           {classSubjects.length > 0 && (
             <section aria-labelledby="teaching-heading">
-              <h3 id="teaching-heading" className="text-[0.8125rem] text-gray-500">
+              <h3 id="teaching-heading" className="text-sm text-gray-500">
                 Teaching
               </h3>
               <ul className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -45,7 +45,7 @@ export function TeacherClassesCard({ classSubjects, homeroomClasses }) {
           )}
           {homeroomClasses.length > 0 && (
             <section aria-labelledby="homeroom-heading">
-              <h3 id="homeroom-heading" className="text-[0.8125rem] text-gray-500">
+              <h3 id="homeroom-heading" className="text-sm text-gray-500">
                 Homeroom
               </h3>
               <ul className="mt-2 grid gap-2 sm:grid-cols-2">

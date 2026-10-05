@@ -25,7 +25,7 @@ export function Table({ caption, className, children }) {
 }
 
 export function THead({ children }) {
-  return <thead className="text-[0.8125rem] text-gray-500 [&>tr]:hover:bg-transparent">{children}</thead>;
+  return <thead className="text-sm text-gray-500 [&>tr]:hover:bg-transparent">{children}</thead>;
 }
 
 export function TBody({ className, children, ...props }) {

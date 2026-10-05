@@ -18,14 +18,14 @@ import { cx } from '../../utils/cx';
  */
 export function StatTile({ label, value, hint, icon: Icon, tone, to }) {
   const classes =
-    'flex min-h-14 items-center gap-2 rounded-[1.25rem] bg-gray-100 py-2 pr-2.5 pl-2 sm:gap-3 sm:rounded-full sm:pr-4';
+    'flex min-h-14 items-center gap-2 rounded-[1.25rem] bg-surface py-2 ring-1 ring-gray-200 ring-inset pr-2.5 pl-2 sm:gap-3 sm:rounded-full sm:pr-4';
   const content = (
     <>
       {Icon && (
         <span
           className={cx(
             'flex size-8 shrink-0 items-center justify-center rounded-full sm:size-10',
-            tone ? TONE_SOFT_CLASSES[tone] : 'bg-surface text-gray-700',
+            tone ? TONE_SOFT_CLASSES[tone] : 'bg-gray-100 text-gray-700',
           )}
         >
           <Icon className="size-[1.125rem]" aria-hidden="true" />
@@ -43,7 +43,7 @@ export function StatTile({ label, value, hint, icon: Icon, tone, to }) {
   );
 
   return to ? (
-    <Link to={to} className={cx(classes, 'transition-colors hover:bg-gray-200')}>
+    <Link to={to} className={cx(classes, 'transition-colors hover:bg-gray-50')}>
       {content}
     </Link>
   ) : (

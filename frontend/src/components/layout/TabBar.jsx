@@ -6,7 +6,7 @@ import { NavBadge } from './NavBadge';
 import { NAV } from './navConfig';
 import { useNavBadges } from './useNavBadges';
 
-const ITEM = 'flex min-h-14 flex-1 flex-col items-center justify-center gap-1 text-[0.6875rem] font-medium';
+const ITEM = 'flex min-h-14 flex-1 flex-col items-center justify-center gap-1 text-xs font-medium';
 const CHIP = 'flex h-8 w-12 items-center justify-center rounded-full transition-colors';
 
 /**
