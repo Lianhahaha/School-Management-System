@@ -5,11 +5,12 @@ import { StudentAttendanceCard } from '../components/StudentAttendanceCard';
 import { StudentGradeSummaryCard } from '../components/StudentGradeSummaryCard';
 import { StudentHero } from '../components/StudentHero';
 import { StudentTimetableCard } from '../components/StudentTimetableCard';
+import { StudentWaitingCard } from '../components/StudentWaitingCard';
 import { UpcomingAssessmentsCard } from '../components/UpcomingAssessmentsCard';
 
 /**
- * /student: "How am I doing?" Read-only. Without an active enrollment only the identity hero (with
- * the not-enrolled state) and the announcements are shown, because every other block is class based.
+ * /student: "How am I doing?" Read-only. Without an active enrollment the identity hero, what to do
+ * while waiting for a class, and the announcements are shown, because every other block is class based.
  */
 export default function StudentDashboardPage() {
   return (
@@ -21,6 +22,7 @@ export default function StudentDashboardPage() {
       {(data) => (
         <div className="space-y-6">
           <StudentHero student={data.student} enrollment={data.currentEnrollment} />
+          {!data.currentEnrollment && <StudentWaitingCard />}
           {data.currentEnrollment && (
             <>
               <div className="grid items-start gap-6 lg:grid-cols-2">
