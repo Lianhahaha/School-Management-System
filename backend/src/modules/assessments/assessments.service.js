@@ -48,17 +48,29 @@ export async function createAssessment(user, body) {
 
 export async function updateAssessment(user, id, patch) {
   await getManagedAssessment(user, id);
-  if (patch.maxScore !== undefined) {
-    const highest = await repo.findHighestScore(id);
-    if (highest !== null && patch.maxScore < highest) {
-      throw ApiError.conflict('a recorded score is higher than the new maximum', {
-        reason: 'max_score_below_grades',
-        maxExistingScore: highest,
-      });
+  await withTransaction(async (conn) => {
+    if (patch.maxScore !== undefined) {
+      // Lock first: a grade save running now finishes before the check, and none starts until this commits.
+      ApiError.assertFound(await repo.lockMaxScore(id, 'update', conn), 'assessment', id);
+      const highest = await repo.findHighestScore(id, conn);
+      if (highest !== null && patch.maxScore < highest) {
+        throw ApiError.conflict('a recorded score is higher than the new maximum', {
+          reason: 'max_score_below_grades',
+          maxExistingScore: highest,
+        });
+      }
     }
-  }
-  await repo.updateAssessment(id, patch);
+    await repo.updateAssessment(id, patch, conn);
+  });
   return toAssessmentShape(await repo.findAssessmentById(id));
+}
+
+/**
+ * Inside `conn`'s transaction: the assessment's current max score, share-locked so it cannot be lowered
+ * until the transaction ends (grades are validated against it). 404 when the assessment is gone.
+ */
+export async function lockMaxScoreForGrading(id, conn) {
+  return ApiError.assertFound(await repo.lockMaxScore(id, 'share', conn), 'assessment', id);
 }
 
 /** Deletes the assessment and its grades in one transaction (the UI confirms with the graded count first). */

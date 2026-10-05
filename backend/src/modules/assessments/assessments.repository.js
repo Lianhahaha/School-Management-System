@@ -99,14 +99,32 @@ const PATCH_COLUMNS = {
   assessedOn: 'assessed_on',
 };
 
-export async function updateAssessment(id, fields) {
+export async function updateAssessment(id, fields, conn) {
   const set = buildSet(PATCH_COLUMNS, fields);
-  if (set) await run(`UPDATE assessments SET ${set.sql} WHERE id = ?`, [...set.params, id]);
+  if (set) await run(`UPDATE assessments SET ${set.sql} WHERE id = ?`, [...set.params, id], conn);
 }
 
-/** Highest score already recorded for the assessment, or null when ungraded. */
-export async function findHighestScore(id) {
-  const rows = await query('SELECT MAX(score) AS highest FROM grades WHERE assessment_id = ?', [id]);
+/**
+ * Inside `conn`'s transaction: the assessment's max score, read with a lock. `share` (saving grades) lets
+ * several grade saves run together; `update` (changing the max score) waits for them and blocks new ones,
+ * so a score is never checked against a maximum that is being lowered at the same time.
+ * Returns null when the assessment does not exist.
+ *
+ * @param {'share'|'update'} mode
+ */
+export async function lockMaxScore(id, mode, conn) {
+  const lock = mode === 'update' ? 'FOR UPDATE' : 'FOR SHARE';
+  const rows = await query(`SELECT max_score FROM assessments WHERE id = ? ${lock}`, [id], conn);
+  return rows[0]?.maxScore ?? null;
+}
+
+/** Highest score already recorded for the assessment, or null when ungraded (latest committed rows). */
+export async function findHighestScore(id, conn) {
+  const rows = await query(
+    'SELECT MAX(score) AS highest FROM grades WHERE assessment_id = ? FOR SHARE',
+    [id],
+    conn,
+  );
   return rows[0].highest;
 }
 

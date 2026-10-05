@@ -7,7 +7,11 @@ import { ApiError } from '../../utils/ApiError.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import { personRef } from '../../utils/shapes.js';
 import * as access from '../access/access.service.js';
-import { getAssessment, getManagedAssessment } from '../assessments/assessments.service.js';
+import {
+  getAssessment,
+  getManagedAssessment,
+  lockMaxScoreForGrading,
+} from '../assessments/assessments.service.js';
 import * as repo from './grades.repository.js';
 
 const percentage = (score, maxScore) => (maxScore ? Math.round((score / maxScore) * 10000) / 100 : null);
@@ -132,17 +136,19 @@ export async function getRoster(user, assessmentId) {
 
 /** Idempotent bulk upsert of the listed students only; the whole batch is rejected when any row is invalid. */
 export async function saveGrades(user, assessmentId, { grades }) {
-  const assessment = await getManagedAssessment(user, assessmentId);
-  const tooHigh = grades.find((grade) => grade.score > assessment.maxScore);
-  if (tooHigh) {
-    throw ApiError.validation('score exceeds maxScore', undefined, {
-      reason: 'score_above_max',
-      studentId: tooHigh.studentId,
-      score: tooHigh.score,
-      maxScore: assessment.maxScore,
-    });
-  }
+  await getManagedAssessment(user, assessmentId); // 404 or 403 before anything is locked
   await withTransaction(async (conn) => {
+    // Checked against the max score as it is now, locked so a concurrent edit cannot lower it under us.
+    const maxScore = await lockMaxScoreForGrading(assessmentId, conn);
+    const tooHigh = grades.find((grade) => grade.score > maxScore);
+    if (tooHigh) {
+      throw ApiError.validation('score exceeds maxScore', undefined, {
+        reason: 'score_above_max',
+        studentId: tooHigh.studentId,
+        score: tooHigh.score,
+        maxScore,
+      });
+    }
     const roster = new Set(await repo.findRosterStudentIds(assessmentId, conn));
     const invalidStudentIds = grades.map((g) => g.studentId).filter((id) => !roster.has(id));
     if (invalidStudentIds.length) {
@@ -153,7 +159,8 @@ export async function saveGrades(user, assessmentId, { grades }) {
     }
     await repo.upsertGrades(assessmentId, grades, user.id, conn);
   });
-  return buildRoster(assessment);
+  // The max score may have changed since `assessment` was read: build the roster from the current row.
+  return buildRoster(await getAssessment(user, assessmentId));
 }
 
 export async function deleteGrade(user, id) {

@@ -1,9 +1,10 @@
 import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
-import { run } from '../src/config/db.js';
+import { query, run } from '../src/config/db.js';
 import { academicYearOf, addDaysYmd, todayYmd } from '../src/utils/dates.js';
 import { api, as, buildSchool, closeWorld, resetWorld } from './helpers/harness.js';
+import { openSession, waitForLockWaits } from './helpers/locks.js';
 
 after(closeWorld);
 
@@ -330,6 +331,36 @@ describe('assessments and grades', () => {
     assert.equal(ok.body.data.maxScore, 19);
     assert.equal(ok.body.data.gradedCount, 2);
     await api.patch(url).set(as(school.owner)).send({ maxScore: 20 });
+  });
+
+  it('never stores a score above the max score when grading and lowering the max run at once', async () => {
+    // Replayed race: a second session holds the assessment row, both requests queue behind it, then it lets go.
+    // Grading 80/100 and lowering the max to 50 are each valid alone; together one of them must be refused.
+    const exam = (await newAssessment(school.owner, { title: 'Race', maxScore: 100 })).body.data;
+    const session = await openSession();
+    let results;
+    try {
+      await session.query('START TRANSACTION');
+      await session.query('SELECT id FROM assessments WHERE id = ? FOR UPDATE', [exam.id]);
+      const pending = Promise.all([
+        putGrades(school.owner, exam.id, [{ studentId: school.s1.studentId, score: 80 }]),
+        api.patch(`/api/v1/assessments/${exam.id}`).set(as(school.owner)).send({ maxScore: 50 }),
+      ]);
+      await waitForLockWaits(2);
+      await session.query('ROLLBACK');
+      results = await pending;
+    } finally {
+      await session.end();
+    }
+    assert.equal(results.filter((res) => res.status === 200).length, 1, 'exactly one request succeeds');
+    const [{ maxScore, highest }] = await query(
+      `SELECT a.max_score AS maxScore, MAX(g.score) AS highest
+         FROM assessments a LEFT JOIN grades g ON g.assessment_id = a.id WHERE a.id = ? GROUP BY a.id`,
+      [exam.id],
+    );
+    assert.ok(highest === null || highest <= maxScore, `score ${highest} stored above max ${maxScore}`);
+    // Leave the shared fixture as the later tests expect it.
+    assert.equal((await api.delete(`/api/v1/assessments/${exam.id}`).set(as(school.owner))).status, 200);
   });
 
   it('scopes grade reads: a student sees only their own, foreign filters are 403', async () => {
