@@ -44,6 +44,8 @@ async function adminDashboard(user) {
       teachers: counts.teachers,
       classes: counts.classes,
       subjects: counts.subjects,
+      teacherAssignments: counts.teacherAssignments,
+      timetableSlots: counts.timetableSlots,
       activeEnrollments: counts.activeEnrollments,
       unenrolledStudents: counts.unenrolledStudents,
     },

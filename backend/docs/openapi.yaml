@@ -2907,7 +2907,17 @@ components:
           enum: [admin]
         counts:
           type: object
-          required: [students, teachers, classes, subjects, activeEnrollments, unenrolledStudents]
+          required:
+            [
+              students,
+              teachers,
+              classes,
+              subjects,
+              teacherAssignments,
+              timetableSlots,
+              activeEnrollments,
+              unenrolledStudents,
+            ]
           properties:
             students:
               type: integer
@@ -2921,6 +2931,12 @@ components:
             subjects:
               type: integer
               description: Active subjects.
+            teacherAssignments:
+              type: integer
+              description: Subjects with a teacher in the current academic year's classes (class-subjects).
+            timetableSlots:
+              type: integer
+              description: Weekly timetable slots of the current academic year's classes.
             activeEnrollments:
               type: integer
             unenrolledStudents:
@@ -4622,6 +4638,8 @@ components:
                     teachers: 18
                     classes: 12
                     subjects: 9
+                    teacherAssignments: 96
+                    timetableSlots: 340
                     activeEnrollments: 236
                     unenrolledStudents: 4
                   attendanceToday:

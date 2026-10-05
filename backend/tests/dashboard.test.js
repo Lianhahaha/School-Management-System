@@ -68,6 +68,8 @@ describe('dashboard', () => {
       teachers: 2,
       classes: 2,
       subjects: 2,
+      teacherAssignments: 2,
+      timetableSlots: 1,
       activeEnrollments: 2,
       unenrolledStudents: 1,
     });
