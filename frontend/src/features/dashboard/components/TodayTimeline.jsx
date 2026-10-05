@@ -62,7 +62,7 @@ export function TodayTimeline({ periods }) {
                   </p>
                 </div>
                 {period.attendanceMarked ? (
-                  <Badge tone="green" dot={false} className="gap-1">
+                  <Badge tone="green" className="gap-1">
                     <Check className="size-3" aria-hidden="true" />
                     Marked
                   </Badge>
