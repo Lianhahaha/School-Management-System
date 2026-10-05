@@ -52,7 +52,17 @@ export const password = z
 
 export const phone = z.string().trim().regex(PHONE_REGEX, { error: 'invalid phone number' });
 
-export const name = z.string().trim().min(1, { error: 'required' }).max(100);
+/**
+ * A name typed all in lower case ("lian harhar", "o'brien") gets a capital at the start of each word
+ * ("Lian Harhar", "O'Brien"). Any other casing is kept as typed, so "McDonald" or "dela Cruz" stay right.
+ */
+export const capitalizeIfLowercase = (value) =>
+  value === value.toLowerCase() && value !== value.toUpperCase()
+    ? value.replace(/(^|[\s'-])(\p{L})/gu, (_, separator, letter) => separator + letter.toUpperCase())
+    : value;
+
+/** A person's name (first, last, guardian), stored with capitals even when typed in lower case. */
+export const name = z.string().trim().min(1, { error: 'required' }).max(100).transform(capitalizeIfLowercase);
 
 export const shortText = (max) => z.string().trim().max(max);
 

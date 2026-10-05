@@ -151,6 +151,20 @@ describe('registration', () => {
     assert.equal(res.body.data.firstName, 'Nia');
   });
 
+  it('capitalises a name typed all in lower case and keeps any other casing', async () => {
+    const res = await api
+      .post('/api/v1/auth/register')
+      .send({
+        ...body,
+        email: 'lower.case@school.test',
+        firstName: "mary-jo o'brien",
+        lastName: 'dela Cruz',
+      });
+    assert.equal(res.status, 201);
+    assert.equal(res.body.data.firstName, "Mary-Jo O'Brien");
+    assert.equal(res.body.data.lastName, 'dela Cruz');
+  });
+
   it('refuses a `role` field (no privilege escalation) with 400', async () => {
     const res = await api
       .post('/api/v1/auth/register')
