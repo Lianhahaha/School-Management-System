@@ -34,7 +34,9 @@ function StudentAttendanceContent({ academicYear }) {
   const subjects = useClassSubjectOptions();
 
   const today = todayYmd();
-  const dateFrom = list.params.dateFrom || academicYearStart(academicYear);
+  // A class of a year that has not started yet (enrolled ahead, in July) starts today, not in the future.
+  const yearStart = academicYearStart(academicYear);
+  const dateFrom = list.params.dateFrom || (yearStart <= today ? yearStart : today);
   const dateTo = list.params.dateTo || today;
   // Typing can still produce an end before the start; the API rejects it, so ask instead of requesting.
   const isRangeValid = dateFrom <= dateTo;
