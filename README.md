@@ -1,5 +1,7 @@
 # Skole (readme not updated)
 
+[![Backend tests](https://github.com/Lianhahaha/School-Management-System/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/Lianhahaha/School-Management-System/actions/workflows/backend-tests.yml)
+
 Skole is a web-based school management system: student, teacher and administrator accounts, enrollment, classes and subjects, teacher assignment, attendance, grades, timetables, announcements and a separate dashboard for each role. Identity is handled by **Firebase Authentication**, all data lives in **MySQL**, and everything is exposed through a documented **REST API**.
 
 **Live demo:** <https://skoleph.web.app> (sign in with a [demo account](#demo-accounts)). It runs on free tiers: the API sleeps after 15 idle minutes, so the first request after a pause can take about a minute, and the free MySQL service can be switched off after long inactivity. The local setup below needs none of that.
@@ -137,6 +139,8 @@ npm run check          # lint + production build
 ```
 
 The backend tests use a separate `school_management_test` database and an in-memory fake of Firebase, so they never touch your real data or your Firebase project.
+
+GitHub runs the same backend checks (lint, secrets check, `npm test` against MySQL 8) on every push and pull request: see [.github/workflows/backend-tests.yml](.github/workflows/backend-tests.yml) and the **Actions** tab. Every push to `main` also deploys the frontend ([deploy-frontend.yml](.github/workflows/deploy-frontend.yml)); Render deploys the API on its own.
 
 ## Project tour
 
