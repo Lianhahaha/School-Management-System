@@ -16,7 +16,8 @@
  *                                        studentId ('me'), classSubjectId, classId, term, assessmentId, type
  *   useGradeSummary(params, { enabled }) per-subject (or per-student) points-weighted percentages; params:
  *                                        studentId ('me'), classSubjectId, classId, term, groupBy
- *   useDeleteGrade()                     mutate(id) clears one grade
+ *   useDeleteGrade()                     mutate(id) clears one grade (the caller raises the toast)
+ *   useRestoreGrade()                    mutate({ assessmentId, grade }) puts a cleared grade back (Undo)
  *
  * Mutations tagged [form] are silent (meta.silent): the form that sends them shows every error itself
  * (applyServerErrors + FormRootError). Every other mutation raises an error toast.
@@ -135,14 +136,24 @@ export function useSaveGrades() {
   });
 }
 
+/** Clears one grade. The caller raises the toast, because it knows the student and can offer Undo. */
 export function useDeleteGrade() {
+  const invalidateGrades = useInvalidateGrades();
+  return useMutation({
+    mutationFn: deleteGrade,
+    onSuccess: invalidateGrades,
+  });
+}
+
+/** Puts one cleared grade back (the Undo of useDeleteGrade): mutate({ assessmentId, grade }). */
+export function useRestoreGrade() {
   const invalidateGrades = useInvalidateGrades();
   const toast = useToast();
   return useMutation({
-    mutationFn: deleteGrade,
+    mutationFn: ({ assessmentId, grade }) => saveGrades(assessmentId, [grade]),
     onSuccess: () => {
       invalidateGrades();
-      toast.success('Grade cleared');
+      toast.success('Grade restored');
     },
   });
 }

@@ -10,12 +10,12 @@ import { FormRootError } from '../../../components/ui/FormField';
 import { Input } from '../../../components/ui/Input';
 import { TBody, THead, Table, Td, Th, Tr } from '../../../components/ui/Table';
 import { ERROR_CODES } from '../../../constants/shared';
-import { useConfirm } from '../../../hooks/useConfirm';
+import { useToast } from '../../../hooks/useToast';
 import { applyServerErrors } from '../../../lib/formErrors';
 import { formatPercent, formatScore } from '../../../utils/format';
 import { fullName } from '../../../utils/names';
 import { useUnsavedChangesBlocker } from '../../../hooks/useUnsavedChangesBlocker';
-import { useDeleteGrade, useSaveGrades } from '../hooks';
+import { useDeleteGrade, useRestoreGrade, useSaveGrades } from '../hooks';
 import { gradeSheetDefaults, gradeSheetSchema, toSaveGradesPayload } from '../schemas';
 
 const SAVE_BLOCKED_HINT = "Only the subject's teacher can save grades";
@@ -54,9 +54,10 @@ function focusNextScore(event) {
  */
 export function GradeSheet({ roster, canSave, onReload }) {
   const { assessment } = roster;
-  const confirm = useConfirm();
+  const toast = useToast();
   const save = useSaveGrades();
   const deleteGrade = useDeleteGrade();
+  const restoreGrade = useRestoreGrade();
   const [records, setRecords] = useState(roster.records);
   const schema = useMemo(() => gradeSheetSchema(assessment.maxScore), [assessment.maxScore]);
 
@@ -104,24 +105,43 @@ export function GradeSheet({ roster, canSave, onReload }) {
 
   const reload = () => onReload().then(({ data }) => data && adopt(data));
 
-  const clearGrade = async (record, index) => {
-    const ok = await confirm({
-      title: `Clear the grade of ${fullName(record)}?`,
-      description: 'The recorded score is removed and the student becomes ungraded.',
-      confirmLabel: 'Clear grade',
-    });
-    if (!ok) return;
+  /** Replaces one student's row with `next` and resets that row's inputs to it; other rows keep their edits. */
+  const replaceRow = (index, next) => {
+    setRecords((current) => current.map((row) => (row.studentId === next.studentId ? next : row)));
+    resetField(`rows.${index}.score`, { defaultValue: next.score === null ? '' : String(next.score) });
+    resetField(`rows.${index}.remarks`, { defaultValue: next.remarks ?? '' });
+  };
+
+  /** A one-click clear: no confirmation, but the toast offers Undo, which saves the old score back. */
+  const clearGrade = (record, index) => {
     deleteGrade.mutate(record.gradeId, {
       onSuccess: () => {
-        setRecords((current) =>
-          current.map((row) =>
-            row.studentId === record.studentId
-              ? { ...row, gradeId: null, score: null, percentage: null, remarks: null, gradedBy: null }
-              : row,
-          ),
-        );
-        resetField(`rows.${index}.score`, { defaultValue: '' });
-        resetField(`rows.${index}.remarks`, { defaultValue: '' });
+        replaceRow(index, {
+          ...record,
+          gradeId: null,
+          score: null,
+          percentage: null,
+          remarks: null,
+          gradedBy: null,
+        });
+        toast.success(`Grade of ${fullName(record)} cleared`, {
+          action: {
+            label: 'Undo',
+            onClick: () =>
+              restoreGrade.mutate(
+                {
+                  assessmentId: assessment.id,
+                  grade: { studentId: record.studentId, score: record.score, remarks: record.remarks },
+                },
+                {
+                  onSuccess: (roster) => {
+                    const restored = roster.records.find((row) => row.studentId === record.studentId);
+                    if (restored) replaceRow(index, restored);
+                  },
+                },
+              ),
+          },
+        });
       },
     });
   };

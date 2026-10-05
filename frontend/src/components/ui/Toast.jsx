@@ -3,11 +3,14 @@ import { toastBus } from '../../lib/toastBus';
 import { Alert } from './Alert';
 
 const DURATION_MS = { success: 4000, info: 4000, error: 8000 };
+/** A toast with a button (Undo) stays long enough to reach it with the keyboard. */
+const ACTION_DURATION_MS = 10000;
 const MAX_VISIBLE = 5;
 
 function ToastItem({ toast, onDismiss }) {
   useEffect(() => {
-    const timer = setTimeout(() => onDismiss(toast.id), DURATION_MS[toast.tone]);
+    const duration = toast.action ? ACTION_DURATION_MS : DURATION_MS[toast.tone];
+    const timer = setTimeout(() => onDismiss(toast.id), duration);
     return () => clearTimeout(timer);
   }, [toast, onDismiss]);
 
@@ -19,12 +22,25 @@ function ToastItem({ toast, onDismiss }) {
     >
       {toast.message}
       {toast.detail && <span className="mt-0.5 block text-xs opacity-80">{toast.detail}</span>}
+      {toast.action && (
+        <button
+          type="button"
+          onClick={() => {
+            onDismiss(toast.id);
+            toast.action.onClick();
+          }}
+          className="link mt-1 block text-sm"
+        >
+          {toast.action.label}
+        </button>
+      )}
     </Alert>
   );
 }
 
 /**
- * Renders the toasts raised through `useToast()` / `toastBus` (success and info for 4 s, errors for 8 s).
+ * Renders the toasts raised through `useToast()` / `toastBus` (success and info for 4 s, errors for 8 s,
+ * a toast with an action button such as Undo for 10 s).
  * Two live regions are always present: errors are announced assertively (role="alert"), everything
  * else politely (role="status"). Mount it once, near the root.
  */

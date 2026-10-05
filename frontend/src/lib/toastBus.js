@@ -8,8 +8,8 @@
 const listeners = new Set();
 let nextId = 1;
 
-function publish(tone, message, detail) {
-  const toast = { id: nextId++, tone, message, detail };
+function publish(tone, message, detail, action) {
+  const toast = { id: nextId++, tone, message, detail, action };
   listeners.forEach((listener) => listener(toast));
 }
 
@@ -25,8 +25,13 @@ export const toastBus = {
     listeners.add(listener);
     return () => listeners.delete(listener);
   },
-  success: (message) => publish('success', message),
-  info: (message) => publish('info', message),
+  /**
+   * @param {string} message
+   * @param {{ action?: { label: string, onClick: () => void } }} [options] one button in the toast,
+   *   such as "Undo"; the toast then stays longer and closes when the button is used
+   */
+  success: (message, { action } = {}) => publish('success', message, undefined, action),
+  info: (message, { action } = {}) => publish('info', message, undefined, action),
   /** @param {Error|string} error an ApiError (its message is shown) or a plain message */
   error(error) {
     if (typeof error === 'string') return publish('error', error);
