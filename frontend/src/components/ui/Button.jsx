@@ -18,13 +18,19 @@ const VARIANTS = {
 
 // Heights keep touch targets at 44 px or more on touch screens; with a mouse the small size is 36 px.
 const SIZES = {
-  sm: 'h-9 px-3.5 text-sm pointer-coarse:h-11',
-  md: 'h-11 px-5 text-[0.9375rem]',
-  lg: 'h-12 px-6 text-base',
+  sm: 'h-9 text-sm pointer-coarse:h-11',
+  md: 'h-11 text-[0.9375rem]',
+  lg: 'h-12 text-base',
 };
 
-/** A button with an icon and no label is a circle of the same height. */
-const ICON_ONLY = { sm: 'w-9 px-0 pointer-coarse:w-11', md: 'w-11 px-0', lg: 'w-12 px-0' };
+/** Side padding of a button with a label. */
+const PADDING = { sm: 'px-3.5', md: 'px-5', lg: 'px-6' };
+
+/**
+ * A button with an icon and no label is a circle of the same height. It gets a width instead of the
+ * side padding (both at once would squeeze the icon: the padding wins over `px-0` in the stylesheet).
+ */
+const ICON_ONLY = { sm: 'w-9 pointer-coarse:w-11', md: 'w-11', lg: 'w-12' };
 
 /**
  * @param {object} props
@@ -60,7 +66,7 @@ export function Button({
         'inline-flex shrink-0 items-center justify-center gap-2 rounded-full whitespace-nowrap transition-[background-color,color,transform] duration-150 select-none active:scale-[0.97] disabled:cursor-not-allowed disabled:active:scale-100',
         VARIANTS[variant],
         SIZES[size],
-        isIconOnly && ICON_ONLY[size],
+        isIconOnly ? ICON_ONLY[size] : PADDING[size],
         className,
       )}
     >
