@@ -5,7 +5,11 @@ import { cx } from '../../utils/cx';
  * The Skole mark (a ruled line over a highlighter stroke on an ink tile, same drawing as
  * public/favicon.svg) and the wordmark.
  */
-export function Brand({ className }) {
+/**
+ * @param {object} props
+ * @param {string} [props.wordmarkClassName] e.g. to hide the name on the narrowest screens
+ */
+export function Brand({ className, wordmarkClassName }) {
   return (
     <div className={cx('flex items-center gap-2.5', className)}>
       <svg viewBox="0 0 32 32" className="size-8 shrink-0" aria-hidden="true">
@@ -21,7 +25,7 @@ export function Brand({ className }) {
         />
         <rect x="9" y="8.5" width="14" height="2.6" rx="1.3" className="fill-gray-50" />
       </svg>
-      <span className="text-xl font-semibold tracking-[-0.03em] text-gray-900">{APP_NAME}</span>
+      <span className={cx('text-xl font-semibold tracking-[-0.03em] text-gray-900', wordmarkClassName)}>{APP_NAME}</span>
     </div>
   );
 }
