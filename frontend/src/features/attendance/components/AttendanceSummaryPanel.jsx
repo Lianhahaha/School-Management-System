@@ -6,7 +6,7 @@ import { Skeleton } from '../../../components/ui/Skeleton';
 import { StatTile } from '../../../components/ui/StatTile';
 import { ATTENDANCE_STATUS_LABELS } from '../../../constants/ui';
 import { ATTENDANCE_STATUSES } from '../../../constants/shared';
-import { formatPercent } from '../../../utils/format';
+import { countOf, formatPercent } from '../../../utils/format';
 import { useAttendanceSummary } from '../hooks';
 
 const STATUS_TILE_TONES = { present: 'green', absent: 'red', late: 'amber', excused: 'blue' };
@@ -60,7 +60,7 @@ export function AttendanceSummaryPanel({ studentId, dateFrom, dateTo, enabled = 
         <StatTile
           label="Attendance rate"
           value={formatPercent(summary.rate)}
-          hint={`${summary.total} sessions`}
+          hint={countOf(summary.total, 'session')}
         />
         {ATTENDANCE_STATUSES.map((status) => (
           <StatTile

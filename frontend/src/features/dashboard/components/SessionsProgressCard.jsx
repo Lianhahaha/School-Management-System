@@ -1,6 +1,7 @@
 import { CalendarOff } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { countOf } from '../../../utils/format';
 
 /** "2 of 4 sessions marked" with a progress bar (payload `attendanceToday` of a teacher). */
 export function SessionsProgressCard({ attendance }) {
@@ -20,7 +21,7 @@ export function SessionsProgressCard({ attendance }) {
         <>
           <p className="text-sm text-gray-700">
             <span className="text-2xl font-semibold text-gray-900">{sessionsMarked}</span> of{' '}
-            {sessionsScheduled} sessions marked
+            {countOf(sessionsScheduled, 'session')} marked
           </p>
           <div
             role="progressbar"
