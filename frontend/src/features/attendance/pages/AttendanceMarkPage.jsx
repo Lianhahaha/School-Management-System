@@ -1,15 +1,22 @@
 import { ClipboardCheck } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { ExportCsvButton } from '../../../components/ui/ExportCsvButton';
 import { ErrorState } from '../../../components/ui/ErrorState';
+import { fetchAllPages } from '../../../lib/csv';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { todayYmd } from '../../../utils/date';
 import { ClassSubjectSelectorBar } from '../../classSubjects/components/ClassSubjectSelectorBar';
 import { useClassSubjectSelection } from '../../classSubjects/hooks';
+import { listAttendance } from '../api';
 import { AttendanceSheet } from '../components/AttendanceSheet';
+import { ATTENDANCE_CSV_COLUMNS } from '../csv';
 import { useAttendanceSheet } from '../hooks';
 
-/** Admin and teacher: pick a lesson and a date, mark the roster, save. */
+/**
+ * Admin and teacher: pick a lesson and a date, mark the roster, save. With a lesson picked, every
+ * attendance record of that class and subject (all dates) can be downloaded as CSV.
+ */
 export default function AttendanceMarkPage() {
   const selection = useClassSubjectSelection({ withDate: true });
   const { classSubjectId, date, selected, isOwner } = selection;
@@ -66,6 +73,22 @@ export default function AttendanceMarkPage() {
       <PageHeader
         title="Attendance"
         description="Mark who was present, absent, late or excused in a lesson."
+        actions={
+          selected.data && (
+            <ExportCsvButton
+              fileName={`attendance ${selected.data.className} ${selected.data.subjectName}`}
+              columns={ATTENDANCE_CSV_COLUMNS}
+              getRows={() =>
+                fetchAllPages(listAttendance, {
+                  classSubjectId,
+                  sortBy: 'attendanceDate',
+                  sortOrder: 'asc',
+                })
+              }
+              label="Download all attendance"
+            />
+          )
+        }
       />
       <ClassSubjectSelectorBar selection={selection} withDate />
       {content}

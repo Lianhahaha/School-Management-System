@@ -1,6 +1,7 @@
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { Alert } from '../../../components/ui/Alert';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { ExportCsvButton } from '../../../components/ui/ExportCsvButton';
 import { FilterBar } from '../../../components/ui/FilterBar';
 import { Input } from '../../../components/ui/Input';
 import { OptionSelect } from '../../../components/ui/OptionSelect';
@@ -9,12 +10,15 @@ import { Select } from '../../../components/ui/Select';
 import { ACADEMIC_YEAR_START_MONTH } from '../../../constants/shared';
 import { ATTENDANCE_STATUS_OPTIONS } from '../../../constants/ui';
 import { useListParams } from '../../../hooks/useListParams';
+import { fetchAllPages } from '../../../lib/csv';
 import { todayYmd } from '../../../utils/date';
 import { useAuth } from '../../auth/hooks';
 import { useClassSubjectOptions } from '../../classSubjects/hooks';
 import { NotEnrolledState } from '../../enrollments/components/NotEnrolledState';
+import { listAttendance } from '../api';
 import { AttendanceRecordsTable } from '../components/AttendanceRecordsTable';
 import { AttendanceSummaryPanel } from '../components/AttendanceSummaryPanel';
+import { ATTENDANCE_CSV_COLUMNS } from '../csv';
 import { useAttendance } from '../hooks';
 
 /** First day of an academic year such as '2026-2027' ('2026-08-01'). */
@@ -43,9 +47,28 @@ function StudentAttendanceContent({ academicYear }) {
       {isRangeValid && <AttendanceSummaryPanel studentId="me" dateFrom={dateFrom} dateTo={dateTo} />}
 
       <section aria-labelledby="attendance-records-heading">
-        <h2 id="attendance-records-heading" className="mb-3 text-base font-semibold text-gray-900">
-          Records
-        </h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 id="attendance-records-heading" className="text-base font-semibold text-gray-900">
+            Records
+          </h2>
+          {isRangeValid && (
+            <ExportCsvButton
+              size="sm"
+              fileName={`my attendance ${dateFrom} to ${dateTo}`}
+              columns={ATTENDANCE_CSV_COLUMNS}
+              getRows={() =>
+                fetchAllPages(listAttendance, {
+                  dateFrom,
+                  dateTo,
+                  ...(list.params.classSubjectId && { classSubjectId: list.params.classSubjectId }),
+                  ...(list.params.status && { status: list.params.status }),
+                  sortBy: 'attendanceDate',
+                  sortOrder: 'asc',
+                })
+              }
+            />
+          )}
+        </div>
         <FilterBar onClear={list.hasActiveFilters ? list.clearFilters : undefined}>
           <label className="flex items-center gap-2 text-sm text-gray-700">
             From
