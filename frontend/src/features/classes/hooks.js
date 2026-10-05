@@ -26,6 +26,7 @@ import { scheduleKeys } from '../schedules/keys';
 import { studentKeys } from '../students/keys';
 import { createClass, deleteClass, getClass, listClasses, updateClass } from './api';
 import { classKeys } from './keys';
+import { countOf } from '../../utils/format';
 
 export function useClasses(params, { enabled = true } = {}) {
   return useQuery({
@@ -90,7 +91,7 @@ export const useClassOptions = createOptionsHook({
   fetchList: listClasses,
   toOption: (schoolClass) => ({
     value: String(schoolClass.id),
-    label: `${schoolClass.name} · ${schoolClass.academicYear} · ${schoolClass.studentCount} students`,
+    label: `${schoolClass.name} · ${schoolClass.academicYear} · ${countOf(schoolClass.studentCount, 'student')}`,
     item: schoolClass,
   }),
 });

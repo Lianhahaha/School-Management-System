@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { TextLink } from '../../../components/ui/TextLink';
+import { countOf } from '../../../utils/format';
 
 const CHIP = 'block rounded-[1.25rem] bg-gray-100 px-4 py-2.5 text-sm transition-colors hover:bg-gray-200';
 
@@ -34,7 +35,7 @@ export function TeacherClassesCard({ classSubjects, homeroomClasses }) {
                         {classSubject.className} · {classSubject.subjectName}
                       </span>
                       <span className="block text-xs text-gray-600">
-                        {classSubject.studentCount} students
+                        {countOf(classSubject.studentCount, 'student')}
                       </span>
                     </Link>
                   </li>
@@ -53,7 +54,7 @@ export function TeacherClassesCard({ classSubjects, homeroomClasses }) {
                     <Link to="/teacher/classes" className={CHIP}>
                       <span className="font-medium text-gray-900">{schoolClass.name}</span>
                       <span className="block text-xs text-gray-600">
-                        {schoolClass.studentCount} students · {schoolClass.academicYear}
+                        {countOf(schoolClass.studentCount, 'student')} · {schoolClass.academicYear}
                       </span>
                     </Link>
                   </li>

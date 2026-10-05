@@ -18,6 +18,7 @@ import { useClassSubjectSelection } from '../../classSubjects/hooks';
 import { AssessmentFormModal } from '../components/AssessmentFormModal';
 import { AssessmentsTable } from '../components/AssessmentsTable';
 import { useAssessments, useDeleteAssessment } from '../hooks';
+import { countOf } from '../../../utils/format';
 
 /** Admin and teacher: the assessments of one lesson, with create, edit and delete for its owner. */
 export default function AssessmentsPage() {
@@ -57,7 +58,7 @@ export default function AssessmentsPage() {
       title: `Delete ${assessment.title}?`,
       description:
         graded > 0
-          ? `Deleting removes its ${graded} recorded ${graded === 1 ? 'grade' : 'grades'}. This cannot be undone.`
+          ? `Deleting removes its ${countOf(graded, 'recorded grade')}. This cannot be undone.`
           : 'This cannot be undone.',
       confirmLabel: 'Delete',
     });

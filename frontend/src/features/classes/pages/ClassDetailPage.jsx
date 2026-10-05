@@ -14,6 +14,7 @@ import { ClassScheduleTab } from '../components/ClassScheduleTab';
 import { ClassStudentsTab } from '../components/ClassStudentsTab';
 import { ClassSubjectsTab } from '../components/ClassSubjectsTab';
 import { useClass, useDeleteClass } from '../hooks';
+import { countOf } from '../../../utils/format';
 
 const BACK = { backTo: '/admin/classes', backLabel: 'Back to classes' };
 
@@ -52,7 +53,7 @@ export default function ClassDetailPage() {
     schoolClass.academicYear,
     `Grade ${schoolClass.gradeLevel}`,
     homeroomTeacher ? `Homeroom: ${fullName(homeroomTeacher)}` : 'No homeroom teacher',
-    `${studentCount} ${studentCount === 1 ? 'student' : 'students'}`,
+    countOf(studentCount, 'student'),
   ].join(' · ');
 
   return (

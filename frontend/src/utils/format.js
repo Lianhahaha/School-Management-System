@@ -11,6 +11,11 @@ export function formatPercent(ratio) {
   return ratio === null || ratio === undefined ? EMPTY : percentFormatter.format(ratio);
 }
 
+/** 1, 'student' -> '1 student'; 3, 'student' -> '3 students'. Pass `plural` when adding "s" is wrong. */
+export function countOf(count, singular, plural = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
 /** 18, 20 -> '18 / 20'; without a max just '18'; an ungraded (null) score renders as an em dash. */
 export function formatScore(score, maxScore) {
   if (score === null || score === undefined) return EMPTY;

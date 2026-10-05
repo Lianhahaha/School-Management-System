@@ -13,6 +13,7 @@ import { ClassSelect } from '../../classes/components/ClassSelect';
 import { useStudents } from '../../students/hooks';
 import { useEnrollStudents } from '../hooks';
 import { enrollStudentsSchema } from '../schemas';
+import { countOf } from '../../../utils/format';
 
 /** The students who joined the school but have no class yet, with a search box and a checkbox each. */
 function StudentChecklist({ search, onSearch, selected, onToggle, onSelectVisible, onClearSelection }) {
@@ -223,7 +224,7 @@ export function EnrollStudentsModal({ classId, className, open, onClose }) {
             Cancel
           </Button>
           <Button onClick={onSubmit} isLoading={mutation.isPending} disabled={count === 0 || !targetClassId}>
-            {count > 0 ? `Enroll ${count} ${count === 1 ? 'student' : 'students'}` : 'Enroll students'}
+            {count > 0 ? `Enroll ${countOf(count, 'student')}` : 'Enroll students'}
           </Button>
         </>
       }

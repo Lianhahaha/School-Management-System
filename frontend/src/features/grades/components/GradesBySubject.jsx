@@ -7,7 +7,7 @@ import { ErrorState } from '../../../components/ui/ErrorState';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { ASSESSMENT_TYPE_LABELS } from '../../../constants/ui';
 import { formatDate, todayYmd } from '../../../utils/date';
-import { formatPercent, formatScore } from '../../../utils/format';
+import { countOf, formatPercent, formatScore } from '../../../utils/format';
 import { groupBy } from '../../../utils/grades';
 import { fullName } from '../../../utils/names';
 import { useAssessments, useGrades } from '../hooks';
@@ -96,7 +96,7 @@ export function GradesBySubject({ term }) {
           <Card
             key={classSubjectId}
             title={subjectName}
-            description={`${className} · ${rows.length} ${rows.length === 1 ? 'grade' : 'grades'}`}
+            description={`${className} · ${countOf(rows.length, 'grade')}`}
             padded={false}
           >
             <DataTable label={`${subjectName} grades`} columns={COLUMNS} rows={rows} rowKey="id" />

@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import { Card } from '../../../components/ui/Card';
 import { fullName } from '../../../utils/names';
+import { countOf } from '../../../utils/format';
 
 /**
  * A class the teacher is homeroom teacher of: its subjects with their teachers, read-only.
@@ -13,10 +14,7 @@ import { fullName } from '../../../utils/names';
 export function HomeroomClassCard({ schoolClass, classSubjects }) {
   const { name, academicYear, studentCount } = schoolClass;
   return (
-    <Card
-      title={name}
-      description={`${academicYear} · ${studentCount} ${studentCount === 1 ? 'student' : 'students'}`}
-    >
+    <Card title={name} description={`${academicYear} · ${countOf(studentCount, 'student')}`}>
       {classSubjects.length === 0 ? (
         <p className="text-sm text-gray-600">This class has no subjects yet.</p>
       ) : (

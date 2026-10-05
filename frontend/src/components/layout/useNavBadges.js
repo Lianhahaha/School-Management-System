@@ -1,5 +1,6 @@
 import { useAuth } from '../../features/auth/hooks';
 import { useStudents } from '../../features/students/hooks';
+import { countOf } from '../../utils/format';
 
 /** Unenrolled, active students: the same filter as the dashboard's "Unenrolled students" tile. */
 const UNENROLLED_PARAMS = { hasActiveEnrollment: 'false', isActive: 'true', limit: 1 };
@@ -18,7 +19,7 @@ export function useNavBadges() {
   return {
     unenrolledStudents: {
       count: unenrolledCount,
-      label: `${unenrolledCount} ${unenrolledCount === 1 ? 'student' : 'students'} without a class`,
+      label: `${countOf(unenrolledCount, 'student')} without a class`,
     },
   };
 }

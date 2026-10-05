@@ -25,6 +25,7 @@ import { gradeKeys } from '../grades/keys';
 import { studentKeys } from '../students/keys';
 import { enrollStudent, enrollStudents, listEnrollments, setEnrollmentStatus, transferStudent } from './api';
 import { enrollmentKeys } from './keys';
+import { countOf } from '../../utils/format';
 
 export function useEnrollments(params, { enabled = true } = {}) {
   return useQuery({
@@ -69,9 +70,7 @@ export function useEnrollStudents() {
     meta: { silent: true },
     onSuccess: ({ created, enrollments }) => {
       invalidateEnrollments();
-      toast.success(
-        `${created} ${created === 1 ? 'student' : 'students'} enrolled in ${enrollments[0].class.name}`,
-      );
+      toast.success(`${countOf(created, 'student')} enrolled in ${enrollments[0].class.name}`);
     },
   });
 }
