@@ -104,11 +104,19 @@ export async function findRosterStudentIds(assessmentId, conn) {
 }
 
 /** Idempotent bulk upsert on UNIQUE(assessment, student). Needs MySQL >= 8.0.19 (row alias). */
+/**
+ * Inserts or updates one grade per row. A row whose score and remarks are unchanged keeps its grader, so
+ * re-saving a whole sheet to fix one score does not make the saver "graded by" for everyone. `graded_by` is
+ * assigned first on purpose: MySQL applies the assignments left to right, so it still compares the old values.
+ */
 export async function upsertGrades(assessmentId, grades, gradedBy, conn) {
   const rows = grades.map((g) => [assessmentId, g.studentId, g.score, g.remarks ?? null, gradedBy]);
   await run(
     `INSERT INTO grades (assessment_id, student_id, score, remarks, graded_by) VALUES ? AS new
-     ON DUPLICATE KEY UPDATE score = new.score, remarks = new.remarks, graded_by = new.graded_by`,
+     ON DUPLICATE KEY UPDATE
+       graded_by = IF(grades.score <=> new.score AND grades.remarks <=> new.remarks, grades.graded_by, new.graded_by),
+       score = new.score,
+       remarks = new.remarks`,
     [rows],
     conn,
   );

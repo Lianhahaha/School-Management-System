@@ -311,6 +311,23 @@ describe('assessments and grades', () => {
     assert.equal(roster.body.data.records.find((r) => r.studentId === school.s1.studentId).score, 17);
   });
 
+  it('keeps the original grader on rows a re-saved sheet did not change', async () => {
+    const sheet = (await newAssessment(school.owner, { title: 'Grader check' })).body.data;
+    await putGrades(school.owner, sheet.id, [
+      { studentId: school.s1.studentId, score: 12, remarks: 'fine' },
+      { studentId: school.s2.studentId, score: 14 },
+    ]);
+    // The admin re-sends the whole sheet but only corrects s2's score.
+    const res = await putGrades(school.admin, sheet.id, [
+      { studentId: school.s1.studentId, score: 12, remarks: 'fine' },
+      { studentId: school.s2.studentId, score: 15 },
+    ]);
+    const graderOf = (studentId) => res.body.data.records.find((r) => r.studentId === studentId).gradedBy.id;
+    assert.equal(graderOf(school.s1.studentId), school.owner.id);
+    assert.equal(graderOf(school.s2.studentId), school.admin.id);
+    assert.equal((await api.delete(`/api/v1/assessments/${sheet.id}`).set(as(school.owner))).status, 200);
+  });
+
   it('reserves grade entry for the owning teacher or an admin', async () => {
     const grades = [{ studentId: school.s1.studentId, score: 1 }];
     assert.equal((await putGrades(school.other, quiz.id, grades)).status, 403);
