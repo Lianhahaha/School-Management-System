@@ -22,8 +22,9 @@ const needsToggle = (body) => body.length > CLAMP_CHARACTERS || body.split('\n')
  * @param {object} props.announcement list item (`Announcement`) or dashboard item (`AnnouncementBrief`)
  * @param {import('react').ReactNode} [props.actions] right-aligned buttons
  * @param {boolean} [props.bare] drop the border and padding, for use inside another card
+ * @param {boolean} [props.isNew] published since the user last opened the announcements
  */
-export function AnnouncementCard({ announcement, actions, bare = false }) {
+export function AnnouncementCard({ announcement, actions, bare = false, isNew = false }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { title, body, audience, className, author, publishedAt, expiresAt, status } = announcement;
   const isScheduled = status === 'scheduled';
@@ -34,6 +35,7 @@ export function AnnouncementCard({ announcement, actions, bare = false }) {
         <div className="min-w-0">
           <h3 className="text-base font-semibold break-words text-gray-900">{title}</h3>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            {isNew && <Badge tone="blue">New</Badge>}
             <AudienceBadge audience={audience} />
             {className && <Badge tone="gray">{className}</Badge>}
             {status && status !== 'active' && <AnnouncementStatusBadge status={status} />}

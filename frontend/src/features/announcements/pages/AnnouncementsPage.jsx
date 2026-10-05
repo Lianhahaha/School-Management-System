@@ -19,7 +19,7 @@ import { useAuth } from '../../auth/hooks';
 import { ClassSelect } from '../../classes/components/ClassSelect';
 import { AnnouncementFormModal } from '../components/AnnouncementFormModal';
 import { AnnouncementList } from '../components/AnnouncementList';
-import { useAnnouncements, useDeleteAnnouncement } from '../hooks';
+import { useAnnouncements, useDeleteAnnouncement, useNewSinceLastVisit } from '../hooks';
 
 const ADMIN_FILTERS = ['status', 'audience', 'classId'];
 const TEACHER_FILTERS = ['classId', 'authorId'];
@@ -50,6 +50,7 @@ export default function AnnouncementsPage() {
   const isAdmin = role === 'admin';
   const list = useListParams({ filters: isAdmin ? ADMIN_FILTERS : TEACHER_FILTERS });
   const { data, error, isPending, isFetching, refetch } = useAnnouncements(list.apiParams);
+  const isNew = useNewSinceLastVisit();
   const deleteAnnouncement = useDeleteAnnouncement();
   const confirm = useConfirm();
   // undefined = closed, null = creating, an announcement = editing it
@@ -127,7 +128,7 @@ export default function AnnouncementsPage() {
         className={cx('transition-opacity', showsFetching(isFetching) && 'opacity-60')}
         aria-busy={showsFetching(isFetching)}
       >
-        <AnnouncementList announcements={data.items} renderActions={renderActions} />
+        <AnnouncementList announcements={data.items} renderActions={renderActions} isNew={isNew} />
         <Pagination meta={data.meta} onPageChange={list.setPage} onLimitChange={list.setLimit} />
       </div>
     );

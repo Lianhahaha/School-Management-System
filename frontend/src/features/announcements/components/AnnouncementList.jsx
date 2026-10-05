@@ -6,13 +6,18 @@ import { AnnouncementCard } from './AnnouncementCard';
  * @param {object[]} props.announcements
  * @param {(announcement: object) => import('react').ReactNode} [props.renderActions] buttons per card; return null for none
  * @param {string} [props.label] accessible name of the list
+ * @param {(announcement: object) => boolean} [props.isNew] tags the cards published since the last visit
  */
-export function AnnouncementList({ announcements, renderActions, label = 'Announcements' }) {
+export function AnnouncementList({ announcements, renderActions, label = 'Announcements', isNew }) {
   return (
     <ul aria-label={label} className="space-y-4">
       {announcements.map((announcement) => (
         <li key={announcement.id}>
-          <AnnouncementCard announcement={announcement} actions={renderActions?.(announcement)} />
+          <AnnouncementCard
+            announcement={announcement}
+            actions={renderActions?.(announcement)}
+            isNew={isNew?.(announcement)}
+          />
         </li>
       ))}
     </ul>

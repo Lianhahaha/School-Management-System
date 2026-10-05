@@ -1,3 +1,4 @@
+import { useNewAnnouncements } from '../../features/announcements/hooks';
 import { useAuth } from '../../features/auth/hooks';
 import { useStudents } from '../../features/students/hooks';
 import { countOf } from '../../utils/format';
@@ -15,11 +16,16 @@ export function useNavBadges() {
   const { role } = useAuth();
   const unenrolled = useStudents(UNENROLLED_PARAMS, { enabled: role === 'admin' });
   const unenrolledCount = unenrolled.data?.meta?.total ?? 0;
+  const newAnnouncements = useNewAnnouncements();
 
   return {
     unenrolledStudents: {
       count: unenrolledCount,
       label: `${countOf(unenrolledCount, 'student')} without a class`,
+    },
+    newAnnouncements: {
+      count: newAnnouncements,
+      label: countOf(newAnnouncements, 'new announcement'),
     },
   };
 }
