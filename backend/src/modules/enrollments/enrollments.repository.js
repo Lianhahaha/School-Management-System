@@ -57,12 +57,14 @@ export async function insertEnrollment(studentId, classId, enrolledOn, conn) {
   return result.insertId;
 }
 
+/** Closes the row if it is still active; returns the number of rows closed (0 when it was closed meanwhile). */
 export async function closeEnrollment(id, status, leftOn, conn) {
-  await run(
+  const result = await run(
     `UPDATE enrollments SET status = ?, left_on = ? WHERE id = ? AND status = 'active'`,
     [status, leftOn, id],
     conn,
   );
+  return result.affectedRows;
 }
 
 /** Close whatever active row the student has; returns the number of rows closed (0 or 1). */

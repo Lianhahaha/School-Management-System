@@ -12,6 +12,7 @@ import {
   makeUser,
   resetWorld,
 } from './helpers/harness.js';
+import { openSession, waitForLockWaits } from './helpers/locks.js';
 
 after(closeWorld);
 
@@ -284,6 +285,34 @@ describe('enrollments', () => {
       .set(as(admin))
       .send({ status: 'active' });
     assert.equal(reactivate.status, 400);
+  });
+
+  it('a close that loses the race to another close is a 409, not a 200 with the other status', async () => {
+    const student = await makeUser('student');
+    const enrollment = await enrollStudent(admin, { studentId: student.studentId, classId: classA.id });
+    // A second session closes the row and holds it; our request passes the pre-check, then waits.
+    const session = await openSession();
+    let res;
+    try {
+      await session.query('START TRANSACTION');
+      await session.query("UPDATE enrollments SET status = 'completed', left_on = enrolled_on WHERE id = ?", [
+        enrollment.id,
+      ]);
+      // `.then()` sends the request now (supertest waits for it otherwise), so it can queue behind the lock.
+      const pending = api
+        .patch(`/api/v1/enrollments/${enrollment.id}`)
+        .set(as(admin))
+        .send({ status: 'withdrawn' })
+        .then((response) => response);
+      await waitForLockWaits(1);
+      await session.query('COMMIT');
+      res = await pending;
+    } finally {
+      await session.end();
+    }
+    assert.equal(res.status, 409);
+    assert.equal(res.body.error.details.reason, 'invalid_status_transition');
+    assert.equal(res.body.error.details.from, 'completed');
   });
 
   it('deactivating a student withdraws their active enrollment', async () => {

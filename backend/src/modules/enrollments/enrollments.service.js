@@ -129,15 +129,20 @@ export async function transfer({ studentId, classId }) {
 
 /** Close an active enrollment as `completed` or `withdrawn`. Closed rows cannot be changed. */
 export async function setStatus(id, status) {
-  const row = ApiError.assertFound(await repo.findEnrollmentById(id), 'enrollment', id);
-  if (row.status !== 'active') {
-    throw ApiError.conflict(`enrollment is already ${row.status}`, {
+  const alreadyClosed = (from) =>
+    ApiError.conflict(`enrollment is already ${from}`, {
       reason: 'invalid_status_transition',
-      from: row.status,
+      from,
       to: status,
     });
-  }
-  await withTransaction((conn) => repo.closeEnrollment(id, status, todayYmd(), conn));
+  const row = ApiError.assertFound(await repo.findEnrollmentById(id), 'enrollment', id);
+  if (row.status !== 'active') throw alreadyClosed(row.status);
+  await withTransaction(async (conn) => {
+    // Another request (a transfer, a second admin) may have closed it since the check above.
+    if ((await repo.closeEnrollment(id, status, todayYmd(), conn)) === 0) {
+      throw alreadyClosed((await repo.findEnrollmentById(id, conn)).status);
+    }
+  });
   return toEnrollmentShape(await repo.findEnrollmentById(id));
 }
 
