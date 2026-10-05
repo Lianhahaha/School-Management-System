@@ -23,7 +23,10 @@ const academicYearStart = (academicYear) =>
 
 /** Everything of the page that needs a class; only rendered for an enrolled student. */
 function StudentAttendanceContent({ academicYear }) {
-  const list = useListParams({ filters: ['dateFrom', 'dateTo', 'classSubjectId', 'status'] });
+  const list = useListParams({
+    filters: ['dateFrom', 'dateTo', 'classSubjectId', 'status'],
+    defaultSort: ['attendanceDate', 'desc'],
+  });
   const subjects = useClassSubjectOptions();
 
   const today = todayYmd();

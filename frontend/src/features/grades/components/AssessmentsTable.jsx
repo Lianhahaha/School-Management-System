@@ -84,12 +84,11 @@ export function AssessmentsTable({ sheetPath, canManage, onEdit, onDelete, ...ta
                 onClick={() => onEdit(row)}
               />
               <Button
-                variant="ghost"
+                variant="dangerGhost"
                 size="sm"
                 icon={Trash2}
                 aria-label={`Delete ${row.title}`}
                 onClick={() => onDelete(row)}
-                className="text-red-600 hover:text-red-700"
               />
             </>
           )}

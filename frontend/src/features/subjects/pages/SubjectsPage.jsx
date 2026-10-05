@@ -20,7 +20,7 @@ const STATUS_OPTIONS = [
 ];
 
 export default function SubjectsPage() {
-  const list = useListParams({ filters: ['isActive'] });
+  const list = useListParams({ filters: ['isActive'], defaultSort: ['code', 'asc'] });
   const { data, isPending, isFetching, error, refetch } = useSubjects(list.apiParams);
   const createModal = useDisclosure();
   const [editTarget, setEditTarget] = useState(null);
@@ -102,8 +102,7 @@ export default function SubjectsPage() {
           </Button>
           <Button
             size="sm"
-            variant="ghost"
-            className="text-red-700 hover:bg-red-50"
+            variant="dangerGhost"
             onClick={() => remove(subject)}
             disabled={deleteSubject.isPending}
             aria-label={`Delete ${subject.name}`}

@@ -19,7 +19,7 @@ import { UserStatusButton } from '../components/UserStatusButton';
 import { useUsers } from '../hooks';
 
 export default function UsersListPage() {
-  const list = useListParams({ filters: ['role', 'isActive'] });
+  const list = useListParams({ filters: ['role', 'isActive'], defaultSort: ['lastName', 'asc'] });
   const { data, isPending, isFetching, error, refetch } = useUsers(list.apiParams);
   const createModal = useDisclosure();
   const [editTarget, setEditTarget] = useState(null);

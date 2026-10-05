@@ -18,7 +18,7 @@ import { UserStatusButton } from '../../users/components/UserStatusButton';
 import { useTeachers } from '../hooks';
 
 export default function TeachersListPage() {
-  const list = useListParams({ filters: ['isActive'] });
+  const list = useListParams({ filters: ['isActive'], defaultSort: ['lastName', 'asc'] });
   const { data, isPending, isFetching, error, refetch } = useTeachers(list.apiParams);
   const createModal = useDisclosure();
 

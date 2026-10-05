@@ -46,7 +46,7 @@ export function UserStatusButton({ user }) {
   return (
     <Button
       size="sm"
-      variant="ghost"
+      variant={user.isActive ? 'dangerGhost' : 'ghost'}
       onClick={onClick}
       isLoading={setStatus.isPending}
       disabled={isSelf}

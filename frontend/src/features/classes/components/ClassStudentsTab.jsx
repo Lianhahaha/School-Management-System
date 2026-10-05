@@ -28,7 +28,7 @@ import { UserStatusBadge } from '../../users/components/UserStatusBadge';
  * @param {{ id: number, name: string }} props.schoolClass
  */
 export function ClassStudentsTab({ schoolClass }) {
-  const list = useListParams();
+  const list = useListParams({ defaultSort: ['lastName', 'asc'] });
   const { data, isPending, isFetching, error, refetch } = useStudents({
     ...list.apiParams,
     classId: schoolClass.id,

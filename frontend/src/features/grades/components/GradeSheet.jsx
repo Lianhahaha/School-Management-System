@@ -237,12 +237,11 @@ export function GradeSheet({ roster, canSave, onReload }) {
                     <Td align="right">
                       {canSave && record.gradeId !== null && (
                         <Button
-                          variant="ghost"
+                          variant="dangerGhost"
                           size="sm"
                           icon={Trash2}
                           aria-label={`Clear grade of ${name}`}
                           onClick={() => clearGrade(record, index)}
-                          className="text-red-600 hover:text-red-700"
                         >
                           Clear
                         </Button>

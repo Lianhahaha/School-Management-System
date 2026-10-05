@@ -25,7 +25,10 @@ const ENROLLMENT_OPTIONS = [
 ];
 
 export default function StudentsListPage() {
-  const list = useListParams({ filters: ['classId', 'gradeLevel', 'hasActiveEnrollment', 'isActive'] });
+  const list = useListParams({
+    filters: ['classId', 'gradeLevel', 'hasActiveEnrollment', 'isActive'],
+    defaultSort: ['lastName', 'asc'],
+  });
   const { data, isPending, isFetching, error, refetch } = useStudents(list.apiParams);
   const createModal = useDisclosure();
   const [classTarget, setClassTarget] = useState(null);

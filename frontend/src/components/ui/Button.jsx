@@ -11,6 +11,9 @@ const VARIANTS = {
   ghost:
     'font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 disabled:text-gray-400 disabled:hover:bg-transparent',
   danger: 'bg-red-600 font-semibold text-on-danger hover:bg-red-700 disabled:opacity-50',
+  /** A destructive row action that still sits quietly in a table (Deactivate); it confirms before acting. */
+  dangerGhost:
+    'font-medium text-red-700 hover:bg-red-50 disabled:text-gray-400 disabled:hover:bg-transparent',
 };
 
 // Heights keep touch targets at 36 px or more (44 px for the default size).
@@ -21,7 +24,7 @@ const ICON_ONLY = { sm: 'w-9 px-0', md: 'w-11 px-0', lg: 'w-12 px-0' };
 
 /**
  * @param {object} props
- * @param {'primary'|'secondary'|'ghost'|'danger'} [props.variant]
+ * @param {'primary'|'secondary'|'ghost'|'danger'|'dangerGhost'} [props.variant]
  * @param {'sm'|'md'|'lg'} [props.size]
  * @param {boolean} [props.isLoading] shows a spinner, disables the button and sets aria-busy
  * @param {import('react').ElementType} [props.icon] lucide icon shown before the label

@@ -128,11 +128,11 @@ export function ScheduleSlotModal({ open, onClose, classSubjects, slot = null, p
         <>
           {isEdit && (
             <Button
-              variant="ghost"
+              variant="dangerGhost"
               icon={Trash2}
               onClick={onDelete}
               isLoading={deleteSchedule.isPending}
-              className="mr-auto text-red-700 hover:bg-red-50"
+              className="mr-auto"
             >
               Delete period
             </Button>

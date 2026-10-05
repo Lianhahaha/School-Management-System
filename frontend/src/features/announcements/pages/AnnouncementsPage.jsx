@@ -77,12 +77,11 @@ export default function AnnouncementsPage() {
           aria-label={`Edit ${announcement.title}`}
         />
         <Button
-          variant="ghost"
+          variant="dangerGhost"
           size="sm"
           icon={Trash2}
           onClick={() => onDelete(announcement)}
           aria-label={`Delete ${announcement.title}`}
-          className="text-red-600 hover:bg-red-50"
         />
       </>
     ) : null;

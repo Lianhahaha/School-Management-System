@@ -21,7 +21,10 @@ import { useClasses, useDeleteClass } from '../hooks';
 const YEAR_OPTIONS = academicYearOptions();
 
 export default function ClassesListPage() {
-  const list = useListParams({ filters: ['academicYear', 'gradeLevel'] });
+  const list = useListParams({
+    filters: ['academicYear', 'gradeLevel'],
+    defaultSort: ['academicYear', 'desc'],
+  });
   const { data, isPending, isFetching, error, refetch } = useClasses(list.apiParams);
   const deleteClass = useDeleteClass();
   const confirm = useConfirm();

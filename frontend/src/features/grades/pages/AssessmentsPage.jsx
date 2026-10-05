@@ -23,7 +23,7 @@ import { useAssessments, useDeleteAssessment } from '../hooks';
 export default function AssessmentsPage() {
   const selection = useClassSubjectSelection();
   const { role, classSubjectId, selected, isOwner } = selection;
-  const list = useListParams({ filters: ['term', 'type'] });
+  const list = useListParams({ filters: ['term', 'type'], defaultSort: ['assessedOn', 'desc'] });
   const confirm = useConfirm();
   const modal = useDisclosure();
   const [editing, setEditing] = useState(null);

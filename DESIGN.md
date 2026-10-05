@@ -113,6 +113,7 @@ typography:
     fontSize: "0.6875rem"
     fontWeight: 500
 rounded:
+  tag: "6px"
   control: "14px"
   tile: "20px"
   card: "22px"
@@ -187,10 +188,10 @@ components:
     backgroundColor: "{colors.gray-200}"
   badge:
     backgroundColor: "{colors.gray-100}"
-    textColor: "{colors.gray-700}"
+    textColor: "{colors.gray-900}"
     typography: "{typography.label}"
-    rounded: "{rounded.full}"
-    padding: "2px 10px"
+    rounded: "{rounded.tag}"
+    padding: "2px 8px"
   live-tag:
     backgroundColor: "{colors.accent}"
     textColor: "{colors.accent-ink}"
@@ -258,7 +259,7 @@ The system deliberately avoids the stock admin template: no bordered cards, no w
 - Grey canvas, borderless white sheets, depth from tone instead of lines.
 - One yellow accent, reserved for the primary action and for "you are here / now".
 - A drawn highlighter stroke behind the current navigation label.
-- Status as a neutral pill with a coloured dot; the text carries the meaning.
+- Status as a small squared tag in three weights (filled, outline, tinted); the text carries the meaning, never a dot.
 - Pills everywhere: buttons, nav items, filters, search, tabs, figure rows.
 - One typeface (Onest, self-hosted), tabular figures for every number column.
 - Two themes driven by one attribute; components never branch on the theme.
@@ -276,19 +277,19 @@ A calm neutral ramp with a hint of warmth, one saturated yellow, and five muted 
 - **Paper Grey** (`canvas`): the page itself, the desktop sidebar and the translucent sticky top bar. It also sets the browser `theme-color`.
 - **Sheet White** (`surface`): every content sheet, dialogs, menus, the phone tab bar, inputs, and the knob of the theme switch.
 - **Pill Grey** (`gray-100`): secondary buttons, figure rows, segmented tab tracks, neutral status pills, period rows, skeletons, close buttons. `gray-200` is its hover and the theme switch track.
-- **Rule Grey** (`gray-200` / `gray-300`): table row dividers (`gray-200`) and input borders and quiet link underlines (`gray-300`). `gray-400` is the hovered input border and the neutral status dot.
+- **Rule Grey** (`gray-200` / `gray-300`): table row dividers (`gray-200`) and input borders and quiet link underlines (`gray-300`). `gray-400` is the hovered input border.
 - **Muted Ink** (`gray-500` / `gray-600` / `gray-700`): placeholders, table headers, totals and hints (`gray-500`); descriptions and idle nav labels (`gray-600`); table cells and secondary text (`gray-700`).
 - **Ink** (`ink`): headings, primary text, the focus ring, the brand tile, the focused input border.
 
 ### Status tones
-Five families, each with a soft background (`-50`), a solid mark (`-600`, or `-500` for amber dots) and a text colour (`-700`): **Leaf** green (present, active, success), **Ochre** amber (late, withdrawn, warning), **Brick** red (absent, error, destructive), **Slate Blue** blue (excused, completed, scheduled, info) and **Lilac** violet (administrator role). Grey is the sixth, neutral tone. Dots use the solid mark; alerts, toasts and tinted icon chips use the soft background with the text colour.
+Five families, each with a soft background (`-50`), a solid mark (`-600`) and a text colour (`-700`): **Leaf** green (present, active, success), **Ochre** amber (late, withdrawn, warning), **Brick** red (absent, error, destructive), **Slate Blue** blue (excused, completed, scheduled, info) and **Lilac** violet (administrator role). Grey is the sixth, neutral tone. Alerts, toasts, tinted icon chips and attention tags use the soft background with the text colour.
 
 ### Named Rules
 **The One Yellow Rule.** Yellow means "act here" or "this is now". A screen carries one yellow button, or very few; the yellow tag is only for the current period or today's column, never for a plain status.
 
 **The Ink-on-Yellow Rule.** Anything on yellow is set in `accent-ink`, in both themes, so the marked label always reads.
 
-**The Dot, Not Fill Rule.** A status is a neutral grey pill with a 6px coloured dot. The label text carries the meaning and the dot only reinforces it, so a table full of statuses stays calm.
+**The Three Weights Rule.** A status is a 6px-radius tag with a hairline inset edge, never a pill and never a dot. Filled grey is the normal on-state or a category (Active, Teacher, a class); a grey outline is off or secondary (Disabled, Not enrolled, Quiz); only attention states (amber, red) take colour, as the soft background with the text colour. A table full of statuses stays calm and the exceptions stand out.
 
 **The Graphite, Not Black Rule.** Dark theme surfaces are graphite (`canvas-dark`, `surface-dark`), never pure black; sheets lose their shadow and separate by tone alone.
 
@@ -362,7 +363,7 @@ Fully round, confident pills with a quick press response.
 - **States:** background and colour transition over 150ms; pressing scales to 0.97. Disabled buttons keep their shape and fade (50% opacity on filled variants, muted text on the others) and do not scale. Loading swaps the icon for a spinner, disables the button and sets `aria-busy`.
 
 ### Status pills and live tags
-- **Status pill:** Pill Grey background, `gray-700` 0.75rem weight-500 text, 10px side padding, a 6px leading dot in the tone's solid mark.
+- **Status tag:** 6px radius, 1px inset ring, 0.75rem weight-500 text, 8px side padding. Filled: `gray-100` with `gray-900` text and a `gray-200` ring. Outline: no fill, `gray-600` text, `gray-300` ring. Attention: the tone's `-50` background and `-700` text, ring at 25% of the text colour.
 - **Live tag:** a yellow pill with Pencil Black 0.75rem weight-600 text ("Now", "Today"). Only for the current period or today's column.
 
 ### Sheets / Containers
@@ -421,7 +422,7 @@ Motion is short and functional, on one curve (`cubic-bezier(0.22, 1, 0.36, 1)`):
 - **Do** mark the current place or the current moment with yellow (the highlighter stroke on the nav label, the yellow tab chip, the "Now" and "Today" tags) and nothing else.
 - **Do** set every label on yellow in `accent-ink`, in light and dark alike.
 - **Do** put content in borderless white sheets (22px corners) on the grey page and nest grey pill rows inside them.
-- **Do** show a status as a neutral pill with a coloured dot and a word that carries the meaning.
+- **Do** show a status as a squared tag whose word carries the meaning; colour is reserved for states that need attention.
 - **Do** use tabular figures for times, right-aligned numbers and running totals, and put a list's size beside its title.
 - **Do** build colours only from the theme variables so both themes stay in step.
 - **Do** keep controls fully round, inputs and alerts at 14px, tiles at 20px, sheets at 22px and floating panels at 28px.
@@ -431,7 +432,7 @@ Motion is short and functional, on one curve (`cubic-bezier(0.22, 1, 0.36, 1)`):
 - **Don't** put white text on yellow.
 - **Don't** add borders or outlines to sheets, or give a sheet the pop shadow.
 - **Don't** build dashboards from rows of number tiles; use figure rows inside a sheet.
-- **Don't** fill status pills with saturated colour; the tone shows only as a dot (or as the soft background of an alert or icon chip).
+- **Don't** use coloured dots or rounded-full pills for status, and don't colour the normal state (Active, Present) green.
 - **Don't** make a blue (or any non-yellow) primary button.
 - **Don't** use pure black in the dark theme; it is graphite.
 - **Don't** add a second typeface or uppercase tracked-out labels.

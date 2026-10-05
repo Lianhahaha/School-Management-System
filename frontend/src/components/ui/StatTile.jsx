@@ -1,6 +1,6 @@
 import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router';
-import { TONE_DOT_CLASSES, TONE_SOFT_CLASSES } from '../../constants/ui';
+import { TONE_SOFT_CLASSES } from '../../constants/ui';
 import { cx } from '../../utils/cx';
 
 /**
@@ -13,7 +13,7 @@ import { cx } from '../../utils/cx';
  * @param {string} [props.hint] small text under the label
  * @param {import('react').ElementType} [props.icon] lucide icon
  * @param {'gray'|'green'|'amber'|'red'|'blue'|'violet'} [props.tone] only when the figure carries a state
- *   (e.g. amber while students need a class): it tints the icon chip, or adds a dot when there is no icon
+ *   (e.g. amber while students need a class): it tints the icon chip
  * @param {string} [props.to] route to open on click
  */
 export function StatTile({ label, value, hint, icon: Icon, tone, to }) {
@@ -32,10 +32,7 @@ export function StatTile({ label, value, hint, icon: Icon, tone, to }) {
         </span>
       )}
       <span className={cx('min-w-0 flex-1', !Icon && 'pl-2')}>
-        <span className="flex items-center gap-2 text-sm leading-snug font-medium text-gray-900 sm:text-[0.9375rem]">
-          {tone && !Icon && (
-            <span aria-hidden="true" className={cx('size-2 shrink-0 rounded-full', TONE_DOT_CLASSES[tone])} />
-          )}
+        <span className="block text-sm leading-snug font-medium text-gray-900 sm:text-[0.9375rem]">
           {label}
         </span>
         {hint && <span className="hidden truncate text-xs text-gray-500 sm:block">{hint}</span>}

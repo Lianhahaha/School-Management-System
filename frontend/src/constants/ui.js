@@ -25,19 +25,10 @@ const optionsOf = (values, labels) => values.map((value) => ({ value, label: lab
 export const APP_NAME = 'Skole';
 
 // ---------------------------------------------------------------------------
-// Tones: the status colour families (gray, green, amber, red, blue, violet). A status is a coloured
-// dot on a neutral pill (Badge); alerts, icon chips and timetable slots use the soft form. Both
-// follow the light and dark themes.
+// Tones: the status colour families (gray, green, amber, red, blue, violet). Badge turns a tone
+// into one of three weights (filled, outline, tinted); alerts, icon chips and timetable slots use
+// the soft form below. Both follow the light and dark themes.
 // ---------------------------------------------------------------------------
-
-export const TONE_DOT_CLASSES = Object.freeze({
-  gray: 'bg-gray-400',
-  green: 'bg-green-600',
-  amber: 'bg-amber-500',
-  red: 'bg-red-600',
-  blue: 'bg-blue-600',
-  violet: 'bg-violet-600',
-});
 
 export const TONE_SOFT_CLASSES = Object.freeze({
   gray: 'bg-gray-100 text-gray-700',

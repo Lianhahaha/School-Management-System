@@ -21,20 +21,22 @@ function toPositiveInt(raw, fallback) {
  *   <DataTable sort={{ sortBy: list.params.sortBy, sortOrder: list.params.sortOrder }} onSortChange={list.setSort} />
  *   <Pagination meta={data?.meta} onPageChange={list.setPage} onLimitChange={list.setLimit} />
  *
- * Every setter except `setPage` also returns to page 1. `sortBy` and `sortOrder` are null until the
- * user sorts, so the backend's default order applies.
+ * Every setter except `setPage` also returns to page 1. Until the user sorts, no sort is sent and the
+ * backend's default order applies; `defaultSort` names that order (a column's `sortKey` and its
+ * direction) so the header can show it, e.g. `defaultSort: ['lastName', 'asc']`.
  *
- * @param {{ filters?: string[] }} [options]
+ * @param {{ filters?: string[], defaultSort?: [string, 'asc'|'desc'] }} [options]
  */
-export function useListParams({ filters = [] } = {}) {
+export function useListParams({ filters = [], defaultSort } = {}) {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const params = {
     page: toPositiveInt(searchParams.get('page'), PAGINATION.DEFAULT_PAGE),
     limit: Math.min(toPositiveInt(searchParams.get('limit'), PAGINATION.DEFAULT_LIMIT), PAGINATION.MAX_LIMIT),
     search: searchParams.get('search') ?? '',
-    sortBy: searchParams.get('sortBy'),
-    sortOrder: searchParams.get('sortOrder'),
+    sortBy: searchParams.get('sortBy') ?? defaultSort?.[0] ?? null,
+    sortOrder:
+      searchParams.get('sortOrder') ?? (searchParams.get('sortBy') ? null : (defaultSort?.[1] ?? null)),
     ...Object.fromEntries(filters.map((filter) => [filter, searchParams.get(filter) ?? ''])),
   };
 
@@ -57,7 +59,11 @@ export function useListParams({ filters = [] } = {}) {
     /** Current values for rendering controls (filters are '' when unset). */
     params,
     /** `params` without empty values: pass it to the feature hook (query key and request). */
-    apiParams: toApiParams(params),
+    apiParams: toApiParams({
+      ...params,
+      sortBy: searchParams.get('sortBy'),
+      sortOrder: searchParams.get('sortOrder'),
+    }),
     /** True when the search box or any declared filter has a value. */
     hasActiveFilters: params.search !== '' || filters.some((filter) => params[filter] !== ''),
     setPage: (page) => update({ page }),
