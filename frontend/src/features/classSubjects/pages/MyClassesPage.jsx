@@ -7,6 +7,7 @@ import { SearchInput } from '../../../components/ui/SearchInput';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { PAGINATION } from '../../../constants/shared';
 import { currentAcademicYear } from '../../../utils/date';
+import { groupBy } from '../../../utils/grades';
 import { nextPeriodOf } from '../../../utils/schedule';
 import { useAuth } from '../../auth/hooks';
 import { useClasses } from '../../classes/hooks';
@@ -43,7 +44,7 @@ export default function MyClassesPage() {
     const subjects = classSubjects.data?.items ?? [];
     const term = search.trim().toLowerCase();
     const matches = (text) => text.toLowerCase().includes(term);
-    const slotsBySubject = Map.groupBy(schedules.data?.items ?? [], (slot) => slot.classSubjectId);
+    const slotsBySubject = groupBy(schedules.data?.items ?? [], (slot) => slot.classSubjectId);
     return {
       teaching: subjects
         .filter((subject) => subject.teacherId === me.teacherId)
