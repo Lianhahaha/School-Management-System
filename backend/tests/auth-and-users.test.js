@@ -46,6 +46,16 @@ describe('health, 404 and authentication middleware', () => {
     assert.ok(res.body.paths['/users/{id}'].delete);
   });
 
+  it('answers 400, not 500, for a body the parser refuses (unsupported charset)', async () => {
+    const res = await api
+      .post('/api/v1/auth/register')
+      .set('Content-Type', 'application/json; charset=iso-8859-1')
+      .send('{"email":"x@school.test"}');
+    assert.equal(res.status, 400);
+    assert.equal(res.body.error.code, 'VALIDATION_ERROR');
+    assert.equal(res.body.error.details.reason, 'charset.unsupported');
+  });
+
   it('answers 404 for an unknown route whether or not a token is sent', async () => {
     const outside = await api.get('/nowhere');
     assert.equal(outside.status, 404);
@@ -152,14 +162,12 @@ describe('registration', () => {
   });
 
   it('capitalises a name typed all in lower case and keeps any other casing', async () => {
-    const res = await api
-      .post('/api/v1/auth/register')
-      .send({
-        ...body,
-        email: 'lower.case@school.test',
-        firstName: "mary-jo o'brien",
-        lastName: 'dela Cruz',
-      });
+    const res = await api.post('/api/v1/auth/register').send({
+      ...body,
+      email: 'lower.case@school.test',
+      firstName: "mary-jo o'brien",
+      lastName: 'dela Cruz',
+    });
     assert.equal(res.status, 201);
     assert.equal(res.body.data.firstName, "Mary-Jo O'Brien");
     assert.equal(res.body.data.lastName, 'dela Cruz');

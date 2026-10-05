@@ -14,6 +14,13 @@ import { firebaseErrorMap, isFirebaseError } from '../utils/firebaseErrorMap.js'
 import { logger } from '../utils/logger.js';
 import { isMysqlError, mysqlErrorMap } from '../utils/mysqlErrorMap.js';
 
+/** body-parser marks its errors with a string `type` and a 4xx `status`. */
+const isBodyParserClientError = (error) =>
+  typeof error?.type === 'string' &&
+  Number.isInteger(error.status) &&
+  error.status >= 400 &&
+  error.status < 500;
+
 export function toApiError(error) {
   if (error instanceof ApiError) return error;
   if (error instanceof ZodError) return ApiError.validation(error, undefined);
@@ -22,6 +29,11 @@ export function toApiError(error) {
   }
   if (error?.type === 'entity.too.large') {
     return ApiError.validation('payload exceeds the 1mb limit', 'body', { reason: 'payload_too_large' });
+  }
+  // Any other body-parser refusal (unsupported charset or encoding, aborted or mis-sized request) is the
+  // client's request, not a server failure.
+  if (isBodyParserClientError(error)) {
+    return ApiError.validation(error.message, 'body', { reason: error.type });
   }
   if (isFirebaseError(error)) return firebaseErrorMap(error);
   if (isMysqlError(error)) return mysqlErrorMap(error);
