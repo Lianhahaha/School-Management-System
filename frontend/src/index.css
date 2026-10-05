@@ -79,6 +79,16 @@
   --violet-700: #6340a8;
   --on-danger: #ffffff;
 
+  /*
+   * Hard status colours: solid badge fills (white or ink text, 4.5:1 or more) and the cherry red of a
+   * destructive text action. Firmer than the soft families above, for what must be seen at a glance.
+   */
+  --solid-green: #168543;
+  --solid-amber: #f0a500;
+  --solid-red: #d0192f;
+  --cherry: #d0192f;
+  --cherry-hover: #a3122a;
+
   /* A well: a row set inside a sheet (dashboard empty states). Sunken on light paper. */
   --well: var(--n-50);
   --well-chip: var(--surface);
@@ -132,6 +142,12 @@
   --violet-600: #a98bf0;
   --violet-700: #c6b2f6;
   --on-danger: #2a0a0c;
+
+  --solid-green: #168543;
+  --solid-amber: #f0a500;
+  --solid-red: #d0192f;
+  --cherry: #ff4560;
+  --cherry-hover: #ff7388;
 
   /* Wells are lifted above the sheet in dark, with a hairline, so they do not merge into it. */
   --well: #33343a;
@@ -191,6 +207,11 @@
   --color-violet-600: var(--violet-600);
   --color-violet-700: var(--violet-700);
   --color-on-danger: var(--on-danger);
+  --color-solid-green: var(--solid-green);
+  --color-solid-amber: var(--solid-amber);
+  --color-solid-red: var(--solid-red);
+  --color-cherry: var(--cherry);
+  --color-cherry-hover: var(--cherry-hover);
   --color-well: var(--well);
   --color-well-chip: var(--well-chip);
   --color-well-edge: var(--well-edge);
