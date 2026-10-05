@@ -163,6 +163,22 @@ describe('attendance', () => {
         .set(as(school.admin));
       assert.equal(none.body.data.total, 0);
       assert.equal(none.body.data.rate, null);
+
+      // Per week: Monday-based, oldest first, the same 4 marks in total.
+      const weekly = await api
+        .get(`/api/v1/attendance/summary?classSubjectId=${school.csA.id}&groupBy=week`)
+        .set(as(school.owner));
+      assert.equal(weekly.status, 200);
+      const mondayOf = (ymd) => addDaysYmd(ymd, -((new Date(`${ymd}T00:00:00Z`).getUTCDay() + 6) % 7));
+      assert.deepEqual(
+        weekly.body.data.map((week) => week.weekStart),
+        [...new Set([mondayOf(yesterday), mondayOf(today)])],
+      );
+      for (const week of weekly.body.data) assert.equal(week.label, week.weekStart);
+      assert.equal(
+        weekly.body.data.reduce((sum, week) => sum + week.total, 0),
+        4,
+      );
     },
   );
 

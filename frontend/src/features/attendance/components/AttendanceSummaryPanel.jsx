@@ -8,6 +8,7 @@ import { ATTENDANCE_STATUS_LABELS } from '../../../constants/ui';
 import { ATTENDANCE_STATUSES } from '../../../constants/shared';
 import { countOf, formatPercent } from '../../../utils/format';
 import { useAttendanceSummary } from '../hooks';
+import { AttendanceTrendCard } from './AttendanceTrendCard';
 
 const STATUS_TILE_TONES = { present: 'green', absent: 'red', late: 'amber', excused: 'blue' };
 
@@ -22,7 +23,7 @@ const SUBJECT_COLUMNS = [
 
 /**
  * Attendance of one student: a tile per status with its share, the overall rate
- * ((present + late) / total) and a per-subject breakdown. Fetches its own data, so the admin's
+ * ((present + late) / total), the rate week by week and a per-subject breakdown. Fetches its own data, so the admin's
  * student page and the student's own pages use the same panel.
  *
  * @param {object} props
@@ -72,6 +73,7 @@ export function AttendanceSummaryPanel({ studentId, dateFrom, dateTo, enabled = 
           />
         ))}
       </div>
+      <AttendanceTrendCard filters={filters} enabled={enabled} />
       <Card title="By subject" padded={false}>
         <DataTable
           label="Attendance by subject"

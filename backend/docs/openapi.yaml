@@ -1233,8 +1233,9 @@ paths:
         Roles: any authenticated user (teachers: class-subjects they can see; students: their own records only).
 
         Counts per status and the attendance rate, `(present + late) / total` with 4 decimals, or `null` when
-        nothing is marked. With `groupBy=none` (default) `data` is one object; with `student` or
-        `classSubject` it is an array with one row per group, each with a `label`.
+        nothing is marked. With `groupBy=none` (default) `data` is one object; with `student`,
+        `classSubject` or `week` it is an array with one row per group, each with a `label`. Weeks start on
+        Monday (`weekStart`, also the label) and come oldest first; weeks without marks are left out.
       parameters:
         - $ref: '#/components/parameters/StudentIdFilter'
         - $ref: '#/components/parameters/ClassSubjectIdFilter'
@@ -1246,7 +1247,7 @@ paths:
           description: Grouping of the summary.
           schema:
             type: string
-            enum: [none, student, classSubject]
+            enum: [none, student, classSubject, week]
             default: none
       responses:
         '200': { $ref: '#/components/responses/AttendanceSummaryResponse' }
@@ -2623,9 +2624,11 @@ components:
               $ref: '#/components/schemas/Id'
             classSubjectId:
               $ref: '#/components/schemas/Id'
+            weekStart:
+              $ref: '#/components/schemas/DateYmd'
             label:
               type: string
-              description: Student name, or class and subject name.
+              description: Student name, class and subject name, or the week's Monday.
               example: Grade 7 - A - Biology
     # --- Assessments and grades ---
     Assessment:

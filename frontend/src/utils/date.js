@@ -8,6 +8,7 @@ import { ACADEMIC_YEAR_START_MONTH, jsDayToIsoDay } from '../constants/shared';
 const EMPTY = '—';
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+const shortDateFormatter = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
 const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
   day: '2-digit',
   month: 'short',
@@ -34,6 +35,13 @@ export function formatDate(ymd) {
   if (!ymd) return EMPTY;
   const [year, month, day] = ymd.split('-').map(Number);
   return dateFormatter.format(new Date(year, month - 1, day));
+}
+
+/** '2025-03-14' -> '14 Mar' (locale dependent), for chart labels where the year is known. */
+export function formatShortDate(ymd) {
+  if (!ymd) return EMPTY;
+  const [year, month, day] = ymd.split('-').map(Number);
+  return shortDateFormatter.format(new Date(year, month - 1, day));
 }
 
 /** ISO timestamp -> '14 Mar 2025, 09:30' in the viewer's time zone. */
@@ -68,6 +76,11 @@ export function currentAcademicYear() {
   const [year, month] = todayYmd().split('-').map(Number);
   const startYear = month >= ACADEMIC_YEAR_START_MONTH ? year : year - 1;
   return `${startYear}-${startYear + 1}`;
+}
+
+/** First day of an academic year label: '2026-2027' -> '2026-08-01' (ACADEMIC_YEAR_START_MONTH). */
+export function academicYearStart(label) {
+  return `${label.slice(0, 4)}-${pad(ACADEMIC_YEAR_START_MONTH)}-01`;
 }
 
 /** True when the ISO timestamp lies within the last `days` days. */

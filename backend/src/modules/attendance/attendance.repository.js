@@ -54,7 +54,10 @@ const COUNTS = `COUNT(*) AS total,
   COALESCE(SUM(a.status = 'present'), 0) AS present, COALESCE(SUM(a.status = 'absent'), 0) AS absent,
   COALESCE(SUM(a.status = 'late'), 0) AS late, COALESCE(SUM(a.status = 'excused'), 0) AS excused`;
 
-/** Status counts, optionally grouped per student or per class-subject. */
+/** Monday of the attendance date's week, as 'YYYY-MM-DD' (WEEKDAY: 0 = Monday). */
+const WEEK_START_SQL = `DATE_FORMAT(DATE_SUB(a.attendance_date, INTERVAL WEEKDAY(a.attendance_date) DAY), '%Y-%m-%d')`;
+
+/** Status counts, optionally grouped per student, per class-subject or per week (Monday first, oldest first). */
 export function summarizeAttendance({ groupBy = 'none', ...filters }, scope) {
   const where = filtersToWhere(filters, scope);
   const base = `FROM attendance a
@@ -66,6 +69,12 @@ export function summarizeAttendance({ groupBy = 'none', ...filters }, scope) {
     return query(
       `SELECT s.id AS student_id, CONCAT(u.first_name, ' ', u.last_name) AS label, ${COUNTS} ${base}
         GROUP BY s.id, u.first_name, u.last_name ORDER BY u.last_name, u.first_name`,
+      where.params,
+    );
+  }
+  if (groupBy === 'week') {
+    return query(
+      `SELECT ${WEEK_START_SQL} AS week_start, ${COUNTS} ${base} GROUP BY week_start ORDER BY week_start`,
       where.params,
     );
   }

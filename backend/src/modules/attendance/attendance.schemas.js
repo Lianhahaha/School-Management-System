@@ -36,7 +36,7 @@ export const summaryQuery = z
     classId: id.optional(),
     dateFrom: dateStr.optional(),
     dateTo: dateStr.optional(),
-    groupBy: z.enum(['none', 'student', 'classSubject']).default('none'),
+    groupBy: z.enum(['none', 'student', 'classSubject', 'week']).default('none'),
   })
   .refine(...dateRangeRefinement);
 

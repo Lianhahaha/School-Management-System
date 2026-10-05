@@ -7,11 +7,10 @@ import { Input } from '../../../components/ui/Input';
 import { OptionSelect } from '../../../components/ui/OptionSelect';
 import { Pagination } from '../../../components/ui/Pagination';
 import { Select } from '../../../components/ui/Select';
-import { ACADEMIC_YEAR_START_MONTH } from '../../../constants/shared';
 import { ATTENDANCE_STATUS_OPTIONS } from '../../../constants/ui';
 import { useListParams } from '../../../hooks/useListParams';
 import { fetchAllPages } from '../../../lib/csv';
-import { todayYmd } from '../../../utils/date';
+import { academicYearStart, todayYmd } from '../../../utils/date';
 import { useAuth } from '../../auth/hooks';
 import { useClassSubjectOptions } from '../../classSubjects/hooks';
 import { NotEnrolledState } from '../../enrollments/components/NotEnrolledState';
@@ -20,10 +19,6 @@ import { AttendanceRecordsTable } from '../components/AttendanceRecordsTable';
 import { AttendanceSummaryPanel } from '../components/AttendanceSummaryPanel';
 import { ATTENDANCE_CSV_COLUMNS } from '../csv';
 import { useAttendance } from '../hooks';
-
-/** First day of an academic year such as '2026-2027' ('2026-08-01'). */
-const academicYearStart = (academicYear) =>
-  `${academicYear.slice(0, 4)}-${String(ACADEMIC_YEAR_START_MONTH).padStart(2, '0')}-01`;
 
 /** Everything of the page that needs a class; only rendered for an enrolled student. */
 function StudentAttendanceContent({ academicYear }) {

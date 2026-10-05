@@ -3,6 +3,7 @@ import { RefreshCw, Save, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { Alert } from '../../../components/ui/Alert';
+import { BarChart } from '../../../components/ui/BarChart';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
@@ -32,6 +33,20 @@ function summarize(records) {
     highest: Math.max(...percentages) / 100,
     lowest: Math.min(...percentages) / 100,
   };
+}
+
+/** Saved results per 10-point band of the percentage (90 to 100 shares the top band). */
+function scoreBands(records) {
+  const bands = Array.from({ length: 10 }, (_, index) => ({
+    label: String(index * 10),
+    longLabel: index === 9 ? '90 to 100%' : `${index * 10} to ${index * 10 + 9}%`,
+    value: 0,
+  }));
+  for (const record of records) {
+    if (record.gradeId === null) continue;
+    bands[Math.min(9, Math.floor(record.percentage / 10))].value += 1;
+  }
+  return bands;
 }
 
 /** Enter moves to the next score field instead of submitting the form. */
@@ -280,6 +295,15 @@ export function GradeSheet({ roster, canSave, onReload }) {
           <Stat label="Highest" value={formatPercent(stats.highest)} />
           <Stat label="Lowest" value={formatPercent(stats.lowest)} />
         </dl>
+        {stats.graded > 0 && (
+          <div className="border-t border-gray-100 px-5 py-4">
+            <h3 className="text-sm font-semibold text-gray-900">Score spread</h3>
+            <p className="mt-0.5 mb-3 text-xs text-gray-600">
+              Students per band of 10 percentage points (the 90 band includes 100).
+            </p>
+            <BarChart bars={scoreBands(records)} label={`Score spread for ${assessment.title}`} />
+          </div>
+        )}
       </Card>
     </form>
   );

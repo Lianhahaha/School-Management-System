@@ -12,6 +12,7 @@ import { groupBy } from '../../../utils/grades';
 import { fullName } from '../../../utils/names';
 import { useAssessments, useGrades } from '../hooks';
 import { GradeSummaryPanel } from './GradeSummaryPanel';
+import { GradeTrendCard } from './GradeTrendCard';
 
 const MAX_ROWS = 100;
 
@@ -89,6 +90,7 @@ export function GradesBySubject({ term }) {
   return (
     <div className="space-y-6">
       <GradeSummaryPanel studentId="me" term={term} />
+      <GradeTrendCard term={term} />
       {groups.map(([classSubjectId, rows]) => {
         const next = nextUp(classSubjectId);
         const { subjectName, className } = rows[0].assessment;

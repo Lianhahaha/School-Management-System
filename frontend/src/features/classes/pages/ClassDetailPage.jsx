@@ -10,6 +10,7 @@ import { useConfirm } from '../../../hooks/useConfirm';
 import { useDisclosure } from '../../../hooks/useDisclosure';
 import { countOf } from '../../../utils/format';
 import { fullName } from '../../../utils/names';
+import { AttendanceTrendCard } from '../../attendance/components/AttendanceTrendCard';
 import { ClassFormModal } from '../components/ClassFormModal';
 import { ClassScheduleTab } from '../components/ClassScheduleTab';
 import { ClassStudentsTab } from '../components/ClassStudentsTab';
@@ -84,6 +85,16 @@ export default function ClassDetailPage() {
           },
           { id: 'students', label: 'Students', content: <ClassStudentsTab schoolClass={schoolClass} /> },
           { id: 'schedule', label: 'Schedule', content: <ClassScheduleTab schoolClass={schoolClass} /> },
+          {
+            id: 'attendance',
+            label: 'Attendance',
+            content: (
+              <AttendanceTrendCard
+                filters={{ classId: schoolClass.id }}
+                description={`Every lesson of ${schoolClass.name}, ${schoolClass.academicYear}`}
+              />
+            ),
+          },
         ]}
       />
 

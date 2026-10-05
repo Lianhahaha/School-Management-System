@@ -7,6 +7,7 @@ import { Button } from '../../../components/ui/Button';
 import { useDisclosure } from '../../../hooks/useDisclosure';
 import { todayYmd } from '../../../utils/date';
 import { fullName } from '../../../utils/names';
+import { AttendanceTrendCard } from '../../attendance/components/AttendanceTrendCard';
 import { useAuth } from '../../auth/hooks';
 import { AssessmentFormModal } from '../../grades/components/AssessmentFormModal';
 import { ClassSubjectRoster } from '../components/ClassSubjectRoster';
@@ -71,6 +72,10 @@ export default function ClassSubjectPage() {
 
       <div className="space-y-6">
         <SubjectSlotsCard classSubjectId={classSubject.id} />
+        <AttendanceTrendCard
+          filters={{ classSubjectId: classSubject.id }}
+          description={`${lessonLabel}, ${classSubject.academicYear}`}
+        />
         <section aria-labelledby="roster-heading">
           <h2 id="roster-heading" className="mb-3 text-base font-semibold text-gray-900">
             Roster

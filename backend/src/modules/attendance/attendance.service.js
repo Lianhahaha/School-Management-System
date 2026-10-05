@@ -46,6 +46,7 @@ const toSummaryRow = (row) => ({
   ...(row.studentId !== undefined && { studentId: row.studentId }),
   ...(row.classSubjectId !== undefined && { classSubjectId: row.classSubjectId }),
   ...(row.label !== undefined && { label: row.label }),
+  ...(row.weekStart !== undefined && { weekStart: row.weekStart, label: row.weekStart }),
   total: row.total,
   present: row.present,
   absent: row.absent,
