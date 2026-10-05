@@ -4,6 +4,7 @@ import { academicYearOf, isAfterToday } from '../../utils/dates.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import { classSubjectRef, personRef, ratio } from '../../utils/shapes.js';
 import * as access from '../access/access.service.js';
+import { assertSchoolDay, holidayOn } from '../calendar/calendar.service.js';
 import { getClassSubjectRefUnscoped } from '../classSubjects/classSubjects.service.js';
 import * as repo from './attendance.repository.js';
 
@@ -75,15 +76,18 @@ export async function markedClassSubjectIdsUnscoped(classSubjectIds, date) {
   return new Set(await repo.findMarkedClassSubjectIds(classSubjectIds, date));
 }
 
+/** The sheet of one lesson and date; `holiday` names the school holiday on that date (no marking), or is null. */
 async function buildSheet(classSubjectId, date) {
-  const [classSubject, rows] = await Promise.all([
+  const [classSubject, rows, holiday] = await Promise.all([
     getClassSubjectRefUnscoped(classSubjectId),
     repo.findSheetRows(classSubjectId, date),
+    holidayOn(date),
   ]);
   return {
     classSubjectId,
     classSubject,
     date,
+    holiday,
     records: rows.map((row) => ({
       studentId: row.studentId,
       studentNumber: row.studentNumber,
@@ -118,11 +122,15 @@ function assertMarkableDate(date, academicYear) {
   }
 }
 
-/** Idempotent upsert of the listed students only; students left out of `records` keep their marks. */
+/**
+ * Idempotent upsert of the listed students only; students left out of `records` keep their marks.
+ * Not on a future date, outside the class's academic year or on a school holiday (400).
+ */
 export async function saveSheet(user, { classSubjectId, date, records }) {
   await access.assertCanManageClassSubject(user, classSubjectId);
   const classSubject = await getClassSubjectRefUnscoped(classSubjectId); // 404 for an unknown class-subject (admins)
   assertMarkableDate(date, classSubject.academicYear);
+  await assertSchoolDay(date);
   await withTransaction(async (conn) => {
     const roster = new Set(await repo.findRosterStudentIds(classSubjectId, date, conn));
     const invalidStudentIds = records.map((r) => r.studentId).filter((id) => !roster.has(id));

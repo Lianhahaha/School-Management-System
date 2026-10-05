@@ -12,6 +12,7 @@ import {
   ANNOUNCEMENT_STATUSES,
   ASSESSMENT_TYPES,
   ATTENDANCE_STATUSES,
+  CALENDAR_EVENT_TYPES,
   DAYS_OF_WEEK,
   ERROR_CODES,
   GENDERS,
@@ -119,6 +120,11 @@ export const ANNOUNCEMENT_STATUS_FILTER_OPTIONS = Object.freeze([
   ...ANNOUNCEMENT_STATUS_OPTIONS,
   { value: 'all', label: 'All' },
 ]);
+
+/** Holidays mean no classes (attendance cannot be marked); events are informational. */
+export const CALENDAR_EVENT_TYPE_LABELS = Object.freeze({ holiday: 'No classes', event: 'School event' });
+export const CALENDAR_EVENT_TYPE_TONES = Object.freeze({ holiday: 'amber', event: 'blue' });
+export const CALENDAR_EVENT_TYPE_OPTIONS = optionsOf(CALENDAR_EVENT_TYPES, CALENDAR_EVENT_TYPE_LABELS);
 
 /** ISO weekdays, Monday = 1. */
 export const DAY_LABELS = Object.freeze({

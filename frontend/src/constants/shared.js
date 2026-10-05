@@ -30,6 +30,9 @@ export const ANNOUNCEMENT_AUDIENCES = Object.freeze(['all', 'students', 'teacher
 /** Computed from published_at / expires_at; `all` is accepted only as a list filter. */
 export const ANNOUNCEMENT_STATUSES = Object.freeze(['active', 'scheduled', 'expired']);
 
+/** School calendar entries: `holiday` = no classes (attendance cannot be marked), `event` = classes as usual. */
+export const CALENDAR_EVENT_TYPES = Object.freeze(['holiday', 'event']);
+
 /** ISO 8601 weekday numbers: 1 = Monday … 7 = Sunday. */
 export const DAYS_OF_WEEK = Object.freeze([1, 2, 3, 4, 5, 6, 7]);
 

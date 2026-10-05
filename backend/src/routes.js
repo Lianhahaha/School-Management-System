@@ -10,6 +10,7 @@ import { announcementsRoutes } from './modules/announcements/announcements.route
 import { assessmentsRoutes } from './modules/assessments/assessments.routes.js';
 import { attendanceRoutes } from './modules/attendance/attendance.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
+import { calendarRoutes } from './modules/calendar/calendar.routes.js';
 import { classesRoutes } from './modules/classes/classes.routes.js';
 import { classSubjectsRoutes } from './modules/classSubjects/classSubjects.routes.js';
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes.js';
@@ -41,4 +42,5 @@ apiRouter.use('/assessments', authenticate, assessmentsRoutes);
 apiRouter.use('/grades', authenticate, gradesRoutes);
 apiRouter.use('/schedules', authenticate, schedulesRoutes);
 apiRouter.use('/announcements', authenticate, announcementsRoutes);
+apiRouter.use('/calendar-events', authenticate, calendarRoutes);
 apiRouter.use('/dashboard', authenticate, dashboardRoutes);

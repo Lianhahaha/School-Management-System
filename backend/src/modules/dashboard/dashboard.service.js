@@ -11,6 +11,7 @@ import {
   summarizeAttendanceUnscoped,
 } from '../attendance/attendance.service.js';
 import { pendingGradingUnscoped, upcomingAssessmentsUnscoped } from '../assessments/assessments.service.js';
+import { upcomingEvents } from '../calendar/calendar.service.js';
 import { getClass, listClasses } from '../classes/classes.service.js';
 import {
   recentGradesUnscoped,
@@ -104,14 +105,17 @@ async function atRiskStudents(user) {
 
 async function adminDashboard(user) {
   const today = todayYmd();
-  const [counts, attendance, enrollmentsByGrade, upcoming, announcements, atRisk] = await Promise.all([
-    repo.findAdminCounts(currentAcademicYear()),
-    summarizeAttendanceUnscoped({ dateFrom: today, dateTo: today }),
-    repo.findEnrollmentsByGrade(),
-    upcomingAssessmentsUnscoped({ days: 7, limit: 10 }),
-    briefAnnouncements(user),
-    atRiskStudents(user),
-  ]);
+  const [counts, attendance, enrollmentsByGrade, upcoming, announcements, atRisk, events] = await Promise.all(
+    [
+      repo.findAdminCounts(currentAcademicYear()),
+      summarizeAttendanceUnscoped({ dateFrom: today, dateTo: today }),
+      repo.findEnrollmentsByGrade(),
+      upcomingAssessmentsUnscoped({ days: 7, limit: 10 }),
+      briefAnnouncements(user),
+      atRiskStudents(user),
+      upcomingEvents(),
+    ],
+  );
   return {
     role: 'admin',
     counts: {
@@ -132,6 +136,7 @@ async function adminDashboard(user) {
     upcomingAssessments: upcoming,
     recentAnnouncements: announcements,
     atRisk,
+    upcomingEvents: events,
   };
 }
 
@@ -139,15 +144,18 @@ async function teacherDashboard(user) {
   const today = todayYmd();
   const year = currentAcademicYear();
   const teacherId = user.teacherId;
-  const [teacher, classSubjects, homeroom, slots, pending, announcements, atRisk] = await Promise.all([
-    getTeacher(user, teacherId),
-    repo.findTeacherClassSubjects(teacherId, year),
-    listClasses(user, { page: 1, limit: 100, homeroomTeacherId: teacherId, academicYear: year }),
-    findSlotsUnscoped({ teacherId, dayOfWeek: todayIsoWeekday(), academicYear: year }),
-    pendingGradingUnscoped(teacherId, year),
-    briefAnnouncements(user),
-    atRiskStudents(user),
-  ]);
+  const [teacher, classSubjects, homeroom, slots, pending, announcements, atRisk, events] = await Promise.all(
+    [
+      getTeacher(user, teacherId),
+      repo.findTeacherClassSubjects(teacherId, year),
+      listClasses(user, { page: 1, limit: 100, homeroomTeacherId: teacherId, academicYear: year }),
+      findSlotsUnscoped({ teacherId, dayOfWeek: todayIsoWeekday(), academicYear: year }),
+      pendingGradingUnscoped(teacherId, year),
+      briefAnnouncements(user),
+      atRiskStudents(user),
+      upcomingEvents(),
+    ],
+  );
   const marked = await markedClassSubjectIdsUnscoped(
     slots.map((slot) => slot.classSubjectId),
     today,
@@ -192,16 +200,18 @@ async function teacherDashboard(user) {
     pendingGrading: pending,
     recentAnnouncements: announcements,
     atRisk,
+    upcomingEvents: events,
   };
 }
 
 async function studentDashboard(user) {
   const today = todayYmd();
   const classId = user.activeClassId;
-  const [student, klass, announcements] = await Promise.all([
+  const [student, klass, announcements, events] = await Promise.all([
     getStudent(user, user.studentId),
     classId ? getClass(classId) : null,
     briefAnnouncements(user),
+    upcomingEvents(),
   ]);
   const base = {
     role: 'student',
@@ -212,6 +222,7 @@ async function studentDashboard(user) {
       lastName: student.lastName,
     },
     recentAnnouncements: announcements,
+    upcomingEvents: events,
   };
   const dateFrom = academicYearStart(klass?.academicYear ?? currentAcademicYear());
   const attendance = await summarizeAttendanceUnscoped({

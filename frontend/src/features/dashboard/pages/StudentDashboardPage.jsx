@@ -7,6 +7,7 @@ import { StudentHero } from '../components/StudentHero';
 import { StudentTimetableCard } from '../components/StudentTimetableCard';
 import { StudentWaitingCard } from '../components/StudentWaitingCard';
 import { UpcomingAssessmentsCard } from '../components/UpcomingAssessmentsCard';
+import { UpcomingEventsCard } from '../components/UpcomingEventsCard';
 
 /**
  * /student: "How am I doing?" Read-only. Without an active enrollment the identity hero, what to do
@@ -23,6 +24,9 @@ export default function StudentDashboardPage() {
         <div className="space-y-6">
           <StudentHero student={data.student} enrollment={data.currentEnrollment} />
           {!data.currentEnrollment && <StudentWaitingCard />}
+          {!data.currentEnrollment && (
+            <UpcomingEventsCard events={data.upcomingEvents} to="/student/calendar" />
+          )}
           {data.currentEnrollment && (
             <>
               <div className="grid items-start gap-6 lg:grid-cols-2">
@@ -34,6 +38,7 @@ export default function StudentDashboardPage() {
                 <div className="space-y-6">
                   <StudentGradeSummaryCard subjects={data.gradeSummary} />
                   <RecentGradesCard grades={data.recentGrades} />
+                  <UpcomingEventsCard events={data.upcomingEvents} to="/student/calendar" />
                 </div>
               </div>
             </>

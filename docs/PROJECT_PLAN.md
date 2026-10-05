@@ -154,6 +154,7 @@ Principles:
 | D34 | Grade level | 1..12 in CHECK, zod and UI | |
 | D35 | Repository location | Recommended: move out of OneDrive to `C:\dev\school-management-system`; GitHub is the backup | `node_modules` inside a synced folder causes `EPERM`/`EBUSY` and watcher flakiness (section 14, decision 1) |
 | D36 | Grade weights (added 2026-10-05) | Optional per subject: `subject_grade_weights` holds a whole percent per assessment type (adding up to 100). A weighted subject's result = each type's points percentage × its weight, over the types that have grades; without weights D18 applies. A student's result over several subjects (report card "general average", `groupBy=student` across subjects) is the mean of the subject results | Report cards such as DepEd's weight written work, tasks and exams differently; every subject counts once in the general average |
+| D37 | School calendar (added 2026-10-05) | `calendar_events`: school-wide entries of type `holiday` (no classes: `PUT /attendance/sheet` answers 400 `school_holiday`, the sheet shows why and is read-only) or `event` (informational); inclusive `starts_on`..`ends_on`, at most 366 days. Admins write, everyone reads; dashboards list the next 30 days, timetables mark this week's entries | Teachers should not be able to mark a no-class day, and students should see it on their schedule |
 
 ---
 

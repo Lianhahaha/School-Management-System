@@ -9,6 +9,7 @@ import { EnrollmentByGradeCard } from '../components/EnrollmentByGradeCard';
 import { RecentAnnouncementsCard } from '../components/RecentAnnouncementsCard';
 import { SetupChecklistCard } from '../components/SetupChecklistCard';
 import { UpcomingAssessmentsCard } from '../components/UpcomingAssessmentsCard';
+import { UpcomingEventsCard } from '../components/UpcomingEventsCard';
 
 /**
  * /admin: "Is the school running?" The setup checklist while the school is still being set up, then
@@ -48,6 +49,7 @@ export default function AdminDashboardPage() {
               <UpcomingAssessmentsCard assessments={data.upcomingAssessments} />
             </div>
             <div className="space-y-6">
+              <UpcomingEventsCard events={data.upcomingEvents} to="/admin/calendar" />
               <EnrollmentByGradeCard grades={data.enrollmentsByGrade} />
               <RecentAnnouncementsCard announcements={data.recentAnnouncements} to="/admin/announcements" />
             </div>

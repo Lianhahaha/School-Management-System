@@ -351,3 +351,23 @@ CREATE TABLE IF NOT EXISTS subject_grade_weights (
   CONSTRAINT chk_subject_grade_weights_weight CHECK (weight BETWEEN 1 AND 100)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='Weight of each assessment type in a subject result; none = graded on points';
+
+-- -----------------------------------------------------------------------------
+-- 14. calendar_events — the school calendar: holidays (no classes, so no
+--     attendance can be marked on those days) and school events (classes as
+--     usual). School-wide; a one-day entry has ends_on = starts_on.
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS calendar_events (
+  id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  title        VARCHAR(150) NOT NULL,
+  description  VARCHAR(500) NULL,
+  type         ENUM('holiday','event') NOT NULL COMMENT 'holiday = no classes; event = classes as usual',
+  starts_on    DATE NOT NULL,
+  ends_on      DATE NOT NULL COMMENT 'Inclusive; equal to starts_on for one day',
+  created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_calendar_events_dates (starts_on, ends_on),        -- events overlapping a month; "is today a holiday"
+  CONSTRAINT chk_calendar_events_dates CHECK (ends_on >= starts_on)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='School calendar: holidays and events';

@@ -1,5 +1,9 @@
 import { useState } from 'react';
-import { TONE_SOFT_CLASSES } from '../../../constants/ui';
+import {
+  CALENDAR_EVENT_TYPE_LABELS,
+  CALENDAR_EVENT_TYPE_TONES,
+  TONE_SOFT_CLASSES,
+} from '../../../constants/ui';
 import { cx } from '../../../utils/cx';
 import { formatTime, todayIsoWeekday } from '../../../utils/date';
 import { dayLabel, slotsToGrid } from '../../../utils/schedule';
@@ -62,6 +66,8 @@ function Slot({ slot, renderSlot, onSlotClick }) {
  *   (default: subject name, then class and room); for example a teacher page shows class and room only
  * @param {(slot: object) => void} [props.onSlotClick] makes every slot a button (admin editing)
  * @param {boolean} [props.highlightToday] emphasise today's column (default true)
+ * @param {Map<number, Array<{ id: number, title: string, type: string }>>} [props.dayNotes] this week's
+ *   calendar entries by weekday, shown at the top of the day; a holiday ("No classes") fades its periods
  * @param {string} [props.label] accessible name of the timetable (default "Weekly timetable")
  */
 export function WeeklyTimetable({
@@ -70,6 +76,7 @@ export function WeeklyTimetable({
   onSlotClick,
   highlightToday = true,
   label = 'Weekly timetable',
+  dayNotes,
 }) {
   const [isWeekendRequested, setWeekendRequested] = useState(false);
   const hasWeekendSlots = slots.some((slot) => slot.dayOfWeek > 5);
@@ -97,6 +104,8 @@ export function WeeklyTimetable({
       >
         {columns.map(({ day, slots: daySlots }) => {
           const isToday = highlightToday && day === today;
+          const notes = dayNotes?.get(day) ?? [];
+          const isHoliday = notes.some((note) => note.type === 'holiday');
           return (
             <section
               key={day}
@@ -107,10 +116,23 @@ export function WeeklyTimetable({
                 {dayLabel(day)}
                 {isToday && <LiveTag>Today</LiveTag>}
               </h3>
+              {notes.map((note) => (
+                <p
+                  key={note.id}
+                  className={cx(
+                    'mb-2 rounded-xl px-2.5 py-1.5 text-xs font-medium',
+                    TONE_SOFT_CLASSES[CALENDAR_EVENT_TYPE_TONES[note.type]],
+                  )}
+                >
+                  {note.type === 'holiday'
+                    ? `${CALENDAR_EVENT_TYPE_LABELS.holiday} · ${note.title}`
+                    : note.title}
+                </p>
+              ))}
               {daySlots.length === 0 ? (
                 <p className="text-xs text-gray-500">No periods</p>
               ) : (
-                <ul className="space-y-2">
+                <ul className={cx('space-y-2', isHoliday && 'opacity-50')}>
                   {daySlots.map((slot) => (
                     <li key={slot.id}>
                       <Slot slot={slot} renderSlot={renderSlot} onSlotClick={onSlotClick} />

@@ -3,11 +3,13 @@ import { Button } from '../../../components/ui/Button';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { ErrorState } from '../../../components/ui/ErrorState';
 import { Skeleton } from '../../../components/ui/Skeleton';
+import { useWeekEvents } from '../../calendar/hooks';
 import { WeeklyTimetable } from './WeeklyTimetable';
 
 /**
  * A read-only weekly timetable with its loading, error and empty states, for the teacher's and the
- * student's schedule pages. The page runs the query (useSchedules) and passes it in.
+ * student's schedule pages, with this week's holidays and school events on their days. The page runs the
+ * query (useSchedules) and passes it in.
  *
  * @param {object} props
  * @param {{ data?: { items: object[] }, isPending: boolean, error: Error|null, refetch: () => void }} props.query
@@ -19,6 +21,7 @@ import { WeeklyTimetable } from './WeeklyTimetable';
  */
 export function SchedulePanel({ query, label, emptyTitle, emptyDescription, renderSlot }) {
   const { data, isPending, error, refetch } = query;
+  const weekEvents = useWeekEvents();
 
   if (isPending && !error) {
     return (
@@ -51,7 +54,7 @@ export function SchedulePanel({ query, label, emptyTitle, emptyDescription, rend
           Print timetable
         </Button>
       </div>
-      <WeeklyTimetable slots={data.items} renderSlot={renderSlot} label={label} />
+      <WeeklyTimetable slots={data.items} renderSlot={renderSlot} label={label} dayNotes={weekEvents} />
     </div>
   );
 }

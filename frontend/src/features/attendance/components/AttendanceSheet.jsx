@@ -54,14 +54,17 @@ function lastEditor(records) {
  * The roster of one lesson on one date with a status per student. The draft lives here; nothing is
  * sent until Save, which PUTs every roster row (the sheet is the unit of truth) and then adopts the
  * returned sheet. Mount it with a key of lesson + date so a different sheet starts from scratch.
+ * On a school holiday (`sheet.holiday`) the sheet is read-only and says why.
  *
  * @param {object} props
  * @param {object} props.sheet GET /attendance/sheet data
  * @param {boolean} props.canSave false renders the sheet read-only (a homeroom teacher of another teacher's subject)
  * @param {() => Promise<{ data?: object }>} props.onReload refetches the sheet (after the roster changed meanwhile)
  */
-export function AttendanceSheet({ sheet, canSave, onReload }) {
+export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
   const save = useSaveAttendanceSheet();
+  // Nobody marks a holiday: the API refuses it, so the sheet does not offer it.
+  const canSave = isOwner && !sheet.holiday;
   const [saved, setSaved] = useState(sheet);
   const [draft, setDraft] = useState(() => toDraft(sheet.records));
   const [saveError, setSaveError] = useState(null);
@@ -138,7 +141,7 @@ export function AttendanceSheet({ sheet, canSave, onReload }) {
           >
             Mark all present
           </Button>
-          <span title={canSave ? undefined : SAVE_BLOCKED_HINT}>
+          <span title={isOwner ? (sheet.holiday ? 'No classes on this day' : undefined) : SAVE_BLOCKED_HINT}>
             <Button icon={Save} isLoading={save.isPending} disabled={!canSubmit} onClick={submit} size="sm">
               Save attendance
             </Button>
@@ -152,7 +155,10 @@ export function AttendanceSheet({ sheet, canSave, onReload }) {
           {counts.late} late · {counts.excused} excused
         </p>
         <p className="text-xs text-gray-500">Unmarked students are saved as Present.</p>
-        {!canSave && <Alert tone="info">{`You can view this sheet. ${SAVE_BLOCKED_HINT}.`}</Alert>}
+        {sheet.holiday && (
+          <Alert tone="warning">{`No classes on ${formatDate(saved.date)}: ${sheet.holiday.title}. Attendance can't be marked on a school holiday.`}</Alert>
+        )}
+        {!isOwner && <Alert tone="info">{`You can view this sheet. ${SAVE_BLOCKED_HINT}.`}</Alert>}
         {editor && (
           <Alert tone="warning">
             {`Already marked by ${fullName(editor.markedBy)} (updated ${timeFormatter.format(new Date(editor.updatedAt))}).${canSave ? ' Saving overwrites it.' : ''}`}

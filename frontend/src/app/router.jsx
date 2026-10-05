@@ -23,6 +23,7 @@ const attendanceMarkPage = page(() => import('../features/attendance/pages/Atten
 const assessmentsPage = page(() => import('../features/grades/pages/AssessmentsPage'));
 const gradeSheetPage = page(() => import('../features/grades/pages/GradeSheetPage'));
 const announcementsPage = page(() => import('../features/announcements/pages/AnnouncementsPage'));
+const calendarPage = page(() => import('../features/calendar/pages/CalendarPage'));
 
 const publicRoutes = [
   { path: 'login', element: page(() => import('../features/auth/pages/LoginPage')) },
@@ -50,6 +51,7 @@ const adminRoutes = [
   { path: 'grades', element: assessmentsPage },
   { path: 'grades/assessments/:assessmentId', element: gradeSheetPage },
   { path: 'announcements', element: announcementsPage },
+  { path: 'calendar', element: calendarPage },
 ];
 
 const teacherRoutes = [
@@ -64,6 +66,7 @@ const teacherRoutes = [
   { path: 'grades', element: assessmentsPage },
   { path: 'grades/assessments/:assessmentId', element: gradeSheetPage },
   { path: 'announcements', element: announcementsPage },
+  { path: 'calendar', element: calendarPage },
 ];
 
 const studentRoutes = [
@@ -76,6 +79,7 @@ const studentRoutes = [
     path: 'announcements',
     element: page(() => import('../features/announcements/pages/StudentAnnouncementsPage')),
   },
+  { path: 'calendar', element: calendarPage },
 ];
 
 /**

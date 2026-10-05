@@ -78,6 +78,21 @@ export function currentAcademicYear() {
   return `${startYear}-${startYear + 1}`;
 }
 
+/** 'YYYY-MM-DD' plus `days` calendar days (negative allowed); independent of the time zone. */
+export function addDaysYmd(ymd, days) {
+  const [year, month, day] = ymd.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
+/** ISO weekday of a 'YYYY-MM-DD' date: 1 = Monday ... 7 = Sunday. */
+export function isoWeekdayOf(ymd) {
+  const [year, month, day] = ymd.split('-').map(Number);
+  return jsDayToIsoDay(new Date(Date.UTC(year, month - 1, day)).getUTCDay());
+}
+
+/** Monday of the week containing a 'YYYY-MM-DD' date. */
+export const mondayOf = (ymd) => addDaysYmd(ymd, 1 - isoWeekdayOf(ymd));
+
 /** First day of an academic year label: '2026-2027' -> '2026-08-01' (ACADEMIC_YEAR_START_MONTH). */
 export function academicYearStart(label) {
   return `${label.slice(0, 4)}-${pad(ACADEMIC_YEAR_START_MONTH)}-01`;

@@ -85,6 +85,11 @@ erDiagram
     users ||--o{ grades : "graded by"
     users ||--o{ announcements : "authors"
     classes |o--o{ announcements : "targets"
+    calendar_events {
+        enum type "holiday | event"
+        date starts_on
+        date ends_on
+    }
 
     users {
         int id PK

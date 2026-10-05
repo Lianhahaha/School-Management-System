@@ -8,6 +8,7 @@ import { RecentAnnouncementsCard } from '../components/RecentAnnouncementsCard';
 import { SessionsProgressCard } from '../components/SessionsProgressCard';
 import { TeacherClassesCard } from '../components/TeacherClassesCard';
 import { TodayTimeline } from '../components/TodayTimeline';
+import { UpcomingEventsCard } from '../components/UpcomingEventsCard';
 
 const todayLabel = () =>
   new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
@@ -38,6 +39,7 @@ export default function TeacherDashboardPage() {
             <SessionsProgressCard attendance={data.attendanceToday} />
             <PendingGradingCard assessments={data.pendingGrading} />
             <AtRiskCard atRisk={data.atRisk} />
+            <UpcomingEventsCard events={data.upcomingEvents} to="/teacher/calendar" />
             <RecentAnnouncementsCard announcements={data.recentAnnouncements} to="/teacher/announcements" />
           </div>
         </div>

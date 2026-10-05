@@ -103,6 +103,8 @@ tags:
     description: Scores per assessment, bulk entry, gradebook and summaries.
   - name: announcements
     description: Announcements by audience and class with a publication window.
+  - name: calendar
+    description: School calendar of holidays (no classes) and school events.
   - name: dashboard
     description: One role-specific dashboard payload.
   - name: health
@@ -1752,6 +1754,119 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /calendar-events:
+    get:
+      tags: [calendar]
+      operationId: listCalendarEvents
+      summary: List calendar entries
+      description: |
+        Roles: any authenticated user.
+
+        `dateFrom` / `dateTo` select the entries that overlap the range, so a month view asks for its first
+        and last day. Search matches title and description. Default order: earliest start first.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Search'
+        - name: sortBy
+          in: query
+          description: Sort field.
+          schema:
+            type: string
+            enum: [startsOn, title, createdAt]
+        - $ref: '#/components/parameters/SortOrder'
+        - name: type
+          in: query
+          description: Only holidays or only events.
+          schema:
+            $ref: '#/components/schemas/CalendarEventType'
+        - $ref: '#/components/parameters/DateFromFilter'
+        - $ref: '#/components/parameters/DateToFilter'
+      responses:
+        '200': { $ref: '#/components/responses/CalendarEventListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [calendar]
+      operationId: createCalendarEvent
+      summary: Add a holiday or school event
+      description: |
+        Roles: admin.
+
+        `endsOn` defaults to `startsOn` (a one-day entry). It must not be before `startsOn`
+        (400, `details.reason = invalid_date_range`) and an entry spans at most 366 days
+        (`date_range_too_long`). On a holiday no attendance can be marked (`PUT /attendance/sheet` answers
+        400 with `details.reason = school_holiday`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCalendarEventRequest'
+            example:
+              title: Christmas break
+              type: holiday
+              startsOn: '2026-12-21'
+              endsOn: '2027-01-01'
+      responses:
+        '201': { $ref: '#/components/responses/CalendarEventResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /calendar-events/{id}:
+    get:
+      tags: [calendar]
+      operationId: getCalendarEvent
+      summary: Get a calendar entry
+      description: |
+        Roles: any authenticated user.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/CalendarEventResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [calendar]
+      operationId: updateCalendarEvent
+      summary: Update a calendar entry
+      description: |
+        Roles: admin.
+
+        The date rules of the create apply to the merged values.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCalendarEventRequest'
+            example:
+              endsOn: '2027-01-02'
+      responses:
+        '200': { $ref: '#/components/responses/CalendarEventResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [calendar]
+      operationId: deleteCalendarEvent
+      summary: Delete a calendar entry
+      description: |
+        Roles: admin.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /dashboard:
     get:
       tags: [dashboard]
@@ -2012,6 +2127,10 @@ components:
       type: string
       enum: [active, scheduled, expired]
       description: Computed from `publishedAt` and `expiresAt`.
+    CalendarEventType:
+      type: string
+      enum: [holiday, event]
+      description: holiday = no classes (attendance cannot be marked); event = classes as usual.
     DayOfWeek:
       type: integer
       enum: [1, 2, 3, 4, 5, 6, 7]
@@ -2577,7 +2696,7 @@ components:
           nullable: true
     AttendanceSheet:
       type: object
-      required: [classSubjectId, classSubject, date, records]
+      required: [classSubjectId, classSubject, date, holiday, records]
       properties:
         classSubjectId:
           $ref: '#/components/schemas/Id'
@@ -2585,6 +2704,16 @@ components:
           $ref: '#/components/schemas/ClassSubjectRef'
         date:
           $ref: '#/components/schemas/DateYmd'
+        holiday:
+          type: object
+          nullable: true
+          description: The school holiday on `date` (the sheet cannot be saved), or null.
+          required: [id, title]
+          properties:
+            id:
+              $ref: '#/components/schemas/Id'
+            title:
+              type: string
         records:
           type: array
           description: The class roster on `date` plus students already marked on it, ordered by last name, then first name.
@@ -2911,6 +3040,45 @@ components:
           $ref: '#/components/schemas/Timestamp'
         updatedAt:
           $ref: '#/components/schemas/Timestamp'
+    # --- Calendar ---
+    CalendarEvent:
+      type: object
+      required: [id, title, description, type, startsOn, endsOn, createdAt, updatedAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        title:
+          type: string
+          example: Christmas break
+        description:
+          type: string
+          nullable: true
+        type:
+          $ref: '#/components/schemas/CalendarEventType'
+        startsOn:
+          $ref: '#/components/schemas/DateYmd'
+        endsOn:
+          description: Inclusive; equal to `startsOn` for a one-day entry.
+          allOf:
+            - $ref: '#/components/schemas/DateYmd'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+    CalendarEventBrief:
+      type: object
+      required: [id, title, type, startsOn, endsOn]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        title:
+          type: string
+        type:
+          $ref: '#/components/schemas/CalendarEventType'
+        startsOn:
+          $ref: '#/components/schemas/DateYmd'
+        endsOn:
+          $ref: '#/components/schemas/DateYmd'
     # --- Dashboards ---
     UpcomingAssessment:
       type: object
@@ -3019,7 +3187,16 @@ components:
     AdminDashboard:
       type: object
       required:
-        [role, counts, attendanceToday, enrollmentsByGrade, upcomingAssessments, recentAnnouncements, atRisk]
+        [
+          role,
+          counts,
+          attendanceToday,
+          enrollmentsByGrade,
+          upcomingAssessments,
+          recentAnnouncements,
+          atRisk,
+          upcomingEvents,
+        ]
       properties:
         role:
           type: string
@@ -3092,6 +3269,11 @@ components:
             $ref: '#/components/schemas/AnnouncementBrief'
         atRisk:
           $ref: '#/components/schemas/AtRiskStudents'
+        upcomingEvents:
+          type: array
+          description: Calendar entries running today or starting in the next 30 days, soonest first, at most 5.
+          items:
+            $ref: '#/components/schemas/CalendarEventBrief'
     TeacherDashboard:
       type: object
       required:
@@ -3105,6 +3287,7 @@ components:
           pendingGrading,
           recentAnnouncements,
           atRisk,
+          upcomingEvents,
         ]
       properties:
         role:
@@ -3221,6 +3404,11 @@ components:
             $ref: '#/components/schemas/AnnouncementBrief'
         atRisk:
           $ref: '#/components/schemas/AtRiskStudents'
+        upcomingEvents:
+          type: array
+          description: Calendar entries running today or starting in the next 30 days, soonest first, at most 5.
+          items:
+            $ref: '#/components/schemas/CalendarEventBrief'
     StudentDashboard:
       type: object
       required:
@@ -3234,6 +3422,7 @@ components:
           recentGrades,
           upcomingAssessments,
           recentAnnouncements,
+          upcomingEvents,
         ]
       properties:
         role:
@@ -3343,6 +3532,11 @@ components:
           description: Latest active announcements visible to the student, at most 5.
           items:
             $ref: '#/components/schemas/AnnouncementBrief'
+        upcomingEvents:
+          type: array
+          description: Calendar entries running today or starting in the next 30 days, soonest first, at most 5.
+          items:
+            $ref: '#/components/schemas/CalendarEventBrief'
     Dashboard:
       description: The dashboard payload of the caller's role, discriminated by `role`.
       oneOf:
@@ -3602,6 +3796,42 @@ components:
           description: False retires the subject, true reactivates it.
         gradeWeights:
           $ref: '#/components/schemas/CreateSubjectRequest/properties/gradeWeights'
+    CreateCalendarEventRequest:
+      type: object
+      additionalProperties: false
+      required: [title, type, startsOn]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 150
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+        type:
+          $ref: '#/components/schemas/CalendarEventType'
+        startsOn:
+          $ref: '#/components/schemas/DateYmd'
+        endsOn:
+          description: Defaults to `startsOn`.
+          allOf:
+            - $ref: '#/components/schemas/DateYmd'
+    UpdateCalendarEventRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title:
+          $ref: '#/components/schemas/CreateCalendarEventRequest/properties/title'
+        description:
+          $ref: '#/components/schemas/CreateCalendarEventRequest/properties/description'
+        type:
+          $ref: '#/components/schemas/CalendarEventType'
+        startsOn:
+          $ref: '#/components/schemas/DateYmd'
+        endsOn:
+          $ref: '#/components/schemas/DateYmd'
     CreateClassRequest:
       type: object
       additionalProperties: false
@@ -4507,6 +4737,31 @@ components:
                     type: array
                     items:
                       $ref: '#/components/schemas/Announcement'
+    CalendarEventResponse:
+      description: The calendar entry.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/CalendarEvent' } } }
+    CalendarEventListResponse:
+      description: A page of calendar entries.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/PagedEnvelope'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CalendarEvent'
     StudentListResponse:
       description: A page of students.
       headers:
