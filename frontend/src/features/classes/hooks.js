@@ -19,6 +19,7 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { createOptionsHook } from '../../hooks/createOptionsHook';
 import { useInvalidate } from '../../hooks/useInvalidate';
 import { useToast } from '../../hooks/useToast';
+import { countOf } from '../../utils/format';
 import { classSubjectKeys } from '../classSubjects/keys';
 import { dashboardKeys } from '../dashboard/keys';
 import { enrollmentKeys } from '../enrollments/keys';
@@ -26,7 +27,6 @@ import { scheduleKeys } from '../schedules/keys';
 import { studentKeys } from '../students/keys';
 import { createClass, deleteClass, getClass, listClasses, updateClass } from './api';
 import { classKeys } from './keys';
-import { countOf } from '../../utils/format';
 
 export function useClasses(params, { enabled = true } = {}) {
   return useQuery({

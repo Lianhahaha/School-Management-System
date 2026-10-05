@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { Card } from '../../../components/ui/Card';
-import { fullName } from '../../../utils/names';
 import { countOf } from '../../../utils/format';
+import { fullName } from '../../../utils/names';
 
 /**
  * A class the teacher is homeroom teacher of: its subjects with their teachers, read-only.

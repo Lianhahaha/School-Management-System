@@ -8,13 +8,13 @@ import { Button } from '../../../components/ui/Button';
 import { Tabs } from '../../../components/ui/Tabs';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { useDisclosure } from '../../../hooks/useDisclosure';
+import { countOf } from '../../../utils/format';
 import { fullName } from '../../../utils/names';
 import { ClassFormModal } from '../components/ClassFormModal';
 import { ClassScheduleTab } from '../components/ClassScheduleTab';
 import { ClassStudentsTab } from '../components/ClassStudentsTab';
 import { ClassSubjectsTab } from '../components/ClassSubjectsTab';
 import { useClass, useDeleteClass } from '../hooks';
-import { countOf } from '../../../utils/format';
 
 const BACK = { backTo: '/admin/classes', backLabel: 'Back to classes' };
 

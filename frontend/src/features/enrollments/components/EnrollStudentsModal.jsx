@@ -2,18 +2,18 @@ import { useRef, useState } from 'react';
 import { Alert } from '../../../components/ui/Alert';
 import { Button } from '../../../components/ui/Button';
 import { Checkbox } from '../../../components/ui/Checkbox';
-import { FormField } from '../../../components/ui/FormField';
 import { ErrorState } from '../../../components/ui/ErrorState';
+import { FormField } from '../../../components/ui/FormField';
 import { Modal } from '../../../components/ui/Modal';
 import { SearchInput } from '../../../components/ui/SearchInput';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { BULK_MAX_ROWS, ERROR_CODES, PAGINATION } from '../../../constants/shared';
+import { countOf } from '../../../utils/format';
 import { fullName } from '../../../utils/names';
 import { ClassSelect } from '../../classes/components/ClassSelect';
 import { useStudents } from '../../students/hooks';
 import { useEnrollStudents } from '../hooks';
 import { enrollStudentsSchema } from '../schemas';
-import { countOf } from '../../../utils/format';
 
 /** The students who joined the school but have no class yet, with a search box and a checkbox each. */
 function StudentChecklist({ search, onSearch, selected, onToggle, onSelectVisible, onClearSelection }) {

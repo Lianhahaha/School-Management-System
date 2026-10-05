@@ -1,7 +1,7 @@
 import { RefreshCw } from 'lucide-react';
 import { useLastUpdatedAt } from '../../hooks/useLastUpdatedAt';
-import { formatDateTime } from '../../utils/date';
 import { cx } from '../../utils/cx';
+import { formatDateTime } from '../../utils/date';
 
 /** 4 s -> 'just now', 25 s -> '25 s ago', 3 min -> '3 min ago'. */
 function ago(milliseconds) {
