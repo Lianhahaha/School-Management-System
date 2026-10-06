@@ -9,7 +9,7 @@ export function StudentGradeSummaryCard({ subjects }) {
   return (
     <Card
       icon={BookOpen}
-      mark="plum"
+      mark="cream"
       title="Grades by subject"
       actions={<TextLink to="/student/grades">All grades</TextLink>}
     >

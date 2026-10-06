@@ -12,7 +12,7 @@ export function SessionsProgressCard({ attendance, holiday }) {
   const isDone = sessionsScheduled > 0 && sessionsMarked >= sessionsScheduled;
 
   return (
-    <Card icon={ClipboardCheck} mark="leaf" title="Attendance today">
+    <Card icon={ClipboardCheck} mark="sage" title="Attendance today">
       {holiday ? (
         <EmptyState
           icon={CalendarOff}

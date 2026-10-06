@@ -10,7 +10,7 @@ export function EnrollmentByGradeCard({ grades }) {
   return (
     <Card
       icon={GraduationCap}
-      mark="slate"
+      mark="maroon"
       title="Enrollment by grade"
       description="Students with an active enrollment"
     >

@@ -116,7 +116,7 @@ export function AdminAttendanceCard({ attendance, holiday }) {
   return (
     <Card
       icon={ClipboardCheck}
-      mark="leaf"
+      mark="sage"
       title="Attendance today"
       description={formatDate(date)}
       actions={isHoliday ? undefined : <TextLink to="/admin/attendance">Mark attendance</TextLink>}

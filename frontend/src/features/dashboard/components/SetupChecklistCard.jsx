@@ -67,7 +67,7 @@ export function SetupChecklistCard({ counts }) {
   return (
     <Card
       icon={ListChecks}
-      mark="ink"
+      mark="maroon"
       title="Set up your school"
       total={`${doneCount} of ${steps.length} done`}
       description="Work through these in order; each step needs the ones before it."

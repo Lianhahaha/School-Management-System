@@ -20,7 +20,7 @@ export function Card({
   actions,
   padded = true,
   icon: Icon,
-  mark = 'ink',
+  mark = 'maroon',
   className,
   children,
 }) {

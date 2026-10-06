@@ -10,7 +10,7 @@ export function StudentAttendanceCard({ summary }) {
   return (
     <Card
       icon={ClipboardCheck}
-      mark="leaf"
+      mark="sage"
       title="My attendance"
       description={`${formatDate(summary.dateFrom)} to ${formatDate(summary.dateTo)}`}
       actions={<TextLink to="/student/attendance">Details</TextLink>}

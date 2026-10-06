@@ -17,7 +17,7 @@ export function UpcomingEventsCard({ events, to }) {
   return (
     <Card
       icon={CalendarDays}
-      mark="umber"
+      mark="cream"
       title="Coming up"
       description="Holidays and school events, next 30 days"
       actions={<TextLink to={to}>Calendar</TextLink>}

@@ -16,7 +16,7 @@ export function StudentTimetableCard({ periods, holiday }) {
   return (
     <Card
       icon={Clock}
-      mark="umber"
+      mark="cream"
       title="Today's timetable"
       actions={<TextLink to="/student/schedule">Full week</TextLink>}
     >

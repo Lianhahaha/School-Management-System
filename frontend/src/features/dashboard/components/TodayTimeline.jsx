@@ -24,7 +24,7 @@ export function TodayTimeline({ periods, holiday }) {
   const date = todayYmd();
 
   return (
-    <Card icon={Clock} mark="umber" title="Today's periods">
+    <Card icon={Clock} mark="cream" title="Today's periods">
       {holiday ? (
         <EmptyState
           icon={CalendarOff}

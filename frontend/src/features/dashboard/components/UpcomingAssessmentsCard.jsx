@@ -13,7 +13,7 @@ export function UpcomingAssessmentsCard({ assessments }) {
   return (
     <Card
       icon={CalendarClock}
-      mark="plum"
+      mark="cream"
       title="Upcoming assessments"
       total={assessments.length > 0 ? assessments.length : undefined}
       description="In the next 7 days"

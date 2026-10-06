@@ -14,7 +14,7 @@ export function TeacherClassesCard({ classSubjects, homeroomClasses }) {
   return (
     <Card
       icon={School}
-      mark="plum"
+      mark="cream"
       title="My classes"
       actions={<TextLink to="/teacher/classes">View all</TextLink>}
     >

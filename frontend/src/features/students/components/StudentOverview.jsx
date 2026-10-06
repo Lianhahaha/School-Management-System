@@ -41,7 +41,7 @@ export function StudentOverview({ student, onOpenTab }) {
           value={enrollment ? enrollment.className : '—'}
           hint={enrollment ? enrollment.academicYear : 'Not in a class'}
           icon={School}
-          mark="umber"
+          mark="cream"
           to={enrollment ? `/admin/classes/${enrollment.classId}` : undefined}
         />
         <StatTile
@@ -49,7 +49,7 @@ export function StudentOverview({ student, onOpenTab }) {
           value={attendance.isPending ? '…' : formatPercent(attendance.data?.rate ?? null)}
           hint={marks ? `${countOf(marks, 'mark')} this school year` : 'Nothing marked this school year'}
           icon={ClipboardCheck}
-          mark="leaf"
+          mark="sage"
           onClick={() => onOpenTab('attendance')}
         />
         <StatTile
@@ -61,7 +61,7 @@ export function StudentOverview({ student, onOpenTab }) {
               : 'No grades this school year'
           }
           icon={Award}
-          mark="plum"
+          mark="cream"
           onClick={() => onOpenTab('grades')}
         />
       </div>

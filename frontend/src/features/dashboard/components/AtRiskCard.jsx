@@ -32,8 +32,8 @@ function StudentSummary({ student }) {
 /**
  * "Needs attention" (payload `atRisk`): students whose attendance or general average this school year is
  * below the lines the API reports, worst first. Admins can open each student; teachers see the list only.
- * The title square is brick with a warning only while someone is on the list; with nobody below the line it
- * turns leaf with a check, so a good state never looks like an alarm.
+ * The title square is oxblood with a warning only while someone is on the list; with nobody below the line
+ * it turns sage with a check, so a good state never looks like an alarm.
  *
  * @param {object} props
  * @param {{ attendanceRateBelow: number, gradeAverageBelow: number, total: number, students: object[] }} props.atRisk
@@ -46,7 +46,7 @@ export function AtRiskCard({ atRisk, studentPath }) {
   return (
     <Card
       icon={hasStudents ? TriangleAlert : ShieldCheck}
-      mark={hasStudents ? 'brick' : 'leaf'}
+      mark={hasStudents ? 'oxblood' : 'sage'}
       title="Needs attention"
       total={atRisk.total > 0 ? atRisk.total : undefined}
       description={lines}

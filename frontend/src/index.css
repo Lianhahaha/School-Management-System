@@ -81,17 +81,18 @@
 
   /*
    * Marks: the flat colour of a dashboard card's icon square and a figure row's icon chip, so each
-   * area of the school is found by colour. Five muted inks of equal weight, one per area, never one per
-   * card: brick for what needs attention, leaf for attendance, slate for students and enrollment, plum
-   * for teaching and grades, umber for time and classes (announcements use ink). White icons on all
-   * of them read at 5:1 or more, and the same values sit on the paper and the graphite theme.
+   * area of the school is found by colour. The school palette, four colours with one meaning each,
+   * never one per card: oxblood for what needs attention, maroon for people (students, teachers,
+   * enrollment, announcements), sage for attendance and for "all is well", cream for teaching and time
+   * (classes, subjects, assessments, periods, the calendar). Icons are cream on the three dark squares
+   * (3.5:1 on sage, 10:1 or more on the others) and oxblood on cream (10:1). The same values sit on
+   * paper and graphite; a hairline edge keeps cream visible on paper and maroon on graphite.
    */
-  --mark-brick: #b03a35;
-  --mark-leaf: #346739;
-  --mark-slate: #3b5b8c;
-  --mark-plum: #6a4a8a;
-  --mark-umber: #8a6424;
-  --mark-on: #ffffff;
+  --mark-oxblood: #6d0808;
+  --mark-maroon: #2d0000;
+  --mark-sage: #757d6f;
+  --mark-cream: #eeead7;
+  --mark-edge: rgb(109 8 8 / 0.14);
 
   /* Solid status fills for badges: amber with ink text, red with white text. */
   --solid-amber: #f0a500;
@@ -158,6 +159,7 @@
   --well: #33343a;
   --well-chip: #45464d;
   --well-edge: rgb(255 255 255 / 0.07);
+  --mark-edge: rgb(255 255 255 / 0.12);
 
   --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239d9ea5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 
@@ -212,12 +214,11 @@
   --color-violet-600: var(--violet-600);
   --color-violet-700: var(--violet-700);
   --color-on-danger: var(--on-danger);
-  --color-mark-brick: var(--mark-brick);
-  --color-mark-leaf: var(--mark-leaf);
-  --color-mark-slate: var(--mark-slate);
-  --color-mark-plum: var(--mark-plum);
-  --color-mark-umber: var(--mark-umber);
-  --color-mark-on: var(--mark-on);
+  --color-mark-oxblood: var(--mark-oxblood);
+  --color-mark-maroon: var(--mark-maroon);
+  --color-mark-sage: var(--mark-sage);
+  --color-mark-cream: var(--mark-cream);
+  --color-mark-edge: var(--mark-edge);
   --color-solid-amber: var(--solid-amber);
   --color-solid-red: var(--solid-red);
   --color-well: var(--well);

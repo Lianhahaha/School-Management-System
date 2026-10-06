@@ -10,7 +10,7 @@ export function PendingGradingCard({ assessments }) {
   return (
     <Card
       icon={Award}
-      mark="plum"
+      mark="cream"
       title="Pending grading"
       actions={
         <Button as={Link} to="/teacher/grades" variant="secondary" size="sm">

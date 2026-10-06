@@ -16,7 +16,7 @@ export function RecentAnnouncementsCard({ announcements, to }) {
   return (
     <Card
       icon={Megaphone}
-      mark="ink"
+      mark="maroon"
       title="Recent announcements"
       total={announcements.length > 0 ? announcements.length : undefined}
       actions={<TextLink to={to}>View all</TextLink>}

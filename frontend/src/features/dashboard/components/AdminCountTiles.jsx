@@ -5,8 +5,8 @@ import { currentAcademicYear } from '../../../utils/date';
 /**
  * The six school-wide figures of the admin dashboard (payload `counts`). Each tile opens its list
  * filtered the way the figure is counted (active accounts and subjects, the current academic year's
- * classes). Each icon chip carries its area's mark (students slate, teaching plum, classes umber); the
- * unenrolled chip turns brick while students are waiting for a class and leaf once everyone has one.
+ * classes). Each icon chip carries its area's mark (people maroon, classes and subjects cream); the
+ * unenrolled chip turns oxblood while students are waiting for a class and sage once everyone has one.
  */
 export function AdminCountTiles({ counts }) {
   return (
@@ -16,7 +16,7 @@ export function AdminCountTiles({ counts }) {
         value={counts.students}
         hint="Active"
         icon={GraduationCap}
-        mark="slate"
+        mark="maroon"
         to="/admin/students?isActive=true"
       />
       <StatTile
@@ -24,7 +24,7 @@ export function AdminCountTiles({ counts }) {
         value={counts.teachers}
         hint="Active"
         icon={BookUser}
-        mark="plum"
+        mark="cream"
         to="/admin/teachers?isActive=true"
       />
       <StatTile
@@ -32,7 +32,7 @@ export function AdminCountTiles({ counts }) {
         value={counts.classes}
         hint="Current academic year"
         icon={School}
-        mark="umber"
+        mark="cream"
         to={`/admin/classes?academicYear=${currentAcademicYear()}`}
       />
       <StatTile
@@ -40,14 +40,14 @@ export function AdminCountTiles({ counts }) {
         value={counts.subjects}
         hint="Active"
         icon={BookOpen}
-        mark="plum"
+        mark="cream"
         to="/admin/subjects?isActive=true"
       />
       <StatTile
         label="Active enrollments"
         value={counts.activeEnrollments}
         icon={UserCheck}
-        mark="slate"
+        mark="maroon"
         to="/admin/students?hasActiveEnrollment=true"
       />
       <StatTile
@@ -55,7 +55,7 @@ export function AdminCountTiles({ counts }) {
         value={counts.unenrolledStudents}
         hint={counts.unenrolledStudents > 0 ? 'Need a class' : 'Everyone has a class'}
         icon={UserX}
-        mark={counts.unenrolledStudents > 0 ? 'brick' : 'leaf'}
+        mark={counts.unenrolledStudents > 0 ? 'oxblood' : 'sage'}
         to="/admin/students?hasActiveEnrollment=false&isActive=true"
       />
     </div>

@@ -12,7 +12,7 @@ export function RecentGradesCard({ grades }) {
   return (
     <Card
       icon={Award}
-      mark="plum"
+      mark="cream"
       title="Recent grades"
       actions={<TextLink to="/student/grades">All grades</TextLink>}
     >

@@ -34,12 +34,10 @@ colors:
   violet-600: "#7c55c7"
   violet-700: "#6340a8"
   on-danger: "#ffffff"
-  mark-brick: "#b03a35"
-  mark-leaf: "#346739"
-  mark-slate: "#3b5b8c"
-  mark-plum: "#6a4a8a"
-  mark-umber: "#8a6424"
-  mark-on: "#ffffff"
+  mark-oxblood: "#6d0808"
+  mark-maroon: "#2d0000"
+  mark-sage: "#757d6f"
+  mark-cream: "#eeead7"
   canvas-dark: "#17181b"
   surface-dark: "#24252a"
   gray-100-dark: "#2a2b30"
@@ -295,7 +293,7 @@ A calm neutral ramp with a hint of warmth, one saturated yellow, and five muted 
 Five families, each with a soft background (`-50`), a solid mark (`-600`) and a text colour (`-700`): **Leaf** green (present, active, success), **Ochre** amber (late, withdrawn, warning), **Brick** red (absent, error, destructive), **Slate Blue** blue (excused, completed, scheduled, info) and **Lilac** violet (administrator role). Grey is the sixth, neutral tone. Alerts, toasts, tinted icon chips and attention tags use the soft background with the text colour.
 
 ### Marks
-Five muted inks of equal weight that tell the areas of the school apart on the dashboards: **Brick** (`mark-brick`) for what needs attention, **Leaf** (`mark-leaf`, the same green as the Active badge) for attendance, **Slate** (`mark-slate`) for students and enrollment, **Plum** (`mark-plum`) for teaching (subjects, a teacher's classes, assessments, grades) and **Umber** (`mark-umber`) for time and the school year (timetable, calendar, the classes of a year). Announcements and school-wide notes use **Ink** (`gray-900` with `gray-50`, so it flips with the theme). They are flat fills only on a dashboard card's 28px title square (8px corners, echoing the brand tile) and on a figure row's icon chip, always with a white icon (5:1 or more), and the same values sit on paper and graphite. A colour belongs to an area, never to a single card, so a page shows a few repeated colours rather than a rainbow. Card and page backgrounds stay neutral.
+The school palette (the user's, 2026-10-06), four colours that tell the areas of the school apart on the dashboards: **Oxblood** (`mark-oxblood`, #6D0808) for what needs attention, only while something does; **Maroon** (`mark-maroon`, #2D0000) for people: students, teachers, enrollment and announcements; **Sage** (`mark-sage`, #757D6F) for attendance and for "all is well" (nobody needs attention, everyone has a class); **Cream** (`mark-cream`, #EEEAD7) for teaching and time: classes, subjects, assessments, grades, periods and the calendar. They are flat fills only on a dashboard card's 28px title square (8px corners, echoing the brand tile) and on a figure row's icon chip. The icon is cream on oxblood, maroon and sage, and oxblood on cream. The same values sit on paper and graphite; a hairline inset edge (`mark-edge`: oxblood at 14% on paper, white at 12% on graphite) keeps the cream square visible on paper and the maroon one on graphite. A colour belongs to an area, never to a single card, so a page shows a few repeated colours rather than a rainbow. Card and page backgrounds stay neutral.
 
 ### Named Rules
 **The One Yellow Rule.** Yellow means "act here" or "this is now". A screen carries one yellow button, or very few; the yellow tag is only for the current period or today's column, never for a plain status.

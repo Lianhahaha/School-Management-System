@@ -57,12 +57,10 @@ export const ATTENDANCE_RATE_LINE = 0.8;
  * graphite); the others are the same in both themes.
  */
 export const MARK_CLASSES = Object.freeze({
-  brick: 'bg-mark-brick text-mark-on', // needs attention
-  leaf: 'bg-mark-leaf text-mark-on', // attendance
-  slate: 'bg-mark-slate text-mark-on', // students and enrollment
-  plum: 'bg-mark-plum text-mark-on', // teaching: subjects, a teacher's classes, assessments and grades
-  umber: 'bg-mark-umber text-mark-on', // time and the school year: timetable, calendar, the classes of a year
-  ink: 'bg-gray-900 text-gray-50', // announcements and school-wide notes
+  oxblood: 'bg-mark-oxblood text-mark-cream ring-1 ring-mark-edge ring-inset', // needs attention
+  maroon: 'bg-mark-maroon text-mark-cream ring-1 ring-mark-edge ring-inset', // people: students, teachers, enrollment, announcements
+  sage: 'bg-mark-sage text-mark-cream ring-1 ring-mark-edge ring-inset', // attendance, and "all is well"
+  cream: 'bg-mark-cream text-mark-oxblood ring-1 ring-mark-edge ring-inset', // teaching and time: classes, subjects, assessments, periods, calendar
 });
 
 // ---------------------------------------------------------------------------
