@@ -4,7 +4,6 @@ import { DetailLoadError } from '../../../components/layout/DetailLoadError';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageSkeleton } from '../../../components/layout/PageSkeleton';
 import { Badge } from '../../../components/ui/Badge';
-import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { Tabs } from '../../../components/ui/Tabs';
 import { fullName } from '../../../utils/names';
@@ -15,6 +14,7 @@ import { GradeTrendCard } from '../../grades/components/GradeTrendCard';
 import { PrintReportCardButton, ReportCard } from '../../grades/components/ReportCard';
 import { UserStatusBadge } from '../../users/components/UserStatusBadge';
 import { StudentClassButton, StudentClassModals } from '../components/StudentClassModals';
+import { StudentOverview } from '../components/StudentOverview';
 import { StudentProfileForm } from '../components/StudentProfileForm';
 import { useStudent } from '../hooks';
 
@@ -49,14 +49,7 @@ export default function StudentDetailPage() {
         title={name}
         description={student.studentNumber}
         breadcrumbs={[{ label: 'Students', to: STUDENTS_PATH }, { label: name }]}
-        actions={
-          <>
-            <Button variant="secondary" onClick={() => setSearchParams({ tab: 'profile' })}>
-              Edit profile
-            </Button>
-            <StudentClassButton student={student} onSelect={setClassTarget} variant="primary" />
-          </>
-        }
+        actions={<StudentClassButton student={student} onSelect={setClassTarget} variant="primary" />}
       />
       <div className="-mt-3 mb-6 flex flex-wrap items-center gap-2">
         {hasClass ? (
@@ -70,6 +63,16 @@ export default function StudentDetailPage() {
       <Tabs
         label="Student sections"
         tabs={[
+          {
+            id: 'overview',
+            label: 'Overview',
+            content: (
+              <StudentOverview
+                student={student}
+                onOpenTab={(tab) => setSearchParams({ tab }, { replace: true })}
+              />
+            ),
+          },
           {
             id: 'profile',
             label: 'Profile',

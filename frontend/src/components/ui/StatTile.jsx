@@ -17,8 +17,10 @@ import { cx } from '../../utils/cx';
  * @param {keyof typeof MARK_CLASSES} [props.mark] a solid area colour for the icon chip (dashboards);
  *   it takes precedence over `tone`
  * @param {string} [props.to] route to open on click
+ * @param {() => void} [props.onClick] action on click when the row opens something on the same page (a tab)
  */
-export function StatTile({ label, value, hint, icon: Icon, tone, mark, to }) {
+export function StatTile({ label, value, hint, icon: Icon, tone, mark, to, onClick }) {
+  const isAction = Boolean(to || onClick);
   const classes =
     'flex min-h-14 items-center gap-2 rounded-tile bg-surface py-2 ring-1 ring-gray-200 ring-inset pr-2.5 pl-2 sm:gap-3 sm:pr-4';
   const content = (
@@ -40,15 +42,27 @@ export function StatTile({ label, value, hint, icon: Icon, tone, mark, to }) {
         {hint && <span className="block truncate text-xs text-gray-500">{hint}</span>}
       </span>
       <span className="tabular shrink-0 text-lg font-semibold text-gray-900">{value}</span>
-      {to && <ChevronRight className="-mr-1 size-4 shrink-0 text-gray-500" aria-hidden="true" />}
+      {isAction && <ChevronRight className="-mr-1 size-4 shrink-0 text-gray-500" aria-hidden="true" />}
     </>
   );
 
-  return to ? (
-    <Link to={to} className={cx(classes, 'transition-colors hover:bg-gray-50')}>
-      {content}
-    </Link>
-  ) : (
-    <div className={classes}>{content}</div>
-  );
+  if (to) {
+    return (
+      <Link to={to} className={cx(classes, 'transition-colors hover:bg-gray-50')}>
+        {content}
+      </Link>
+    );
+  }
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={cx(classes, 'w-full text-left transition-colors hover:bg-gray-50')}
+      >
+        {content}
+      </button>
+    );
+  }
+  return <div className={classes}>{content}</div>;
 }
