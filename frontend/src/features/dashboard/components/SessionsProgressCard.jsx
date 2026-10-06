@@ -18,7 +18,7 @@ export function SessionsProgressCard({ attendance, holiday }) {
         <EmptyState
           icon={CalendarOff}
           title="Nothing to mark today"
-          description={`School holiday: ${holiday.title}.`}
+          description={`No classes today: ${holiday.title}.`}
           compact
         />
       ) : sessionsScheduled === 0 ? (

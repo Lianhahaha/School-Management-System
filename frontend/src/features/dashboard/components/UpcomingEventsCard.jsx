@@ -20,7 +20,7 @@ export function UpcomingEventsCard({ events, to }) {
       icon={CalendarDotsIcon}
       mark="cream"
       title="Coming up"
-      description="Holidays and school events, next 30 days"
+      description="Days with no classes and school events, next 30 days"
       actions={<TextLink to={to}>Calendar</TextLink>}
     >
       {events.length === 0 ? (

@@ -178,7 +178,7 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
         </p>
         <p className="text-xs text-gray-500">Unmarked students are saved as Present.</p>
         {sheet.holiday && (
-          <Alert tone="warning">{`No classes on ${formatDate(saved.date)}: ${sheet.holiday.title}. Attendance can't be marked on a school holiday.`}</Alert>
+          <Alert tone="warning">{`No classes on ${formatDate(saved.date)}: ${sheet.holiday.title}. Attendance can't be marked on a day with no classes.`}</Alert>
         )}
         {isOffDay && !sheet.holiday && (
           <Alert tone="warning">

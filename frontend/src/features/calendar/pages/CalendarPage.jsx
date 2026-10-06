@@ -62,7 +62,8 @@ export default function CalendarPage() {
   const onDelete = async (event) => {
     const ok = await confirm({
       title: `Remove "${event.title}"?`,
-      description: "It disappears from everyone's calendar. On a holiday, attendance can be marked again.",
+      description:
+        "It disappears from everyone's calendar. If it was a day with no classes, attendance can be marked again.",
       confirmLabel: 'Remove entry',
     });
     if (ok) deleteEvent.mutate(event.id);
@@ -94,7 +95,7 @@ export default function CalendarPage() {
             <EmptyState
               icon={CalendarRange}
               title="Nothing on the calendar this month"
-              description="Holidays and school events appear here."
+              description="Days with no classes and school events appear here."
               compact
             />
           ) : (
@@ -143,7 +144,7 @@ export default function CalendarPage() {
     <>
       <PageHeader
         title="Calendar"
-        description="School holidays (no classes) and events."
+        description="Days with no classes, and school events."
         actions={
           isAdmin && (
             <Button icon={Plus} onClick={() => setForm({ startsOn: '' })}>

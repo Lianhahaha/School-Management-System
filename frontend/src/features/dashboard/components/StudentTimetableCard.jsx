@@ -22,14 +22,9 @@ export function StudentTimetableCard({ periods, holiday }) {
       actions={<TextLink to="/student/schedule">Full week</TextLink>}
     >
       {holiday ? (
-        <EmptyState
-          icon={CalendarOff}
-          title={`No classes today: ${holiday.title}`}
-          description="It's a school holiday."
-          compact
-        />
+        <EmptyState icon={CalendarOff} title={`No classes today: ${holiday.title}`} compact />
       ) : sorted.length === 0 ? (
-        <EmptyState icon={CalendarOff} title="No classes today" compact />
+        <EmptyState icon={CalendarOff} title="No periods today" compact />
       ) : (
         <ol className="divide-y divide-gray-200">
           {sorted.map((period) => (
