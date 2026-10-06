@@ -1,7 +1,7 @@
 import { cx } from '../../utils/cx';
 
 /**
- * Selected-pill colours per option tone. Full class names so that Tailwind can find them.
+ * Selected-chip colours per option tone. Full class names so that Tailwind can find them.
  * The neutral choice (no tone) is an ink outline; status choices take their soft tone and a ring.
  */
 const CHECKED_CLASSES = {
@@ -15,7 +15,7 @@ const CHECKED_CLASSES = {
 };
 
 /**
- * A real radio group (fieldset, legend, native radio inputs) drawn as selectable pills, so the
+ * A real radio group (fieldset, legend, native radio inputs) drawn as selectable chips, so the
  * choice is announced correctly and works with the arrow keys. The selected option is marked by
  * weight and a ring as well as colour, never by colour alone.
  *
@@ -61,7 +61,7 @@ export function RadioGroup({
             />
             <span
               className={cx(
-                'inline-flex min-h-9 items-center gap-1.5 rounded-full bg-gray-100 px-3.5 text-sm text-gray-700 transition-colors ring-inset hover:bg-gray-200 pointer-coarse:min-h-11',
+                'inline-flex min-h-9 items-center gap-1.5 rounded-control bg-gray-100 px-3.5 text-sm text-gray-700 transition-colors ring-inset hover:bg-gray-200 pointer-coarse:min-h-11',
                 'peer-checked:font-semibold peer-checked:ring-2 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-gray-900',
                 CHECKED_CLASSES[option.tone ?? 'neutral'],
               )}

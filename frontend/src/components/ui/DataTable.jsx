@@ -33,7 +33,7 @@ function MobileSort({ columns, sortBy, sortOrder, onSortChange }) {
         }}
         options={options}
         placeholder="Sort by"
-        className="rounded-full border-transparent"
+        className="border-transparent"
       />
     </div>
   );

@@ -54,7 +54,7 @@ export function SearchInput({ value, onChange, placeholder, label = 'Search', de
         onChange={(event) => setDraft(event.target.value)}
         placeholder={placeholder}
         aria-label={label}
-        className="rounded-full border-transparent bg-surface pl-10 hover:border-gray-300"
+        className="border-transparent bg-surface pl-10 hover:border-gray-300"
       />
     </div>
   );
