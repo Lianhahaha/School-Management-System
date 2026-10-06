@@ -4,6 +4,7 @@ import { Button } from '../../../components/ui/Button';
 import { AdminAttendanceCard } from '../components/AdminAttendanceCard';
 import { AdminCountTiles } from '../components/AdminCountTiles';
 import { AtRiskCard } from '../components/AtRiskCard';
+import { DashboardColumns } from '../components/DashboardColumns';
 import { DashboardView } from '../components/DashboardView';
 import { EnrollmentByGradeCard } from '../components/EnrollmentByGradeCard';
 import { RecentAnnouncementsCard } from '../components/RecentAnnouncementsCard';
@@ -13,7 +14,8 @@ import { UpcomingEventsCard } from '../components/UpcomingEventsCard';
 
 /**
  * /admin: "Is the school running?" The setup checklist while the school is still being set up, then
- * counts, the students who need attention, today's attendance, enrollment by grade, what is next.
+ * counts, then three columns: the students who need attention and today's attendance; what is coming
+ * (calendar, assessments); enrollment by grade and the latest announcements.
  */
 export default function AdminDashboardPage() {
   return (
@@ -42,18 +44,26 @@ export default function AdminDashboardPage() {
         <div className="space-y-6">
           <SetupChecklistCard counts={data.counts} />
           <AdminCountTiles counts={data.counts} />
-          <div className="grid items-start gap-6 lg:grid-cols-2">
-            <div className="space-y-6">
-              <AtRiskCard atRisk={data.atRisk} studentPath={(id) => `/admin/students/${id}`} />
-              <AdminAttendanceCard attendance={data.attendanceToday} holiday={data.holidayToday} />
-              <UpcomingAssessmentsCard assessments={data.upcomingAssessments} />
-            </div>
-            <div className="space-y-6">
-              <UpcomingEventsCard events={data.upcomingEvents} to="/admin/calendar" />
-              <EnrollmentByGradeCard grades={data.enrollmentsByGrade} />
-              <RecentAnnouncementsCard announcements={data.recentAnnouncements} to="/admin/announcements" />
-            </div>
-          </div>
+          <DashboardColumns
+            first={
+              <>
+                <AtRiskCard atRisk={data.atRisk} studentPath={(id) => `/admin/students/${id}`} />
+                <AdminAttendanceCard attendance={data.attendanceToday} holiday={data.holidayToday} />
+              </>
+            }
+            second={
+              <>
+                <UpcomingEventsCard events={data.upcomingEvents} to="/admin/calendar" />
+                <UpcomingAssessmentsCard assessments={data.upcomingAssessments} />
+              </>
+            }
+            third={
+              <>
+                <EnrollmentByGradeCard grades={data.enrollmentsByGrade} />
+                <RecentAnnouncementsCard announcements={data.recentAnnouncements} to="/admin/announcements" />
+              </>
+            }
+          />
         </div>
       )}
     </DashboardView>

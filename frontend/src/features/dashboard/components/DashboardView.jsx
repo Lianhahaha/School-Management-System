@@ -5,15 +5,16 @@ import { useDashboard } from '../hooks';
 
 function DashboardSkeleton() {
   return (
-    <div role="status" aria-busy="true" aria-label="Loading dashboard" className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div role="status" aria-busy="true" aria-label="Loading dashboard" className="@container space-y-6">
+      <div className="grid gap-4 sm:grid-cols-2 @3xl:grid-cols-3">
         {[0, 1, 2].map((tile) => (
-          <Skeleton key={tile} className="h-24 w-full" />
+          <Skeleton key={tile} className="h-14 w-full" />
         ))}
       </div>
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 @3xl:grid-cols-2 @6xl:grid-cols-3">
         <Skeleton className="h-64 w-full" />
         <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-64 w-full @max-6xl:hidden" />
       </div>
     </div>
   );

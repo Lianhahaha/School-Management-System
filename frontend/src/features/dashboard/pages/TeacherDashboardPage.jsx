@@ -5,6 +5,7 @@ import { useMinutesNow } from '../../../hooks/useMinutesNow';
 import { todayYmd } from '../../../utils/date';
 import { lessonToMark } from '../../../utils/schedule';
 import { AtRiskCard } from '../components/AtRiskCard';
+import { DashboardColumns } from '../components/DashboardColumns';
 import { DashboardView } from '../components/DashboardView';
 import { PendingGradingCard } from '../components/PendingGradingCard';
 import { RecentAnnouncementsCard } from '../components/RecentAnnouncementsCard';
@@ -36,8 +37,9 @@ function MarkAttendanceButton({ periods, minutesNow }) {
 }
 
 /**
- * /teacher: "What do I do today?" Today's periods first, then grading, the students of their classes who need
- * attention, classes and announcements.
+ * /teacher: "What do I do today?" Today's periods first (the widest column) with their classes under them;
+ * then today's attendance, grading and the students of their classes who need attention; then the calendar
+ * and announcements.
  */
 export default function TeacherDashboardPage() {
   const minutesNow = useMinutesNow();
@@ -49,19 +51,28 @@ export default function TeacherDashboardPage() {
       actions={(data) => <MarkAttendanceButton periods={data.todaySchedule} minutesNow={minutesNow} />}
     >
       {(data) => (
-        <div className="grid items-start gap-6 lg:grid-cols-3">
-          <div className="space-y-6 lg:col-span-2">
-            <TodayTimeline periods={data.todaySchedule} holiday={data.holidayToday} />
-            <TeacherClassesCard classSubjects={data.classSubjects} homeroomClasses={data.homeroomClasses} />
-          </div>
-          <div className="space-y-6">
-            <SessionsProgressCard attendance={data.attendanceToday} holiday={data.holidayToday} />
-            <PendingGradingCard assessments={data.pendingGrading} />
-            <AtRiskCard atRisk={data.atRisk} />
-            <UpcomingEventsCard events={data.upcomingEvents} to="/teacher/calendar" />
-            <RecentAnnouncementsCard announcements={data.recentAnnouncements} to="/teacher/announcements" />
-          </div>
-        </div>
+        <DashboardColumns
+          wideFirst
+          first={
+            <>
+              <TodayTimeline periods={data.todaySchedule} holiday={data.holidayToday} />
+              <TeacherClassesCard classSubjects={data.classSubjects} homeroomClasses={data.homeroomClasses} />
+            </>
+          }
+          second={
+            <>
+              <SessionsProgressCard attendance={data.attendanceToday} holiday={data.holidayToday} />
+              <PendingGradingCard assessments={data.pendingGrading} />
+              <AtRiskCard atRisk={data.atRisk} />
+            </>
+          }
+          third={
+            <>
+              <UpcomingEventsCard events={data.upcomingEvents} to="/teacher/calendar" />
+              <RecentAnnouncementsCard announcements={data.recentAnnouncements} to="/teacher/announcements" />
+            </>
+          }
+        />
       )}
     </DashboardView>
   );
