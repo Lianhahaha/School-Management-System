@@ -75,7 +75,8 @@ export function Th({ sortDirection = null, onSort, align = 'left', hideBelow, wi
           )}
         >
           {children}
-          <SortIcon className={cx('size-3.5', !sortDirection && 'opacity-40')} aria-hidden="true" />
+          {/* Unsorted columns keep a quieter icon, still at 3:1 or more against the sheet. */}
+          <SortIcon className={cx('size-3.5', !sortDirection && 'opacity-70')} aria-hidden="true" />
         </button>
       ) : (
         children

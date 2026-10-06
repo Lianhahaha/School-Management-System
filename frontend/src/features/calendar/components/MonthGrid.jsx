@@ -84,7 +84,7 @@ export function MonthGrid({ month, caption, events, onAddOn, onSelect }) {
                     <span
                       className={cx(
                         'text-xs tabular-nums',
-                        isOtherMonth ? 'text-gray-400' : 'font-semibold text-gray-800',
+                        isOtherMonth ? 'text-gray-500' : 'font-semibold text-gray-800',
                       )}
                     >
                       <span className="sr-only">{formatDate(day)}</span>
