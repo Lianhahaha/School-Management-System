@@ -1,4 +1,4 @@
-import { useId, useRef } from 'react';
+import { useId, useLayoutEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { cx } from '../../utils/cx';
 
@@ -6,7 +6,8 @@ import { cx } from '../../utils/cx';
  * Tabs whose active tab lives in the URL (`?tab=students`), so reload, back/forward and shared links
  * keep the tab. Only the active panel is rendered: a tab's queries do not run until it is opened.
  * Switching tabs drops the other query parameters, because each tab owns its own list state.
- * Arrow keys, Home and End move between tabs.
+ * Arrow keys, Home and End move between tabs. When the strip is wider than the screen it scrolls
+ * sideways, and it scrolls the active tab into view, so a tab opened from a link is never hidden.
  *
  *   <Tabs label="Class sections" tabs={[
  *     { id: 'subjects', label: 'Subjects & Teachers', content: <ClassSubjectsTab classId={id} /> },
@@ -28,6 +29,17 @@ export function Tabs({ label, tabs, param = 'tab' }) {
     0,
     tabs.findIndex((tab) => tab.id === searchParams.get(param)),
   );
+
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    const tab = list?.querySelectorAll('[role="tab"]')[activeIndex];
+    if (!tab || list.scrollWidth <= list.clientWidth) return;
+    // Only the strip scrolls (scrollIntoView could also move the page up or down).
+    const listBox = list.getBoundingClientRect();
+    const tabBox = tab.getBoundingClientRect();
+    if (tabBox.left < listBox.left) list.scrollLeft -= listBox.left - tabBox.left + 4;
+    else if (tabBox.right > listBox.right) list.scrollLeft += tabBox.right - listBox.right + 4;
+  }, [activeIndex]);
 
   // replace: switching tabs is not a new page, so Back (and the browser's back) leaves the page instead.
   const select = (index) => setSearchParams({ [param]: tabs[index].id }, { replace: true });
