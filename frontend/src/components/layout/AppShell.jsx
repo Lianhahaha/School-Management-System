@@ -71,7 +71,7 @@ export function AppShell() {
           id="main"
           ref={mainRef}
           tabIndex={-1}
-          className="mx-auto max-w-6xl px-4 pt-4 pb-32 sm:px-6 lg:px-10 lg:pt-6 lg:pb-12"
+          className="mx-auto max-w-[100rem] px-4 pt-4 pb-32 sm:px-6 lg:px-10 lg:pt-6 lg:pb-12"
         >
           <Suspense fallback={<PageSkeleton />}>
             <Outlet />

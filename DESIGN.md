@@ -329,7 +329,7 @@ The school palette (the user's, 2026-10-06), four colours that tell the areas of
 
 ## Layout
 
-From the `lg` breakpoint (1024px) the shell is a 256px sidebar on the page tone (no frame, no shadow) beside the content column. The content column has a sticky 64px top bar (canvas at 85% opacity with a medium backdrop blur) holding the theme switch and the user menu, then `<main>` capped at 72rem and centred, with 40px side padding, 24px top and 48px bottom.
+From the `lg` breakpoint (1024px) the shell is a 256px sidebar on the page tone (no frame, no shadow) beside the content column. The content column has a sticky 64px top bar (canvas at 85% opacity with a medium backdrop blur) holding the theme switch and the user menu, then `<main>` capped at 100rem (1600px) and centred, with 40px side padding, 24px top and 48px bottom. The cap is wide on purpose: on a big monitor the page uses the screen instead of leaving empty sides, and only a 2K or larger screen shows margins.
 
 Every page opens with the same header: breadcrumbs on detail pages, the headline with its optional total and a one-line description on the left, the page's actions (usually its single yellow button) on the right, wrapping under the title on narrow screens; 28px below it the content begins. Content lives in sheets with 20px padding; list pages put a filter bar of pill-shaped search and selects above a table sheet. Figure rows and period rows stack 8px apart inside a sheet. Dashboards stack each column independently so sheets of different heights leave no gaps.
 
