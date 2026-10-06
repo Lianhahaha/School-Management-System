@@ -293,16 +293,9 @@
     @apply min-w-0 rounded-card bg-surface shadow-card;
   }
 
-  /*
-   * The "on" badge (Active, Present, Enrolled): a deep leaf green (#346739, white text 6.7:1) with a
-   * slight gradient around it, a faint light edge on top and a shadow under the text.
-   */
+  /* The "on" badge (Active, Present, Enrolled): a flat deep leaf green, white text at 6.7:1. No gradient. */
   .badge-positive {
-    background: linear-gradient(180deg, #3b7341, #2e5c33);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.16),
-      0 1px 2px rgb(30 60 34 / 0.2);
-    text-shadow: 0 1px 0 rgb(0 0 0 / 0.16);
+    background: #346739;
   }
 
   /*
