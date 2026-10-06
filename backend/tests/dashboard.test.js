@@ -147,6 +147,33 @@ describe('dashboard', () => {
     assert.equal(data.attendanceSummary.rate, null);
   });
 
+  it("lists today's lessons that have no attendance yet for the admin", async () => {
+    const before = (await dashboard(school.admin)).attendanceToday;
+    assert.equal(before.lessonsScheduled, 1);
+    assert.equal(before.lessonsMarked, 1);
+    assert.deepEqual(before.unmarkedLessons, []);
+
+    const slotB = await api.post('/api/v1/schedules').set(as(school.admin)).send({
+      classSubjectId: school.csB.id,
+      dayOfWeek: todayIsoWeekday(),
+      startTime: '10:00',
+      endTime: '11:00',
+      room: 'R2',
+    });
+    assert.equal(slotB.status, 201, JSON.stringify(slotB.body));
+    try {
+      const now = (await dashboard(school.admin)).attendanceToday;
+      assert.equal(now.lessonsScheduled, 2);
+      assert.equal(now.lessonsMarked, 1);
+      assert.deepEqual(
+        now.unmarkedLessons.map((lesson) => [lesson.classSubjectId, lesson.startTime, lesson.teacher.id]),
+        [[school.csB.id, '10:00', school.other.teacherId]],
+      );
+    } finally {
+      await api.delete(`/api/v1/schedules/${slotB.body.data.id}`).set(as(school.admin));
+    }
+  });
+
   it("empties today's lessons on a school holiday and names it", async () => {
     for (const who of [school.admin, school.owner, school.s1]) {
       assert.equal((await dashboard(who)).holidayToday, null);
@@ -165,7 +192,9 @@ describe('dashboard', () => {
       const student = await dashboard(school.s1);
       assert.deepEqual(student.holidayToday, { id: holiday.id, title: 'Founders day' });
       assert.deepEqual(student.todaySchedule, []);
-      assert.equal((await dashboard(school.admin)).holidayToday.id, holiday.id);
+      const admin = await dashboard(school.admin);
+      assert.equal(admin.holidayToday.id, holiday.id);
+      assert.equal(admin.attendanceToday.lessonsScheduled, 0);
     } finally {
       await api.delete(`/api/v1/calendar-events/${holiday.id}`).set(as(school.admin));
     }

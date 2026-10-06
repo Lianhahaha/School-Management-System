@@ -3544,14 +3544,41 @@ components:
               type: integer
               description: Active students without an active enrollment.
         attendanceToday:
-          description: Attendance counts of today across the whole school.
+          description: >-
+            Attendance counts of today across the whole school, and today's lessons as sheets to mark: one per
+            class-subject on the timetable today (periods of one subject share a sheet); none on a holiday.
           allOf:
             - $ref: '#/components/schemas/AttendanceSummary'
             - type: object
-              required: [date]
+              required: [date, lessonsScheduled, lessonsMarked, unmarkedLessons]
               properties:
                 date:
                   $ref: '#/components/schemas/DateYmd'
+                lessonsScheduled:
+                  type: integer
+                lessonsMarked:
+                  type: integer
+                unmarkedLessons:
+                  type: array
+                  description: Lessons of today without attendance yet, by first start time.
+                  items:
+                    type: object
+                    required: [classSubjectId, classId, className, subjectName, teacher, startTime, endTime]
+                    properties:
+                      classSubjectId:
+                        $ref: '#/components/schemas/Id'
+                      classId:
+                        $ref: '#/components/schemas/Id'
+                      className:
+                        type: string
+                      subjectName:
+                        type: string
+                      teacher:
+                        $ref: '#/components/schemas/PersonRef'
+                      startTime:
+                        $ref: '#/components/schemas/TimeHm'
+                      endTime:
+                        $ref: '#/components/schemas/TimeHm'
         enrollmentsByGrade:
           type: array
           items:

@@ -103,6 +103,38 @@ async function atRiskStudents(user) {
   };
 }
 
+/**
+ * Today's lessons school-wide as attendance sheets: one per class-subject on the timetable today (two periods
+ * of one subject share a sheet), at its first start time, with whether it is marked. None on a holiday.
+ */
+async function lessonsToday(today, holiday) {
+  if (holiday) return [];
+  const slots = await findSlotsUnscoped({
+    dayOfWeek: todayIsoWeekday(),
+    academicYear: currentAcademicYear(),
+  });
+  const firstSlots = new Map();
+  for (const slot of slots) {
+    const seen = firstSlots.get(slot.classSubjectId);
+    if (!seen || slot.startTime < seen.startTime) firstSlots.set(slot.classSubjectId, slot);
+  }
+  const lessons = [...firstSlots.values()].sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const marked = await markedClassSubjectIdsUnscoped(
+    lessons.map((slot) => slot.classSubjectId),
+    today,
+  );
+  return lessons.map((slot) => ({
+    classSubjectId: slot.classSubjectId,
+    classId: slot.classSubject.classId,
+    className: slot.classSubject.className,
+    subjectName: slot.classSubject.subjectName,
+    teacher: slot.classSubject.teacher,
+    startTime: slot.startTime,
+    endTime: slot.endTime,
+    marked: marked.has(slot.classSubjectId),
+  }));
+}
+
 async function adminDashboard(user) {
   const today = todayYmd();
   const [counts, attendance, enrollmentsByGrade, upcoming, announcements, atRisk, events, holiday] =
@@ -116,6 +148,7 @@ async function adminDashboard(user) {
       upcomingEvents(),
       holidayOn(today),
     ]);
+  const lessons = await lessonsToday(today, holiday);
   return {
     role: 'admin',
     holidayToday: holiday,
@@ -129,7 +162,15 @@ async function adminDashboard(user) {
       activeEnrollments: counts.activeEnrollments,
       unenrolledStudents: counts.unenrolledStudents,
     },
-    attendanceToday: { date: today, ...attendance },
+    attendanceToday: {
+      date: today,
+      ...attendance,
+      lessonsScheduled: lessons.length,
+      lessonsMarked: lessons.filter((lesson) => lesson.marked).length,
+      unmarkedLessons: lessons
+        .filter((lesson) => !lesson.marked)
+        .map(({ marked: _marked, ...lesson }) => lesson),
+    },
     enrollmentsByGrade: enrollmentsByGrade.map((row) => ({
       gradeLevel: row.gradeLevel,
       students: row.students,
