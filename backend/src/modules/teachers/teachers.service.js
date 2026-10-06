@@ -63,7 +63,7 @@ export async function assertActiveTeacher(teacherId, conn) {
       field: 'teacherId',
     });
   if (!teacher.isActive)
-    throw ApiError.validation('teacher is inactive', undefined, {
+    throw ApiError.validation('this teacher is deactivated', undefined, {
       reason: 'teacher_inactive',
       field: 'teacherId',
     });

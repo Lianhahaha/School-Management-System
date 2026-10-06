@@ -10,7 +10,7 @@ const MESSAGES = {
   'auth/user-not-found': CREDENTIALS_MESSAGE,
   'auth/invalid-email': CREDENTIALS_MESSAGE,
   'auth/too-many-requests': 'Too many attempts. Try again later or reset your password.',
-  'auth/user-disabled': 'This account has been disabled.',
+  'auth/user-disabled': 'This account has been deactivated. Contact the administrator.',
   'auth/network-request-failed': 'Network error. Check your connection.',
   // A setup problem, so say so instead of hiding it behind a generic message.
   'auth/operation-not-allowed': 'Email/password sign-in is not enabled for this Firebase project.',

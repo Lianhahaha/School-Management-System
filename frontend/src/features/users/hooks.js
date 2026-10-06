@@ -89,7 +89,7 @@ export function useSetUserStatus() {
     mutationFn: ({ id, isActive }) => setUserStatus(id, isActive),
     onSuccess: (user) => {
       invalidateAccounts();
-      toast.success(`${fullName(user)} ${user.isActive ? 'activated' : 'deactivated'}`);
+      toast.success(`${fullName(user)} ${user.isActive ? 'reactivated' : 'deactivated'}`);
     },
   });
 }

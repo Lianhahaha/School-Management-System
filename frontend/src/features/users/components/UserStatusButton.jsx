@@ -35,9 +35,9 @@ export function UserStatusButton({ user }) {
           confirmLabel: 'Deactivate',
         })
       : await confirm({
-          title: `Activate ${name}?`,
+          title: `Reactivate ${name}?`,
           description: 'They will be able to sign in again.',
-          confirmLabel: 'Activate',
+          confirmLabel: 'Reactivate',
           tone: 'primary',
         });
     if (ok) setStatus.mutate({ id: user.id, isActive: !user.isActive });
@@ -51,9 +51,9 @@ export function UserStatusButton({ user }) {
       isLoading={setStatus.isPending}
       disabled={isSelf}
       title={isSelf ? "You can't change your own status" : undefined}
-      aria-label={`${user.isActive ? 'Deactivate' : 'Activate'} ${name}`}
+      aria-label={`${user.isActive ? 'Deactivate' : 'Reactivate'} ${name}`}
     >
-      {user.isActive ? 'Deactivate' : 'Activate'}
+      {user.isActive ? 'Deactivate' : 'Reactivate'}
     </Button>
   );
 }

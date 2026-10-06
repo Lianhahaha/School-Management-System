@@ -183,7 +183,7 @@ export const DAY_OPTIONS = DAYS_OF_WEEK.map((day) => ({ value: String(day), labe
 /** Account status filter (users, students, teachers); boolean filters travel as 'true' and 'false'. */
 export const USER_STATUS_FILTER_OPTIONS = Object.freeze([
   { value: 'true', label: 'Active' },
-  { value: 'false', label: 'Disabled' },
+  { value: 'false', label: 'Deactivated' },
 ]);
 
 export const GRADE_LEVELS = Object.freeze(Array.from({ length: 12 }, (_, index) => index + 1));
@@ -216,7 +216,7 @@ export function academicYearOptions(span = 2) {
 export const SIGN_OUT_MESSAGES = Object.freeze({
   [ERROR_CODES.USER_NOT_REGISTERED]:
     'Your account exists but is not registered in the school system. Contact the administrator.',
-  [ERROR_CODES.ACCOUNT_DISABLED]: 'Your account has been disabled. Contact the administrator.',
+  [ERROR_CODES.ACCOUNT_DISABLED]: 'Your account has been deactivated. Contact the administrator.',
 });
 
 /** Error codes that mean the account itself is no longer usable: the app signs the user out. */
