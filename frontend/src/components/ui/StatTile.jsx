@@ -1,6 +1,6 @@
 import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router';
-import { TONE_SOFT_CLASSES } from '../../constants/ui';
+import { MARK_CLASSES, TONE_SOFT_CLASSES } from '../../constants/ui';
 import { cx } from '../../utils/cx';
 
 /**
@@ -14,9 +14,11 @@ import { cx } from '../../utils/cx';
  * @param {import('react').ElementType} [props.icon] lucide icon
  * @param {'gray'|'green'|'amber'|'red'|'blue'|'violet'} [props.tone] only when the figure carries a state
  *   (e.g. amber while students need a class): it tints the icon chip
+ * @param {keyof typeof MARK_CLASSES} [props.mark] a solid area colour for the icon chip (dashboards);
+ *   it takes precedence over `tone`
  * @param {string} [props.to] route to open on click
  */
-export function StatTile({ label, value, hint, icon: Icon, tone, to }) {
+export function StatTile({ label, value, hint, icon: Icon, tone, mark, to }) {
   const classes =
     'flex min-h-14 items-center gap-2 rounded-[1.25rem] bg-surface py-2 ring-1 ring-gray-200 ring-inset pr-2.5 pl-2 sm:gap-3 sm:rounded-full sm:pr-4';
   const content = (
@@ -25,7 +27,7 @@ export function StatTile({ label, value, hint, icon: Icon, tone, to }) {
         <span
           className={cx(
             'flex size-8 shrink-0 items-center justify-center rounded-full sm:size-10',
-            tone ? TONE_SOFT_CLASSES[tone] : 'bg-gray-100 text-gray-700',
+            mark ? MARK_CLASSES[mark] : tone ? TONE_SOFT_CLASSES[tone] : 'bg-gray-100 text-gray-700',
           )}
         >
           <Icon className="size-[1.125rem]" aria-hidden="true" />

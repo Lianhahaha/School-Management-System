@@ -79,6 +79,20 @@
   --violet-700: #6340a8;
   --on-danger: #ffffff;
 
+  /*
+   * Marks: the flat colour of a dashboard card's icon square and a figure row's icon chip, so each
+   * area of the school is found by colour. Five muted inks of equal weight, one per area, never one per
+   * card: brick for what needs attention, leaf for attendance, slate for students and enrollment, plum
+   * for teaching and grades, umber for time and classes (announcements use ink). White icons on all
+   * of them read at 5:1 or more, and the same values sit on the paper and the graphite theme.
+   */
+  --mark-brick: #b03a35;
+  --mark-leaf: #346739;
+  --mark-slate: #3b5b8c;
+  --mark-plum: #6a4a8a;
+  --mark-umber: #8a6424;
+  --mark-on: #ffffff;
+
   /* Solid status fills for badges: amber with ink text, red with white text. */
   --solid-amber: #f0a500;
   --solid-red: #d0192f;
@@ -198,6 +212,12 @@
   --color-violet-600: var(--violet-600);
   --color-violet-700: var(--violet-700);
   --color-on-danger: var(--on-danger);
+  --color-mark-brick: var(--mark-brick);
+  --color-mark-leaf: var(--mark-leaf);
+  --color-mark-slate: var(--mark-slate);
+  --color-mark-plum: var(--mark-plum);
+  --color-mark-umber: var(--mark-umber);
+  --color-mark-on: var(--mark-on);
   --color-solid-amber: var(--solid-amber);
   --color-solid-red: var(--solid-red);
   --color-well: var(--well);

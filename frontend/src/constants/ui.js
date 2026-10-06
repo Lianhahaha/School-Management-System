@@ -44,6 +44,20 @@ export const TONE_SOFT_CLASSES = Object.freeze({
   violet: 'bg-violet-50 text-violet-700',
 });
 
+/**
+ * Marks: the solid colour of an icon square or chip that tells the areas of the school apart on the
+ * dashboards. One colour per area, not per card. `ink` follows the theme (dark on paper, light on
+ * graphite); the others are the same in both themes.
+ */
+export const MARK_CLASSES = Object.freeze({
+  brick: 'bg-mark-brick text-mark-on', // needs attention
+  leaf: 'bg-mark-leaf text-mark-on', // attendance
+  slate: 'bg-mark-slate text-mark-on', // students and enrollment
+  plum: 'bg-mark-plum text-mark-on', // teaching: subjects, a teacher's classes, assessments and grades
+  umber: 'bg-mark-umber text-mark-on', // time and the school year: timetable, calendar, the classes of a year
+  ink: 'bg-gray-900 text-gray-50', // announcements and school-wide notes
+});
+
 // ---------------------------------------------------------------------------
 // Labels, tones and options per shared enum
 // ---------------------------------------------------------------------------
