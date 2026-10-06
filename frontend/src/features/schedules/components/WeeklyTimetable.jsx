@@ -75,7 +75,7 @@ export function WeeklyTimetable({
   renderSlot,
   onSlotClick,
   highlightToday = true,
-  label = 'Weekly timetable',
+  label = 'Weekly schedule',
   dayNotes,
 }) {
   const [isWeekendRequested, setWeekendRequested] = useState(false);

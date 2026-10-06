@@ -67,7 +67,7 @@ export function AdminAttendanceCard({ attendance, holiday }) {
       />
     );
   } else if (lessonsScheduled === 0 && attendance.total === 0) {
-    body = <EmptyState icon={CalendarOff} title="No periods on the timetable today" compact />;
+    body = <EmptyState icon={CalendarOff} title="No periods on the schedule today" compact />;
   } else {
     body = (
       <div className="space-y-5">

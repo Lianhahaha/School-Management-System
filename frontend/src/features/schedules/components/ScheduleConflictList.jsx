@@ -18,7 +18,7 @@ const TYPE_TONES = { class: 'blue', teacher: 'violet', room: 'amber' };
  */
 export function ScheduleConflictList({ message, conflicts }) {
   return (
-    <Alert tone="error" role="alert" title={message || 'This period clashes with the timetable'}>
+    <Alert tone="error" role="alert" title={message || 'This period clashes with the schedule'}>
       {conflicts.length > 0 && (
         <ul className="mt-2 space-y-1.5">
           {conflicts.map((conflict) => (

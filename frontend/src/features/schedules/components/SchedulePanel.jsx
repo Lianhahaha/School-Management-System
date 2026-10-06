@@ -25,7 +25,7 @@ export function SchedulePanel({ query, label, emptyTitle, emptyDescription, rend
 
   if (isPending && !error) {
     return (
-      <div role="status" aria-label="Loading timetable" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div role="status" aria-label="Loading schedule" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {Array.from({ length: 5 }, (_, index) => (
           <Skeleton key={index} className="h-48" />
         ))}
@@ -35,7 +35,7 @@ export function SchedulePanel({ query, label, emptyTitle, emptyDescription, rend
   if (error) {
     return (
       <div className="sheet">
-        <ErrorState title="Couldn't load the timetable" message={error.message} onRetry={refetch} />
+        <ErrorState title="Couldn't load the schedule" message={error.message} onRetry={refetch} />
       </div>
     );
   }
@@ -51,7 +51,7 @@ export function SchedulePanel({ query, label, emptyTitle, emptyDescription, rend
     <div>
       <div className="mb-3 flex justify-end print:hidden">
         <Button variant="secondary" size="sm" icon={Printer} onClick={() => window.print()}>
-          Print timetable
+          Print schedule
         </Button>
       </div>
       <WeeklyTimetable slots={data.items} renderSlot={renderSlot} label={label} dayNotes={weekEvents} />

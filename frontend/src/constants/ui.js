@@ -146,7 +146,7 @@ export const ACTIVITY_AREA_LABELS = Object.freeze({
   enrollments: 'Enrollments',
   classes: 'Classes and teachers',
   subjects: 'Subjects',
-  timetable: 'Timetable',
+  timetable: 'Schedule',
   attendance: 'Attendance',
   grades: 'Grades',
   announcements: 'Announcements',

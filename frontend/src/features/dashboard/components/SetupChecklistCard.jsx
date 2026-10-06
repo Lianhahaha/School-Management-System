@@ -45,7 +45,7 @@ const STEPS = [
   },
   {
     key: 'timetable',
-    title: 'Build the timetable',
+    title: 'Build the schedule',
     hint: 'Open a class and add its weekly periods on the Schedule tab.',
     to: '/admin/classes',
     done: (counts) => counts.timetableSlots > 0,

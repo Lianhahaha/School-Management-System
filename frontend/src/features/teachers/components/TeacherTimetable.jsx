@@ -18,7 +18,7 @@ export function TeacherTimetable({ teacherId }) {
     limit: PAGINATION.MAX_LIMIT,
   });
 
-  if (error) return <ErrorState title="Couldn't load timetable" message={error.message} onRetry={refetch} />;
+  if (error) return <ErrorState title="Couldn't load schedule" message={error.message} onRetry={refetch} />;
   if (isPending) return <Skeleton className="h-48 w-full" />;
   if (data.items.length === 0) {
     return (
@@ -28,5 +28,5 @@ export function TeacherTimetable({ teacherId }) {
       />
     );
   }
-  return <WeeklyTimetable slots={data.items} label="Teacher timetable" />;
+  return <WeeklyTimetable slots={data.items} label="Teacher schedule" />;
 }

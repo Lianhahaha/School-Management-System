@@ -40,7 +40,7 @@ export function ClassScheduleTab({ schoolClass }) {
 
   if (schedules.isPending || classSubjects.isPending) {
     return (
-      <div role="status" aria-label="Loading timetable" className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div role="status" aria-label="Loading schedule" className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {Array.from({ length: 5 }, (_, index) => (
           <Skeleton key={index} className="h-40" />
         ))}
@@ -51,7 +51,7 @@ export function ClassScheduleTab({ schoolClass }) {
   if (failure) {
     return (
       <ErrorState
-        title="Couldn't load the timetable"
+        title="Couldn't load the schedule"
         message={failure.message}
         onRetry={() => {
           schedules.refetch();
@@ -78,7 +78,7 @@ export function ClassScheduleTab({ schoolClass }) {
         <div className="sheet">
           <EmptyState
             icon={CalendarDays}
-            title="No timetable yet"
+            title="No schedule yet"
             description={
               hasSubjects
                 ? 'Add the first period of the week.'
@@ -92,7 +92,7 @@ export function ClassScheduleTab({ schoolClass }) {
           slots={slots}
           renderSlot={renderClassSlot}
           onSlotClick={(slot) => setModal({ slot })}
-          label={`Weekly timetable of ${schoolClass.name}`}
+          label={`Weekly schedule of ${schoolClass.name}`}
         />
       )}
 

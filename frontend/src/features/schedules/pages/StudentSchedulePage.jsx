@@ -25,14 +25,14 @@ export default function StudentSchedulePage() {
 
   return (
     <>
-      <PageHeader title="Schedule" description="Your class timetable for the week. Today is highlighted." />
+      <PageHeader title="Schedule" description="Your class schedule for the week. Today is highlighted." />
       {isEnrolled ? (
         <SchedulePanel
           query={query}
-          label="My class timetable"
+          label="My class schedule"
           renderSlot={renderStudentSlot}
           emptyTitle="No periods scheduled yet"
-          emptyDescription="Your class timetable has not been set up. Check back soon."
+          emptyDescription="Your class schedule has not been set up. Check back soon."
         />
       ) : (
         <div className="sheet">

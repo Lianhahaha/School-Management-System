@@ -12,12 +12,12 @@ export default function TeacherSchedulePage() {
     <>
       <PageHeader
         title="Schedule"
-        description={`Your weekly timetable for ${academicYear}. Today is highlighted.`}
+        description={`Your weekly schedule for ${academicYear}. Today is highlighted.`}
       />
       <SchedulePanel
         query={query}
-        label="My weekly timetable"
-        emptyTitle="No periods on your timetable"
+        label="My weekly schedule"
+        emptyTitle="No periods on your schedule"
         emptyDescription="Once an administrator schedules your subjects, they appear here."
       />
     </>

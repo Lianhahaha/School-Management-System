@@ -12,7 +12,7 @@ export function NotEnrolledState() {
     <EmptyState
       icon={GraduationCap}
       title="You're not in a class right now"
-      description="Your school administrator enrolls you in a class. Your timetable, attendance and grades appear here once you are."
+      description="Your school administrator enrolls you in a class. Your schedule, attendance and grades appear here once you are."
     />
   );
 }
@@ -22,9 +22,5 @@ export function NotEnrolledState() {
  * of earlier classes stay visible, but nothing new is added until they are enrolled again.
  */
 export function NotInClassNote({ children }) {
-  return (
-    <Alert tone="info">
-      {children}
-    </Alert>
-  );
+  return <Alert tone="info">{children}</Alert>;
 }

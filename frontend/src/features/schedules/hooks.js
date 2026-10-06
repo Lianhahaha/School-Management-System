@@ -39,7 +39,7 @@ export function useCreateSchedule() {
     meta: { silent: true },
     onSuccess: () => {
       invalidate(scheduleKeys.all, dashboardKeys.all);
-      toast.success('Period added to the timetable');
+      toast.success('Period added to the schedule');
     },
   });
 }

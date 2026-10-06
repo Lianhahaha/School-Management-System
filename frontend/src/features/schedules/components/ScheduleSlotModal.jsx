@@ -112,7 +112,7 @@ export function ScheduleSlotModal({ open, onClose, classSubjects, slot = null, p
   const onDelete = async () => {
     const ok = await confirm({
       title: 'Delete this period?',
-      description: `${slot.classSubject.subjectName}, ${dayLabel(slot.dayOfWeek)} ${formatTime(slot.startTime)}–${formatTime(slot.endTime)} is removed from the timetable. Attendance already marked is not affected.`,
+      description: `${slot.classSubject.subjectName}, ${dayLabel(slot.dayOfWeek)} ${formatTime(slot.startTime)}–${formatTime(slot.endTime)} is removed from the schedule. Attendance already marked is not affected.`,
       confirmLabel: 'Delete period',
     });
     if (ok) deleteSchedule.mutate(slot.id, { onSuccess: onClose });

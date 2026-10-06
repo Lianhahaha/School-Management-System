@@ -46,7 +46,7 @@ export function ClassSubjectsTab({ schoolClass }) {
   const onRemove = async (classSubject) => {
     const ok = await confirm({
       title: `Remove ${classSubject.subjectName} from ${schoolClass.name}?`,
-      description: 'This fails if it has periods on the timetable, attendance or assessments.',
+      description: 'This fails if it has periods on the schedule, attendance or assessments.',
       confirmLabel: 'Remove subject',
     });
     if (ok) deleteClassSubject.mutate(classSubject.id);

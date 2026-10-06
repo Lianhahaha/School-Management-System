@@ -48,7 +48,7 @@ export function StudentWaitingCard() {
       icon={HourglassMediumIcon}
       mark="maroon"
       title="You're not in a class right now"
-      description="Your timetable appears here once an administrator enrolls you. Grades and attendance from earlier classes are on My grades and My attendance."
+      description="Your schedule appears here once an administrator enrolls you. Grades and attendance from earlier classes are on My grades and My attendance."
     >
       <StepList steps={steps} />
     </Card>

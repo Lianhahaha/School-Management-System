@@ -72,7 +72,7 @@ export default function TeacherDetailPage() {
           },
           {
             id: 'timetable',
-            label: 'Timetable',
+            label: 'Schedule',
             content: <TeacherTimetable teacherId={teacher.id} />,
           },
         ]}
