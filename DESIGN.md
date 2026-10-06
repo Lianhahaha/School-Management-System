@@ -121,8 +121,11 @@ typography:
     fontWeight: 500
 rounded:
   tag: "6px"
-  control: "14px"
-  tile: "20px"
+  chip: "8px"
+  control: "10px"
+  tile: "12px"
+  bar: "16px"
+  inset: "20px"
   card: "22px"
   dialog: "28px"
   full: "9999px"
@@ -139,7 +142,7 @@ components:
     backgroundColor: "{colors.accent}"
     textColor: "{colors.accent-ink}"
     typography: "{typography.body}"
-    rounded: "{rounded.full}"
+    rounded: "{rounded.control}"
     padding: "0 20px"
     height: "44px"
   button-primary-hover:
@@ -147,7 +150,7 @@ components:
   button-secondary:
     backgroundColor: "{colors.gray-100}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.full}"
+    rounded: "{rounded.control}"
     padding: "0 20px"
     height: "44px"
   button-secondary-hover:
@@ -155,7 +158,7 @@ components:
   button-ghost:
     backgroundColor: "transparent"
     textColor: "{colors.gray-700}"
-    rounded: "{rounded.full}"
+    rounded: "{rounded.control}"
     padding: "0 20px"
     height: "44px"
   button-ghost-hover:
@@ -164,7 +167,7 @@ components:
   button-danger:
     backgroundColor: "{colors.red-600}"
     textColor: "{colors.on-danger}"
-    rounded: "{rounded.full}"
+    rounded: "{rounded.control}"
     padding: "0 20px"
     height: "44px"
   button-danger-hover:
@@ -178,7 +181,7 @@ components:
     height: "44px"
   input-search:
     backgroundColor: "{colors.surface}"
-    rounded: "{rounded.full}"
+    rounded: "{rounded.control}"
     padding: "8px 14px 8px 40px"
     height: "44px"
   sheet:
@@ -188,7 +191,7 @@ components:
   stat-row:
     backgroundColor: "{colors.gray-100}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.full}"
+    rounded: "{rounded.tile}"
     padding: "8px 16px 8px 8px"
     height: "56px"
   stat-row-hover:
@@ -203,12 +206,12 @@ components:
     backgroundColor: "{colors.accent}"
     textColor: "{colors.accent-ink}"
     typography: "{typography.label}"
-    rounded: "{rounded.full}"
+    rounded: "{rounded.tag}"
     padding: "2px 8px"
   nav-item:
     textColor: "{colors.gray-600}"
     typography: "{typography.body}"
-    rounded: "{rounded.full}"
+    rounded: "{rounded.control}"
     padding: "0 14px"
     height: "44px"
   nav-item-hover:
@@ -218,22 +221,22 @@ components:
     textColor: "{colors.ink}"
   tab-bar:
     backgroundColor: "{colors.surface}"
-    rounded: "{rounded.dialog}"
+    rounded: "{rounded.bar}"
     padding: "0 6px"
     height: "56px"
   tab-bar-chip-active:
     backgroundColor: "{colors.accent}"
     textColor: "{colors.accent-ink}"
-    rounded: "{rounded.full}"
+    rounded: "{rounded.chip}"
     size: "48px x 32px"
   segmented-tabs:
     backgroundColor: "{colors.gray-100}"
-    rounded: "{rounded.full}"
+    rounded: "{rounded.tile}"
     padding: "4px"
   segmented-tab-active:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.full}"
+    rounded: "{rounded.chip}"
     height: "36px"
   theme-toggle:
     backgroundColor: "{colors.gray-200}"
@@ -246,7 +249,7 @@ components:
     padding: "24px"
   menu:
     backgroundColor: "{colors.surface}"
-    rounded: "{rounded.tile}"
+    rounded: "{rounded.inset}"
     padding: "6px"
 ---
 
@@ -267,7 +270,7 @@ The system deliberately avoids the stock admin template: no bordered cards, no w
 - One yellow accent, reserved for the primary action and for "you are here / now".
 - A drawn highlighter stroke behind the current navigation label.
 - Status as a small squared tag (filled, outline, tinted); the text carries the meaning, never a dot.
-- Pills everywhere: buttons, nav items, filters, search, tabs, figure rows.
+- Rectangles, not pills: buttons, inputs, nav items, filters, search and tabs have 10px corners, figure tiles 12px; only avatars, counters, step numbers, progress bars and the theme switch stay round.
 - One typeface (Onest, self-hosted), tabular figures for every number column.
 - Two themes driven by one attribute; components never branch on the theme.
 
@@ -283,7 +286,7 @@ A calm neutral ramp with a hint of warmth, one saturated yellow, and five muted 
 ### Neutral
 - **Linen** (`canvas`): a soft warm page tone that sits with the yellow and keeps white from glaring; the page itself, the desktop sidebar and the translucent sticky top bar. It also sets the browser `theme-color`.
 - **Paper** (`surface`, an off-white, not pure white): every content sheet, the dashboard figure tiles (with a `gray-200` hairline), dialogs, menus, the phone tab bar, inputs, and the knob of the theme switch.
-- **Pill Grey** (`gray-100`): secondary buttons, segmented tab tracks, neutral status pills, period rows, skeletons, close buttons. `gray-200` is its hover and the theme switch track.
+- **Pill Grey** (`gray-100`, the name is historical): secondary buttons, segmented tab tracks, neutral status pills, period rows, skeletons, close buttons. `gray-200` is its hover and the theme switch track.
 - **Rule Grey** (`gray-200` / `gray-300`): table row dividers (`gray-200`) and input borders and quiet link underlines (`gray-300`). `gray-400` is the hovered input border.
 - **Muted Ink** (`gray-500` / `gray-600` / `gray-700`): placeholders, table headers, totals and hints (`gray-500`); descriptions and idle nav labels (`gray-600`); table cells and secondary text (`gray-700`).
 - **Ink** (`ink`): headings, primary text, the focus ring, the brand tile, the focused input border.
@@ -342,7 +345,7 @@ Breakpoints are the defaults: `sm` 640px, `md` 768px, `lg` 1024px.
 
 ## Elevation & Depth
 
-Skole is flat by default and gets its depth from tone: white sheets on a grey page, grey pills inside white sheets, white chips inside grey pills. Shadows exist in only two strengths and they carry meaning: a sheet shadow so faint it reads as a soft edge (and disappears entirely in dark), and a pop shadow for anything that floats above the page.
+Skole is flat by default and gets its depth from tone: white sheets on a grey page, grey rows inside white sheets, white chips inside grey rows. Shadows exist in only two strengths and they carry meaning: a sheet shadow so faint it reads as a soft edge (and disappears entirely in dark), and a pop shadow for anything that floats above the page.
 
 ### Shadow Vocabulary
 - **Sheet** (`box-shadow: 0 1px 2px rgb(24 24 27 / 0.04)`; `none` in dark): every content sheet.
@@ -354,7 +357,7 @@ Skole is flat by default and gets its depth from tone: white sheets on a grey pa
 
 ## Shapes
 
-The form language is round and soft. Everything a finger or pointer acts on is a full pill or a circle: buttons (icon-only buttons are circles of the same height), nav items, filter selects, the search box, tab segments, figure rows from `sm` up, status pills, live tags, skeleton bars and the theme switch. Containers step up in radius with their size and their distance from the page: 14px for text inputs and inline alerts, 20px for tiles inside a sheet (period rows, class chips, menus, toasts, compact empty states, figure rows on phones), 22px for sheets, 28px for dialogs and the floating tab bar. The brand tile uses 9px on a 32px square.
+The form language is soft rectangles, never pills (the user's call, 2026-10-06). Everything a finger or pointer acts on has 10px corners: buttons (icon-only buttons are squares of the same height), text inputs, selects, the search box, filters, nav items, choice chips and inline alerts. Figure tiles and the segmented tab track take 12px, with 8px on the tab segments and on icon chips (card title squares, figure-row chips, empty-state chips at 32 to 40px; 12px at 56px). Status tags and live tags are 6px. Containers step up with their size: 16px for the floating phone tab bar, 20px for rows inside a sheet (period rows, class chips, menus, toasts, compact empty states), 22px for sheets, 28px for dialogs. Only avatars, unread counters, step numbers, progress bars and the theme switch capsule stay round. The brand tile uses 9px on a 32px square.
 
 There are no borders on containers. Lines appear only where they carry information: input borders, table row dividers, link underlines, and the 2px inset ring that marks today's timetable column (yellow) or the current period (yellow rim).
 
@@ -363,8 +366,8 @@ The one deliberately irregular shape is the highlighter stroke: a yellow band wi
 ## Components
 
 ### Buttons
-Fully round, confident pills with a quick press response.
-- **Shape:** full pill; icon-only buttons are circles (36, 44 or 48px).
+Soft rectangles with a quick press response.
+- **Shape:** 10px corners; icon-only buttons are squares (36, 44 or 48px).
 - **Sizes:** small 36px high, 14px side padding, 0.875rem; default 44px, 20px, 0.9375rem; large 48px, 24px, 1rem. An optional 18px leading icon sits 8px from the label.
 - **Primary:** yellow fill, Pencil Black text, weight 600; hover goes to Pressed Yellow.
 - **Secondary:** Pill Grey fill, ink text, weight 500; hover `gray-200`.
@@ -374,7 +377,7 @@ Fully round, confident pills with a quick press response.
 
 ### Status pills and live tags
 - **Status tag:** 6px radius, 1px inset ring, 0.8125rem weight-500 text, 8px side padding. Filled: `gray-100` with `gray-900` text and a `gray-200` ring. On: `green-50` with `green-700` text, ring at 20% of the text colour. Outline: no fill, `gray-600` text, `gray-300` ring. Attention: the tone's `-50` background and `-700` text, ring at 25% of the text colour.
-- **Live tag:** a yellow pill with Pencil Black 0.8125rem weight-600 text ("Now", "Today"). Only for the current period or today's column.
+- **Live tag:** a yellow 6px tag with Pencil Black 0.8125rem weight-600 text ("Now", "Today"). Only for the current period or today's column.
 
 ### Sheets / Containers
 - **Corner Style:** 22px.
@@ -384,20 +387,20 @@ Fully round, confident pills with a quick press response.
 - **Internal Padding:** 20px; the optional header carries the title, running total, description and right-aligned actions. Table sheets drop body padding so rows run edge to edge with 20px end gutters.
 
 ### Figure rows
-The replacement for stat tiles: a Pill Grey pill row, at least 56px high, with a leading round icon chip (40px from `sm`, 32px on phones; white, or the tone's soft colours when the figure carries a state), the label and an optional hint, the value at the right in 1.125rem weight-600 tabular figures, and a chevron when the row links somewhere. Linked rows darken to `gray-200` on hover. Rows stack inside a sheet so a dashboard reads as a list of answers.
+The replacement for stat tiles: a Paper row with a `gray-200` hairline and 12px corners, at least 56px high, with a leading 8px-cornered icon chip (40px from `sm`, 32px on phones) in the area's mark colour (see Marks), the label and an optional hint, the value at the right in 1.125rem weight-600 tabular figures, and a chevron when the row links somewhere. Linked rows darken to `gray-200` on hover. Rows stack inside a sheet so a dashboard reads as a list of answers.
 
 ### Inputs / Fields
 - **Style:** Paper, 1px `gray-300` border, 14px corners, at least 44px high, 14px side padding, 0.9375rem ink text, `gray-500` placeholder. Selects use the app's own chevron drawn in `gray-500`, which follows the theme.
 - **Hover / Focus:** hover darkens the border to `gray-400`; focus turns it ink. Inputs show no separate outline ring.
 - **Error / Disabled / Read-only:** `aria-invalid` turns the border `red-600` and the field shows a 0.8125rem red message under it. Disabled and read-only fields take the Linen fill; disabled text is `gray-500`.
-- **Search and filters:** on list pages the search box and filter selects become borderless white pills on the grey page (a 16px search icon inside the search box), gaining a `gray-300` border on hover; filters sit side by side from `sm` up.
+- **Search and filters:** on list pages the search box and filter selects become borderless white fields on the grey page (a 16px search icon inside the search box), gaining a `gray-300` border on hover; filters sit side by side from `sm` up.
 - **Labels:** 0.875rem weight 500 above the field, required fields marked with a red asterisk, hints in 0.8125rem `gray-500`.
 - **Checkboxes:** native, 18px, tinted with the accent.
 
 ### Navigation
-- **Sidebar items:** full pills at least 44px high with an 18px icon, 0.9375rem. Idle items are `gray-600` weight 500 and gain the Pill Grey fill on hover. The current item turns ink, weight 600, with no fill: its label carries the highlighter stroke instead.
+- **Sidebar items:** 10px-cornered rows at least 44px high with an 18px icon, 0.9375rem. Idle items are `gray-600` weight 500 and gain the Pill Grey fill on hover. The current item turns ink, weight 600, with no fill: its label carries the highlighter stroke instead.
 - **Phone tab bar:** each destination is an icon in a 48 by 32px round chip over a 0.6875rem caption. The current destination's chip is yellow with Pencil Black icon; the others are `gray-500`.
-- **Segmented tabs:** a Pill Grey track with 4px padding; the active segment is a white pill with the knob shadow and weight 600; the active tab lives in the URL and arrow keys move between tabs.
+- **Segmented tabs:** a Pill Grey track with 12px corners and 4px padding; the active segment is a white 8px-cornered segment with the knob shadow and weight 600; the active tab lives in the URL and arrow keys move between tabs.
 - **Breadcrumbs:** 0.875rem `gray-500` links separated by small chevrons; the current page is `gray-700`.
 - **In-text links:** ink, weight 500, with a 2px `gray-300` underline offset 4px that turns yellow on hover or focus. In table rows the underline stays hidden until hover.
 
@@ -417,7 +420,7 @@ The period running now is a period row with the Yellow Wash fill, a 2px inset Ye
 A 64 by 36px capsule (`gray-200`, `gray-300` on hover) whose 28px white knob rides to the active side over 200ms on the soft ease-out, carrying a sun or moon icon. It is a real switch (`role="switch"`, checked means dark).
 
 ### Empty and loading states
-Empty states are a round grey icon chip (56px), a 1rem weight-600 title, a short description and an optional action; a compact one-row form sits inside small dashboard sheets. Loading uses Pill Grey pulsing pill-shaped skeletons and a page skeleton while a route loads.
+Empty states are a grey 12px-cornered icon chip (56px), a 1rem weight-600 title, a short description and an optional action; a compact one-row form sits inside small dashboard sheets. Loading uses Pill Grey pulsing skeletons with 8px corners and a page skeleton while a route loads.
 
 ### Theming mechanism
 The palette lives in CSS custom properties on `:root` and is redefined under `html[data-theme="dark"]`; the utility colour names point at those variables, so every component follows the theme with no dark-specific classes. An inline script in the document head applies the saved choice, or the operating-system preference, before first paint so the page never flashes the wrong theme. Until the user picks a theme the app keeps following the operating system; the choice is then stored on the device.
@@ -428,10 +431,10 @@ Motion is short and functional, on one curve (`cubic-bezier(0.22, 1, 0.36, 1)`):
 ## Do's and Don'ts
 
 ### Do:
-- **Do** keep a page to one yellow primary button; every other action is a secondary or ghost pill, or a link.
+- **Do** keep a page to one yellow primary button; every other action is a secondary or ghost button, or a link.
 - **Do** mark the current place or the current moment with yellow (the highlighter stroke on the nav label, the yellow tab chip, the "Now" and "Today" tags) and nothing else.
 - **Do** set every label on yellow in `accent-ink`, in light and dark alike.
-- **Do** put content in borderless white sheets (22px corners) on the grey page and nest grey pill rows inside them.
+- **Do** put content in borderless white sheets (22px corners) on the grey page and nest grey rows inside them.
 - **Do** show a status as a squared tag whose word carries the meaning; colour is reserved for states that need attention.
 - **Do** use tabular figures for times, right-aligned numbers and running totals, and put a list's size beside its title.
 - **Do** build colours only from the theme variables so both themes stay in step.
@@ -442,7 +445,7 @@ Motion is short and functional, on one curve (`cubic-bezier(0.22, 1, 0.36, 1)`):
 - **Don't** put white text on yellow.
 - **Don't** add borders or outlines to sheets, or give a sheet the pop shadow.
 - **Don't** build dashboards from rows of number tiles; use figure rows inside a sheet.
-- **Don't** use coloured dots or rounded-full pills for status, and keep the green of the normal state (Active, Present) a faint tint, never a saturated fill.
+- **Don't** use coloured dots, pills or rounded-full containers; the green of the normal state (Active, Present) is the flat leaf `#346739` with white text, never a gradient.
 - **Don't** make a blue (or any non-yellow) primary button.
 - **Don't** use pure black in the dark theme; it is graphite.
 - **Don't** add a second typeface or uppercase tracked-out labels.
