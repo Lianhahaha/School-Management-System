@@ -9,6 +9,7 @@ import { SearchInput } from '../../../components/ui/SearchInput';
 import { Select } from '../../../components/ui/Select';
 import { ROLE_OPTIONS, USER_STATUS_FILTER_OPTIONS } from '../../../constants/ui';
 import { useDisclosure } from '../../../hooks/useDisclosure';
+import { useOpenFromLink } from '../../../hooks/useOpenFromLink';
 import { useListParams } from '../../../hooks/useListParams';
 import { formatDate, isoToYmd } from '../../../utils/date';
 import { fullName } from '../../../utils/names';
@@ -22,6 +23,7 @@ export default function UsersListPage() {
   const list = useListParams({ filters: ['role', 'isActive'], defaultSort: ['lastName', 'asc'] });
   const { data, isPending, isFetching, error, refetch } = useUsers(list.apiParams);
   const createModal = useDisclosure();
+  useOpenFromLink(createModal.open);
   const [editTarget, setEditTarget] = useState(null);
 
   const columns = [

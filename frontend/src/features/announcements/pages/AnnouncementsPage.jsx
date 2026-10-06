@@ -1,5 +1,5 @@
 import { Megaphone, Pencil, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { Button } from '../../../components/ui/Button';
 import { Checkbox } from '../../../components/ui/Checkbox';
@@ -20,6 +20,7 @@ import { ClassSelect } from '../../classes/components/ClassSelect';
 import { AnnouncementFormModal } from '../components/AnnouncementFormModal';
 import { AnnouncementList } from '../components/AnnouncementList';
 import { useAnnouncements, useDeleteAnnouncement, useNewSinceLastVisit } from '../hooks';
+import { useOpenFromLink } from '../../../hooks/useOpenFromLink';
 
 const ADMIN_FILTERS = ['status', 'audience', 'classId'];
 const TEACHER_FILTERS = ['classId', 'authorId'];
@@ -55,6 +56,8 @@ export default function AnnouncementsPage() {
   const confirm = useConfirm();
   // undefined = closed, null = creating, an announcement = editing it
   const [formTarget, setFormTarget] = useState(undefined);
+  const openNew = useCallback(() => setFormTarget(null), []);
+  useOpenFromLink(openNew);
 
   const canManage = (announcement) => isAdmin || announcement.author.id === me.id;
 

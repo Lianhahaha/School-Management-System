@@ -25,14 +25,14 @@ export default function AdminDashboardPage() {
         <>
           <Button
             as={Link}
-            to="/admin/announcements"
+            to="/admin/announcements?new=1"
             variant="secondary"
             icon={Megaphone}
             className="max-sm:hidden"
           >
             New announcement
           </Button>
-          <Button as={Link} to="/admin/users" icon={UserPlus}>
+          <Button as={Link} to="/admin/users?new=1" icon={UserPlus}>
             Create user
           </Button>
         </>
