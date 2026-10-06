@@ -2,8 +2,8 @@ import { cx } from '../../utils/cx';
 import { Spinner } from './Spinner';
 
 /*
- * Pills. Yellow is the primary action only, so a screen carries one (or very few) yellow buttons;
- * everything else is a soft grey pill or plain text. Disabled buttons keep their shape and fade.
+ * Rectangles with 10px corners. Yellow is the primary action only, so a screen carries one (or very few) yellow buttons;
+ * everything else is a soft grey button or plain text. Disabled buttons keep their shape and fade.
  */
 const VARIANTS = {
   primary: 'bg-accent font-semibold text-accent-ink hover:bg-accent-hover disabled:opacity-50',
@@ -27,7 +27,7 @@ const SIZES = {
 const PADDING = { sm: 'px-3.5', md: 'px-5', lg: 'px-6' };
 
 /**
- * A button with an icon and no label is a circle of the same height. It gets a width instead of the
+ * A button with an icon and no label is a square of the same height. It gets a width instead of the
  * side padding (both at once would squeeze the icon: the padding wins over `px-0` in the stylesheet).
  */
 const ICON_ONLY = { sm: 'w-9 pointer-coarse:w-11', md: 'w-11', lg: 'w-12' };
@@ -63,7 +63,7 @@ export function Button({
       {...nativeProps}
       aria-busy={isLoading || undefined}
       className={cx(
-        'inline-flex shrink-0 items-center justify-center gap-2 rounded-full whitespace-nowrap transition-[background-color,color,transform] duration-150 select-none active:scale-[0.97] disabled:cursor-not-allowed disabled:active:scale-100',
+        'inline-flex shrink-0 items-center justify-center gap-2 rounded-control whitespace-nowrap transition-[background-color,color,transform] duration-150 select-none active:scale-[0.97] disabled:cursor-not-allowed disabled:active:scale-100',
         VARIANTS[variant],
         SIZES[size],
         isIconOnly ? ICON_ONLY[size] : PADDING[size],

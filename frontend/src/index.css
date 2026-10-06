@@ -224,8 +224,14 @@
   --color-well-chip: var(--well-chip);
   --color-well-edge: var(--well-edge);
 
+  /*
+   * Rectangles, not pills: controls (buttons, inputs, search, filters, tabs) 10px, figure tiles and tab
+   * tracks 12px, sheets 22px. Only avatars, counters, step numbers, the theme switch and progress bars
+   * stay round.
+   */
   --radius-card: 1.375rem;
-  --radius-control: 0.875rem;
+  --radius-tile: 0.75rem;
+  --radius-control: 0.625rem;
   --shadow-card: var(--sheet-shadow);
   --shadow-pop: var(--pop-shadow);
   --color-scrim: var(--scrim);
@@ -340,11 +346,11 @@
   }
 
   /*
-   * Filters share the search pill's shape: borderless white pills on the grey page, side by side from
+   * Filters share the search box's shape: borderless white fields on the grey page, side by side from
    * `sm` up and capped so a whole filter row fits on one line; a w-* class still wins.
    */
   .filter-bar > select.form-control {
-    @apply rounded-full border-transparent hover:border-gray-300 sm:w-auto sm:max-w-56;
+    @apply border-transparent hover:border-gray-300 sm:w-auto sm:max-w-56;
   }
 
   /* In-text link: ink with a quiet underline that turns into the yellow highlighter on hover. */

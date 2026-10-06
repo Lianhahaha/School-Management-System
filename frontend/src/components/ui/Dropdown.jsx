@@ -124,7 +124,7 @@ export function Dropdown({ label, items, trigger, align = 'right', className }) 
           }
         }}
         className={cx(
-          'inline-flex min-h-10 min-w-10 items-center justify-center gap-2 rounded-full px-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 pointer-coarse:min-h-11 pointer-coarse:min-w-11',
+          'inline-flex min-h-10 min-w-10 items-center justify-center gap-2 rounded-control px-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 pointer-coarse:min-h-11 pointer-coarse:min-w-11',
           className,
         )}
       >

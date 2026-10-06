@@ -9,7 +9,7 @@ import { UserMenu } from './UserMenu';
 /**
  * Top bar: the wordmark below `lg` (the sidebar carries it from `lg` up), when the data was last
  * refreshed (from `md` up), the admin's search, the notification bell, the theme switch and the user menu. On phones the full menu opens from the tab bar's "More".
- * Below `sm` the controls shrink to 44 px circles (no user name, no chevron) so the bar fits a 320 px
+ * Below `sm` the controls shrink to 44 px squares (no user name, no chevron) so the bar fits a 320 px
  * screen, and below 22rem only the mark of the brand is shown.
  */
 export function Topbar() {

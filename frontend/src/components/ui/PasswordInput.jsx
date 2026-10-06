@@ -27,7 +27,7 @@ export function PasswordInput({ className, ...props }) {
         // Keep the caret in the field when the eye is tapped with a mouse or finger.
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => setVisible((current) => !current)}
-        className="absolute top-1/2 right-1.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 pointer-coarse:right-0 pointer-coarse:size-11"
+        className="absolute top-1/2 right-1.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 pointer-coarse:right-0 pointer-coarse:size-11"
       >
         <Icon className="size-[1.125rem]" aria-hidden="true" />
       </button>

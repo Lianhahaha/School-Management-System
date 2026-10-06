@@ -31,7 +31,7 @@ function NotificationItem({ notification, onOpen }) {
         onClick={() => onOpen(notification)}
         className="flex w-full items-start gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors hover:bg-gray-100"
       >
-        <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700">
+        <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-700">
           <Icon className="size-4" aria-hidden="true" />
         </span>
         <span className="min-w-0 flex-1">
@@ -112,7 +112,7 @@ export function NotificationBell() {
         aria-expanded={isOpen}
         aria-controls={panelId}
         onClick={() => setOpenedOn(isOpen ? null : pathname)}
-        className="relative flex size-10 items-center justify-center rounded-full text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900 pointer-coarse:size-11"
+        className="relative flex size-10 items-center justify-center rounded-control text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900 pointer-coarse:size-11"
       >
         <Bell className="size-5" aria-hidden="true" />
         {total > 0 && (
@@ -150,7 +150,7 @@ export function NotificationBell() {
               to={`${ROLE_HOME[role]}/announcements`}
               className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-100"
             >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-accent-ink">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-ink">
                 <Megaphone className="size-4" aria-hidden="true" />
               </span>
               {countOf(newAnnouncements, 'new announcement')}
