@@ -39,7 +39,7 @@ export function StudentOverview({ student, onOpenTab }) {
         <StatTile
           label="Class"
           value={enrollment ? enrollment.className : '—'}
-          hint={enrollment ? `School year ${enrollment.academicYear}` : 'Not in a class'}
+          hint={enrollment ? enrollment.academicYear : 'Not in a class'}
           icon={School}
           mark="umber"
           to={enrollment ? `/admin/classes/${enrollment.classId}` : undefined}
