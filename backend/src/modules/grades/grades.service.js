@@ -202,7 +202,7 @@ export async function saveGrades(user, assessmentId, { grades }) {
     const maxScore = await lockMaxScoreForGrading(assessmentId, conn);
     const tooHigh = grades.find((grade) => grade.score > maxScore);
     if (tooHigh) {
-      throw ApiError.validation('score exceeds maxScore', undefined, {
+      throw ApiError.validation(`a score is above the maximum of ${maxScore}`, undefined, {
         reason: 'score_above_max',
         studentId: tooHigh.studentId,
         score: tooHigh.score,

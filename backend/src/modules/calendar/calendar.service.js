@@ -3,7 +3,7 @@
  * Everyone reads it; administrators write it.
  */
 import { ApiError } from '../../utils/ApiError.js';
-import { addDaysYmd, todayYmd } from '../../utils/dates.js';
+import { addDaysYmd, formatDayLabel, todayYmd } from '../../utils/dates.js';
 import { changedList, changesOf, record } from '../activity/activity.service.js';
 import * as repo from './calendar.repository.js';
 
@@ -102,7 +102,7 @@ export async function holidayOn(date) {
 export async function assertSchoolDay(date) {
   const holiday = await holidayOn(date);
   if (holiday) {
-    throw ApiError.validation(`no classes on ${date}: ${holiday.title}`, undefined, {
+    throw ApiError.validation(`no classes on ${formatDayLabel(date)}: ${holiday.title}`, undefined, {
       reason: 'school_holiday',
       eventId: holiday.id,
     });

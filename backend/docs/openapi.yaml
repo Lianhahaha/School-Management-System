@@ -4719,7 +4719,7 @@ components:
             success: false
             error:
               code: SCHEDULE_CONFLICT
-              message: schedule overlaps 2 existing schedule(s)
+              message: this period clashes with 2 other periods
               details:
                 conflicts:
                   - type: teacher

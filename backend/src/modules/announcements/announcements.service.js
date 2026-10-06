@@ -66,8 +66,8 @@ export async function recentAnnouncements(user, limit = 5) {
 
 function assertExpiryAfterPublish(publishedAt, expiresAt) {
   if (expiresAt && expiresAt <= publishedAt) {
-    throw ApiError.validation('expiresAt must be after publishedAt', undefined, {
-      issues: [{ path: 'body.expiresAt', message: 'must be after publishedAt' }],
+    throw ApiError.validation('the expiry date must be after the publish date', undefined, {
+      issues: [{ path: 'body.expiresAt', message: 'must be after the publish date' }],
     });
   }
 }

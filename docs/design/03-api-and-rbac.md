@@ -539,7 +539,7 @@ Response `200`:
 }
 ```
 
-Score out of range → `400 VALIDATION_ERROR`, `message: "score exceeds maxScore"`, `details: { "studentId": 14, "score": 55, "maxScore": 50 }` (the whole batch is rejected; nothing is written).
+Score out of range → `400 VALIDATION_ERROR`, `message: "a score is above the maximum of 50"`, `details: { "studentId": 14, "score": 55, "maxScore": 50 }` (the whole batch is rejected; nothing is written).
 
 ### 3.7 `POST /api/v1/schedules` with a conflict
 
@@ -554,7 +554,7 @@ Response `409`:
   "success": false,
   "error": {
     "code": "SCHEDULE_CONFLICT",
-    "message": "schedule overlaps 2 existing schedule(s)",
+    "message": "this period clashes with 2 other periods",
     "details": {
       "conflicts": [
         { "type": "teacher", "scheduleId": 40, "classSubjectId": 18, "className": "Grade 8 - B", "subjectName": "Chemistry", "dayOfWeek": 1, "startTime": "08:30", "endTime": "09:30", "room": "B-201" },

@@ -1,6 +1,6 @@
 import { withTransaction } from '../../config/db.js';
 import { ApiError } from '../../utils/ApiError.js';
-import { academicYearOf, isAfterToday, isoWeekdayOf } from '../../utils/dates.js';
+import { academicYearOf, formatDayLabel, isAfterToday, isoWeekdayOf } from '../../utils/dates.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import { classSubjectRef, personRef, ratio } from '../../utils/shapes.js';
 import * as access from '../access/access.service.js';
@@ -250,7 +250,7 @@ function notifyAbsences({ classSubject, date, attendanceDate }, marks) {
         studentId: mark.studentId,
         type: 'attendance',
         title: `Marked ${mark.to} in ${classSubject.subjectName}`,
-        body: `${date ?? attendanceDate} · ${classSubject.className}`,
+        body: `${formatDayLabel(date ?? attendanceDate)} · ${classSubject.className}`,
         link: '/student/attendance',
       })),
   );

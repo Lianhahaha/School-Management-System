@@ -32,7 +32,10 @@ export async function assertCanViewClassSubject(user, classSubjectId) {
   if (isStudent(user) && user.activeClassId != null) {
     if ((await repo.classIdOfClassSubject(classSubjectId)) === user.activeClassId) return;
   }
-  throw ApiError.forbidden('class_subject_not_visible', 'you do not have access to this class subject');
+  throw ApiError.forbidden(
+    'class_subject_not_visible',
+    'you do not have access to this subject of the class',
+  );
 }
 
 export async function assertCanManageClassSubject(user, classSubjectId) {

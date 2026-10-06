@@ -14,6 +14,23 @@ const CONNECTION_CODES = new Set([
 
 const toCamel = (name) => name.replace(/_([a-z0-9])/g, (_, char) => char.toUpperCase());
 
+/**
+ * What a refused delete says, by the foreign key that refused it. MySQL names only the first key that
+ * refuses, so each sentence names everything that can hold the record. Other keys get the general sentence.
+ */
+const CLASS_IN_USE = 'this class still has subjects, students or announcements, so it cannot be deleted';
+const LESSON_IN_USE =
+  'this subject already has attendance or assessments in this class, so it cannot be removed';
+const IN_USE_MESSAGES = {
+  fk_class_subjects_class: CLASS_IN_USE,
+  fk_enrollments_class: CLASS_IN_USE,
+  fk_announcements_class: CLASS_IN_USE,
+  fk_class_subjects_subject: 'this subject is taught in a class, so it cannot be deleted. Retire it instead',
+  fk_schedules_class_subject: 'this subject still has periods on the schedule. Remove its periods first',
+  fk_attendance_class_subject: LESSON_IN_USE,
+  fk_assessments_class_subject: LESSON_IN_USE,
+};
+
 export function isMysqlError(error) {
   return Boolean(error && (typeof error.errno === 'number' || CONNECTION_CODES.has(error.code)));
 }
@@ -23,15 +40,17 @@ export function mysqlErrorMap(error) {
   switch (error.code) {
     case 'ER_DUP_ENTRY': {
       const key = /for key '([^']+)'/.exec(text)?.[1];
-      return ApiError.conflict(`duplicate value for ${key ?? 'unique key'}`, { key });
+      return ApiError.conflict('this already exists', { key });
     }
     case 'ER_ROW_IS_REFERENCED_2': {
       const constraint = /CONSTRAINT `([^`]+)`/.exec(text)?.[1];
-      return ApiError.conflict('cannot delete, the record is still in use', { reason: 'in_use', constraint });
+      const message =
+        IN_USE_MESSAGES[constraint] ?? 'this is still used by other records, so it cannot be deleted';
+      return ApiError.conflict(message, { reason: 'in_use', constraint });
     }
     case 'ER_NO_REFERENCED_ROW_2': {
       const column = /FOREIGN KEY \(`(\w+)`\)/.exec(text)?.[1];
-      return ApiError.validation('referenced record does not exist', undefined, {
+      return ApiError.validation('the chosen record no longer exists', undefined, {
         reason: 'invalid_reference',
         field: column ? toCamel(column) : undefined,
       });

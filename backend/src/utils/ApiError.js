@@ -13,6 +13,15 @@
  */
 import { ERROR_CODES } from '../constants/shared.js';
 
+/** Words people use for a missing record (`details.resource` keeps the internal name). */
+const RESOURCE_NAMES = {
+  'class subject': 'subject of this class',
+  schedule: 'period',
+};
+
+/** Words people use for a dependency that is down (`details.component` keeps the internal name). */
+const COMPONENT_NAMES = { db: 'the database', auth: 'sign-in', timetable: 'the schedule' };
+
 export class ApiError extends Error {
   constructor(status, code, message, details, options) {
     super(message, options);
@@ -66,7 +75,8 @@ export class ApiError extends Error {
 
   /** 404 for `resource` / `id`; `details` adds specifics such as a `reason`. */
   static notFound(resource, id, details) {
-    return new ApiError(404, ERROR_CODES.NOT_FOUND, `${resource} not found`, { resource, id, ...details });
+    const name = RESOURCE_NAMES[resource] ?? resource;
+    return new ApiError(404, ERROR_CODES.NOT_FOUND, `${name} not found`, { resource, id, ...details });
   }
 
   /** Returns `row` when it exists, otherwise throws 404 for `resource` / `id`. */
@@ -83,7 +93,9 @@ export class ApiError extends Error {
     return new ApiError(
       409,
       ERROR_CODES.SCHEDULE_CONFLICT,
-      `schedule overlaps ${conflicts.length} existing schedule(s)`,
+      conflicts.length === 1
+        ? 'this period clashes with another period'
+        : `this period clashes with ${conflicts.length} other periods`,
       { conflicts },
     );
   }
@@ -103,7 +115,7 @@ export class ApiError extends Error {
     return new ApiError(
       503,
       ERROR_CODES.SERVICE_UNAVAILABLE,
-      `${component} unavailable`,
+      `${COMPONENT_NAMES[component] ?? component} cannot be reached right now, try again in a moment`,
       { component },
       options,
     );
