@@ -5,8 +5,11 @@ import { TransferStudentModal } from '../../enrollments/components/TransferStude
 /**
  * The class action of a student row: "Enroll" while the student has no active class, "Transfer"
  * otherwise. Pass the clicked student to `onSelect`; render <StudentClassModals> once per page.
+ * A deactivated account gets no action: the API refuses to enroll it, so offering one would only fail
+ * after a class was picked (its row already says Disabled).
  */
 export function StudentClassButton({ student, onSelect, variant = 'secondary' }) {
+  if (student.isActive === false) return null;
   const label = student.currentEnrollment ? 'Transfer' : 'Enroll';
   return (
     <Button
