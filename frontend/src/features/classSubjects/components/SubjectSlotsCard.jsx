@@ -2,7 +2,7 @@ import { Card } from '../../../components/ui/Card';
 import { ErrorState } from '../../../components/ui/ErrorState';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { PAGINATION } from '../../../constants/shared';
-import { formatTime } from '../../../utils/date';
+import { formatTimeRange } from '../../../utils/date';
 import { dayLabel, slotsToGrid } from '../../../utils/schedule';
 import { useSchedules } from '../../schedules/hooks';
 
@@ -36,9 +36,7 @@ export function SubjectSlotsCard({ classSubjectId }) {
           slots.map((slot) => (
             <li key={slot.id} className="flex flex-wrap gap-x-3 text-gray-700">
               <span className="w-24 font-medium text-gray-900">{dayLabel(day)}</span>
-              <span className="tabular-nums">
-                {formatTime(slot.startTime)}–{formatTime(slot.endTime)}
-              </span>
+              <span className="tabular-nums">{formatTimeRange(slot.startTime, slot.endTime)}</span>
               {slot.room && <span className="text-gray-600">{slot.room}</span>}
             </li>
           )),

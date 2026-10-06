@@ -325,6 +325,8 @@ The school palette (the user's, 2026-10-06), four colours that tell the areas of
 ### Named Rules
 **The Tabular Figures Rule.** Every number that sits in a column or beside a heading uses tabular figures: times, right-aligned table cells, running totals and figure-row values.
 
+**The One Format Rule.** Dates and times read the same on every screen whatever the browser's language: dates as "Oct 6, 2026" ("Oct 6" where the year is clear), times as "8:00 AM", a period as "8:00–8:50 AM" (AM/PM once when both ends share it), timestamps as "Oct 6, 2026, 9:44 PM". They come from `utils/date.js` (locale `en-PH`); only CSV exports keep `YYYY-MM-DD`, and the browser's own date and time pickers keep the device's format.
+
 **The Running Total Rule.** Lists and sheets state their size as a quiet total beside the title ("128", "3 of 4 marked") instead of a separate stat tile.
 
 ## Layout

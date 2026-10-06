@@ -208,7 +208,7 @@ async function recordSheetChanges(sheet, records, previous) {
   await record({
     action: 'attendance.save',
     entityId: sheet.classSubjectId,
-    summary: `Marked attendance for ${subjectName} · ${className} on ${sheet.date}: ${parts.filter(Boolean).join(', ')}`,
+    summary: `Marked attendance for ${subjectName} · ${className} on ${formatDayLabel(sheet.date)}: ${parts.filter(Boolean).join(', ')}`,
     details: { date: sheet.date, marks },
   });
   await notifyAbsences(sheet, marks);
@@ -223,7 +223,7 @@ export async function updateAttendance(user, id, patch) {
     await record({
       action: 'attendance.update',
       entityId: updated.classSubjectId,
-      summary: `Changed ${nameOf(updated.student)}'s mark in ${updated.classSubject.subjectName} · ${updated.classSubject.className} on ${updated.attendanceDate} from ${existing.status} to ${updated.status}`,
+      summary: `Changed ${nameOf(updated.student)}'s mark in ${updated.classSubject.subjectName} · ${updated.classSubject.className} on ${formatDayLabel(updated.attendanceDate)} from ${existing.status} to ${updated.status}`,
       details: {
         date: updated.attendanceDate,
         marks: [
@@ -263,7 +263,7 @@ export async function deleteAttendance(id) {
   await record({
     action: 'attendance.delete',
     entityId: mark.classSubjectId,
-    summary: `Removed ${nameOf(mark.student)}'s ${mark.status} mark in ${mark.classSubject.subjectName} · ${mark.classSubject.className} on ${mark.attendanceDate}`,
+    summary: `Removed ${nameOf(mark.student)}'s ${mark.status} mark in ${mark.classSubject.subjectName} · ${mark.classSubject.className} on ${formatDayLabel(mark.attendanceDate)}`,
     details: {
       date: mark.attendanceDate,
       marks: [{ studentId: mark.studentId, student: nameOf(mark.student), from: mark.status, to: null }],

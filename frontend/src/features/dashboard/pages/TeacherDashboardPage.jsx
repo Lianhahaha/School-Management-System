@@ -2,7 +2,7 @@ import { ClipboardCheck } from 'lucide-react';
 import { Link } from 'react-router';
 import { Button } from '../../../components/ui/Button';
 import { useMinutesNow } from '../../../hooks/useMinutesNow';
-import { todayYmd } from '../../../utils/date';
+import { LOCALE, formatTime, todayYmd } from '../../../utils/date';
 import { lessonToMark } from '../../../utils/schedule';
 import { AtRiskCard } from '../components/AtRiskCard';
 import { DashboardColumns } from '../components/DashboardColumns';
@@ -15,7 +15,7 @@ import { TodayTimeline } from '../components/TodayTimeline';
 import { UpcomingEventsCard } from '../components/UpcomingEventsCard';
 
 const todayLabel = () =>
-  new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+  new Date().toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
 
 /**
  * The header's one yellow button: straight to the sheet of the lesson to mark now (see lessonToMark), or
@@ -29,7 +29,7 @@ function MarkAttendanceButton({ periods, minutesNow }) {
       as={Link}
       to={`/teacher/attendance?classSubjectId=${lesson.classSubjectId}&date=${todayYmd()}`}
       icon={ClipboardCheck}
-      aria-label={`Mark attendance, ${lesson.className} ${lesson.subjectName} at ${lesson.startTime}`}
+      aria-label={`Mark attendance, ${lesson.className} ${lesson.subjectName} at ${formatTime(lesson.startTime)}`}
     >
       Mark attendance
     </Button>

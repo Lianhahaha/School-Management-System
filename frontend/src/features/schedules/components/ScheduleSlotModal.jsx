@@ -14,7 +14,7 @@ import { useDiscardConfirm } from '../../../hooks/useDiscardConfirm';
 import { applyServerErrors } from '../../../lib/formErrors';
 import { dayLabel } from '../../../utils/schedule';
 import { changedFields } from '../../../utils/forms';
-import { formatTime } from '../../../utils/date';
+import { formatTimeRange } from '../../../utils/date';
 import { fullName } from '../../../utils/names';
 import { useCreateSchedule, useDeleteSchedule, useUpdateSchedule } from '../hooks';
 import { createScheduleSchema, scheduleDefaults, updateScheduleSchema } from '../schemas';
@@ -112,7 +112,7 @@ export function ScheduleSlotModal({ open, onClose, classSubjects, slot = null, p
   const onDelete = async () => {
     const ok = await confirm({
       title: 'Delete this period?',
-      description: `${slot.classSubject.subjectName}, ${dayLabel(slot.dayOfWeek)} ${formatTime(slot.startTime)}–${formatTime(slot.endTime)} is removed from the schedule. Attendance already marked is not affected.`,
+      description: `${slot.classSubject.subjectName}, ${dayLabel(slot.dayOfWeek)} ${formatTimeRange(slot.startTime, slot.endTime)} is removed from the schedule. Attendance already marked is not affected.`,
       confirmLabel: 'Delete period',
     });
     if (ok) deleteSchedule.mutate(slot.id, { onSuccess: onClose });

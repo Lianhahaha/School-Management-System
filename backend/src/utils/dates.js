@@ -32,15 +32,14 @@ export function isoWeekdayOf(ymd) {
   return jsDayToIsoDay(new Date(Date.UTC(year, month - 1, day)).getUTCDay());
 }
 
-const dayLabelFormatter = new Intl.DateTimeFormat('en-US', {
+const dayLabelFormatter = new Intl.DateTimeFormat('en-PH', {
   timeZone: 'UTC',
-  weekday: 'short',
   month: 'short',
   day: 'numeric',
   year: 'numeric',
 });
 
-/** A 'YYYY-MM-DD' date the way people read it in messages: '2026-10-06' -> 'Tue, Oct 6, 2026'. */
+/** A 'YYYY-MM-DD' date the way the app shows it, for messages and the activity log: '2026-10-06' -> 'Oct 6, 2026'. */
 export function formatDayLabel(ymd) {
   const [year, month, day] = ymd.split('-').map(Number);
   return dayLabelFormatter.format(new Date(Date.UTC(year, month - 1, day)));

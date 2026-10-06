@@ -8,7 +8,7 @@ import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { useMinutesNow } from '../../../hooks/useMinutesNow';
 import { cx } from '../../../utils/cx';
-import { todayYmd } from '../../../utils/date';
+import { formatTime, todayYmd } from '../../../utils/date';
 import { timeToMinutes } from '../../../utils/schedule';
 import { PeriodTime } from './PeriodTime';
 
@@ -70,7 +70,7 @@ export function TodayTimeline({ periods, holiday }) {
                     to={`/teacher/attendance?classSubjectId=${period.classSubjectId}&date=${date}`}
                     variant="secondary"
                     size="sm"
-                    aria-label={`Mark, ${period.className} ${period.subjectName} at ${period.startTime}`}
+                    aria-label={`Mark, ${period.className} ${period.subjectName} at ${formatTime(period.startTime)}`}
                   >
                     Mark
                   </Button>

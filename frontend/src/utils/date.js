@@ -7,16 +7,23 @@ import { ACADEMIC_YEAR_START_MONTH, jsDayToIsoDay } from '../constants/shared';
 
 const EMPTY = '—';
 
-const dateFormatter = new Intl.DateTimeFormat(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
-const shortDateFormatter = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
-const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
-  day: '2-digit',
+/**
+ * One locale for every date and time on screen, whatever the browser is set to: Philippine English,
+ * so dates read 'Oct 6, 2026' and times '8:00 AM' everywhere. CSV exports keep 'YYYY-MM-DD'.
+ */
+export const LOCALE = 'en-PH';
+
+const dateFormatter = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
+const shortDateFormatter = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short' });
+const dateTimeFormatter = new Intl.DateTimeFormat(LOCALE, {
+  day: 'numeric',
   month: 'short',
   year: 'numeric',
-  hour: '2-digit',
+  hour: 'numeric',
   minute: '2-digit',
 });
-const relativeFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+const clockFormatter = new Intl.DateTimeFormat(LOCALE, { hour: 'numeric', minute: '2-digit' });
+const relativeFormatter = new Intl.RelativeTimeFormat(LOCALE, { numeric: 'auto' });
 
 /** Largest unit first; the first one that fits is used by relativeTime. */
 const RELATIVE_UNITS = [
@@ -30,28 +37,61 @@ const RELATIVE_UNITS = [
 
 const pad = (value) => String(value).padStart(2, '0');
 
-/** '2025-03-14' -> '14 Mar 2025' (locale dependent). Empty values render as an em dash. */
+/** '2025-03-14' -> 'Mar 14, 2025'. Empty values render as an em dash. */
 export function formatDate(ymd) {
   if (!ymd) return EMPTY;
   const [year, month, day] = ymd.split('-').map(Number);
   return dateFormatter.format(new Date(year, month - 1, day));
 }
 
-/** '2025-03-14' -> '14 Mar' (locale dependent), for chart labels where the year is known. */
+/** '2025-03-14' -> 'Mar 14', for chart labels where the year is known. */
 export function formatShortDate(ymd) {
   if (!ymd) return EMPTY;
   const [year, month, day] = ymd.split('-').map(Number);
   return shortDateFormatter.format(new Date(year, month - 1, day));
 }
 
-/** ISO timestamp -> '14 Mar 2025, 09:30' in the viewer's time zone. */
+/** ISO timestamp -> 'Mar 14, 2025, 9:30 AM' in the viewer's time zone. */
 export function formatDateTime(iso) {
   return iso ? dateTimeFormatter.format(new Date(iso)) : EMPTY;
 }
 
-/** 'HH:MM' or 'HH:MM:SS' -> 'HH:MM'. */
+/** ISO timestamp -> its time of day, '9:30 AM', in the viewer's time zone. */
+export function formatTimeOfDay(iso) {
+  return iso ? clockFormatter.format(new Date(iso)) : EMPTY;
+}
+
+const clockOf = (time) => {
+  const [hours, minutes] = time.split(':').map(Number);
+  return new Date(2000, 0, 1, hours, minutes);
+};
+
+/** 'HH:MM' or 'HH:MM:SS' (a time of the school day) -> '8:00 AM'. */
 export function formatTime(time) {
-  return time ? time.slice(0, 5) : EMPTY;
+  return time ? clockFormatter.format(clockOf(time)) : EMPTY;
+}
+
+/**
+ * The two ends of a period as shown, the first without AM/PM when both share it:
+ * ('08:00', '08:50') -> ['8:00', '8:50 AM']; ('11:30', '12:20') -> ['11:30 AM', '12:20 PM'].
+ */
+export function timeRangeParts(start, end) {
+  if (!start || !end) return [formatTime(start), formatTime(end)];
+  const dayPeriod = (time) =>
+    clockFormatter.formatToParts(clockOf(time)).find((part) => part.type === 'dayPeriod')?.value;
+  if (dayPeriod(start) !== dayPeriod(end)) return [formatTime(start), formatTime(end)];
+  const startClock = clockFormatter
+    .formatToParts(clockOf(start))
+    .filter((part) => part.type !== 'dayPeriod')
+    .map((part) => part.value)
+    .join('')
+    .trim();
+  return [startClock, formatTime(end)];
+}
+
+/** A period's times in one string: '8:00–8:50 AM', or '11:30 AM–12:20 PM' across noon. */
+export function formatTimeRange(start, end) {
+  return timeRangeParts(start, end).join('–');
 }
 
 const toYmd = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;

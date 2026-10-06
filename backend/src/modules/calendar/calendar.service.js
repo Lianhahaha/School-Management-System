@@ -42,10 +42,12 @@ export async function getEvent(id) {
   return toEventShape(ApiError.assertFound(await repo.findEventById(id), 'calendar event', id));
 }
 
-/** "Christmas break (no classes, 2026-12-21 to 2027-01-01)" for the activity log. */
+/** "Christmas break (no classes, Dec 21, 2026 to Jan 1, 2027)" for the activity log. */
 const describeEvent = (event) =>
   `${event.title} (${event.type === 'holiday' ? 'no classes' : 'school event'}, ${
-    event.endsOn === event.startsOn ? event.startsOn : `${event.startsOn} to ${event.endsOn}`
+    event.endsOn === event.startsOn
+      ? formatDayLabel(event.startsOn)
+      : `${formatDayLabel(event.startsOn)} to ${formatDayLabel(event.endsOn)}`
   })`;
 
 const eventFields = ({ title, type, startsOn, endsOn }) => ({ title, type, startsOn, endsOn });

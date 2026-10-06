@@ -1,6 +1,6 @@
 import { Alert } from '../../../components/ui/Alert';
 import { Badge } from '../../../components/ui/Badge';
-import { formatTime } from '../../../utils/date';
+import { formatTimeRange } from '../../../utils/date';
 import { dayLabel } from '../../../utils/schedule';
 
 const TYPE_LABELS = { class: 'Class', teacher: 'Teacher', room: 'Room' };
@@ -33,7 +33,7 @@ export function ScheduleConflictList({ message, conflicts }) {
                 {[
                   conflict.className,
                   conflict.subjectName,
-                  `${dayLabel(conflict.dayOfWeek, { short: true })} ${formatTime(conflict.startTime)}–${formatTime(conflict.endTime)}`,
+                  `${dayLabel(conflict.dayOfWeek, { short: true })} ${formatTimeRange(conflict.startTime, conflict.endTime)}`,
                   conflict.room,
                 ]
                   .filter(Boolean)

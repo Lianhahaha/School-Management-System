@@ -5,7 +5,7 @@ import {
   TONE_SOFT_CLASSES,
 } from '../../../constants/ui';
 import { cx } from '../../../utils/cx';
-import { formatTime, todayIsoWeekday } from '../../../utils/date';
+import { formatTimeRange, todayIsoWeekday } from '../../../utils/date';
 import { dayLabel, slotsToGrid } from '../../../utils/schedule';
 import { Checkbox } from '../../../components/ui/Checkbox';
 import { LiveTag } from '../../../components/ui/LiveTag';
@@ -36,7 +36,7 @@ function Slot({ slot, renderSlot, onSlotClick }) {
   const content = (
     <>
       <span className="block text-xs font-semibold tabular-nums">
-        {formatTime(slot.startTime)}–{formatTime(slot.endTime)}
+        {formatTimeRange(slot.startTime, slot.endTime)}
       </span>
       {renderSlot ? renderSlot(slot) : <DefaultSlotContent slot={slot} />}
     </>

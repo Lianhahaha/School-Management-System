@@ -11,7 +11,7 @@ import { ERROR_CODES } from '../../../constants/shared';
 import { ATTENDANCE_STATUS_LABELS, ATTENDANCE_STATUS_TONES, DAY_LABELS } from '../../../constants/ui';
 import { useUnsavedChangesBlocker } from '../../../hooks/useUnsavedChangesBlocker';
 import { useAuth } from '../../auth/hooks';
-import { formatDate, isoWeekdayOf } from '../../../utils/date';
+import { formatDate, formatTimeOfDay, isoWeekdayOf } from '../../../utils/date';
 import { fullName, initials } from '../../../utils/names';
 import { useSaveAttendanceSheet } from '../hooks';
 
@@ -31,7 +31,6 @@ const STATUS_OPTIONS = Object.keys(LETTERS).map((status) => ({
   ),
 }));
 
-const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
 const dayList = new Intl.ListFormat('en', { type: 'conjunction' });
 
 /** `{ [studentId]: { status, remarks } }`; students who are not marked yet default to present. */
@@ -189,11 +188,11 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
         )}
         {!isOwner && <Alert tone="info">{`You can view this sheet. ${SAVE_BLOCKED_HINT}.`}</Alert>}
         {editor && editedByMe && (
-          <p className="text-xs text-gray-600">{`Saved by you at ${timeFormatter.format(new Date(editor.updatedAt))}.`}</p>
+          <p className="text-xs text-gray-600">{`Saved by you at ${formatTimeOfDay(editor.updatedAt)}.`}</p>
         )}
         {editor && !editedByMe && (
           <Alert tone="warning">
-            {`Already marked by ${fullName(editor.markedBy)} (updated ${timeFormatter.format(new Date(editor.updatedAt))}).${canSave ? ' Saving overwrites it.' : ''}`}
+            {`Already marked by ${fullName(editor.markedBy)} (updated ${formatTimeOfDay(editor.updatedAt)}).${canSave ? ' Saving overwrites it.' : ''}`}
           </Alert>
         )}
         {showRootError && (

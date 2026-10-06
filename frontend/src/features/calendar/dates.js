@@ -2,9 +2,9 @@
  * Date helpers of the calendar views. Days are 'YYYY-MM-DD' strings and months 'YYYY-MM'; entries are
  * inclusive ranges `{ startsOn, endsOn }`.
  */
-import { addDaysYmd, formatDate, mondayOf } from '../../utils/date';
+import { LOCALE, addDaysYmd, formatDate, mondayOf } from '../../utils/date';
 
-const monthFormatter = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
+const monthFormatter = new Intl.DateTimeFormat(LOCALE, { month: 'long', year: 'numeric' });
 
 /** 'YYYY-MM' moved by `delta` months. */
 export function shiftMonth(month, delta) {
@@ -13,7 +13,7 @@ export function shiftMonth(month, delta) {
   return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
 }
 
-/** '2026-10' -> 'October 2026' (locale dependent). */
+/** '2026-10' -> 'October 2026'. */
 export function monthLabel(month) {
   const [year, monthNumber] = month.split('-').map(Number);
   return monthFormatter.format(new Date(year, monthNumber - 1, 1));
