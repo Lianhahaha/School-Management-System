@@ -5,7 +5,8 @@ import { currentAcademicYear } from '../../../utils/date';
 /**
  * The six school-wide figures of the admin dashboard (payload `counts`). Each tile opens its list
  * filtered the way the figure is counted (active accounts and subjects, the current academic year's
- * classes); only the unenrolled count carries a tone: amber while it is above zero.
+ * classes). Each icon chip carries its area's mark (students slate, teaching plum, classes umber); the
+ * unenrolled chip turns brick while students are waiting for a class and leaf once everyone has one.
  */
 export function AdminCountTiles({ counts }) {
   return (
@@ -15,6 +16,7 @@ export function AdminCountTiles({ counts }) {
         value={counts.students}
         hint="Active"
         icon={GraduationCap}
+        mark="slate"
         to="/admin/students?isActive=true"
       />
       <StatTile
@@ -22,6 +24,7 @@ export function AdminCountTiles({ counts }) {
         value={counts.teachers}
         hint="Active"
         icon={BookUser}
+        mark="plum"
         to="/admin/teachers?isActive=true"
       />
       <StatTile
@@ -29,6 +32,7 @@ export function AdminCountTiles({ counts }) {
         value={counts.classes}
         hint="Current academic year"
         icon={School}
+        mark="umber"
         to={`/admin/classes?academicYear=${currentAcademicYear()}`}
       />
       <StatTile
@@ -36,12 +40,14 @@ export function AdminCountTiles({ counts }) {
         value={counts.subjects}
         hint="Active"
         icon={BookOpen}
+        mark="plum"
         to="/admin/subjects?isActive=true"
       />
       <StatTile
         label="Active enrollments"
         value={counts.activeEnrollments}
         icon={UserCheck}
+        mark="slate"
         to="/admin/students?hasActiveEnrollment=true"
       />
       <StatTile
@@ -49,7 +55,7 @@ export function AdminCountTiles({ counts }) {
         value={counts.unenrolledStudents}
         hint={counts.unenrolledStudents > 0 ? 'Need a class' : 'Everyone has a class'}
         icon={UserX}
-        tone={counts.unenrolledStudents > 0 ? 'amber' : 'green'}
+        mark={counts.unenrolledStudents > 0 ? 'brick' : 'leaf'}
         to="/admin/students?hasActiveEnrollment=false&isActive=true"
       />
     </div>
