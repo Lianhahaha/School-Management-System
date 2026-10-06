@@ -8,7 +8,7 @@ export function LiveTag({ className, children }) {
   return (
     <span
       className={cx(
-        'inline-flex items-center rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-ink',
+        'inline-flex items-center rounded-md bg-accent px-2 py-0.5 text-xs font-semibold text-accent-ink',
         className,
       )}
     >

@@ -3,7 +3,8 @@ import { NavLink } from 'react-router';
 import { cx } from '../../utils/cx';
 import { NavBadge } from './NavBadge';
 
-const BASE = 'flex min-h-11 w-full items-center gap-3 rounded-full px-3.5 text-[0.9375rem] transition-colors';
+const BASE =
+  'flex min-h-11 w-full items-center gap-3 rounded-control px-3.5 text-[0.9375rem] transition-colors';
 const IDLE = 'font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900';
 const ACTIVE = 'font-semibold text-gray-900';
 

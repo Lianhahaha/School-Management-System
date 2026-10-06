@@ -4,7 +4,7 @@ import { MARK_CLASSES, TONE_SOFT_CLASSES } from '../../constants/ui';
 import { cx } from '../../utils/cx';
 
 /**
- * A figure as a pill row: icon chip, label, value on the right (tabular), and a chevron when the
+ * A figure as a row: icon chip, label, value on the right (tabular), and a chevron when the
  * row links somewhere. Rows stack inside a sheet, so a dashboard reads as a list of answers,
  * not a wall of number tiles.
  * @param {object} props
@@ -20,13 +20,13 @@ import { cx } from '../../utils/cx';
  */
 export function StatTile({ label, value, hint, icon: Icon, tone, mark, to }) {
   const classes =
-    'flex min-h-14 items-center gap-2 rounded-[1.25rem] bg-surface py-2 ring-1 ring-gray-200 ring-inset pr-2.5 pl-2 sm:gap-3 sm:rounded-full sm:pr-4';
+    'flex min-h-14 items-center gap-2 rounded-tile bg-surface py-2 ring-1 ring-gray-200 ring-inset pr-2.5 pl-2 sm:gap-3 sm:pr-4';
   const content = (
     <>
       {Icon && (
         <span
           className={cx(
-            'flex size-8 shrink-0 items-center justify-center rounded-full sm:size-10',
+            'flex size-8 shrink-0 items-center justify-center rounded-lg sm:size-10',
             mark ? MARK_CLASSES[mark] : tone ? TONE_SOFT_CLASSES[tone] : 'bg-gray-100 text-gray-700',
           )}
         >

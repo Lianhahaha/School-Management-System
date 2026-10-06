@@ -8,8 +8,9 @@ import { useNavBadges } from './useNavBadges';
 
 const ITEM = 'flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 text-xs font-medium';
 // The label never runs into its neighbour: a step smaller and tighter on the narrowest phones, cut with … as a last resort.
-const LABEL = 'max-w-full truncate px-0.5 max-[22.5rem]:px-0 max-[22.5rem]:text-[0.6875rem] max-[22.5rem]:tracking-tight';
-const CHIP = 'flex h-8 w-12 items-center justify-center rounded-full transition-colors';
+const LABEL =
+  'max-w-full truncate px-0.5 max-[22.5rem]:px-0 max-[22.5rem]:text-[0.6875rem] max-[22.5rem]:tracking-tight';
+const CHIP = 'flex h-8 w-12 items-center justify-center rounded-lg transition-colors';
 
 /**
  * Phone navigation (below `lg`): a floating rounded bar with the role's four `tab` entries and
@@ -28,7 +29,7 @@ export function TabBar({ menuId, isMenuOpen, onMoreClick }) {
     <nav
       id="app-tabbar"
       aria-label="Quick"
-      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 rounded-[1.75rem] bg-surface px-1.5 shadow-pop lg:hidden"
+      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 rounded-2xl bg-surface px-1.5 shadow-pop lg:hidden"
     >
       <ul className="flex">
         {tabs.map(({ label, short, to, icon: Icon, end, badge }) => (

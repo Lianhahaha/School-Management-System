@@ -70,7 +70,7 @@ export function Th({ sortDirection = null, onSort, align = 'left', hideBelow, wi
           type="button"
           onClick={onSort}
           className={cx(
-            '-mx-1.5 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 hover:text-gray-900',
+            '-mx-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:text-gray-900',
             sortDirection && 'text-gray-900',
           )}
         >

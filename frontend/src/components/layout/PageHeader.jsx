@@ -34,7 +34,7 @@ export function PageHeader({ title, description, actions, breadcrumbs, total }) 
                 <li key={label} className="flex items-center gap-1">
                   {index > 0 && <ChevronRight className="size-3.5" aria-hidden="true" />}
                   {to ? (
-                    <Link to={to} className="rounded-full hover:text-gray-900 hover:underline">
+                    <Link to={to} className="rounded-sm hover:text-gray-900 hover:underline">
                       {label}
                     </Link>
                   ) : (

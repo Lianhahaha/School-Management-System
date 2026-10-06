@@ -17,7 +17,7 @@ export function ErrorState({ title = 'Something went wrong', message, onRetry, c
       role="alert"
       className={cx('flex flex-col items-center px-6 text-center', compact ? 'py-4' : 'py-12', className)}
     >
-      <span className="flex size-14 items-center justify-center rounded-full bg-red-50 text-red-600">
+      <span className="flex size-14 items-center justify-center rounded-xl bg-red-50 text-red-600">
         <TriangleAlert className="size-6" aria-hidden="true" />
       </span>
       <h3 className="mt-4 text-base font-semibold text-gray-900">{title}</h3>

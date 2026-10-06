@@ -95,7 +95,7 @@ export function MonthGrid({ month, caption, events, onAddOn, onSelect }) {
                         type="button"
                         onClick={() => onAddOn(day)}
                         aria-label={`Add an entry on ${formatDate(day)}`}
-                        className="flex size-6 items-center justify-center rounded-full text-gray-500 opacity-0 transition-opacity hover:bg-gray-200 hover:text-gray-900 focus-visible:opacity-100 pointer-coarse:opacity-100 [td:hover_&]:opacity-100"
+                        className="flex size-6 items-center justify-center rounded-md text-gray-500 opacity-0 transition-opacity hover:bg-gray-200 hover:text-gray-900 focus-visible:opacity-100 pointer-coarse:opacity-100 [td:hover_&]:opacity-100"
                       >
                         <Plus className="size-3.5" aria-hidden="true" />
                       </button>

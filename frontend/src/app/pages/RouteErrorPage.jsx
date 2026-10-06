@@ -26,7 +26,7 @@ export default function RouteErrorPage() {
 
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 text-center">
-      <span className="flex size-12 items-center justify-center rounded-full bg-red-50 text-red-600">
+      <span className="flex size-12 items-center justify-center rounded-xl bg-red-50 text-red-600">
         <TriangleAlert className="size-6" aria-hidden="true" />
       </span>
       <h1 className="mt-4 text-lg font-semibold text-gray-900">
