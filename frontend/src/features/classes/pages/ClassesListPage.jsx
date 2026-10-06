@@ -35,7 +35,7 @@ export default function ClassesListPage() {
     const ok = await confirm({
       title: `Delete ${schoolClass.name}?`,
       description:
-        'The class is removed permanently. It cannot be deleted while students, subjects or timetable slots still reference it.',
+        'The class is removed permanently. It cannot be deleted while it has students, subjects or periods.',
       confirmLabel: 'Delete class',
     });
     if (ok) deleteClass.mutate(schoolClass.id);

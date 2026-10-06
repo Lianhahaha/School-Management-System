@@ -20,7 +20,11 @@ export function ClassSubjectSelectorBar({ selection, withDate = false }) {
   const isBeforeYear = withDate && Boolean(firstDay) && date < firstDay;
 
   return (
-    <div role="group" aria-label="Choose a lesson" className="mb-6 flex flex-wrap items-start gap-4">
+    <div
+      role="group"
+      aria-label="Choose a class and subject"
+      className="mb-6 flex flex-wrap items-start gap-4"
+    >
       {role === 'admin' && (
         <FormField label="Class" className="w-full sm:w-64">
           <ClassSelect value={classId} onChange={(event) => setClassId(event.target.value)} />

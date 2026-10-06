@@ -22,16 +22,16 @@ export function SessionsProgressCard({ attendance, holiday }) {
           compact
         />
       ) : sessionsScheduled === 0 ? (
-        <EmptyState icon={CalendarOff} title="No sessions today" compact />
+        <EmptyState icon={CalendarOff} title="No periods today" compact />
       ) : (
         <>
           <p className="text-sm text-gray-700">
             <span className="text-2xl font-semibold text-gray-900">{sessionsMarked}</span> of{' '}
-            {countOf(sessionsScheduled, 'session')} marked
+            {countOf(sessionsScheduled, 'period')} marked
           </p>
           <div
             role="progressbar"
-            aria-label="Sessions marked today"
+            aria-label="Periods marked today"
             aria-valuemin={0}
             aria-valuemax={sessionsScheduled}
             aria-valuenow={sessionsMarked}

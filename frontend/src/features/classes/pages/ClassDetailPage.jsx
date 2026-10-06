@@ -38,7 +38,7 @@ export default function ClassDetailPage() {
     const ok = await confirm({
       title: `Delete ${schoolClass.name}?`,
       description:
-        'The class is removed permanently. It cannot be deleted while students, subjects or timetable slots still reference it.',
+        'The class is removed permanently. It cannot be deleted while it has students, subjects or periods.',
       confirmLabel: 'Delete class',
     });
     if (!ok) return;
@@ -91,7 +91,7 @@ export default function ClassDetailPage() {
             content: (
               <AttendanceTrendCard
                 filters={{ classId: schoolClass.id }}
-                description={`Every lesson of ${schoolClass.name}, ${schoolClass.academicYear}`}
+                description={`Every period of ${schoolClass.name}, ${schoolClass.academicYear}`}
               />
             ),
           },

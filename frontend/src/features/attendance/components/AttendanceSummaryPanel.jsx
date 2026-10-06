@@ -51,7 +51,7 @@ export function AttendanceSummaryPanel({ studentId, dateFrom, dateTo, enabled = 
   const summary = overall.data;
   if (!summary.total) {
     return (
-      <EmptyState title="No attendance recorded" description="Nothing has been marked for this period." />
+      <EmptyState title="No attendance recorded" description="Nothing has been marked between these dates." />
     );
   }
 
@@ -61,7 +61,7 @@ export function AttendanceSummaryPanel({ studentId, dateFrom, dateTo, enabled = 
         <StatTile
           label="Attendance rate"
           value={formatPercent(summary.rate)}
-          hint={countOf(summary.total, 'session')}
+          hint={countOf(summary.total, 'period')}
         />
         {ATTENDANCE_STATUSES.map((status) => (
           <StatTile

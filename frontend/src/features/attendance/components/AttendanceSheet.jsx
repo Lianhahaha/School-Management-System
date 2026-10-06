@@ -159,7 +159,7 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
             title={
               isOwner
                 ? sheet.holiday || isOffDay
-                  ? `No ${sheet.classSubject.subjectName} lesson on this day`
+                  ? `No ${sheet.classSubject.subjectName} period on this day`
                   : undefined
                 : SAVE_BLOCKED_HINT
             }
@@ -182,7 +182,7 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
         )}
         {isOffDay && !sheet.holiday && (
           <Alert tone="warning">
-            {`${sheet.classSubject.subjectName} has no lesson on ${DAY_LABELS[weekday]}s. It meets on ${dayList.format(
+            {`${sheet.classSubject.subjectName} has no periods on ${DAY_LABELS[weekday]}s. It meets on ${dayList.format(
               sheet.lessonDays.map((day) => DAY_LABELS[day]),
             )}: pick one of those days to mark attendance.`}
           </Alert>

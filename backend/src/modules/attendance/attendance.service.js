@@ -148,7 +148,7 @@ async function assertLessonDay(classSubjectId, date, subjectName) {
   if (lessonDays.length === 0 || lessonDays.includes(isoWeekdayOf(date))) return;
   if ((await repo.findMarkedClassSubjectIds([classSubjectId], date)).length > 0) return;
   throw ApiError.validation(
-    `${subjectName} has no lesson on ${WEEKDAY_NAMES[isoWeekdayOf(date)]}s`,
+    `${subjectName} has no periods on ${WEEKDAY_NAMES[isoWeekdayOf(date)]}s`,
     undefined,
     { reason: 'no_lesson_on_day', lessonDays },
   );

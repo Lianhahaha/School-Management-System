@@ -73,7 +73,7 @@ export function AtRiskCard({ atRisk, studentPath }) {
             ))}
           </ul>
           {atRisk.students.some((student) => student.reasons.includes('attendance')) && (
-            <p className="mt-3 text-xs text-gray-600">Excused absences count as missed lessons.</p>
+            <p className="mt-3 text-xs text-gray-600">Excused absences count as missed periods.</p>
           )}
           {atRisk.total > atRisk.students.length && (
             <p className="mt-3 text-xs text-gray-600">

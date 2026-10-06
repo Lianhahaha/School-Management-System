@@ -62,12 +62,12 @@ export function AdminAttendanceCard({ attendance, holiday }) {
       <EmptyState
         icon={CalendarOff}
         title={`No classes today: ${holiday.title}`}
-        description="No lessons and no attendance to mark."
+        description="No periods and no attendance to mark."
         compact
       />
     );
   } else if (lessonsScheduled === 0 && attendance.total === 0) {
-    body = <EmptyState icon={CalendarOff} title="No lessons on the timetable today" compact />;
+    body = <EmptyState icon={CalendarOff} title="No periods on the timetable today" compact />;
   } else {
     body = (
       <div className="space-y-5">
@@ -75,11 +75,11 @@ export function AdminAttendanceCard({ attendance, holiday }) {
           <div>
             <p className="text-sm text-gray-700">
               <span className="text-2xl font-semibold text-gray-900">{lessonsMarked}</span> of{' '}
-              {countOf(lessonsScheduled, 'lesson')} marked
+              {countOf(lessonsScheduled, 'period')} marked
             </p>
             <div
               role="progressbar"
-              aria-label="Lessons marked today"
+              aria-label="Periods marked today"
               aria-valuemin={0}
               aria-valuemax={lessonsScheduled}
               aria-valuenow={lessonsMarked}
@@ -102,13 +102,13 @@ export function AdminAttendanceCard({ attendance, holiday }) {
             </ul>
             {overdue.length > LIST_LIMIT && (
               <p className="mt-1 text-xs text-gray-600">
-                and {countOf(overdue.length - LIST_LIMIT, 'more lesson')}
+                and {countOf(overdue.length - LIST_LIMIT, 'more period')}
               </p>
             )}
           </div>
         )}
-        {later > 0 && <p className="text-xs text-gray-600">{`${countOf(later, 'lesson')} later today.`}</p>}
-        {isDone && <p className="text-xs text-green-700">Every lesson of today is marked.</p>}
+        {later > 0 && <p className="text-xs text-gray-600">{`${countOf(later, 'period')} later today.`}</p>}
+        {isDone && <p className="text-xs text-green-700">Every period today is marked.</p>}
         {attendance.total > 0 && <AttendanceOverview summary={attendance} />}
       </div>
     );

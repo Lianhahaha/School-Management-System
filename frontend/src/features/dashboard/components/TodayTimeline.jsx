@@ -30,7 +30,7 @@ export function TodayTimeline({ periods, holiday }) {
         <EmptyState
           icon={CalendarOff}
           title={`No classes today: ${holiday.title}`}
-          description="No lessons and no attendance to mark."
+          description="No periods and no attendance to mark."
           compact
         />
       ) : sorted.length === 0 ? (

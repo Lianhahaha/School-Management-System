@@ -29,7 +29,7 @@ export default function AttendanceMarkPage() {
       <EmptyState
         icon={ClipboardCheck}
         title="Pick a class and subject"
-        description="Choose a lesson and a date to see its roster."
+        description="Choose a class, a subject and a date to see the roster."
       />
     );
   } else if (isFuture) {
@@ -72,7 +72,7 @@ export default function AttendanceMarkPage() {
     <>
       <PageHeader
         title="Attendance"
-        description="Mark who was present, absent, late or excused in a lesson."
+        description="Mark who was present, absent, late or excused in a period."
         actions={
           selected.data && (
             <ExportCsvButton

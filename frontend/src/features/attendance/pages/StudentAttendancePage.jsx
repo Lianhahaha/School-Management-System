@@ -51,7 +51,7 @@ function StudentAttendanceContent({ academicYear, notEnrolled = false }) {
     <div className="space-y-6">
       {notEnrolled && (
         <NotInClassNote>
-          You're not in a class right now, so no new lessons are recorded. This is your attendance from
+          You're not in a class right now, so no new attendance is recorded. This is your attendance from
           earlier classes.
         </NotInClassNote>
       )}
@@ -133,7 +133,7 @@ function StudentAttendanceContent({ academicYear, notEnrolled = false }) {
                 sortOrder: list.params.sortOrder ?? 'desc',
               }}
               onSortChange={list.setSort}
-              emptyState={<EmptyState title="No attendance records in this period" />}
+              emptyState={<EmptyState title="No attendance records between these dates" />}
             />
             <Pagination meta={records.data?.meta} onPageChange={list.setPage} onLimitChange={list.setLimit} />
           </>
@@ -152,7 +152,7 @@ export default function StudentAttendancePage() {
 
   return (
     <>
-      <PageHeader title="My attendance" description="How often you were present in your lessons." />
+      <PageHeader title="My attendance" description="How often you were present in your periods." />
       <StudentAttendanceContent
         academicYear={enrollment?.academicYear ?? currentAcademicYear()}
         notEnrolled={!enrollment}

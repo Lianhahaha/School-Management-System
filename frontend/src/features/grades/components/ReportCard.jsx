@@ -56,7 +56,7 @@ export function ReportCard({ student, enrollment, studentId, term }) {
         <dd>{student.studentNumber}</dd>
         <dt className="font-semibold">Class</dt>
         <dd>{enrollment ? `${enrollment.className}, ${enrollment.academicYear}` : 'Not enrolled'}</dd>
-        <dt className="font-semibold">Period</dt>
+        <dt className="font-semibold">Term</dt>
         <dd>{term ? TERM_LABELS[term] : 'All terms'}</dd>
       </dl>
 

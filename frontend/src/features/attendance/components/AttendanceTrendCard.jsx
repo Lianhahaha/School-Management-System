@@ -40,7 +40,7 @@ export function AttendanceTrendCard({ filters, description, enabled = true }) {
       <EmptyState
         icon={ClipboardCheck}
         title="No attendance marked yet"
-        description="The weekly rate appears once lessons are marked."
+        description="The weekly rate appears once periods are marked."
         compact
       />
     );

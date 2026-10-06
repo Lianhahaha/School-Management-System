@@ -71,7 +71,7 @@ export default function AssessmentsPage() {
       <EmptyState
         icon={ClipboardList}
         title="Pick a class and subject"
-        description="Choose a lesson to see its assessments."
+        description="Choose a class and subject to see its assessments."
       />
     );
   } else if (selected.error) {
@@ -88,7 +88,7 @@ export default function AssessmentsPage() {
         <EmptyState
           icon={ClipboardList}
           title="No assessments yet"
-          description={canManage ? 'Create the first test, exam or assignment for this lesson.' : undefined}
+          description={canManage ? 'Create the first test, exam or assignment for this subject.' : undefined}
           action={
             canManage && (
               <Button icon={Plus} onClick={openCreate}>
@@ -157,7 +157,7 @@ export default function AssessmentsPage() {
     <>
       <PageHeader
         title="Grades"
-        description="Tests, exams and assignments of a lesson, and the scores students earned."
+        description="Tests, exams and assignments of each subject, and the scores students earned."
         actions={
           canManage && (
             <Button icon={Plus} onClick={openCreate}>

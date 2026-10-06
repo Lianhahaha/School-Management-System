@@ -16,7 +16,7 @@ function AttendanceLine({ summary }) {
   return (
     <p className="text-sm text-gray-700">
       <span className="text-2xl font-semibold text-gray-900">{formatPercent(summary.rate)}</span>{' '}
-      {`over ${countOf(summary.total, 'lesson')}: ${summary.present} present, ${summary.absent} absent, ${summary.late} late, ${summary.excused} excused`}
+      {`over ${countOf(summary.total, 'period')}: ${summary.present} present, ${summary.absent} absent, ${summary.late} late, ${summary.excused} excused`}
     </p>
   );
 }

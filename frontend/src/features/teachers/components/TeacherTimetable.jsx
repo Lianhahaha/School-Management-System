@@ -24,7 +24,7 @@ export function TeacherTimetable({ teacherId }) {
     return (
       <EmptyState
         title="No periods scheduled"
-        description={`This teacher has no timetable slots in ${academicYear}.`}
+        description={`This teacher has no periods in ${academicYear}.`}
       />
     );
   }
