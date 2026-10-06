@@ -128,7 +128,10 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
   if (records.length === 0) {
     return (
       <Card>
-        <EmptyState title="No students enrolled in this class" />
+        <EmptyState
+          title={`No students were in this class on ${formatDate(sheet.date)}`}
+          description="Only students enrolled on that date are on the sheet."
+        />
       </Card>
     );
   }

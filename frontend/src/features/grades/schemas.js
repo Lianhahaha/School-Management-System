@@ -43,19 +43,41 @@ export const assessmentDefaults = (assessment, classSubjectId = '') => ({
 /**
  * Grade sheet form: one row per student of the roster. A blank score means "not graded yet" and the
  * row is not sent (see toSaveGradesPayload). The upper bound depends on the assessment, hence a function.
+ * Two blanks would be lost silently, so they are errors instead: a saved score that was erased (a save
+ * cannot unset a grade; the row's Clear action does) and remarks typed for a student without a score.
  * @param {number} assessmentMaxScore the assessment's maxScore
+ * @param {Array<{ gradeId: number|null }>} [savedRecords] the roster as saved, in the same order as `rows`
  */
-export const gradeSheetSchema = (assessmentMaxScore) =>
+export const gradeSheetSchema = (assessmentMaxScore, savedRecords = []) =>
   z.object({
-    rows: z.array(
-      z.object({
-        studentId: positiveInt,
-        score: optionalField(
-          score.max(assessmentMaxScore, `Score must be between 0 and ${assessmentMaxScore}`),
-        ),
-        remarks: optionalField(z.string().max(255, 'Use 255 characters or fewer')),
+    rows: z
+      .array(
+        z.object({
+          studentId: positiveInt,
+          score: optionalField(
+            score.max(assessmentMaxScore, `Score must be between 0 and ${assessmentMaxScore}`),
+          ),
+          remarks: optionalField(z.string().max(255, 'Use 255 characters or fewer')),
+        }),
+      )
+      .superRefine((rows, context) => {
+        rows.forEach((row, index) => {
+          if (row.score !== undefined) return;
+          if (savedRecords[index]?.gradeId != null) {
+            context.addIssue({
+              code: 'custom',
+              path: [index, 'score'],
+              message: 'To remove a saved grade, use Clear',
+            });
+          } else if (row.remarks !== undefined) {
+            context.addIssue({
+              code: 'custom',
+              path: [index, 'remarks'],
+              message: 'Add a score to save these remarks',
+            });
+          }
+        });
       }),
-    ),
   });
 
 /** Grade sheet form values from the roster (`records` of GET /assessments/:id/grades). */

@@ -13,6 +13,7 @@ import { TBody, THead, Table, Td, Th, Tr } from '../../../components/ui/Table';
 import { ERROR_CODES } from '../../../constants/shared';
 import { useToast } from '../../../hooks/useToast';
 import { applyServerErrors } from '../../../lib/formErrors';
+import { formatDate } from '../../../utils/date';
 import { formatPercent, formatScore } from '../../../utils/format';
 import { fullName } from '../../../utils/names';
 import { useUnsavedChangesBlocker } from '../../../hooks/useUnsavedChangesBlocker';
@@ -74,7 +75,10 @@ export function GradeSheet({ roster, canSave, onReload }) {
   const deleteGrade = useDeleteGrade();
   const restoreGrade = useRestoreGrade();
   const [records, setRecords] = useState(roster.records);
-  const schema = useMemo(() => gradeSheetSchema(assessment.maxScore), [assessment.maxScore]);
+  const schema = useMemo(
+    () => gradeSheetSchema(assessment.maxScore, records),
+    [assessment.maxScore, records],
+  );
 
   const {
     register,
@@ -164,7 +168,10 @@ export function GradeSheet({ roster, canSave, onReload }) {
   if (records.length === 0) {
     return (
       <Card>
-        <EmptyState title="No students enrolled in this class" />
+        <EmptyState
+          title={`No students were in ${assessment.className} on ${formatDate(assessment.assessedOn)}`}
+          description="Students who joined the class after the assessment date aren't graded for it."
+        />
       </Card>
     );
   }

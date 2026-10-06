@@ -52,11 +52,17 @@ export function AssessmentsTable({ sheetPath, canManage, onEdit, onDelete, ...ta
       key: 'graded',
       header: 'Graded',
       align: 'right',
-      cell: (row) => (
-        <Badge tone={row.gradedCount < row.enrolledCount ? 'amber' : 'green'}>
-          {row.gradedCount}/{row.enrolledCount}
-        </Badge>
-      ),
+      // Nobody to grade (no student in the class on that date) is not "all graded": a neutral dash.
+      cell: (row) =>
+        row.enrolledCount === 0 ? (
+          <span className="text-gray-500" title="No students were in the class on the assessment date">
+            —
+          </span>
+        ) : (
+          <Badge tone={row.gradedCount < row.enrolledCount ? 'amber' : 'green'}>
+            {row.gradedCount}/{row.enrolledCount}
+          </Badge>
+        ),
     },
     {
       key: 'actions',
