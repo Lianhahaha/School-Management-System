@@ -9,6 +9,8 @@ import { AttendanceOverview } from './AttendanceOverview';
 export function AdminAttendanceCard({ attendance }) {
   return (
     <Card
+      icon={ClipboardCheck}
+      mark="leaf"
       title="Attendance today"
       description={formatDate(attendance.date)}
       actions={<TextLink to="/admin/attendance">Mark attendance</TextLink>}

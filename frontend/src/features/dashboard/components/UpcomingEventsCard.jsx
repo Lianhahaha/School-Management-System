@@ -1,4 +1,4 @@
-import { CalendarRange } from 'lucide-react';
+import { CalendarDays, CalendarRange } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { TextLink } from '../../../components/ui/TextLink';
@@ -16,6 +16,8 @@ import { formatEventDates } from '../../calendar/dates';
 export function UpcomingEventsCard({ events, to }) {
   return (
     <Card
+      icon={CalendarDays}
+      mark="umber"
       title="Coming up"
       description="Holidays and school events, next 30 days"
       actions={<TextLink to={to}>Calendar</TextLink>}

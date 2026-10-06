@@ -15,6 +15,8 @@ import { AnnouncementCard } from '../../announcements/components/AnnouncementCar
 export function RecentAnnouncementsCard({ announcements, to }) {
   return (
     <Card
+      icon={Megaphone}
+      mark="ink"
       title="Recent announcements"
       total={announcements.length > 0 ? announcements.length : undefined}
       actions={<TextLink to={to}>View all</TextLink>}

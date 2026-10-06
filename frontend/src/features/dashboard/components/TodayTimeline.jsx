@@ -1,4 +1,4 @@
-import { CalendarOff, Check } from 'lucide-react';
+import { CalendarOff, Check, Clock } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Badge } from '../../../components/ui/Badge';
@@ -34,7 +34,7 @@ export function TodayTimeline({ periods }) {
   const date = todayYmd();
 
   return (
-    <Card title="Today's periods">
+    <Card icon={Clock} mark="umber" title="Today's periods">
       {sorted.length === 0 ? (
         <EmptyState icon={CalendarOff} title="No periods today" description="Enjoy the quiet day." compact />
       ) : (

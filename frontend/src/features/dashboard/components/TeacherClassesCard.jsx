@@ -12,7 +12,12 @@ export function TeacherClassesCard({ classSubjects, homeroomClasses }) {
   const isEmpty = classSubjects.length === 0 && homeroomClasses.length === 0;
 
   return (
-    <Card title="My classes" actions={<TextLink to="/teacher/classes">View all</TextLink>}>
+    <Card
+      icon={School}
+      mark="plum"
+      title="My classes"
+      actions={<TextLink to="/teacher/classes">View all</TextLink>}
+    >
       {isEmpty ? (
         <EmptyState
           icon={School}

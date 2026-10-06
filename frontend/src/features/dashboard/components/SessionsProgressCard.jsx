@@ -1,4 +1,4 @@
-import { CalendarOff } from 'lucide-react';
+import { CalendarOff, ClipboardCheck } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { countOf } from '../../../utils/format';
@@ -9,7 +9,7 @@ export function SessionsProgressCard({ attendance }) {
   const isDone = sessionsScheduled > 0 && sessionsMarked >= sessionsScheduled;
 
   return (
-    <Card title="Attendance today">
+    <Card icon={ClipboardCheck} mark="leaf" title="Attendance today">
       {sessionsScheduled === 0 ? (
         <EmptyState
           icon={CalendarOff}

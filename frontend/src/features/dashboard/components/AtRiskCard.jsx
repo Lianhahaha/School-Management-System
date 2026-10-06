@@ -1,4 +1,4 @@
-import { UserCheck } from 'lucide-react';
+import { TriangleAlert, UserCheck } from 'lucide-react';
 import { Link } from 'react-router';
 import { Badge } from '../../../components/ui/Badge';
 import { Card } from '../../../components/ui/Card';
@@ -41,7 +41,13 @@ export function AtRiskCard({ atRisk, studentPath }) {
   const lines = `Below ${formatPercent(atRisk.attendanceRateBelow)} attendance or a ${formatResult(atRisk.gradeAverageBelow)} average this school year`;
 
   return (
-    <Card title="Needs attention" total={atRisk.total > 0 ? atRisk.total : undefined} description={lines}>
+    <Card
+      icon={TriangleAlert}
+      mark="brick"
+      title="Needs attention"
+      total={atRisk.total > 0 ? atRisk.total : undefined}
+      description={lines}
+    >
       {atRisk.students.length === 0 ? (
         <EmptyState
           icon={UserCheck}

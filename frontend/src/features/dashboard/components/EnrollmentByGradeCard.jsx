@@ -1,4 +1,4 @@
-import { ChartNoAxesColumn } from 'lucide-react';
+import { ChartNoAxesColumn, GraduationCap } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 
@@ -8,7 +8,12 @@ export function EnrollmentByGradeCard({ grades }) {
   const largest = Math.max(1, ...sorted.map((grade) => grade.students));
 
   return (
-    <Card title="Enrollment by grade" description="Students with an active enrollment">
+    <Card
+      icon={GraduationCap}
+      mark="slate"
+      title="Enrollment by grade"
+      description="Students with an active enrollment"
+    >
       {sorted.length === 0 ? (
         <EmptyState icon={ChartNoAxesColumn} title="No enrollments yet" compact />
       ) : (

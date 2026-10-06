@@ -1,4 +1,4 @@
-import { CalendarOff } from 'lucide-react';
+import { CalendarOff, Clock } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { TextLink } from '../../../components/ui/TextLink';
@@ -11,7 +11,12 @@ export function StudentTimetableCard({ periods }) {
   const sorted = [...periods].sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
 
   return (
-    <Card title="Today's timetable" actions={<TextLink to="/student/schedule">Full week</TextLink>}>
+    <Card
+      icon={Clock}
+      mark="umber"
+      title="Today's timetable"
+      actions={<TextLink to="/student/schedule">Full week</TextLink>}
+    >
       {sorted.length === 0 ? (
         <EmptyState icon={CalendarOff} title="No classes today" compact />
       ) : (

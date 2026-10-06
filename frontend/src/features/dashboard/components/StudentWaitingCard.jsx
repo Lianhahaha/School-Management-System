@@ -1,3 +1,4 @@
+import { GraduationCap } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { StepList } from '../../../components/ui/StepList';
 import { useAuth } from '../../auth/hooks';
@@ -43,6 +44,8 @@ export function StudentWaitingCard() {
 
   return (
     <Card
+      icon={GraduationCap}
+      mark="slate"
       title="You're not in a class yet"
       description="Your timetable, attendance and grades appear here once an administrator enrolls you."
     >

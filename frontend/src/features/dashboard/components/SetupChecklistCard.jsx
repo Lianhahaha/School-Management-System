@@ -1,3 +1,4 @@
+import { ListChecks } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { StepList } from '../../../components/ui/StepList';
 
@@ -65,6 +66,8 @@ export function SetupChecklistCard({ counts }) {
 
   return (
     <Card
+      icon={ListChecks}
+      mark="ink"
       title="Set up your school"
       total={`${doneCount} of ${steps.length} done`}
       description="Work through these in order; each step needs the ones before it."

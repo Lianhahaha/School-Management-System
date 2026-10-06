@@ -10,7 +10,12 @@ import { formatPercent, formatScore } from '../../../utils/format';
 /** The student's newest grades (payload `recentGrades`, at most five). */
 export function RecentGradesCard({ grades }) {
   return (
-    <Card title="Recent grades" actions={<TextLink to="/student/grades">All grades</TextLink>}>
+    <Card
+      icon={Award}
+      mark="plum"
+      title="Recent grades"
+      actions={<TextLink to="/student/grades">All grades</TextLink>}
+    >
       {grades.length === 0 ? (
         <EmptyState icon={Award} title="No grades yet" compact />
       ) : (

@@ -12,6 +12,8 @@ import { formatDate } from '../../../utils/date';
 export function UpcomingAssessmentsCard({ assessments }) {
   return (
     <Card
+      icon={CalendarClock}
+      mark="plum"
       title="Upcoming assessments"
       total={assessments.length > 0 ? assessments.length : undefined}
       description="In the next 7 days"

@@ -1,4 +1,4 @@
-import { Award } from 'lucide-react';
+import { Award, BookOpen } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { TextLink } from '../../../components/ui/TextLink';
@@ -7,7 +7,12 @@ import { formatResult, resultWidth } from '../../../utils/grades';
 /** One row per subject with its result (points or the subject's weights) as a bar (payload `gradeSummary`). */
 export function StudentGradeSummaryCard({ subjects }) {
   return (
-    <Card title="Grades by subject" actions={<TextLink to="/student/grades">All grades</TextLink>}>
+    <Card
+      icon={BookOpen}
+      mark="plum"
+      title="Grades by subject"
+      actions={<TextLink to="/student/grades">All grades</TextLink>}
+    >
       {subjects.length === 0 ? (
         <EmptyState
           icon={Award}

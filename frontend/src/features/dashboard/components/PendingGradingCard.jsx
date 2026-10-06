@@ -1,4 +1,4 @@
-import { CircleCheck } from 'lucide-react';
+import { Award, CircleCheck } from 'lucide-react';
 import { Link } from 'react-router';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
@@ -9,6 +9,8 @@ import { formatDate } from '../../../utils/date';
 export function PendingGradingCard({ assessments }) {
   return (
     <Card
+      icon={Award}
+      mark="plum"
       title="Pending grading"
       actions={
         <Button as={Link} to="/teacher/grades" variant="secondary" size="sm">
