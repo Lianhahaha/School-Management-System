@@ -8,10 +8,10 @@ import { Input } from '../../../components/ui/Input';
 import { RadioGroup } from '../../../components/ui/RadioGroup';
 import { TBody, THead, Table, Td, Th, Tr } from '../../../components/ui/Table';
 import { ERROR_CODES } from '../../../constants/shared';
-import { ATTENDANCE_STATUS_LABELS, ATTENDANCE_STATUS_TONES } from '../../../constants/ui';
+import { ATTENDANCE_STATUS_LABELS, ATTENDANCE_STATUS_TONES, DAY_LABELS } from '../../../constants/ui';
 import { useUnsavedChangesBlocker } from '../../../hooks/useUnsavedChangesBlocker';
 import { useAuth } from '../../auth/hooks';
-import { formatDate } from '../../../utils/date';
+import { formatDate, isoWeekdayOf } from '../../../utils/date';
 import { fullName, initials } from '../../../utils/names';
 import { useSaveAttendanceSheet } from '../hooks';
 
@@ -32,6 +32,7 @@ const STATUS_OPTIONS = Object.keys(LETTERS).map((status) => ({
 }));
 
 const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
+const dayList = new Intl.ListFormat('en', { type: 'conjunction' });
 
 /** `{ [studentId]: { status, remarks } }`; students who are not marked yet default to present. */
 const toDraft = (records) =>
@@ -55,7 +56,8 @@ function lastEditor(records) {
  * The roster of one lesson on one date with a status per student. The draft lives here; nothing is
  * sent until Save, which PUTs every roster row (the sheet is the unit of truth) and then adopts the
  * returned sheet. Mount it with a key of lesson + date so a different sheet starts from scratch.
- * On a school holiday (`sheet.holiday`) the sheet is read-only and says why.
+ * On a school holiday (`sheet.holiday`), or on a weekday the lesson does not meet while nothing is marked yet
+ * (`sheet.lessonDays`), the sheet is read-only and says why; the API refuses both.
  *
  * @param {object} props
  * @param {object} props.sheet GET /attendance/sheet data
@@ -65,8 +67,13 @@ function lastEditor(records) {
 export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
   const save = useSaveAttendanceSheet();
   const { me } = useAuth();
-  // Nobody marks a holiday: the API refuses it, so the sheet does not offer it.
-  const canSave = isOwner && !sheet.holiday;
+  // Nobody marks a holiday or a day without this lesson: the API refuses both, so the sheet does not offer it.
+  const weekday = isoWeekdayOf(sheet.date);
+  const isOffDay =
+    sheet.lessonDays.length > 0 &&
+    !sheet.lessonDays.includes(weekday) &&
+    !sheet.records.some((record) => record.attendanceId !== null);
+  const canSave = isOwner && !sheet.holiday && !isOffDay;
   const [saved, setSaved] = useState(sheet);
   const [draft, setDraft] = useState(() => toDraft(sheet.records));
   const [saveError, setSaveError] = useState(null);
@@ -145,7 +152,15 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
           >
             Mark all present
           </Button>
-          <span title={isOwner ? (sheet.holiday ? 'No classes on this day' : undefined) : SAVE_BLOCKED_HINT}>
+          <span
+            title={
+              isOwner
+                ? sheet.holiday || isOffDay
+                  ? `No ${sheet.classSubject.subjectName} lesson on this day`
+                  : undefined
+                : SAVE_BLOCKED_HINT
+            }
+          >
             <Button icon={Save} isLoading={save.isPending} disabled={!canSubmit} onClick={submit} size="sm">
               Save attendance
             </Button>
@@ -161,6 +176,13 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
         <p className="text-xs text-gray-500">Unmarked students are saved as Present.</p>
         {sheet.holiday && (
           <Alert tone="warning">{`No classes on ${formatDate(saved.date)}: ${sheet.holiday.title}. Attendance can't be marked on a school holiday.`}</Alert>
+        )}
+        {isOffDay && !sheet.holiday && (
+          <Alert tone="warning">
+            {`${sheet.classSubject.subjectName} has no lesson on ${DAY_LABELS[weekday]}s. It meets on ${dayList.format(
+              sheet.lessonDays.map((day) => DAY_LABELS[day]),
+            )}: pick one of those days to mark attendance.`}
+          </Alert>
         )}
         {!isOwner && <Alert tone="info">{`You can view this sheet. ${SAVE_BLOCKED_HINT}.`}</Alert>}
         {editor && editedByMe && (

@@ -1346,7 +1346,9 @@ paths:
         of that date (see `GET /attendance/sheet`; 400, `details.reason = not_enrolled`,
         `details.invalidStudentIds`). The date may not be in the future (400, `details.reason = future_date`)
         and must fall within the class's academic year (400, `details.reason = outside_academic_year`, with
-        `details.academicYear`). The caller becomes `markedBy`.
+        `details.academicYear`). Once the lesson is on the timetable, a date with no marks yet must fall on
+        one of its weekdays (400, `details.reason = no_lesson_on_day`, with `details.lessonDays`); dates that
+        already have marks can always be corrected. The caller becomes `markedBy`.
         Returns the refreshed sheet. A teacher who is not assigned to the lesson gets
         `403` with `details.reason = not_class_subject_owner`.
       requestBody:
@@ -2904,7 +2906,7 @@ components:
           nullable: true
     AttendanceSheet:
       type: object
-      required: [classSubjectId, classSubject, date, holiday, records]
+      required: [classSubjectId, classSubject, date, holiday, lessonDays, records]
       properties:
         classSubjectId:
           $ref: '#/components/schemas/Id'
@@ -2922,6 +2924,13 @@ components:
               $ref: '#/components/schemas/Id'
             title:
               type: string
+        lessonDays:
+          type: array
+          description: >-
+            ISO weekdays the lesson meets on the timetable, ascending; empty until it has a slot. A date on
+            another weekday can only be saved when it already has marks.
+          items:
+            $ref: '#/components/schemas/DayOfWeek'
         records:
           type: array
           description: The class roster on `date` plus students already marked on it, ordered by last name, then first name.

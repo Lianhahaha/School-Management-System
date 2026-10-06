@@ -1,6 +1,6 @@
 import { withTransaction } from '../../config/db.js';
 import { ApiError } from '../../utils/ApiError.js';
-import { academicYearOf, isAfterToday } from '../../utils/dates.js';
+import { academicYearOf, isAfterToday, isoWeekdayOf } from '../../utils/dates.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import { classSubjectRef, personRef, ratio } from '../../utils/shapes.js';
 import * as access from '../access/access.service.js';
@@ -8,6 +8,7 @@ import { nameOf, record } from '../activity/activity.service.js';
 import { notifyStudents } from '../notifications/notifications.service.js';
 import { assertSchoolDay, holidayOn } from '../calendar/calendar.service.js';
 import { getClassSubjectRefUnscoped } from '../classSubjects/classSubjects.service.js';
+import { findSlotsUnscoped } from '../schedules/schedules.service.js';
 import * as repo from './attendance.repository.js';
 
 const toStudentRef = (row) => ({
@@ -78,18 +79,31 @@ export async function markedClassSubjectIdsUnscoped(classSubjectIds, date) {
   return new Set(await repo.findMarkedClassSubjectIds(classSubjectIds, date));
 }
 
-/** The sheet of one lesson and date; `holiday` names the school holiday on that date (no marking), or is null. */
+const WEEKDAY_NAMES = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+/** ISO weekdays (1 = Monday) on which the lesson is on the timetable, ascending; empty while it has no slots. */
+async function lessonDaysOf(classSubjectId) {
+  const slots = await findSlotsUnscoped({ classSubjectId });
+  return [...new Set(slots.map((slot) => slot.dayOfWeek))].sort((a, b) => a - b);
+}
+
+/**
+ * The sheet of one lesson and date. `holiday` names the school holiday on that date (no marking), or is null;
+ * `lessonDays` are the weekdays the lesson meets (empty until it is on the timetable).
+ */
 async function buildSheet(classSubjectId, date) {
-  const [classSubject, rows, holiday] = await Promise.all([
+  const [classSubject, rows, holiday, lessonDays] = await Promise.all([
     getClassSubjectRefUnscoped(classSubjectId),
     repo.findSheetRows(classSubjectId, date),
     holidayOn(date),
+    lessonDaysOf(classSubjectId),
   ]);
   return {
     classSubjectId,
     classSubject,
     date,
     holiday,
+    lessonDays,
     records: rows.map((row) => ({
       studentId: row.studentId,
       studentNumber: row.studentNumber,
@@ -125,8 +139,25 @@ function assertMarkableDate(date, academicYear) {
 }
 
 /**
+ * 400 when the lesson is on the timetable but not on `date`'s weekday, so no lesson took place: a mark there
+ * would be a session that never happened and would skew every attendance rate. A lesson without any slot yet
+ * is not checked, and a date that already has marks (the timetable changed since) can still be corrected.
+ */
+async function assertLessonDay(classSubjectId, date, subjectName) {
+  const lessonDays = await lessonDaysOf(classSubjectId);
+  if (lessonDays.length === 0 || lessonDays.includes(isoWeekdayOf(date))) return;
+  if ((await repo.findMarkedClassSubjectIds([classSubjectId], date)).length > 0) return;
+  throw ApiError.validation(
+    `${subjectName} has no lesson on ${WEEKDAY_NAMES[isoWeekdayOf(date)]}s`,
+    undefined,
+    { reason: 'no_lesson_on_day', lessonDays },
+  );
+}
+
+/**
  * Idempotent upsert of the listed students only; students left out of `records` keep their marks.
- * Not on a future date, outside the class's academic year or on a school holiday (400).
+ * Not on a future date, outside the class's academic year, on a school holiday or on a weekday the lesson
+ * does not meet (400).
  */
 export async function saveSheet(user, { classSubjectId, date, records }) {
   await access.assertCanManageClassSubject(user, classSubjectId);
@@ -134,6 +165,7 @@ export async function saveSheet(user, { classSubjectId, date, records }) {
   const classSubject = await getClassSubjectRefUnscoped(classSubjectId); // 404 for an unknown class-subject (admins)
   assertMarkableDate(date, classSubject.academicYear);
   await assertSchoolDay(date);
+  await assertLessonDay(classSubjectId, date, classSubject.subjectName);
   await withTransaction(async (conn) => {
     const roster = new Set(await repo.findRosterStudentIds(classSubjectId, date, conn));
     const invalidStudentIds = records.map((r) => r.studentId).filter((id) => !roster.has(id));

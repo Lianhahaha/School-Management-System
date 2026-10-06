@@ -2,7 +2,7 @@ import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import { query, run } from '../src/config/db.js';
-import { academicYearOf, addDaysYmd, todayYmd } from '../src/utils/dates.js';
+import { academicYearOf, addDaysYmd, isoWeekdayOf, todayYmd } from '../src/utils/dates.js';
 import { api, as, buildSchool, closeWorld, resetWorld } from './helpers/harness.js';
 import { openSession, waitForLockWaits } from './helpers/locks.js';
 
@@ -232,6 +232,55 @@ describe('attendance', () => {
     assert.equal((await api.delete(url).set(as(school.owner))).status, 403);
     assert.equal((await api.delete(url).set(as(school.admin))).status, 200);
     assert.equal((await api.delete(url).set(as(school.admin))).status, 404);
+  });
+});
+
+describe('attendance follows the timetable', () => {
+  let school;
+  const slot = (dayOfWeek) =>
+    api
+      .post('/api/v1/schedules')
+      .set(as(school.admin))
+      .send({ classSubjectId: school.csA.id, dayOfWeek, startTime: '08:00', endTime: '09:00', room: 'R9' });
+  const markToday = () =>
+    api
+      .put('/api/v1/attendance/sheet')
+      .set(as(school.owner))
+      .send({
+        classSubjectId: school.csA.id,
+        date: today,
+        records: [{ studentId: school.s1.studentId, status: 'present' }],
+      });
+
+  before(async () => {
+    await resetWorld();
+    school = await buildSchool();
+  });
+
+  it('saves a new sheet only on a weekday the lesson meets, and lets existing marks be corrected', async () => {
+    const otherDay = (isoWeekdayOf(today) % 7) + 1;
+    const elsewhere = await slot(otherDay);
+    assert.equal(elsewhere.status, 201, JSON.stringify(elsewhere.body));
+
+    const refused = await markToday();
+    assert.equal(refused.status, 400);
+    assert.equal(refused.body.error.details.reason, 'no_lesson_on_day');
+    assert.deepEqual(refused.body.error.details.lessonDays, [otherDay]);
+    const view = await api
+      .get(`/api/v1/attendance/sheet?classSubjectId=${school.csA.id}&date=${today}`)
+      .set(as(school.owner));
+    assert.deepEqual(view.body.data.lessonDays, [otherDay]);
+
+    const todaySlot = await slot(isoWeekdayOf(today));
+    assert.equal(todaySlot.status, 201, JSON.stringify(todaySlot.body));
+    assert.equal((await markToday()).status, 200);
+
+    // The timetable moves away from today: the marks already taken can still be corrected.
+    assert.equal(
+      (await api.delete(`/api/v1/schedules/${todaySlot.body.data.id}`).set(as(school.admin))).status,
+      200,
+    );
+    assert.equal((await markToday()).status, 200);
   });
 });
 

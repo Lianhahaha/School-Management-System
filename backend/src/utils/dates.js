@@ -26,6 +26,12 @@ export function todayIsoWeekday(now = new Date()) {
   return jsDayToIsoDay(WEEKDAY_INDEX[weekdayFormatter.format(now)]);
 }
 
+/** ISO weekday (1 = Monday … 7 = Sunday) of a 'YYYY-MM-DD' date; time-zone independent. */
+export function isoWeekdayOf(ymd) {
+  const [year, month, day] = ymd.split('-').map(Number);
+  return jsDayToIsoDay(new Date(Date.UTC(year, month - 1, day)).getUTCDay());
+}
+
 /** True when `ymd` is later than today in APP_TIMEZONE (string comparison works for zero-padded dates). */
 export function isAfterToday(ymd, now = new Date()) {
   return ymd > todayYmd(now);
