@@ -45,6 +45,13 @@ export const TONE_SOFT_CLASSES = Object.freeze({
 });
 
 /**
+ * The attendance rate below which a student "needs attention" on the dashboards. It mirrors
+ * AT_RISK.attendanceRateBelow in backend/src/modules/dashboard/dashboard.service.js (which also sends it in
+ * the `atRisk` payload); rings and charts draw their red line here so every view agrees.
+ */
+export const ATTENDANCE_RATE_LINE = 0.8;
+
+/**
  * Marks: the solid colour of an icon square or chip that tells the areas of the school apart on the
  * dashboards. One colour per area, not per card. `ink` follows the theme (dark on paper, light on
  * graphite); the others are the same in both themes.

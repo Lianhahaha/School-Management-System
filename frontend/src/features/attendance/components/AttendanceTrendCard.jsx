@@ -4,12 +4,13 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { ErrorState } from '../../../components/ui/ErrorState';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { TrendChart } from '../../../components/ui/TrendChart';
+import { ATTENDANCE_RATE_LINE } from '../../../constants/ui';
 import { formatShortDate } from '../../../utils/date';
 import { formatPercent } from '../../../utils/format';
 import { useAttendanceSummary } from '../hooks';
 
 /** The line drawn on the chart: the attendance rate the dashboards treat as "needs attention" below it. */
-const TARGET_RATE = 80;
+const TARGET_RATE = ATTENDANCE_RATE_LINE * 100;
 
 const formatRate = (value) => formatPercent(value / 100);
 

@@ -1,16 +1,23 @@
 import { ATTENDANCE_STATUSES } from '../../../constants/shared';
-import { ATTENDANCE_STATUS_LABELS, ATTENDANCE_STATUS_TONES } from '../../../constants/ui';
+import {
+  ATTENDANCE_RATE_LINE,
+  ATTENDANCE_STATUS_LABELS,
+  ATTENDANCE_STATUS_TONES,
+} from '../../../constants/ui';
 import { Badge } from '../../../components/ui/Badge';
 import { formatPercent } from '../../../utils/format';
 
 const RING_RADIUS = 52;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
-/** At least 90 % green, at least 75 % amber, otherwise red; the percentage text is always shown too. */
+/**
+ * At least 90 % green, red below the "needs attention" line (80 %), amber in between; the percentage text is
+ * always shown too.
+ */
 function ringTone(rate) {
   if (rate === null || rate === undefined) return 'stroke-gray-300';
   if (rate >= 0.9) return 'stroke-green-600';
-  if (rate >= 0.75) return 'stroke-amber-500';
+  if (rate >= ATTENDANCE_RATE_LINE) return 'stroke-amber-500';
   return 'stroke-red-600';
 }
 

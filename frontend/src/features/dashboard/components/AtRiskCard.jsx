@@ -1,4 +1,4 @@
-import { TriangleAlert, UserCheck } from 'lucide-react';
+import { ShieldCheck, TriangleAlert, UserCheck } from 'lucide-react';
 import { Link } from 'react-router';
 import { Badge } from '../../../components/ui/Badge';
 import { Card } from '../../../components/ui/Card';
@@ -32,6 +32,8 @@ function StudentSummary({ student }) {
 /**
  * "Needs attention" (payload `atRisk`): students whose attendance or general average this school year is
  * below the lines the API reports, worst first. Admins can open each student; teachers see the list only.
+ * The title square is brick with a warning only while someone is on the list; with nobody below the line it
+ * turns leaf with a check, so a good state never looks like an alarm.
  *
  * @param {object} props
  * @param {{ attendanceRateBelow: number, gradeAverageBelow: number, total: number, students: object[] }} props.atRisk
@@ -39,11 +41,12 @@ function StudentSummary({ student }) {
  */
 export function AtRiskCard({ atRisk, studentPath }) {
   const lines = `Below ${formatPercent(atRisk.attendanceRateBelow)} attendance or a ${formatResult(atRisk.gradeAverageBelow)} average this school year`;
+  const hasStudents = atRisk.total > 0;
 
   return (
     <Card
-      icon={TriangleAlert}
-      mark="brick"
+      icon={hasStudents ? TriangleAlert : ShieldCheck}
+      mark={hasStudents ? 'brick' : 'leaf'}
       title="Needs attention"
       total={atRisk.total > 0 ? atRisk.total : undefined}
       description={lines}
@@ -52,7 +55,7 @@ export function AtRiskCard({ atRisk, studentPath }) {
         <EmptyState
           icon={UserCheck}
           title="Everyone is on track"
-          description="Students appear here when their attendance or average drops below the line."
+          description="Students appear here when their attendance or average drops below the line. Excused absences count as missed lessons."
           compact
         />
       ) : (
