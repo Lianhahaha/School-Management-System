@@ -29,7 +29,8 @@ export function Tabs({ label, tabs, param = 'tab' }) {
     tabs.findIndex((tab) => tab.id === searchParams.get(param)),
   );
 
-  const select = (index) => setSearchParams({ [param]: tabs[index].id });
+  // replace: switching tabs is not a new page, so Back (and the browser's back) leaves the page instead.
+  const select = (index) => setSearchParams({ [param]: tabs[index].id }, { replace: true });
 
   function onKeyDown(event) {
     const lastIndex = tabs.length - 1;
