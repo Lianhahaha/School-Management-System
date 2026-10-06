@@ -1,10 +1,7 @@
 import { useNewAnnouncements } from '../../features/announcements/hooks';
 import { useAuth } from '../../features/auth/hooks';
-import { useStudents } from '../../features/students/hooks';
+import { UNENROLLED_STUDENTS_PARAMS, useStudents } from '../../features/students/hooks';
 import { countOf } from '../../utils/format';
-
-/** Unenrolled, active students: the same filter as the dashboard's "Unenrolled students" tile. */
-const UNENROLLED_PARAMS = { hasActiveEnrollment: 'false', isActive: 'true', limit: 1 };
 
 /**
  * Counts shown beside navigation entries, keyed by the `badge` name in navConfig. Each count is an
@@ -14,7 +11,7 @@ const UNENROLLED_PARAMS = { hasActiveEnrollment: 'false', isActive: 'true', limi
  */
 export function useNavBadges() {
   const { role } = useAuth();
-  const unenrolled = useStudents(UNENROLLED_PARAMS, { enabled: role === 'admin' });
+  const unenrolled = useStudents(UNENROLLED_STUDENTS_PARAMS, { enabled: role === 'admin' });
   const unenrolledCount = unenrolled.data?.meta?.total ?? 0;
   const newAnnouncements = useNewAnnouncements();
 

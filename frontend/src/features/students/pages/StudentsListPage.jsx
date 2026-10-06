@@ -2,6 +2,7 @@ import { FileUp } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { PageHeader } from '../../../components/layout/PageHeader';
+import { Alert } from '../../../components/ui/Alert';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { DataTable } from '../../../components/ui/DataTable';
@@ -14,6 +15,7 @@ import { GRADE_LEVEL_OPTIONS, NEW_ACCOUNT_DAYS, USER_STATUS_FILTER_OPTIONS } fro
 import { useDisclosure } from '../../../hooks/useDisclosure';
 import { useListParams } from '../../../hooks/useListParams';
 import { isWithinDays, relativeTime } from '../../../utils/date';
+import { countOf } from '../../../utils/format';
 import { fullName } from '../../../utils/names';
 import { ClassSelect } from '../../classes/components/ClassSelect';
 import { EnrollStudentsModal } from '../../enrollments/components/EnrollStudentsModal';
@@ -21,7 +23,7 @@ import { UserFormModal } from '../../users/components/UserFormModal';
 import { UserStatusBadge } from '../../users/components/UserStatusBadge';
 import { ImportStudentsModal } from '../components/ImportStudentsModal';
 import { StudentClassButton, StudentClassModals } from '../components/StudentClassModals';
-import { useStudents } from '../hooks';
+import { UNENROLLED_STUDENTS_PARAMS, useStudents } from '../hooks';
 
 const ENROLLMENT_OPTIONS = [
   { value: 'true', label: 'Enrolled' },
@@ -34,6 +36,10 @@ export default function StudentsListPage() {
     defaultSort: ['lastName', 'asc'],
   });
   const { data, isPending, isFetching, error, refetch } = useStudents(list.apiParams);
+  // The nav badge counts these students; the note below turns that count into the list it promises.
+  const unenrolled = useStudents(UNENROLLED_STUDENTS_PARAMS);
+  const unenrolledCount = unenrolled.data?.meta?.total ?? 0;
+  const showUnenrolledNote = unenrolledCount > 0 && !list.params.hasActiveEnrollment;
   const createModal = useDisclosure();
   const enrollModal = useDisclosure();
   const importModal = useDisclosure();
@@ -97,6 +103,17 @@ export default function StudentsListPage() {
           </>
         }
       />
+
+      {showUnenrolledNote && (
+        <Alert tone="warning" className="mb-4">
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <span>{`${countOf(unenrolledCount, 'student')} without a class.`}</span>
+            <Link to={{ search: '?hasActiveEnrollment=false&isActive=true' }} replace className="link">
+              Show them
+            </Link>
+          </span>
+        </Alert>
+      )}
 
       <FilterBar onClear={list.hasActiveFilters ? list.clearFilters : undefined}>
         <SearchInput value={list.params.search} onChange={list.setSearch} placeholder="Search students" />

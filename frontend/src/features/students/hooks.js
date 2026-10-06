@@ -23,6 +23,16 @@ import { userKeys } from '../users/keys';
 import { getStudent, importStudents, listStudents, updateStudent } from './api';
 import { studentKeys } from './keys';
 
+/**
+ * Active students without a class: the filter of the dashboard's "Unenrolled students" tile, the nav badge
+ * and the Students page note. `limit: 1` because only `meta.total` is read.
+ */
+export const UNENROLLED_STUDENTS_PARAMS = Object.freeze({
+  hasActiveEnrollment: 'false',
+  isActive: 'true',
+  limit: 1,
+});
+
 export function useStudents(params, { enabled = true } = {}) {
   return useQuery({
     queryKey: studentKeys.list(params),
