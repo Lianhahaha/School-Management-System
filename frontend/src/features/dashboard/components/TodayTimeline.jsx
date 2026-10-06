@@ -29,11 +29,11 @@ export function TodayTimeline({ periods, holiday }) {
         <EmptyState
           icon={CalendarOff}
           title={`No classes today: ${holiday.title}`}
-          description="It's a school holiday on the calendar, so there are no lessons and no attendance to mark."
+          description="No lessons and no attendance to mark."
           compact
         />
       ) : sorted.length === 0 ? (
-        <EmptyState icon={CalendarOff} title="No periods today" description="Enjoy the quiet day." compact />
+        <EmptyState icon={CalendarOff} title="No periods today" compact />
       ) : (
         <ol className="space-y-2">
           {sorted.map((period) => {

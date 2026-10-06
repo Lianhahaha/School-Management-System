@@ -19,12 +19,7 @@ export function UpcomingAssessmentsCard({ assessments }) {
       description="In the next 7 days"
     >
       {assessments.length === 0 ? (
-        <EmptyState
-          icon={CalendarClock}
-          title="Nothing coming up"
-          description="Quizzes, tests and exams dated in the next 7 days appear here."
-          compact
-        />
+        <EmptyState icon={CalendarClock} title="Nothing coming up" compact />
       ) : (
         <ul className="divide-y divide-gray-200">
           {assessments.map((assessment) => (

@@ -19,12 +19,7 @@ export function PendingGradingCard({ assessments }) {
       }
     >
       {assessments.length === 0 ? (
-        <EmptyState
-          icon={CircleCheck}
-          title="Nothing to grade"
-          description="Every assessment is fully graded."
-          compact
-        />
+        <EmptyState icon={CircleCheck} title="Nothing to grade" compact />
       ) : (
         <ul className="divide-y divide-gray-200">
           {assessments.map((assessment) => (

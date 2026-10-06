@@ -61,7 +61,7 @@ export function AdminAttendanceCard({ attendance, holiday }) {
       <EmptyState
         icon={CalendarOff}
         title={`No classes today: ${holiday.title}`}
-        description="It's a school holiday on the calendar, so there are no lessons and no attendance to mark."
+        description="No lessons and no attendance to mark."
         compact
       />
     );

@@ -52,12 +52,7 @@ export function AtRiskCard({ atRisk, studentPath }) {
       description={lines}
     >
       {atRisk.students.length === 0 ? (
-        <EmptyState
-          icon={UserCheck}
-          title="Everyone is on track"
-          description="Students appear here when their attendance or average drops below the line. Excused absences count as missed lessons."
-          compact
-        />
+        <EmptyState icon={UserCheck} title="Everyone is on track" compact />
       ) : (
         <>
           <ul className="divide-y divide-gray-200">
@@ -76,6 +71,9 @@ export function AtRiskCard({ atRisk, studentPath }) {
               </li>
             ))}
           </ul>
+          {atRisk.students.some((student) => student.reasons.includes('attendance')) && (
+            <p className="mt-3 text-xs text-gray-600">Excused absences count as missed lessons.</p>
+          )}
           {atRisk.total > atRisk.students.length && (
             <p className="mt-3 text-xs text-gray-600">
               Showing the {atRisk.students.length} furthest below of {atRisk.total}.

@@ -21,12 +21,7 @@ export function SessionsProgressCard({ attendance, holiday }) {
           compact
         />
       ) : sessionsScheduled === 0 ? (
-        <EmptyState
-          icon={CalendarOff}
-          title="No sessions today"
-          description="Nothing is scheduled for you."
-          compact
-        />
+        <EmptyState icon={CalendarOff} title="No sessions today" compact />
       ) : (
         <>
           <p className="text-sm text-gray-700">
