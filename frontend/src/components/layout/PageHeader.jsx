@@ -4,8 +4,9 @@ import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { BackButton } from './BackButton';
 
 /**
- * Title block at the top of every page: a Back button (not on the role's home), the h1, an optional
- * description, right-aligned actions and, on detail pages, a breadcrumb. It also sets the browser tab title.
+ * Title block at the top of every page: the h1, an optional description, right-aligned actions and, on
+ * detail pages, a Back button beside the breadcrumb. Pages reached from the navigation have no Back: the
+ * sidebar (or the phone tab bar) is how you move between them. It also sets the browser tab title.
  *
  *   <PageHeader title="Students" description="All registered students"
  *     actions={<Button onClick={modal.open}>Add student</Button>} />
@@ -26,7 +27,7 @@ export function PageHeader({ title, description, actions, breadcrumbs, total }) 
   return (
     <header className="mb-7">
       <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 empty:hidden">
-        <BackButton fallback={parent} />
+        {breadcrumbs && <BackButton fallback={parent} />}
         {breadcrumbs && (
           <nav aria-label="Breadcrumb">
             <ol className="flex flex-wrap items-center gap-1 text-sm text-gray-500">

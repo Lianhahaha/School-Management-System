@@ -5,7 +5,7 @@ import { ROLE_HOME } from '../../constants/ui';
 import { Button } from '../ui/Button';
 
 /**
- * "Back" at the top of every page except the role's home. It returns to the page the user came from
+ * "Back" at the top of a detail page (PageHeader shows it beside the breadcrumb). It returns to the page the user came from
  * when there is one in this tab (the browser's history); a page opened directly (a link, a reload)
  * has none, so it goes up to `fallback` instead, or to the role's home.
  * @param {object} props
