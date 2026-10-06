@@ -10,6 +10,7 @@ import { TBody, THead, Table, Td, Th, Tr } from '../../../components/ui/Table';
 import { ERROR_CODES } from '../../../constants/shared';
 import { ATTENDANCE_STATUS_LABELS, ATTENDANCE_STATUS_TONES } from '../../../constants/ui';
 import { useUnsavedChangesBlocker } from '../../../hooks/useUnsavedChangesBlocker';
+import { useAuth } from '../../auth/hooks';
 import { formatDate } from '../../../utils/date';
 import { fullName, initials } from '../../../utils/names';
 import { useSaveAttendanceSheet } from '../hooks';
@@ -43,7 +44,7 @@ const toDraft = (records) =>
 
 const isSameMark = (a, b) => a.status === b.status && a.remarks === b.remarks;
 
-/** The last person to touch the sheet, for the "Already marked by" banner. */
+/** The last person to touch the sheet: a quiet "Saved by you" line, or the "Already marked by" banner. */
 function lastEditor(records) {
   const marked = records.filter((record) => record.attendanceId !== null && record.markedBy);
   if (marked.length === 0) return null;
@@ -63,6 +64,7 @@ function lastEditor(records) {
  */
 export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
   const save = useSaveAttendanceSheet();
+  const { me } = useAuth();
   // Nobody marks a holiday: the API refuses it, so the sheet does not offer it.
   const canSave = isOwner && !sheet.holiday;
   const [saved, setSaved] = useState(sheet);
@@ -83,6 +85,8 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
   for (const { status } of Object.values(draft)) counts[status] += 1;
 
   const editor = lastEditor(records);
+  // Your own earlier save is not a conflict: it gets a plain note, not a warning.
+  const editedByMe = editor?.markedBy.id === me.id;
 
   const adopt = (nextSheet) => {
     setSaved(nextSheet);
@@ -159,7 +163,10 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
           <Alert tone="warning">{`No classes on ${formatDate(saved.date)}: ${sheet.holiday.title}. Attendance can't be marked on a school holiday.`}</Alert>
         )}
         {!isOwner && <Alert tone="info">{`You can view this sheet. ${SAVE_BLOCKED_HINT}.`}</Alert>}
-        {editor && (
+        {editor && editedByMe && (
+          <p className="text-xs text-gray-600">{`Saved by you at ${timeFormatter.format(new Date(editor.updatedAt))}.`}</p>
+        )}
+        {editor && !editedByMe && (
           <Alert tone="warning">
             {`Already marked by ${fullName(editor.markedBy)} (updated ${timeFormatter.format(new Date(editor.updatedAt))}).${canSave ? ' Saving overwrites it.' : ''}`}
           </Alert>
