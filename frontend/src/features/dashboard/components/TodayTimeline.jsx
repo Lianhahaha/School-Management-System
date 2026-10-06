@@ -1,33 +1,22 @@
 import { CalendarOff, Check, Clock } from 'lucide-react';
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Badge } from '../../../components/ui/Badge';
 import { LiveTag } from '../../../components/ui/LiveTag';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { useMinutesNow } from '../../../hooks/useMinutesNow';
 import { cx } from '../../../utils/cx';
 import { todayYmd } from '../../../utils/date';
 import { timeToMinutes } from '../../../utils/schedule';
 import { PeriodTime } from './PeriodTime';
 
-const MINUTE = 60_000;
-
-/** Minutes since midnight, refreshed every minute so the current period highlight follows the clock. */
-function useMinutesNow() {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), MINUTE);
-    return () => clearInterval(timer);
-  }, []);
-  return now.getHours() * 60 + now.getMinutes();
-}
-
 /**
  * Today's periods of a teacher as a vertical timeline (payload `todaySchedule`). Every period shows
- * a green "Marked" chip or a "Mark now" link to the attendance sheet of that period and day; the
- * period running right now is highlighted. On a school holiday (`holiday`, payload `holidayToday`) the API
- * sends no periods and the card names the holiday.
+ * a green "Marked" chip or a "Mark" link to the attendance sheet of that period and day; the period running
+ * right now is highlighted. The links are grey: the page's one yellow button ("Mark attendance" in the
+ * header) already goes to the lesson to mark next. On a school holiday (`holiday`, payload `holidayToday`)
+ * the API sends no periods and the card names the holiday.
  */
 export function TodayTimeline({ periods, holiday }) {
   const minutesNow = useMinutesNow();
@@ -78,10 +67,11 @@ export function TodayTimeline({ periods, holiday }) {
                   <Button
                     as={Link}
                     to={`/teacher/attendance?classSubjectId=${period.classSubjectId}&date=${date}`}
+                    variant="secondary"
                     size="sm"
-                    aria-label={`Mark attendance for ${period.className} ${period.subjectName}`}
+                    aria-label={`Mark, ${period.className} ${period.subjectName} at ${period.startTime}`}
                   >
-                    Mark now
+                    Mark
                   </Button>
                 )}
               </li>

@@ -65,3 +65,19 @@ export function formatPeriod(slot) {
   const when = `${dayLabel(slot.dayOfWeek, { short: true })} ${formatTime(slot.startTime)}`;
   return slot.room ? `${when} · ${slot.room}` : when;
 }
+
+/**
+ * The lesson of today a teacher should mark next, from the dashboard's `todaySchedule`: the unmarked lesson
+ * running now, otherwise the unmarked lesson that started most recently (just finished, still to mark),
+ * otherwise the next unmarked lesson of the day. Null when everything is marked or nothing is scheduled.
+ * @param {Array<{ startTime: string, endTime: string, attendanceMarked: boolean }>} periods
+ * @param {number} minutesNow minutes since midnight
+ */
+export function lessonToMark(periods, minutesNow) {
+  const unmarked = periods
+    .filter((period) => !period.attendanceMarked)
+    .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+  const started = unmarked.filter((period) => timeToMinutes(period.startTime) <= minutesNow);
+  const running = started.find((period) => minutesNow < timeToMinutes(period.endTime));
+  return running ?? started.at(-1) ?? unmarked[0] ?? null;
+}

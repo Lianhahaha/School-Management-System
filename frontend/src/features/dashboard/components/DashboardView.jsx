@@ -29,13 +29,16 @@ function DashboardSkeleton() {
  * @param {'admin'|'teacher'|'student'} props.role
  * @param {string} props.title
  * @param {string} [props.description]
- * @param {import('react').ReactNode} [props.actions]
+ * @param {import('react').ReactNode | ((data: object) => import('react').ReactNode)} [props.actions] header
+ *   actions; a function receives the payload and renders once it has arrived (for links into today's data)
  * @param {(data: object) => import('react').ReactNode} props.children render function for the payload
  */
 export function DashboardView({ role, title, description, actions, children }) {
   const { data, error, isPending, refetch } = useDashboard();
 
   let body;
+  const hasPayload = Boolean(data) && data.role === role;
+  const headerActions = typeof actions === 'function' ? (hasPayload ? actions(data) : null) : actions;
   if (error && !data) {
     body = <ErrorState title="Couldn't load the dashboard" message={error.message} onRetry={refetch} />;
   } else if (isPending) {
@@ -54,7 +57,7 @@ export function DashboardView({ role, title, description, actions, children }) {
 
   return (
     <>
-      <PageHeader title={title} description={description} actions={actions} />
+      <PageHeader title={title} description={description} actions={headerActions} />
       {body}
     </>
   );
