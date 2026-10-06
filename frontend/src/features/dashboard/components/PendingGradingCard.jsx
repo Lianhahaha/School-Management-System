@@ -1,4 +1,5 @@
-import { Award, CircleCheck } from 'lucide-react';
+import { NotePencilIcon } from '@phosphor-icons/react';
+import { CircleCheck } from 'lucide-react';
 import { Link } from 'react-router';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
@@ -9,7 +10,7 @@ import { formatDate } from '../../../utils/date';
 export function PendingGradingCard({ assessments }) {
   return (
     <Card
-      icon={Award}
+      icon={NotePencilIcon}
       mark="cream"
       title="Pending grading"
       actions={

@@ -1,4 +1,4 @@
-import { Award, ClipboardCheck, School } from 'lucide-react';
+import { CertificateIcon, ClipboardTextIcon, UsersThreeIcon } from '@phosphor-icons/react';
 import { Card } from '../../../components/ui/Card';
 import { DescriptionList } from '../../../components/ui/DescriptionList';
 import { StatTile } from '../../../components/ui/StatTile';
@@ -40,7 +40,7 @@ export function StudentOverview({ student, onOpenTab }) {
           label="Class"
           value={enrollment ? enrollment.className : '—'}
           hint={enrollment ? enrollment.academicYear : 'Not in a class'}
-          icon={School}
+          icon={UsersThreeIcon}
           mark="cream"
           to={enrollment ? `/admin/classes/${enrollment.classId}` : undefined}
         />
@@ -48,7 +48,7 @@ export function StudentOverview({ student, onOpenTab }) {
           label="Attendance"
           value={attendance.isPending ? '…' : formatPercent(attendance.data?.rate ?? null)}
           hint={marks ? `${countOf(marks, 'mark')} this school year` : 'Nothing marked this school year'}
-          icon={ClipboardCheck}
+          icon={ClipboardTextIcon}
           mark="sage"
           onClick={() => onOpenTab('attendance')}
         />
@@ -60,7 +60,7 @@ export function StudentOverview({ student, onOpenTab }) {
               ? `${countOf(subjectsThisYear.length, 'subject')} this school year`
               : 'No grades this school year'
           }
-          icon={Award}
+          icon={CertificateIcon}
           mark="cream"
           onClick={() => onOpenTab('grades')}
         />

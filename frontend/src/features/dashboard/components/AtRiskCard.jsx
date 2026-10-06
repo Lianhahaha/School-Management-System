@@ -1,4 +1,5 @@
-import { ShieldCheck, TriangleAlert, UserCheck } from 'lucide-react';
+import { SealCheckIcon, WarningDiamondIcon } from '@phosphor-icons/react';
+import { UserCheck } from 'lucide-react';
 import { Link } from 'react-router';
 import { Badge } from '../../../components/ui/Badge';
 import { Card } from '../../../components/ui/Card';
@@ -45,7 +46,7 @@ export function AtRiskCard({ atRisk, studentPath }) {
 
   return (
     <Card
-      icon={hasStudents ? TriangleAlert : ShieldCheck}
+      icon={hasStudents ? WarningDiamondIcon : SealCheckIcon}
       mark={hasStudents ? 'oxblood' : 'sage'}
       title="Needs attention"
       total={atRisk.total > 0 ? atRisk.total : undefined}

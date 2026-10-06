@@ -1,4 +1,5 @@
-import { ChartNoAxesColumn, GraduationCap } from 'lucide-react';
+import { ChartBarHorizontalIcon } from '@phosphor-icons/react';
+import { ChartNoAxesColumn } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 
@@ -9,7 +10,7 @@ export function EnrollmentByGradeCard({ grades }) {
 
   return (
     <Card
-      icon={GraduationCap}
+      icon={ChartBarHorizontalIcon}
       mark="maroon"
       title="Enrollment by grade"
       description="Students with an active enrollment"

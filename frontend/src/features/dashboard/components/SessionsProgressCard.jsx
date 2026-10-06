@@ -1,4 +1,5 @@
-import { CalendarOff, ClipboardCheck } from 'lucide-react';
+import { ClipboardTextIcon } from '@phosphor-icons/react';
+import { CalendarOff } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { countOf } from '../../../utils/format';
@@ -12,7 +13,7 @@ export function SessionsProgressCard({ attendance, holiday }) {
   const isDone = sessionsScheduled > 0 && sessionsMarked >= sessionsScheduled;
 
   return (
-    <Card icon={ClipboardCheck} mark="sage" title="Attendance today">
+    <Card icon={ClipboardTextIcon} mark="sage" title="Attendance today">
       {holiday ? (
         <EmptyState
           icon={CalendarOff}

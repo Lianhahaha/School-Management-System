@@ -1,4 +1,11 @@
-import { BookOpen, BookUser, GraduationCap, School, UserCheck, UserX } from 'lucide-react';
+import {
+  BooksIcon,
+  ChalkboardTeacherIcon,
+  IdentificationBadgeIcon,
+  StudentIcon,
+  UserCircleDashedIcon,
+  UsersThreeIcon,
+} from '@phosphor-icons/react';
 import { StatTile } from '../../../components/ui/StatTile';
 import { currentAcademicYear } from '../../../utils/date';
 
@@ -15,7 +22,7 @@ export function AdminCountTiles({ counts }) {
         label="Students"
         value={counts.students}
         hint="Active"
-        icon={GraduationCap}
+        icon={StudentIcon}
         mark="maroon"
         to="/admin/students?isActive=true"
       />
@@ -23,7 +30,7 @@ export function AdminCountTiles({ counts }) {
         label="Teachers"
         value={counts.teachers}
         hint="Active"
-        icon={BookUser}
+        icon={ChalkboardTeacherIcon}
         mark="cream"
         to="/admin/teachers?isActive=true"
       />
@@ -31,7 +38,7 @@ export function AdminCountTiles({ counts }) {
         label="Classes"
         value={counts.classes}
         hint="Current academic year"
-        icon={School}
+        icon={UsersThreeIcon}
         mark="cream"
         to={`/admin/classes?academicYear=${currentAcademicYear()}`}
       />
@@ -39,14 +46,14 @@ export function AdminCountTiles({ counts }) {
         label="Subjects"
         value={counts.subjects}
         hint="Active"
-        icon={BookOpen}
+        icon={BooksIcon}
         mark="cream"
         to="/admin/subjects?isActive=true"
       />
       <StatTile
         label="Active enrollments"
         value={counts.activeEnrollments}
-        icon={UserCheck}
+        icon={IdentificationBadgeIcon}
         mark="maroon"
         to="/admin/students?hasActiveEnrollment=true"
       />
@@ -54,7 +61,7 @@ export function AdminCountTiles({ counts }) {
         label="Unenrolled students"
         value={counts.unenrolledStudents}
         hint={counts.unenrolledStudents > 0 ? 'Need a class' : 'Everyone has a class'}
-        icon={UserX}
+        icon={UserCircleDashedIcon}
         mark={counts.unenrolledStudents > 0 ? 'oxblood' : 'sage'}
         to="/admin/students?hasActiveEnrollment=false&isActive=true"
       />

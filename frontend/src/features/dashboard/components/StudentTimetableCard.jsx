@@ -1,4 +1,5 @@
-import { CalendarOff, Clock } from 'lucide-react';
+import { ClockIcon } from '@phosphor-icons/react';
+import { CalendarOff } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { TextLink } from '../../../components/ui/TextLink';
@@ -15,7 +16,7 @@ export function StudentTimetableCard({ periods, holiday }) {
 
   return (
     <Card
-      icon={Clock}
+      icon={ClockIcon}
       mark="cream"
       title="Today's timetable"
       actions={<TextLink to="/student/schedule">Full week</TextLink>}

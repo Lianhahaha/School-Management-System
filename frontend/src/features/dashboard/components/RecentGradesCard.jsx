@@ -1,3 +1,4 @@
+import { MedalIcon } from '@phosphor-icons/react';
 import { Award } from 'lucide-react';
 import { Badge } from '../../../components/ui/Badge';
 import { Card } from '../../../components/ui/Card';
@@ -11,7 +12,7 @@ import { formatPercent, formatScore } from '../../../utils/format';
 export function RecentGradesCard({ grades }) {
   return (
     <Card
-      icon={Award}
+      icon={MedalIcon}
       mark="cream"
       title="Recent grades"
       actions={<TextLink to="/student/grades">All grades</TextLink>}

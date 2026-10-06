@@ -1,4 +1,5 @@
-import { CalendarOff, ChevronRight, ClipboardCheck } from 'lucide-react';
+import { ClipboardTextIcon } from '@phosphor-icons/react';
+import { CalendarOff, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
@@ -115,7 +116,7 @@ export function AdminAttendanceCard({ attendance, holiday }) {
 
   return (
     <Card
-      icon={ClipboardCheck}
+      icon={ClipboardTextIcon}
       mark="sage"
       title="Attendance today"
       description={formatDate(date)}

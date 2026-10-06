@@ -1,3 +1,4 @@
+import { ClipboardTextIcon } from '@phosphor-icons/react';
 import { ClipboardCheck } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
@@ -9,7 +10,7 @@ import { AttendanceOverview } from './AttendanceOverview';
 export function StudentAttendanceCard({ summary }) {
   return (
     <Card
-      icon={ClipboardCheck}
+      icon={ClipboardTextIcon}
       mark="sage"
       title="My attendance"
       description={`${formatDate(summary.dateFrom)} to ${formatDate(summary.dateTo)}`}

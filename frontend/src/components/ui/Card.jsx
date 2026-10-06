@@ -10,7 +10,7 @@ import { cx } from '../../utils/cx';
  * @param {string} [props.description]
  * @param {import('react').ReactNode} [props.actions] right-aligned header content
  * @param {boolean} [props.padded] set false for content that brings its own padding (a table)
- * @param {import('react').ElementType} [props.icon] lucide icon in a coloured square before the title
+ * @param {import('react').ElementType} [props.icon] Phosphor icon, drawn two-tone in a coloured square before the title
  * @param {keyof typeof MARK_CLASSES} [props.mark] colour of that square: the area of the school
  */
 export function Card({
@@ -46,7 +46,7 @@ export function Card({
                       MARK_CLASSES[mark],
                     )}
                   >
-                    <Icon className="size-4" />
+                    <Icon className="size-[1.0625rem]" weight="duotone" />
                   </span>
                 )}
                 {title}
