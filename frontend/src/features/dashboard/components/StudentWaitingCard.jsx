@@ -12,8 +12,9 @@ const CONTACT_FIELDS = (me) => [
 ];
 
 /**
- * For a student without a class: what an administrator does next and what the student can do
- * meanwhile, instead of an empty dashboard. Class pages fill in once the enrollment exists.
+ * For a student without a class (new and waiting, or out of their class): what an administrator does next
+ * and what the student can do meanwhile, instead of an empty dashboard. Class pages fill in once the
+ * enrollment exists; grades and attendance of earlier classes stay on My grades and My attendance.
  */
 export function StudentWaitingCard() {
   const { me } = useAuth();
@@ -37,7 +38,7 @@ export function StudentWaitingCard() {
     {
       key: 'enroll',
       title: 'Wait for your class',
-      hint: `An administrator puts you in a class. If it takes long, tell the school office you signed up as ${me.email}.`,
+      hint: `An administrator puts you in a class. If it takes long, tell the school office your account email: ${me.email}.`,
       isDone: false,
     },
   ];
@@ -46,8 +47,8 @@ export function StudentWaitingCard() {
     <Card
       icon={GraduationCap}
       mark="slate"
-      title="You're not in a class yet"
-      description="Your timetable, attendance and grades appear here once an administrator enrolls you."
+      title="You're not in a class right now"
+      description="Your timetable appears here once an administrator enrolls you. Grades and attendance from earlier classes are on My grades and My attendance."
     >
       <StepList steps={steps} />
     </Card>
