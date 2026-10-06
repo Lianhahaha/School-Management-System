@@ -3,14 +3,24 @@ import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { countOf } from '../../../utils/format';
 
-/** "2 of 4 sessions marked" with a progress bar (payload `attendanceToday` of a teacher). */
-export function SessionsProgressCard({ attendance }) {
+/**
+ * "2 of 4 sessions marked" with a progress bar (payload `attendanceToday` of a teacher). On a school holiday
+ * (`holiday`) nothing is scheduled and the card says why.
+ */
+export function SessionsProgressCard({ attendance, holiday }) {
   const { sessionsMarked, sessionsScheduled } = attendance;
   const isDone = sessionsScheduled > 0 && sessionsMarked >= sessionsScheduled;
 
   return (
     <Card icon={ClipboardCheck} mark="leaf" title="Attendance today">
-      {sessionsScheduled === 0 ? (
+      {holiday ? (
+        <EmptyState
+          icon={CalendarOff}
+          title="Nothing to mark today"
+          description={`School holiday: ${holiday.title}.`}
+          compact
+        />
+      ) : sessionsScheduled === 0 ? (
         <EmptyState
           icon={CalendarOff}
           title="No sessions today"

@@ -147,6 +147,31 @@ describe('dashboard', () => {
     assert.equal(data.attendanceSummary.rate, null);
   });
 
+  it("empties today's lessons on a school holiday and names it", async () => {
+    for (const who of [school.admin, school.owner, school.s1]) {
+      assert.equal((await dashboard(who)).holidayToday, null);
+    }
+    const created = await api
+      .post('/api/v1/calendar-events')
+      .set(as(school.admin))
+      .send({ title: 'Founders day', type: 'holiday', startsOn: today });
+    assert.equal(created.status, 201, JSON.stringify(created.body));
+    const holiday = created.body.data;
+    try {
+      const teacher = await dashboard(school.owner);
+      assert.deepEqual(teacher.holidayToday, { id: holiday.id, title: 'Founders day' });
+      assert.deepEqual(teacher.todaySchedule, []);
+      assert.deepEqual(teacher.attendanceToday, { sessionsScheduled: 0, sessionsMarked: 0 });
+      const student = await dashboard(school.s1);
+      assert.deepEqual(student.holidayToday, { id: holiday.id, title: 'Founders day' });
+      assert.deepEqual(student.todaySchedule, []);
+      assert.equal((await dashboard(school.admin)).holidayToday.id, holiday.id);
+    } finally {
+      await api.delete(`/api/v1/calendar-events/${holiday.id}`).set(as(school.admin));
+    }
+    assert.equal((await dashboard(school.owner)).todaySchedule.length, 1);
+  });
+
   it('works for a brand-new school with no data at all', async () => {
     await resetWorld();
     const admin = await makeUser('admin');

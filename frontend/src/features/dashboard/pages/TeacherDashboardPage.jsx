@@ -32,11 +32,11 @@ export default function TeacherDashboardPage() {
       {(data) => (
         <div className="grid items-start gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
-            <TodayTimeline periods={data.todaySchedule} />
+            <TodayTimeline periods={data.todaySchedule} holiday={data.holidayToday} />
             <TeacherClassesCard classSubjects={data.classSubjects} homeroomClasses={data.homeroomClasses} />
           </div>
           <div className="space-y-6">
-            <SessionsProgressCard attendance={data.attendanceToday} />
+            <SessionsProgressCard attendance={data.attendanceToday} holiday={data.holidayToday} />
             <PendingGradingCard assessments={data.pendingGrading} />
             <AtRiskCard atRisk={data.atRisk} />
             <UpcomingEventsCard events={data.upcomingEvents} to="/teacher/calendar" />

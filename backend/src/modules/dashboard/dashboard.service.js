@@ -11,7 +11,7 @@ import {
   summarizeAttendanceUnscoped,
 } from '../attendance/attendance.service.js';
 import { pendingGradingUnscoped, upcomingAssessmentsUnscoped } from '../assessments/assessments.service.js';
-import { upcomingEvents } from '../calendar/calendar.service.js';
+import { holidayOn, upcomingEvents } from '../calendar/calendar.service.js';
 import { getClass, listClasses } from '../classes/classes.service.js';
 import {
   recentGradesUnscoped,
@@ -105,8 +105,8 @@ async function atRiskStudents(user) {
 
 async function adminDashboard(user) {
   const today = todayYmd();
-  const [counts, attendance, enrollmentsByGrade, upcoming, announcements, atRisk, events] = await Promise.all(
-    [
+  const [counts, attendance, enrollmentsByGrade, upcoming, announcements, atRisk, events, holiday] =
+    await Promise.all([
       repo.findAdminCounts(currentAcademicYear()),
       summarizeAttendanceUnscoped({ dateFrom: today, dateTo: today }),
       repo.findEnrollmentsByGrade(),
@@ -114,10 +114,11 @@ async function adminDashboard(user) {
       briefAnnouncements(user),
       atRiskStudents(user),
       upcomingEvents(),
-    ],
-  );
+      holidayOn(today),
+    ]);
   return {
     role: 'admin',
+    holidayToday: holiday,
     counts: {
       students: counts.students,
       teachers: counts.teachers,
@@ -144,8 +145,8 @@ async function teacherDashboard(user) {
   const today = todayYmd();
   const year = currentAcademicYear();
   const teacherId = user.teacherId;
-  const [teacher, classSubjects, homeroom, slots, pending, announcements, atRisk, events] = await Promise.all(
-    [
+  const [teacher, classSubjects, homeroom, timetabled, pending, announcements, atRisk, events, holiday] =
+    await Promise.all([
       getTeacher(user, teacherId),
       repo.findTeacherClassSubjects(teacherId, year),
       listClasses(user, { page: 1, limit: 100, homeroomTeacherId: teacherId, academicYear: year }),
@@ -154,8 +155,10 @@ async function teacherDashboard(user) {
       briefAnnouncements(user),
       atRiskStudents(user),
       upcomingEvents(),
-    ],
-  );
+      holidayOn(today),
+    ]);
+  // A school holiday has no lessons: nothing to teach or mark, so today's list stays empty.
+  const slots = holiday ? [] : timetabled;
   const marked = await markedClassSubjectIdsUnscoped(
     slots.map((slot) => slot.classSubjectId),
     today,
@@ -172,6 +175,7 @@ async function teacherDashboard(user) {
   }));
   return {
     role: 'teacher',
+    holidayToday: holiday,
     teacher: {
       id: teacher.id,
       firstName: teacher.firstName,
@@ -207,14 +211,16 @@ async function teacherDashboard(user) {
 async function studentDashboard(user) {
   const today = todayYmd();
   const classId = user.activeClassId;
-  const [student, klass, announcements, events] = await Promise.all([
+  const [student, klass, announcements, events, holiday] = await Promise.all([
     getStudent(user, user.studentId),
     classId ? getClass(classId) : null,
     briefAnnouncements(user),
     upcomingEvents(),
+    holidayOn(today),
   ]);
   const base = {
     role: 'student',
+    holidayToday: holiday,
     student: {
       id: student.id,
       studentNumber: student.studentNumber,
@@ -244,7 +250,7 @@ async function studentDashboard(user) {
   }
 
   const [slots, gradeSummary, recent, upcoming] = await Promise.all([
-    findSlotsUnscoped({ classId, dayOfWeek: todayIsoWeekday() }),
+    holiday ? [] : findSlotsUnscoped({ classId, dayOfWeek: todayIsoWeekday() }),
     summarizeStudentGradesUnscoped(user.studentId, classId),
     recentGradesUnscoped(user.studentId, 5),
     upcomingAssessmentsUnscoped({ classId, days: 7, limit: 5 }),

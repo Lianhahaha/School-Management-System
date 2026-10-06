@@ -6,8 +6,11 @@ import { fullName } from '../../../utils/names';
 import { timeToMinutes } from '../../../utils/schedule';
 import { PeriodTime } from './PeriodTime';
 
-/** The student's lessons of today (payload `todaySchedule`) as a compact list. */
-export function StudentTimetableCard({ periods }) {
+/**
+ * The student's lessons of today (payload `todaySchedule`) as a compact list; on a school holiday
+ * (`holiday`, payload `holidayToday`) it names the holiday instead.
+ */
+export function StudentTimetableCard({ periods, holiday }) {
   const sorted = [...periods].sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
 
   return (
@@ -17,7 +20,14 @@ export function StudentTimetableCard({ periods }) {
       title="Today's timetable"
       actions={<TextLink to="/student/schedule">Full week</TextLink>}
     >
-      {sorted.length === 0 ? (
+      {holiday ? (
+        <EmptyState
+          icon={CalendarOff}
+          title={`No classes today: ${holiday.title}`}
+          description="It's a school holiday."
+          compact
+        />
+      ) : sorted.length === 0 ? (
         <EmptyState icon={CalendarOff} title="No classes today" compact />
       ) : (
         <ol className="divide-y divide-gray-200">

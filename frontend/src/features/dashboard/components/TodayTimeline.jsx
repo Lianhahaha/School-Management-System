@@ -26,16 +26,24 @@ function useMinutesNow() {
 /**
  * Today's periods of a teacher as a vertical timeline (payload `todaySchedule`). Every period shows
  * a green "Marked" chip or a "Mark now" link to the attendance sheet of that period and day; the
- * period running right now is highlighted.
+ * period running right now is highlighted. On a school holiday (`holiday`, payload `holidayToday`) the API
+ * sends no periods and the card names the holiday.
  */
-export function TodayTimeline({ periods }) {
+export function TodayTimeline({ periods, holiday }) {
   const minutesNow = useMinutesNow();
   const sorted = [...periods].sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
   const date = todayYmd();
 
   return (
     <Card icon={Clock} mark="umber" title="Today's periods">
-      {sorted.length === 0 ? (
+      {holiday ? (
+        <EmptyState
+          icon={CalendarOff}
+          title={`No classes today: ${holiday.title}`}
+          description="It's a school holiday on the calendar, so there are no lessons and no attendance to mark."
+          compact
+        />
+      ) : sorted.length === 0 ? (
         <EmptyState icon={CalendarOff} title="No periods today" description="Enjoy the quiet day." compact />
       ) : (
         <ol className="space-y-2">

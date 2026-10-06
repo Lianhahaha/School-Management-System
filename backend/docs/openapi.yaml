@@ -3465,11 +3465,21 @@ components:
                 items:
                   type: string
                   enum: [attendance, grades]
+    HolidayToday:
+      type: object
+      description: The school holiday running today (no lessons, no attendance), as in the calendar.
+      required: [id, title]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        title:
+          type: string
     AdminDashboard:
       type: object
       required:
         [
           role,
+          holidayToday,
           counts,
           attendanceToday,
           enrollmentsByGrade,
@@ -3479,6 +3489,11 @@ components:
           upcomingEvents,
         ]
       properties:
+        holidayToday:
+          nullable: true
+          description: Today's school holiday, or null on a school day.
+          allOf:
+            - $ref: '#/components/schemas/HolidayToday'
         role:
           type: string
           enum: [admin]
@@ -3560,6 +3575,7 @@ components:
       required:
         [
           role,
+          holidayToday,
           teacher,
           classSubjects,
           homeroomClasses,
@@ -3571,6 +3587,11 @@ components:
           upcomingEvents,
         ]
       properties:
+        holidayToday:
+          nullable: true
+          description: Today's school holiday, or null on a school day.
+          allOf:
+            - $ref: '#/components/schemas/HolidayToday'
         role:
           type: string
           enum: [teacher]
@@ -3623,7 +3644,7 @@ components:
                 type: integer
         todaySchedule:
           type: array
-          description: Lessons of today in the current academic year.
+          description: Lessons of today in the current academic year; empty on a school holiday.
           items:
             type: object
             required:
@@ -3695,6 +3716,7 @@ components:
       required:
         [
           role,
+          holidayToday,
           student,
           currentEnrollment,
           todaySchedule,
@@ -3706,6 +3728,11 @@ components:
           upcomingEvents,
         ]
       properties:
+        holidayToday:
+          nullable: true
+          description: Today's school holiday, or null on a school day.
+          allOf:
+            - $ref: '#/components/schemas/HolidayToday'
         role:
           type: string
           enum: [student]
@@ -3731,7 +3758,7 @@ components:
                 - $ref: '#/components/schemas/PersonRef'
         todaySchedule:
           type: array
-          description: Lessons of today for the student's class.
+          description: Lessons of today for the student's class; empty on a school holiday.
           items:
             type: object
             required: [scheduleId, classSubjectId, subjectName, teacher, startTime, endTime, room]

@@ -45,7 +45,7 @@ export default function AdminDashboardPage() {
           <div className="grid items-start gap-6 lg:grid-cols-2">
             <div className="space-y-6">
               <AtRiskCard atRisk={data.atRisk} studentPath={(id) => `/admin/students/${id}`} />
-              <AdminAttendanceCard attendance={data.attendanceToday} />
+              <AdminAttendanceCard attendance={data.attendanceToday} holiday={data.holidayToday} />
               <UpcomingAssessmentsCard assessments={data.upcomingAssessments} />
             </div>
             <div className="space-y-6">
