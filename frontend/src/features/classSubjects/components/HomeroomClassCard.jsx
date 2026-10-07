@@ -21,20 +21,17 @@ export function HomeroomClassCard({ schoolClass, classSubjects }) {
       ) : (
         <ul className="divide-y divide-gray-200">
           {classSubjects.map((classSubject) => (
-            <li
-              key={classSubject.id}
-              className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
-            >
-              <span>
+            <li key={classSubject.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+              <span className="min-w-0">
                 <span className="font-medium text-gray-900">{classSubject.subjectName}</span>
                 <span className="text-gray-600"> · {fullName(classSubject.teacher)}</span>
               </span>
-              <Link to={`/teacher/classes/${classSubject.id}`} className="link">
+              <Link
+                to={`/teacher/classes/${classSubject.id}`}
+                className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-secondary py-1 pr-1.5 pl-2.5 font-medium text-gray-900 ring-1 ring-secondary-edge transition-colors ring-inset hover:bg-secondary-hover"
+              >
                 Students
-                <ChevronRight
-                  className="ml-0.5 hidden size-4 align-[-0.1875rem] text-mark-cream dark:inline"
-                  aria-hidden="true"
-                />
+                <ChevronRight className="size-4 text-gray-600" aria-hidden="true" />
                 <span className="sr-only">
                   {' '}
                   of {classSubject.subjectName} in {name}
