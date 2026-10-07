@@ -54,6 +54,7 @@ describe('schedules', () => {
     assert.equal(res.body.data.startTime, '09:00');
     assert.equal(res.body.data.room, null);
     assert.equal(res.body.data.classSubject.teacher.id, school.owner.teacherId);
+    assert.match(res.body.data.classSubject.subjectCode, /^SUBJ\d+$/);
   });
 
   it('rejects endTime <= startTime and malformed times with 400', async () => {

@@ -2787,8 +2787,12 @@ components:
           allOf:
             - $ref: '#/components/schemas/ClassSubjectRef'
             - type: object
-              required: [teacher]
+              required: [subjectCode, teacher]
               properties:
+                subjectCode:
+                  type: string
+                  description: The subject's short code, shown as a tag on each period of a schedule.
+                  example: BIO
                 teacher:
                   $ref: '#/components/schemas/PersonRef'
         dayOfWeek:

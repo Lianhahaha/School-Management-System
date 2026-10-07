@@ -26,7 +26,7 @@ export async function releaseTimetableLock(conn) {
   await query(`SELECT RELEASE_LOCK(${TIMETABLE_LOCK}) AS released`, [], conn);
 }
 
-const COLUMNS = `sch.id, sch.class_subject_id, ${CLASS_SUBJECT_REF_COLUMNS},
+const COLUMNS = `sch.id, sch.class_subject_id, ${CLASS_SUBJECT_REF_COLUMNS}, sub.code AS subject_code,
   tu.first_name AS teacher_first_name, tu.last_name AS teacher_last_name,
   sch.day_of_week, sch.start_time, sch.end_time, sch.room, sch.created_at, sch.updated_at`;
 

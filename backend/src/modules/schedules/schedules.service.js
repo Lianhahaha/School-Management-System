@@ -11,6 +11,7 @@ const toScheduleShape = (row) => ({
   classSubjectId: row.classSubjectId,
   classSubject: {
     ...classSubjectRef(row),
+    subjectCode: row.subjectCode,
     teacher: personRef(row.teacherId, row.teacherFirstName, row.teacherLastName),
   },
   dayOfWeek: row.dayOfWeek,
