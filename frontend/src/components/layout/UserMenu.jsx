@@ -18,7 +18,7 @@ export function UserMenu() {
     <Dropdown
       label={`${name}, account menu`}
       align="right"
-      className="max-sm:px-0"
+      className="max-lg:px-0"
       trigger={
         <>
           <span
@@ -27,11 +27,11 @@ export function UserMenu() {
           >
             {initials(me)}
           </span>
-          <span className="hidden text-left sm:block">
+          <span className="hidden text-left lg:block">
             <span className="block text-sm leading-tight font-medium text-gray-900">{name}</span>
             <span className="block text-xs leading-tight text-gray-500">{roleLabel(me.role)}</span>
           </span>
-          <ChevronDown className="size-4 text-gray-500 max-sm:hidden" aria-hidden="true" />
+          <ChevronDown className="size-4 text-gray-500 max-lg:hidden" aria-hidden="true" />
         </>
       }
       items={[

@@ -32,7 +32,7 @@ export function SearchButton() {
         onClick={dialog.open}
         aria-haspopup="dialog"
         aria-keyshortcuts={IS_MAC ? 'Meta+K' : 'Control+K'}
-        className="flex h-10 items-center gap-2 rounded-control bg-surface px-3 text-sm text-gray-500 transition-colors hover:text-gray-900 max-sm:size-10 max-sm:justify-center max-sm:px-0 sm:w-64 pointer-coarse:h-11 max-sm:pointer-coarse:size-11"
+        className="flex h-10 items-center gap-2 rounded-control bg-surface px-3 text-sm text-gray-500 transition-colors hover:text-gray-900 max-sm:size-10 max-sm:justify-center max-sm:px-0 sm:w-48 xl:w-64 pointer-coarse:h-11 max-sm:pointer-coarse:size-11"
       >
         <Search className="size-4 shrink-0" aria-hidden="true" />
         <span className="max-sm:sr-only">Search</span>
