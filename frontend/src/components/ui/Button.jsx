@@ -7,7 +7,8 @@ import { Spinner } from './Spinner';
  */
 const VARIANTS = {
   primary: 'bg-accent font-semibold text-accent-ink hover:bg-accent-hover disabled:opacity-50',
-  secondary: 'bg-gray-100 font-medium text-gray-900 hover:bg-gray-200 disabled:text-gray-500',
+  secondary:
+    'bg-secondary font-medium text-gray-900 ring-1 ring-secondary-edge ring-inset hover:bg-secondary-hover disabled:text-gray-500',
   ghost:
     'font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 disabled:text-gray-400 disabled:hover:bg-transparent',
   danger: 'bg-red-600 font-semibold text-on-danger hover:bg-red-700 disabled:opacity-50',

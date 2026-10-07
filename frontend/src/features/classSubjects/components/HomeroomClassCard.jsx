@@ -1,3 +1,4 @@
+import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router';
 import { Card } from '../../../components/ui/Card';
 import { countOf } from '../../../utils/format';
@@ -30,6 +31,10 @@ export function HomeroomClassCard({ schoolClass, classSubjects }) {
               </span>
               <Link to={`/teacher/classes/${classSubject.id}`} className="link">
                 Students
+                <ChevronRight
+                  className="ml-0.5 hidden size-4 align-[-0.1875rem] text-mark-cream dark:inline"
+                  aria-hidden="true"
+                />
                 <span className="sr-only">
                   {' '}
                   of {classSubject.subjectName} in {name}

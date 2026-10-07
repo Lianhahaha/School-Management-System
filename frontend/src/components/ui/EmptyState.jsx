@@ -24,8 +24,10 @@ export function EmptyState({ icon: Icon = Inbox, title, description, action, com
     >
       <span
         className={cx(
-          'flex shrink-0 items-center justify-center text-gray-600',
-          compact ? 'size-10 rounded-lg bg-well-chip' : 'size-14 rounded-xl bg-gray-100',
+          'flex shrink-0 items-center justify-center',
+          compact
+            ? 'size-10 rounded-lg bg-well-chip text-well-icon'
+            : 'size-14 rounded-xl bg-gray-100 text-gray-600',
         )}
       >
         <Icon className={compact ? 'size-5' : 'size-6'} aria-hidden="true" />

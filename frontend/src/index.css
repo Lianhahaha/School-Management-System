@@ -123,6 +123,13 @@
   --well: var(--n-50);
   --well-chip: var(--surface);
   --well-edge: transparent;
+  --well-icon: var(--n-600);
+
+  /* The grey (secondary) button and the underline of a text link. */
+  --secondary: var(--n-100);
+  --secondary-hover: var(--n-200);
+  --secondary-edge: transparent;
+  --link-line: var(--n-300);
 
   --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2355524c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 
@@ -177,16 +184,27 @@
   --solid-red: #d0192f;
 
   /* Wells are lifted above the sheet in dark, with a hairline, so they do not merge into it. */
-  --well: #33343a;
+  --well: #2f3036;
   --well-chip: #45464d;
-  --well-edge: rgb(255 255 255 / 0.07);
+  --well-edge: rgb(255 255 255 / 0.1);
+  --well-icon: var(--mark-cream);
+
+  /*
+   * On graphite the grey button would almost vanish into the sheet: a lighter fill and a hairline edge
+   * set it apart. Text links get a yellow underline so they read as links.
+   */
+  --secondary: #383940;
+  --secondary-hover: #43444b;
+  --secondary-edge: rgb(255 255 255 / 0.09);
+  --link-line: rgb(255 198 41 / 0.6);
   --mark-edge: rgb(255 255 255 / 0.12);
   --band: #240000;
   --subject-edge: rgb(255 255 255 / 0.14);
 
   --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239d9ea5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 
-  --sheet-shadow: none;
+  /* No shadow reads on graphite; a faint hairline separates a sheet from the page instead. */
+  --sheet-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06);
   --pop-shadow: 0 16px 40px -12px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.06);
   --scrim: rgb(0 0 0 / 0.55);
 }
@@ -256,6 +274,11 @@
   --color-well: var(--well);
   --color-well-chip: var(--well-chip);
   --color-well-edge: var(--well-edge);
+  --color-well-icon: var(--well-icon);
+  --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-secondary-edge: var(--secondary-edge);
+  --color-link-line: var(--link-line);
 
   /*
    * Rectangles, not pills: controls (buttons, inputs, search, filters, tabs) 10px, figure tiles and tab
@@ -388,7 +411,7 @@
 
   /* In-text link: ink with a quiet underline that turns into the yellow highlighter on hover. */
   .link {
-    @apply font-medium text-gray-900 underline decoration-gray-300 decoration-2 underline-offset-4 transition-[text-decoration-color] hover:decoration-accent focus-visible:decoration-accent;
+    @apply font-medium text-gray-900 underline decoration-link-line decoration-2 underline-offset-4 transition-[text-decoration-color] hover:decoration-accent focus-visible:decoration-accent;
   }
 
   /* In table rows the name link stays plain ink until hovered; its weight still sets it apart. */
@@ -477,6 +500,7 @@
 .page-band [data-variant='secondary'] {
   background-color: rgb(255 255 255 / 0.12);
   color: var(--band-ink);
+  box-shadow: none;
 }
 .page-band [data-variant='secondary']:hover {
   background-color: rgb(255 255 255 / 0.2);
