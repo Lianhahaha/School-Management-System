@@ -95,8 +95,9 @@
   --mark-edge: rgb(109 8 8 / 0.14);
 
   /*
-   * Page band: the solid blood-maroon band behind every page title, the same in both themes. Cream
-   * text on it (13:1); buttons on it are restyled by .page-band below, the yellow one stays yellow.
+   * Page band: the solid blood-maroon band behind every page title; in dark it deepens to a near-black
+   * maroon so it does not glow on graphite. Cream text on it (13:1 light, 16:1 dark); buttons on it are
+   * restyled by .page-band below, the yellow one stays yellow.
    */
   --band: #4a0505;
   --band-ink: #eeead7;
@@ -180,6 +181,7 @@
   --well-chip: #45464d;
   --well-edge: rgb(255 255 255 / 0.07);
   --mark-edge: rgb(255 255 255 / 0.12);
+  --band: #240000;
   --subject-edge: rgb(255 255 255 / 0.14);
 
   --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239d9ea5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
