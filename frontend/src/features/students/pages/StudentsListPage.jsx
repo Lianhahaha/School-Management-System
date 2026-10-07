@@ -57,7 +57,7 @@ export default function StudentsListPage() {
             {fullName(student)}
           </Link>
           {isWithinDays(student.createdAt, NEW_ACCOUNT_DAYS) && (
-            <Badge tone="blue" title={`Signed up ${relativeTime(student.createdAt)}`}>
+            <Badge tone="oxblood" title={`Signed up ${relativeTime(student.createdAt)}`}>
               New
             </Badge>
           )}

@@ -35,7 +35,7 @@ export function AnnouncementCard({ announcement, actions, bare = false, isNew = 
         <div className="min-w-0">
           <h3 className="text-base font-semibold break-words text-gray-900">{title}</h3>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            {isNew && <Badge tone="blue">New</Badge>}
+            {isNew && <Badge tone="oxblood">New</Badge>}
             <AudienceBadge audience={audience} />
             {className && <Badge tone="gray">{className}</Badge>}
             {status && status !== 'active' && <AnnouncementStatusBadge status={status} />}
