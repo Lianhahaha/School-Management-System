@@ -93,7 +93,7 @@ export function ClassSubjectRoster({ classSubject }) {
           <EmptyState
             icon={Users}
             title="No students enrolled in this class"
-            description="The roster fills up when an administrator enrolls students."
+            description="Students show up here once an administrator enrolls them."
           />
         }
       />

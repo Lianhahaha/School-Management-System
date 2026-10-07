@@ -28,7 +28,7 @@ Skole can be installed like an app: on Android, Chrome or Edge use the browser's
 | Student enrollment and profiles | Admin → Students (enroll, transfer, profile, history); students edit their own contact details |
 | Subjects and class management | Admin → Subjects, Classes |
 | Teacher assignment | Class detail → Subjects & Teachers |
-| Attendance tracking | Teachers mark a roster per lesson and day; students see their own percentage; a week-by-week rate chart for each class, lesson and student |
+| Attendance tracking | Teachers mark the students of each lesson, day by day; students see their own percentage; a week-by-week rate chart for each class, lesson and student |
 | Grade management | Assessments with a maximum score, grade sheets, per-subject results for students; Admin → Subjects can weight a subject by assessment type (for example quizzes 20 %, exams 80 %); a score-spread chart on every grade sheet and each student's results over time per subject |
 | Class schedules | Weekly timetables per class, teacher and student, with clash detection (class, teacher, room) |
 | Announcements | School-wide or per class, per audience, with publish and expiry dates |

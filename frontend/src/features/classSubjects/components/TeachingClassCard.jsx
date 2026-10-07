@@ -4,7 +4,7 @@ import { Button } from '../../../components/ui/Button';
 import { formatPeriod } from '../../../utils/schedule';
 
 /**
- * One subject the teacher teaches: class, subject, the next period and shortcuts to the roster,
+ * One subject the teacher teaches: class, subject, the next period and shortcuts to its students,
  * attendance and grades.
  *
  * @param {object} props
@@ -24,7 +24,7 @@ export function TeachingClassCard({ classSubject, nextSlot }) {
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <Button as={Link} to={`/teacher/classes/${id}`} size="sm" variant="secondary" icon={Users}>
-          Roster
+          Students
         </Button>
         <Button
           as={Link}

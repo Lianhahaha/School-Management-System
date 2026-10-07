@@ -145,7 +145,7 @@ export default function MyClassesPage() {
         <Group
           id="homeroom-heading"
           title="Homeroom"
-          description="Classes you are homeroom teacher of. You can see their subjects and rosters, not change them."
+          description="Classes you are homeroom teacher of. You can see their subjects and students, not change them."
         >
           {homeroom.length === 0 ? (
             <p className="text-sm text-gray-600">No homeroom class matches your search.</p>

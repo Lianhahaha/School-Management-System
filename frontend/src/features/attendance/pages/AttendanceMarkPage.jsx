@@ -29,7 +29,7 @@ export default function AttendanceMarkPage() {
       <EmptyState
         icon={ClipboardCheck}
         title="Pick a class and subject"
-        description="Choose a class, a subject and a date to see the roster."
+        description="Choose a class, a subject and a date to see the students."
       />
     );
   } else if (isFuture) {

@@ -5,7 +5,7 @@ import { fullName } from '../../../utils/names';
 
 /**
  * A class the teacher is homeroom teacher of: its subjects with their teachers, read-only.
- * Each subject links to its roster (the teacher can see it, not change it).
+ * Each subject links to its students (the teacher can see them, not change them).
  *
  * @param {object} props
  * @param {{ id: number, name: string, academicYear: string, studentCount: number }} props.schoolClass
@@ -29,7 +29,7 @@ export function HomeroomClassCard({ schoolClass, classSubjects }) {
                 <span className="text-gray-600"> · {fullName(classSubject.teacher)}</span>
               </span>
               <Link to={`/teacher/classes/${classSubject.id}`} className="link">
-                Roster
+                Students
                 <span className="sr-only">
                   {' '}
                   of {classSubject.subjectName} in {name}

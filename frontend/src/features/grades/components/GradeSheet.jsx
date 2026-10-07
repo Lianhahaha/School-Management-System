@@ -204,7 +204,7 @@ export function GradeSheet({ roster, canSave, onReload }) {
             {!showReload && <FormRootError error={errors.root?.server} />}
             {showReload && (
               <Alert tone="error" role="alert">
-                <p>The class roster changed while you were grading.</p>
+                <p>Students were added to or removed from this class while you were grading.</p>
                 <Button variant="secondary" size="sm" icon={RefreshCw} onClick={reload} className="mt-2">
                   Reload sheet
                 </Button>

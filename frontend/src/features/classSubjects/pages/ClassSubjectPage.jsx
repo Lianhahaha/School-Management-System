@@ -76,9 +76,9 @@ export default function ClassSubjectPage() {
           filters={{ classSubjectId: classSubject.id }}
           description={`${lessonLabel}, ${classSubject.academicYear}`}
         />
-        <section aria-labelledby="roster-heading">
-          <h2 id="roster-heading" className="mb-3 text-base font-semibold text-gray-900">
-            Roster
+        <section aria-labelledby="students-heading">
+          <h2 id="students-heading" className="mb-3 text-base font-semibold text-gray-900">
+            Students
           </h2>
           <ClassSubjectRoster classSubject={classSubject} />
         </section>
