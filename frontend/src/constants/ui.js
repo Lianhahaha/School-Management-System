@@ -63,6 +63,14 @@ export const MARK_CLASSES = Object.freeze({
   cream: 'bg-mark-cream text-mark-oxblood ring-1 ring-mark-edge ring-inset', // teaching and time: classes, subjects, assessments, periods, calendar
 });
 
+/** Code tag colours of the subjects on a schedule, taken in order; the colours carry no meaning. */
+export const SUBJECT_TAG_CLASSES = Object.freeze([
+  'bg-subject-navy text-subject-on-dark',
+  'bg-subject-brown text-subject-on-dark',
+  'bg-subject-taupe text-subject-on-light',
+  'bg-subject-blush text-subject-on-light',
+]);
+
 // ---------------------------------------------------------------------------
 // Labels, tones and options per shared enum
 // ---------------------------------------------------------------------------

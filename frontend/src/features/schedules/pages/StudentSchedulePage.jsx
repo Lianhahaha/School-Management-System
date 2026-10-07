@@ -12,7 +12,7 @@ const renderStudentSlot = (slot) => {
   return (
     <>
       <span className="block font-medium">{slot.classSubject.subjectName}</span>
-      {detail && <span className="block text-xs opacity-90">{detail}</span>}
+      {detail && <span className="block text-xs text-gray-600">{detail}</span>}
     </>
   );
 };

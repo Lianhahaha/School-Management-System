@@ -94,6 +94,19 @@
   --mark-cream: #eeead7;
   --mark-edge: rgb(109 8 8 / 0.14);
 
+  /*
+   * Subject tags: the code tag (MATH, ENG) on each period of a schedule. A palette of its own, kept apart
+   * from the marks so a subject never borrows a meaning: navy, brown, taupe and blush, picked by subject.
+   * Warm white text on navy and brown (9:1 or more), deep navy on taupe and blush (4.9:1 or more).
+   */
+  --subject-navy: #202940;
+  --subject-brown: #4b4038;
+  --subject-taupe: #9a8678;
+  --subject-blush: #caaa98;
+  --subject-on-dark: #faf6f3;
+  --subject-on-light: #171c2c;
+  --subject-edge: rgb(32 41 64 / 0.16);
+
   /* Solid status fills for badges: amber with ink text, red with white text. */
   --solid-amber: #f0a500;
   --solid-red: #d0192f;
@@ -160,6 +173,7 @@
   --well-chip: #45464d;
   --well-edge: rgb(255 255 255 / 0.07);
   --mark-edge: rgb(255 255 255 / 0.12);
+  --subject-edge: rgb(255 255 255 / 0.14);
 
   --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239d9ea5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 
@@ -219,6 +233,13 @@
   --color-mark-sage: var(--mark-sage);
   --color-mark-cream: var(--mark-cream);
   --color-mark-edge: var(--mark-edge);
+  --color-subject-navy: var(--subject-navy);
+  --color-subject-brown: var(--subject-brown);
+  --color-subject-taupe: var(--subject-taupe);
+  --color-subject-blush: var(--subject-blush);
+  --color-subject-on-dark: var(--subject-on-dark);
+  --color-subject-on-light: var(--subject-on-light);
+  --color-subject-edge: var(--subject-edge);
   --color-solid-amber: var(--solid-amber);
   --color-solid-red: var(--solid-red);
   --color-well: var(--well);
