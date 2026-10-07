@@ -179,7 +179,7 @@ A bug is found by following one path: the URL names the route file, the route na
 | `auth/operation-not-allowed` on sign-in | Enable Email/Password under Authentication → Sign-in method. |
 | Signed in, but the API answers `USER_NOT_REGISTERED` | The Firebase user has no row in MySQL (it was created in the console). Run `npm run db:seed`, register from the app, or create the user from Admin → Users. |
 | `ACCOUNT_DISABLED` | An admin deactivated the account; reactivate it from Admin → Users. |
-| `EADDRINUSE` on 3000 or 5173 | Another process holds the port. Stop it, or change `PORT` in `backend/.env` (and the proxy target in `frontend/vite.config.js`). |
+| `EADDRINUSE` on 3000 or 5173 | Another process holds the port. Stop it, or move the API: in PowerShell `$env:PORT='3001'; $env:API_PORT='3001'; npm run dev` (`API_PORT` points the frontend's proxy at the same port). |
 | `EPERM` / `EBUSY` during `npm install` | OneDrive is syncing `node_modules`. Move the project outside OneDrive (for example `C:\dev\school-management-system`) or pause syncing. |
 | `Cannot find module` | Run `npm install` in the folder you are starting from. |
 | Weekday or "today" looks off by one | Set `APP_TIMEZONE` in `backend/.env` to the school's IANA zone (for example `Asia/Manila`) and restart. |
