@@ -1,5 +1,7 @@
+import { Check } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '../../../components/ui/Badge';
+import { Button } from '../../../components/ui/Button';
 import { cx } from '../../../utils/cx';
 import { formatDateTime, relativeTime } from '../../../utils/date';
 import { fullName } from '../../../utils/names';
@@ -22,12 +24,14 @@ const needsToggle = (body) => body.length > CLAMP_CHARACTERS || body.split('\n')
  * @param {object} props.announcement list item (`Announcement`) or dashboard item (`AnnouncementBrief`)
  * @param {import('react').ReactNode} [props.actions] right-aligned buttons
  * @param {boolean} [props.bare] drop the border and padding, for use inside another card
- * @param {boolean} [props.isNew] published since the user last opened the announcements
+ * @param {boolean} [props.isNew] not marked read yet: shows the "New" tag
+ * @param {() => void} [props.onMarkRead] shows a "Mark as read" button while the card is new
  */
-export function AnnouncementCard({ announcement, actions, bare = false, isNew = false }) {
+export function AnnouncementCard({ announcement, actions, bare = false, isNew = false, onMarkRead }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { title, body, audience, className, author, publishedAt, expiresAt, status } = announcement;
   const isScheduled = status === 'scheduled';
+  const showMarkRead = isNew && onMarkRead;
 
   return (
     <article className={cx(!bare && 'sheet p-5')}>
@@ -41,7 +45,16 @@ export function AnnouncementCard({ announcement, actions, bare = false, isNew = 
             {status && status !== 'active' && <AnnouncementStatusBadge status={status} />}
           </div>
         </div>
-        {actions && <div className="flex shrink-0 items-center gap-1">{actions}</div>}
+        {(actions || showMarkRead) && (
+          <div className="flex shrink-0 items-center gap-1">
+            {showMarkRead && (
+              <Button variant="ghost" size="sm" icon={Check} onClick={onMarkRead}>
+                Mark as read<span className="sr-only">: {title}</span>
+              </Button>
+            )}
+            {actions}
+          </div>
+        )}
       </div>
 
       <p className="mt-2 text-xs text-gray-600">

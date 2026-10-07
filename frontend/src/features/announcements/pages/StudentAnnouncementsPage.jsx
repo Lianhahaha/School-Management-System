@@ -1,4 +1,4 @@
-import { Megaphone } from 'lucide-react';
+import { CheckCheck, Megaphone } from 'lucide-react';
 import { useState } from 'react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { Button } from '../../../components/ui/Button';
@@ -10,7 +10,12 @@ import { Skeleton } from '../../../components/ui/Skeleton';
 import { useListParams } from '../../../hooks/useListParams';
 import { showsFetching } from '../../../lib/liveRefresh';
 import { AnnouncementList } from '../components/AnnouncementList';
-import { useAnnouncements, useNewSinceLastVisit } from '../hooks';
+import {
+  useAnnouncements,
+  useIsNewAnnouncement,
+  useMarkAnnouncementsRead,
+  useNewAnnouncements,
+} from '../hooks';
 
 const FEED_PAGE_SIZE = 10;
 
@@ -32,7 +37,7 @@ function FeedSkeleton({ count }) {
  * One page of the feed. "Load more" mounts the next chunk below instead of replacing the rows, so
  * the feed is appended client-side while every page keeps its own cache entry.
  */
-function FeedChunk({ search, page, isLast, onLoadMore, onClearSearch, isNew }) {
+function FeedChunk({ search, page, isLast, onLoadMore, onClearSearch, isNew, onMarkRead }) {
   const { data, error, isPending, isFetching, refetch } = useAnnouncements({
     page,
     limit: FEED_PAGE_SIZE,
@@ -65,7 +70,12 @@ function FeedChunk({ search, page, isLast, onLoadMore, onClearSearch, isNew }) {
 
   return (
     <>
-      <AnnouncementList announcements={data.items} label={`Announcements, page ${page}`} isNew={isNew} />
+      <AnnouncementList
+        announcements={data.items}
+        label={`Announcements, page ${page}`}
+        isNew={isNew}
+        onMarkRead={onMarkRead}
+      />
       {isLast && data.meta.page < data.meta.totalPages && (
         <div className="mt-4 flex justify-center">
           <Button variant="secondary" onClick={onLoadMore} isLoading={showsFetching(isFetching)}>
@@ -78,7 +88,7 @@ function FeedChunk({ search, page, isLast, onLoadMore, onClearSearch, isNew }) {
 }
 
 /** Pages loaded so far; remounted (key) whenever the search changes so it starts from page 1. */
-function Feed({ search, onClearSearch, isNew }) {
+function Feed({ search, onClearSearch, isNew, onMarkRead }) {
   const [pageCount, setPageCount] = useState(1);
   return (
     <div className="space-y-4">
@@ -91,6 +101,7 @@ function Feed({ search, onClearSearch, isNew }) {
           onLoadMore={() => setPageCount((count) => count + 1)}
           onClearSearch={onClearSearch}
           isNew={isNew}
+          onMarkRead={onMarkRead}
         />
       ))}
     </div>
@@ -100,7 +111,9 @@ function Feed({ search, onClearSearch, isNew }) {
 /** /student/announcements: read-only feed; the backend already scopes it to my audience and my class. */
 export default function StudentAnnouncementsPage() {
   const list = useListParams();
-  const isNew = useNewSinceLastVisit();
+  const isNew = useIsNewAnnouncement();
+  const unreadCount = useNewAnnouncements();
+  const markRead = useMarkAnnouncementsRead();
 
   return (
     <>
@@ -111,12 +124,24 @@ export default function StudentAnnouncementsPage() {
           onChange={list.setSearch}
           placeholder="Search title, message"
         />
+        {unreadCount > 0 && (
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={CheckCheck}
+            onClick={() => markRead.mutate()}
+            isLoading={markRead.isPending && markRead.variables === undefined}
+          >
+            Mark all as read
+          </Button>
+        )}
       </FilterBar>
       <Feed
         key={list.params.search}
         search={list.params.search}
         onClearSearch={list.clearFilters}
         isNew={isNew}
+        onMarkRead={(announcement) => markRead.mutate([announcement.id])}
       />
     </>
   );

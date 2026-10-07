@@ -1,6 +1,16 @@
 import { z } from 'zod';
 import { ANNOUNCEMENT_AUDIENCES, ANNOUNCEMENT_STATUSES } from '../../constants/shared.js';
-import { id, idOrMe, idParams, isoDateTime, listQuery, patchOf, shortText } from '../../utils/zod/common.js';
+import {
+  boolQuery,
+  id,
+  idList,
+  idOrMe,
+  idParams,
+  isoDateTime,
+  listQuery,
+  patchOf,
+  shortText,
+} from '../../utils/zod/common.js';
 import { ANNOUNCEMENT_SORT_MAP } from './announcements.repository.js';
 
 const title = shortText(150).min(1, { error: 'required' });
@@ -12,7 +22,11 @@ export const listAnnouncementsQuery = listQuery(Object.keys(ANNOUNCEMENT_SORT_MA
   classId: id.optional(),
   authorId: idOrMe.optional(),
   status: z.enum([...ANNOUNCEMENT_STATUSES, 'all']).optional(),
+  unread: boolQuery.optional(),
 });
+
+/** `ids` left out marks every announcement the caller can see read. */
+export const markReadBody = z.strictObject({ ids: idList.optional() });
 
 export const createAnnouncementBody = z.strictObject({
   title,

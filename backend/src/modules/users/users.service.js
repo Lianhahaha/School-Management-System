@@ -9,6 +9,7 @@ import { currentAcademicYear } from '../../utils/dates.js';
 import { logger } from '../../utils/logger.js';
 import { changedList, changesOf, nameOf, record } from '../activity/activity.service.js';
 import * as notifications from '../notifications/notifications.service.js';
+import * as announcements from '../announcements/announcements.service.js';
 import { teacherHasAssignments } from '../classSubjects/classSubjects.service.js';
 import { closeActiveForStudent } from '../enrollments/enrollments.service.js';
 import * as studentsService from '../students/students.service.js';
@@ -275,6 +276,7 @@ export async function deleteUser(actor, id) {
       if (target.role === 'student') await studentsService.deleteProfile(id, conn);
       if (target.role === 'teacher') await teachersService.deleteProfile(id, conn);
       await notifications.deleteForUser(id, conn);
+      await announcements.deleteReadsOfUser(id, conn);
       if (!(await repo.deleteUser(id, conn))) throw ApiError.notFound('user', id);
     });
   } catch (error) {

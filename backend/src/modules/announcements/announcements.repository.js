@@ -1,7 +1,7 @@
 /**
  * SQL for announcements. Status is computed from published_at / expires_at in UTC.
  */
-import { query, run } from '../../config/db.js';
+import { query, run, withTransaction } from '../../config/db.js';
 import { ANNOUNCEMENT_AUDIENCES } from '../../constants/shared.js';
 import { selectPage } from '../../utils/pagination.js';
 import { WhereBuilder, buildSet } from '../../utils/sql.js';
@@ -37,21 +37,31 @@ export const studentVisibility = (activeClassId) => ({
   params: [AUDIENCE_ALL, AUDIENCE_STUDENTS, activeClassId ?? 0],
 });
 
-const COLUMNS = `a.id, a.author_id, au.first_name AS author_first_name, au.last_name AS author_last_name,
+/** `userId` is an internal integer id, so it is inlined: selectPage passes params to WHERE only. */
+const readBySql = (userId) =>
+  `EXISTS (SELECT 1 FROM announcement_reads r WHERE r.announcement_id = a.id AND r.user_id = ${Number(userId)})`;
+
+const columns = (
+  userId,
+) => `a.id, a.author_id, au.first_name AS author_first_name, au.last_name AS author_last_name,
   au.role AS author_role, a.title, a.body, a.audience, a.class_id, c.name AS class_name,
-  a.published_at, a.expires_at, ${STATUS_SQL} AS status, a.created_at, a.updated_at`;
+  a.published_at, a.expires_at, ${STATUS_SQL} AS status, ${readBySql(userId)} AS is_read, a.created_at, a.updated_at`;
 
 const FROM = `FROM announcements a
   JOIN users au ON au.id = a.author_id
   LEFT JOIN classes c ON c.id = a.class_id`;
 
-/** @param {{ sql: string, params: unknown[] } | null} scope visibility fragment of the caller (null = admin) */
-export async function findAnnouncementById(id, scope = null) {
+/**
+ * @param {number} userId the caller, for `is_read`
+ * @param {{ sql: string, params: unknown[] } | null} scope visibility fragment of the caller (null = admin)
+ */
+export async function findAnnouncementById(id, userId, scope = null) {
   const where = new WhereBuilder().add('a.id = ?', id).addScope(scope);
-  return (await query(`SELECT ${COLUMNS} ${FROM} ${where.sql}`, where.params))[0] ?? null;
+  return (await query(`SELECT ${columns(userId)} ${FROM} ${where.sql}`, where.params))[0] ?? null;
 }
 
-export function listAnnouncements(listQuery, scope) {
+/** `unread`: active, written by someone else, and not marked read by `userId`. */
+export function listAnnouncements(listQuery, userId, scope) {
   const where = new WhereBuilder()
     .addSearch(listQuery.search, ['a.title', 'a.body'])
     .addIf(listQuery.audience, 'a.audience = ?')
@@ -59,8 +69,9 @@ export function listAnnouncements(listQuery, scope) {
     .addIf(listQuery.authorId, 'a.author_id = ?')
     .addScope(scope);
   if (listQuery.status && listQuery.status !== 'all') where.add(`${STATUS_SQL} = ?`, listQuery.status);
+  if (listQuery.unread) where.add(`${ACTIVE_SQL} AND a.author_id <> ? AND NOT ${readBySql(userId)}`, userId);
   return selectPage({
-    select: COLUMNS,
+    select: columns(userId),
     from: FROM,
     where,
     listQuery,
@@ -71,10 +82,10 @@ export function listAnnouncements(listQuery, scope) {
 }
 
 /** Newest active announcements the caller may see (dashboards). */
-export function findRecentActive(scope, limit) {
+export function findRecentActive(userId, scope, limit) {
   const where = new WhereBuilder().add(ACTIVE_SQL).addScope(scope);
   return query(
-    `SELECT ${COLUMNS} ${FROM} ${where.sql} ORDER BY a.published_at DESC, a.id DESC LIMIT ${Number(limit)}`,
+    `SELECT ${columns(userId)} ${FROM} ${where.sql} ORDER BY a.published_at DESC, a.id DESC LIMIT ${Number(limit)}`,
     where.params,
   );
 }
@@ -111,5 +122,28 @@ export async function updateAnnouncement(id, fields) {
 }
 
 export async function deleteAnnouncement(id) {
-  return (await run('DELETE FROM announcements WHERE id = ?', [id])).affectedRows;
+  return withTransaction(async (conn) => {
+    await run('DELETE FROM announcement_reads WHERE announcement_id = ?', [id], conn);
+    return (await run('DELETE FROM announcements WHERE id = ?', [id], conn)).affectedRows;
+  });
+}
+
+/**
+ * Marks active announcements read for `userId`: the listed `ids`, or every one when `ids` is undefined.
+ * Limited to `scope` and to other people's announcements. Answers how many were newly marked.
+ */
+export async function markRead(userId, scope, ids) {
+  const where = new WhereBuilder().add(ACTIVE_SQL).add('a.author_id <> ?', userId).addScope(scope);
+  if (ids) where.add('a.id IN (?)', ids);
+  const result = await run(
+    // IGNORE skips marks that already exist, so affectedRows counts only new ones.
+    `INSERT IGNORE INTO announcement_reads (user_id, announcement_id)
+     SELECT ?, a.id FROM announcements a ${where.sql}`,
+    [userId, ...where.params],
+  );
+  return result.affectedRows;
+}
+
+export async function deleteReadsOfUser(userId, conn) {
+  await run('DELETE FROM announcement_reads WHERE user_id = ?', [userId], conn);
 }

@@ -13,6 +13,7 @@ announcementsRoutes.post(
   validate({ body: schemas.createAnnouncementBody }),
   controller.create,
 );
+announcementsRoutes.post('/read', validate({ body: schemas.markReadBody }), controller.markRead);
 announcementsRoutes.get('/:id', validate({ params: schemas.idParams }), controller.get);
 announcementsRoutes.patch(
   '/:id',

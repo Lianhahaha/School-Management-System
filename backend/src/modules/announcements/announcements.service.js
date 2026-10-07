@@ -28,6 +28,7 @@ const toAnnouncementShape = (row) => ({
   publishedAt: row.publishedAt,
   expiresAt: row.expiresAt,
   status: row.status,
+  isRead: Boolean(row.isRead),
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
 });
@@ -49,20 +50,35 @@ export async function listAnnouncements(user, listQuery) {
     authorId: resolveMe(user, listQuery.authorId, 'user'),
     status: access.isAdmin(user) ? (listQuery.status ?? 'active') : undefined,
   };
-  const { rows, meta } = await repo.listAnnouncements(query, visibilityScope(user));
+  const { rows, meta } = await repo.listAnnouncements(query, user.id, visibilityScope(user));
   return { data: rows.map(toAnnouncementShape), meta };
 }
 
 export async function getAnnouncement(user, id) {
   return toAnnouncementShape(
-    ApiError.assertFound(await repo.findAnnouncementById(id, visibilityScope(user)), 'announcement', id),
+    ApiError.assertFound(
+      await repo.findAnnouncementById(id, user.id, visibilityScope(user)),
+      'announcement',
+      id,
+    ),
   );
 }
 
 /** Newest active announcements visible to `user`, for the dashboards. */
 export async function recentAnnouncements(user, limit = 5) {
-  return (await repo.findRecentActive(visibilityScope(user), limit)).map(toAnnouncementShape);
+  return (await repo.findRecentActive(user.id, visibilityScope(user), limit)).map(toAnnouncementShape);
 }
+
+/**
+ * Marks announcements read for the caller: `ids`, or every one they can see when left out. Ids they
+ * cannot see, their own, and scheduled or expired ones are simply not touched.
+ */
+export async function markRead(user, ids) {
+  return { updated: await repo.markRead(user.id, visibilityScope(user), ids) };
+}
+
+/** Deletes the read marks of an account being deleted (inside its transaction). */
+export const deleteReadsOfUser = (userId, conn) => repo.deleteReadsOfUser(userId, conn);
 
 function assertExpiryAfterPublish(publishedAt, expiresAt) {
   if (expiresAt && expiresAt <= publishedAt) {
@@ -90,7 +106,7 @@ export async function createAnnouncement(user, body) {
   const expiresAt = body.expiresAt ? parseIsoDateTime(body.expiresAt) : null;
   assertExpiryAfterPublish(publishedAt, expiresAt);
   const id = await repo.insertAnnouncement({ ...body, authorId: user.id, publishedAt, expiresAt });
-  const announcement = toAnnouncementShape(await repo.findAnnouncementById(id));
+  const announcement = toAnnouncementShape(await repo.findAnnouncementById(id, user.id));
   await record({
     action: 'announcement.create',
     entityId: id,
@@ -109,7 +125,7 @@ const audienceOf = ({ audience, className }) =>
   `${audience === 'all' ? 'everyone' : audience}${className ? ` of ${className}` : ''}`;
 
 export async function updateAnnouncement(user, id, patch) {
-  const existing = ApiError.assertFound(await repo.findAnnouncementById(id), 'announcement', id);
+  const existing = ApiError.assertFound(await repo.findAnnouncementById(id, user.id), 'announcement', id);
   access.assertIsAuthor(user, existing.authorId);
 
   const fields = { ...patch };
@@ -122,7 +138,7 @@ export async function updateAnnouncement(user, id, patch) {
     'expiresAt' in fields ? fields.expiresAt : existing.expiresAt,
   );
   await repo.updateAnnouncement(id, fields);
-  const announcement = toAnnouncementShape(await repo.findAnnouncementById(id));
+  const announcement = toAnnouncementShape(await repo.findAnnouncementById(id, user.id));
   // The body can be long: the log keeps that it changed, not the text.
   const { body, ...otherFields } = fields;
   const changes = changesOf(existing, otherFields) ?? {};
@@ -139,7 +155,7 @@ export async function updateAnnouncement(user, id, patch) {
 }
 
 export async function deleteAnnouncement(user, id) {
-  const existing = ApiError.assertFound(await repo.findAnnouncementById(id), 'announcement', id);
+  const existing = ApiError.assertFound(await repo.findAnnouncementById(id, user.id), 'announcement', id);
   access.assertIsAuthor(user, existing.authorId);
   await repo.deleteAnnouncement(id);
   await record({

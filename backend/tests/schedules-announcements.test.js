@@ -10,6 +10,7 @@ import {
   buildSchool,
   closeWorld,
   makeSubject,
+  makeUser,
   resetWorld,
 } from './helpers/harness.js';
 
@@ -270,5 +271,70 @@ describe('announcements', () => {
     });
     assert.equal(res.status, 201);
     assert.ok(!(await titlesFor(school.s1)).includes('Expired'));
+  });
+
+  describe('read marks', () => {
+    const list = async (who, query = '') =>
+      (await api.get(`/api/v1/announcements?limit=100${query}`).set(as(who))).body;
+    const markRead = (who, body = {}) => api.post('/api/v1/announcements/read').set(as(who)).send(body);
+    const idOf = async (title) =>
+      (await list(school.admin, '&status=all')).data.find((a) => a.title === title).id;
+
+    it('marks listed announcements read for the caller only, once', async () => {
+      assert.equal((await list(school.s1, '&unread=true')).meta.total, 4);
+      const allHands = await idOf('All hands');
+
+      const first = await markRead(school.s1, { ids: [allHands] });
+      assert.equal(first.status, 200);
+      assert.equal(first.body.data.updated, 1);
+      assert.equal((await markRead(school.s1, { ids: [allHands] })).body.data.updated, 0);
+
+      const mine = await list(school.s1);
+      assert.equal(mine.data.find((a) => a.title === 'All hands').isRead, true);
+      assert.equal(mine.data.find((a) => a.title === 'Students only').isRead, false);
+      assert.equal((await list(school.s1, '&unread=true')).meta.total, 3);
+      assert.equal((await list(school.s3, '&unread=true')).meta.total, 2);
+    });
+
+    it('ignores announcements the caller cannot see, and marks all the rest', async () => {
+      assert.equal((await markRead(school.s1, { ids: [await idOf('Staff only')] })).body.data.updated, 0);
+      assert.equal((await markRead(school.s1)).body.data.updated, 3);
+      assert.equal((await list(school.s1, '&unread=true')).meta.total, 0);
+    });
+
+    it('never counts own, scheduled or expired announcements as unread', async () => {
+      const unread = (await list(school.owner, '&unread=true')).data.map((a) => a.title);
+      assert.ok(!unread.includes('From owner'));
+      await markRead(school.admin);
+      assert.equal((await list(school.admin, '&unread=true')).meta.total, 0);
+      const notActive = (await list(school.admin, '&status=all')).data.filter((a) => a.status !== 'active');
+      assert.ok(notActive.length >= 2);
+      assert.ok(notActive.every((a) => a.isRead === false));
+    });
+
+    it('rejects an empty or malformed id list', async () => {
+      assert.equal((await markRead(school.s1, { ids: [] })).status, 400);
+      assert.equal((await markRead(school.s1, { ids: ['x'] })).status, 400);
+    });
+
+    it('still deletes an announcement and an unused account that have read marks', async () => {
+      const created = (
+        await post(school.owner, {
+          title: 'Read then gone',
+          body: 'b',
+          audience: 'all',
+          classId: school.classA.id,
+        })
+      ).body.data;
+      assert.equal((await markRead(school.s1, { ids: [created.id] })).body.data.updated, 1);
+      assert.equal(
+        (await api.delete(`/api/v1/announcements/${created.id}`).set(as(school.owner))).status,
+        200,
+      );
+
+      const reader = await makeUser('student');
+      assert.ok((await markRead(reader)).body.data.updated > 0);
+      assert.equal((await api.delete(`/api/v1/users/${reader.id}`).set(as(school.admin))).status, 200);
+    });
   });
 });

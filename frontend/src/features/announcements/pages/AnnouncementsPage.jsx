@@ -1,4 +1,4 @@
-import { Megaphone, Pencil, Plus, Trash2 } from 'lucide-react';
+import { CheckCheck, Megaphone, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { Button } from '../../../components/ui/Button';
@@ -19,7 +19,13 @@ import { useAuth } from '../../auth/hooks';
 import { ClassSelect } from '../../classes/components/ClassSelect';
 import { AnnouncementFormModal } from '../components/AnnouncementFormModal';
 import { AnnouncementList } from '../components/AnnouncementList';
-import { useAnnouncements, useDeleteAnnouncement, useNewSinceLastVisit } from '../hooks';
+import {
+  useAnnouncements,
+  useDeleteAnnouncement,
+  useIsNewAnnouncement,
+  useMarkAnnouncementsRead,
+  useNewAnnouncements,
+} from '../hooks';
 import { useOpenFromLink } from '../../../hooks/useOpenFromLink';
 
 const ADMIN_FILTERS = ['status', 'audience', 'classId'];
@@ -51,7 +57,9 @@ export default function AnnouncementsPage() {
   const isAdmin = role === 'admin';
   const list = useListParams({ filters: isAdmin ? ADMIN_FILTERS : TEACHER_FILTERS });
   const { data, error, isPending, isFetching, refetch } = useAnnouncements(list.apiParams);
-  const isNew = useNewSinceLastVisit();
+  const isNew = useIsNewAnnouncement();
+  const unreadCount = useNewAnnouncements();
+  const markRead = useMarkAnnouncementsRead();
   const deleteAnnouncement = useDeleteAnnouncement();
   const confirm = useConfirm();
   // undefined = closed, null = creating, an announcement = editing it
@@ -131,7 +139,12 @@ export default function AnnouncementsPage() {
         className={cx('transition-opacity', showsFetching(isFetching) && 'opacity-60')}
         aria-busy={showsFetching(isFetching)}
       >
-        <AnnouncementList announcements={data.items} renderActions={renderActions} isNew={isNew} />
+        <AnnouncementList
+          announcements={data.items}
+          renderActions={renderActions}
+          isNew={isNew}
+          onMarkRead={(announcement) => markRead.mutate([announcement.id])}
+        />
         <Pagination meta={data.meta} onPageChange={list.setPage} onLimitChange={list.setLimit} />
       </div>
     );
@@ -189,6 +202,17 @@ export default function AnnouncementsPage() {
             checked={list.params.authorId === 'me'}
             onChange={(event) => list.setFilter('authorId', event.target.checked ? 'me' : '')}
           />
+        )}
+        {unreadCount > 0 && (
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={CheckCheck}
+            onClick={() => markRead.mutate()}
+            isLoading={markRead.isPending && markRead.variables === undefined}
+          >
+            Mark all as read
+          </Button>
         )}
       </FilterBar>
 

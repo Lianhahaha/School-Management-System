@@ -1717,6 +1717,12 @@ paths:
           schema:
             type: string
             enum: [active, scheduled, expired, all]
+        - name: unread
+          in: query
+          description: Only active announcements by someone else that the caller has not marked read.
+          schema:
+            type: string
+            enum: ['true', 'false']
       responses:
         '200': { $ref: '#/components/responses/AnnouncementListResponse' }
         '400': { $ref: '#/components/responses/BadRequest' }
@@ -1746,6 +1752,53 @@ paths:
               expiresAt: '2026-10-10T16:00:00.000Z'
       responses:
         '201': { $ref: '#/components/responses/AnnouncementResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /announcements/read:
+    post:
+      tags: [announcements]
+      operationId: markAnnouncementsRead
+      summary: Mark announcements read
+      description: |
+        Roles: any authenticated user. Marks the listed announcements read for the caller, or every one they
+        can see when `ids` is left out. Ids the caller cannot see, their own announcements, and scheduled or
+        expired ones are ignored. Answers how many were newly marked.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 200
+                  uniqueItems: true
+                  items:
+                    $ref: '#/components/schemas/Id'
+            example:
+              ids: [7]
+      responses:
+        '200':
+          description: How many announcements were newly marked read.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [updated]
+                        properties:
+                          updated:
+                            type: integer
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -3221,6 +3274,7 @@ components:
           publishedAt,
           expiresAt,
           status,
+          isRead,
           createdAt,
           updatedAt,
         ]
@@ -3257,6 +3311,9 @@ components:
           nullable: true
         status:
           $ref: '#/components/schemas/AnnouncementStatus'
+        isRead:
+          type: boolean
+          description: The caller marked it read.
         createdAt:
           $ref: '#/components/schemas/Timestamp'
         updatedAt:

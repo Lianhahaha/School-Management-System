@@ -17,6 +17,10 @@ export async function update(req, res) {
   ok(res, await service.updateAnnouncement(req.user, req.validated.params.id, req.validated.body));
 }
 
+export async function markRead(req, res) {
+  ok(res, await service.markRead(req.user, req.validated.body.ids));
+}
+
 export async function remove(req, res) {
   ok(res, await service.deleteAnnouncement(req.user, req.validated.params.id));
 }

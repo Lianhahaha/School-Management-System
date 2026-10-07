@@ -402,7 +402,7 @@ CREATE TABLE IF NOT EXISTS activity_log (
 -- 16. notifications — in-app messages to one user about something that
 --     concerns them: a grade recorded, an absence, a new class, a lesson to
 --     teach, a student sign-up (admins). Read when read_at is set.
---     Announcements are not copied here; the app counts the new ones itself.
+--     Announcements are not copied here: announcement_reads tracks those.
 --     Deleting an (unused) account deletes its notifications first.
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS notifications (
@@ -421,3 +421,21 @@ CREATE TABLE IF NOT EXISTS notifications (
     ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='In-app notifications per user';
+
+-- -----------------------------------------------------------------------------
+-- 17. announcement_reads — which announcements a user marked as read. No row =
+--     unread ("New"). Deleting an announcement or an (unused) account deletes
+--     its rows here first.
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS announcement_reads (
+  user_id          INT UNSIGNED NOT NULL,
+  announcement_id  INT UNSIGNED NOT NULL,
+  read_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_id, announcement_id),                          -- one mark per user; "is it read" lookups
+  KEY idx_announcement_reads_announcement (announcement_id),       -- FK + delete of an announcement
+  CONSTRAINT fk_announcement_reads_user FOREIGN KEY (user_id) REFERENCES users (id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_announcement_reads_announcement FOREIGN KEY (announcement_id) REFERENCES announcements (id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Announcements each user marked as read';
