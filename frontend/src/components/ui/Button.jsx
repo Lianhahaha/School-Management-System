@@ -62,6 +62,7 @@ export function Button({
       {...props}
       {...nativeProps}
       aria-busy={isLoading || undefined}
+      data-variant={variant}
       className={cx(
         'inline-flex shrink-0 items-center justify-center gap-2 rounded-control whitespace-nowrap transition-[background-color,color,transform] duration-150 select-none active:scale-[0.97] disabled:cursor-not-allowed disabled:active:scale-100',
         VARIANTS[variant],

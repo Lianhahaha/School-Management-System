@@ -95,6 +95,13 @@
   --mark-edge: rgb(109 8 8 / 0.14);
 
   /*
+   * Page band: the solid blood-maroon band behind every page title, the same in both themes. Cream
+   * text on it (13:1); buttons on it are restyled by .page-band below, the yellow one stays yellow.
+   */
+  --band: #4a0505;
+  --band-ink: #eeead7;
+
+  /*
    * Subject tags: the code tag (MATH, ENG) on each period of a schedule. A palette of its own, kept apart
    * from the marks so a subject never borrows a meaning: navy, brown, taupe and blush, picked by subject.
    * Warm white text on navy and brown (9:1 or more), deep navy on taupe and blush (4.9:1 or more).
@@ -233,6 +240,8 @@
   --color-mark-sage: var(--mark-sage);
   --color-mark-cream: var(--mark-cream);
   --color-mark-edge: var(--mark-edge);
+  --color-band: var(--band);
+  --color-band-ink: var(--band-ink);
   --color-subject-navy: var(--subject-navy);
   --color-subject-brown: var(--subject-brown);
   --color-subject-taupe: var(--subject-taupe);
@@ -452,4 +461,35 @@
   .print-only {
     display: block;
   }
+}
+
+/*
+ * Buttons and focus on the page band. The yellow primary button keeps its look; the grey and plain
+ * buttons turn into light-on-red ones, and a destructive button becomes cream with red text so it
+ * neither vanishes into the band nor clashes with it. Unlayered on purpose: they must beat the
+ * buttons' own utility classes.
+ */
+.page-band :focus-visible {
+  outline-color: var(--band-ink);
+}
+.page-band [data-variant='secondary'] {
+  background-color: rgb(255 255 255 / 0.12);
+  color: var(--band-ink);
+}
+.page-band [data-variant='secondary']:hover {
+  background-color: rgb(255 255 255 / 0.2);
+}
+.page-band [data-variant='ghost'] {
+  color: var(--band-ink);
+}
+.page-band [data-variant='ghost']:hover {
+  background-color: rgb(255 255 255 / 0.12);
+  color: var(--band-ink);
+}
+.page-band [data-variant='danger'] {
+  background-color: var(--band-ink);
+  color: #8f1515;
+}
+.page-band [data-variant='danger']:hover {
+  background-color: #ffffff;
 }
