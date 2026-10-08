@@ -1,4 +1,4 @@
-# Skole (readme not updated)
+# Skole
 
 [![Backend tests](https://github.com/Lianhahaha/School-Management-System/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/Lianhahaha/School-Management-System/actions/workflows/backend-tests.yml)
 
@@ -21,7 +21,7 @@ Skole can be installed like an app: on Android, Chrome or Edge use the browser's
 
 | Required feature | Where to see it |
 |---|---|
-| Student, teacher and admin accounts | Admin → Users (create any role, deactivate, delete an unused account); students can also self-register on the sign-up page; Admin → Students → Import creates up to 200 students from a CSV file (template included), each checked before anything is created |
+| Student, teacher and admin accounts | Admin → Users (create any role, deactivate, delete an unused account); students can also self-register on the sign-up page; Admin → Students → Import creates up to 200 students from a CSV file (template included), each checked before anything is created and each given their own temporary password, listed in a file to download |
 | Firebase Authentication | Sign in / sign up / forgot password; the API verifies the Firebase ID token on every request |
 | MySQL database | 17 tables with foreign keys, unique keys and checks: [backend/database/schema.sql](backend/database/schema.sql) |
 | Backend REST API | 75 endpoints under `/api/v1`, one JSON envelope, one error catalogue |
@@ -31,7 +31,7 @@ Skole can be installed like an app: on Android, Chrome or Edge use the browser's
 | Attendance tracking | Teachers mark the students of each lesson, day by day; students see their own percentage; a week-by-week rate chart for each class, lesson and student |
 | Grade management | Assessments with a maximum score, grade sheets, per-subject results for students; Admin → Subjects can weight a subject by assessment type (for example quizzes 20 %, exams 80 %); a score-spread chart on every grade sheet and each student's results over time per subject |
 | Class schedules | Weekly timetables per class, teacher and student, with clash detection (class, teacher, room) |
-| Announcements | School-wide or per class, per audience, with publish and expiry dates |
+| Announcements | School-wide or per class, per audience, with publish and expiry dates; a "New" label until the reader marks one, or all, as read |
 | Notifications | The bell in the top bar, with a red count: students hear about new or changed grades, absences and a new class; teachers about lessons and homeroom classes they get; admins about students who signed up and need a class; new announcements are listed there too |
 | Activity history | Admin → Activity: who changed what and when (grades with the previous score, attendance marks, enrollments, accounts, classes, timetable, announcements, calendar), searchable by name and filterable by area and day |
 | School calendar | Admin → Calendar: holidays (no classes, attendance can't be marked) and school events; every role sees the calendar, the next 30 days on its dashboard and this week's entries on its timetable |
@@ -153,7 +153,7 @@ GitHub runs the same backend checks (lint, secrets check, `npm test` against MyS
 backend/
   database/    schema.sql (17 tables) and seed.sql (demo data)
   docs/        openapi.yaml, the spec behind /api/docs
-  scripts/     migrate, seed, doctor, get-token, check-constants, check-secrets
+  scripts/     migrate, seed, create-admin, doctor, get-token, check-constants, check-secrets
   src/
     modules/   one folder per feature: routes → controller → service → repository (+ zod schemas)
     middleware/ config/ utils/ constants/
