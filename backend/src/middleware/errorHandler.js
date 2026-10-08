@@ -35,6 +35,10 @@ export function toApiError(error) {
   if (isBodyParserClientError(error)) {
     return ApiError.validation(error.message, 'body', { reason: error.type });
   }
+  // The router reports a path it cannot decode (e.g. "/students/%E0%A4") as a URIError.
+  if (error instanceof URIError) {
+    return ApiError.validation('malformed request URL', undefined, { reason: 'bad_request' });
+  }
   if (isFirebaseError(error)) return firebaseErrorMap(error);
   if (isMysqlError(error)) return mysqlErrorMap(error);
   return ApiError.internal();

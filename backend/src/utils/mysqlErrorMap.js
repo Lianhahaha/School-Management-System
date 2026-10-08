@@ -6,11 +6,21 @@ import { ApiError } from './ApiError.js';
 
 const CONNECTION_CODES = new Set([
   'ECONNREFUSED',
+  'ECONNRESET',
+  'EPIPE',
   'PROTOCOL_CONNECTION_LOST',
+  'PROTOCOL_SEQUENCE_TIMEOUT',
   'ETIMEDOUT',
   'ER_CON_COUNT_ERROR',
+  'ER_SERVER_SHUTDOWN',
   'ENOTFOUND',
 ]);
+
+/** Refusals that a second attempt normally gets past. */
+const BUSY_CODES = new Set(['ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT']);
+
+/** mysql2's pool rejects with a plain Error (no code) when more requests wait than queueLimit allows. */
+const isPoolQueueFull = (error) => error?.message === 'Queue limit reached.' && error.code === undefined;
 
 const toCamel = (name) => name.replace(/_([a-z0-9])/g, (_, char) => char.toUpperCase());
 
@@ -32,10 +42,13 @@ const IN_USE_MESSAGES = {
 };
 
 export function isMysqlError(error) {
-  return Boolean(error && (typeof error.errno === 'number' || CONNECTION_CODES.has(error.code)));
+  return Boolean(
+    error && (typeof error.errno === 'number' || CONNECTION_CODES.has(error.code) || isPoolQueueFull(error)),
+  );
 }
 
 export function mysqlErrorMap(error) {
+  if (isPoolQueueFull(error) || BUSY_CODES.has(error.code)) return ApiError.busy();
   const text = error.sqlMessage ?? error.message ?? '';
   switch (error.code) {
     case 'ER_DUP_ENTRY': {

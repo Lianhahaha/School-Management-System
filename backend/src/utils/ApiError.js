@@ -121,6 +121,17 @@ export class ApiError extends Error {
     );
   }
 
+  /** 503 — the database is up but refused this attempt (deadlock, lock wait, full queue); a retry should work. */
+  static busy(options) {
+    return new ApiError(
+      503,
+      ERROR_CODES.SERVICE_UNAVAILABLE,
+      'the database is busy, try again in a moment',
+      { component: 'db', reason: 'busy' },
+      options,
+    );
+  }
+
   toJSON() {
     const error = { code: this.code, message: this.message };
     if (this.details !== undefined) error.details = this.details;
