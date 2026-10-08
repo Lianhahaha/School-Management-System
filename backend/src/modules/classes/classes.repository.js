@@ -37,12 +37,14 @@ export async function classHasDependents(id) {
   return rows.length > 0;
 }
 
-export function listClasses(listQuery) {
+/** @param {{ sql: string, params: unknown[] } | null} scope class scope on c.id (null = every class) */
+export function listClasses(listQuery, scope = null) {
   const where = new WhereBuilder()
     .addSearch(listQuery.search, ['c.name'])
     .addIf(listQuery.academicYear, 'c.academic_year = ?')
     .addIf(listQuery.gradeLevel, 'c.grade_level = ?')
-    .addIf(listQuery.homeroomTeacherId, 'c.homeroom_teacher_id = ?');
+    .addIf(listQuery.homeroomTeacherId, 'c.homeroom_teacher_id = ?')
+    .addScope(scope);
   return selectPage({
     select: COLUMNS,
     from: FROM,

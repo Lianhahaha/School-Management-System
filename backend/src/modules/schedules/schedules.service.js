@@ -85,7 +85,8 @@ export function writeIfTeacherFree(classSubjectId, teacherId, write) {
   });
 }
 
-const normalizeRoom = (room) => (room == null ? null : room.trim() || null);
+/** "  Lab   1 " -> "Lab 1": rooms are compared as saved, so spacing must not make two rooms differ. */
+const normalizeRoom = (room) => (room == null ? null : room.trim().replace(/\s+/g, ' ') || null);
 
 function assertTimeOrder({ startTime, endTime }) {
   if (endTime <= startTime) {
@@ -102,10 +103,12 @@ export async function listSchedules(user, listQuery) {
   return { data: rows.map(toScheduleShape), meta };
 }
 
-/** Unscoped slots matching `filters` (classId, teacherId, dayOfWeek, academicYear); dashboards only. */
+/**
+ * Every slot matching `filters` (classId, classSubjectId, teacherId, dayOfWeek, academicYear), unscoped and
+ * unpaged: dashboards and attendance rules count them, so none may be cut off by a page size.
+ */
 export async function findSlotsUnscoped(filters) {
-  const { rows } = await repo.listSchedules({ page: 1, limit: 100, ...filters }, null);
-  return rows.map(toScheduleShape);
+  return (await repo.findSchedules(filters)).map(toScheduleShape);
 }
 
 export async function getSchedule(user, id) {
@@ -122,16 +125,24 @@ const describeSlot = (slot) =>
 
 const DAY_NAMES = [null, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-const slotFields = ({ dayOfWeek, startTime, endTime, room }) => ({ dayOfWeek, startTime, endTime, room });
+/** What the activity log records of a slot; `lesson` names the subject and class it belongs to. */
+const slotFields = ({ classSubject, dayOfWeek, startTime, endTime, room }) => ({
+  lesson: `${classSubject.subjectName} · ${classSubject.className}`,
+  dayOfWeek,
+  startTime,
+  endTime,
+  room,
+});
 
 export async function createSchedule(body) {
   const slot = { ...body, room: normalizeRoom(body.room) };
-  const id = await writeIfFree(
+  // Read back inside the transaction: the new row is there whatever happens after the commit.
+  const schedule = await writeIfFree(
     () => slot,
     0,
-    (conn) => repo.insertSchedule(slot, conn),
+    async (conn) => toScheduleShape(await repo.findScheduleById(await repo.insertSchedule(slot, conn), conn)),
   );
-  const schedule = toScheduleShape(await repo.findScheduleById(id));
+  const { id } = schedule;
   await record({
     action: 'schedule.create',
     entityId: id,
@@ -143,8 +154,11 @@ export async function createSchedule(body) {
 
 export async function updateSchedule(id, patch) {
   const fields = 'room' in patch ? { ...patch, room: normalizeRoom(patch.room) } : patch;
+  let before;
+  // The row before and after are both read inside the lock, so the log compares what this edit changed.
   const mergedSlot = async (conn) => {
     const existing = ApiError.assertFound(await repo.findScheduleById(id, conn), 'schedule', id);
+    before = toScheduleShape(existing);
     const slot = {
       classSubjectId: existing.classSubjectId,
       dayOfWeek: existing.dayOfWeek,
@@ -156,10 +170,11 @@ export async function updateSchedule(id, patch) {
     assertTimeOrder(slot);
     return slot;
   };
-  const before = await repo.findScheduleById(id);
-  await writeIfFree(mergedSlot, id, (conn) => repo.updateSchedule(id, fields, conn));
-  const schedule = toScheduleShape(await repo.findScheduleById(id));
-  const changes = before && changesOf(slotFields(before), slotFields(schedule));
+  const schedule = await writeIfFree(mergedSlot, id, async (conn) => {
+    await repo.updateSchedule(id, fields, conn);
+    return toScheduleShape(await repo.findScheduleById(id, conn));
+  });
+  const changes = changesOf(slotFields(before), slotFields(schedule));
   if (changes) {
     await record({
       action: 'schedule.update',
@@ -172,7 +187,7 @@ export async function updateSchedule(id, patch) {
 }
 
 export async function deleteSchedule(id) {
-  const row = await repo.findScheduleById(id);
+  const row = ApiError.assertFound(await repo.findScheduleById(id), 'schedule', id);
   if (!(await repo.deleteSchedule(id))) throw ApiError.notFound('schedule', id);
   const schedule = toScheduleShape(row);
   await record({

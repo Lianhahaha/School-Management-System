@@ -13,6 +13,7 @@ import {
   resetWorld,
 } from './helpers/harness.js';
 import { openSession, waitForLockWaits } from './helpers/locks.js';
+import { currentAcademicYear } from '../src/utils/dates.js';
 
 after(closeWorld);
 
@@ -93,7 +94,7 @@ describe('classes and teacher assignment', () => {
     const dup = await api
       .post('/api/v1/classes')
       .set(as(admin))
-      .send({ name: 'Grade 9 - A', gradeLevel: 9, academicYear: '2026-2027' });
+      .send({ name: 'Grade 9 - A', gradeLevel: 9, academicYear: currentAcademicYear() });
     assert.equal(dup.status, 409);
     assert.equal(dup.body.error.details.key, 'classes.uq_classes_year_name');
   });
@@ -135,7 +136,7 @@ describe('classes and teacher assignment', () => {
   it("refuses to deactivate a teacher who still has this year's assignments", async () => {
     const busy = await makeUser('teacher');
     await assignTeacher(admin, {
-      classId: (await makeClass(admin, { academicYear: '2026-2027' })).id,
+      classId: (await makeClass(admin, { academicYear: currentAcademicYear() })).id,
       subjectId: (await makeSubject(admin)).id,
       teacherId: busy.teacherId,
     });

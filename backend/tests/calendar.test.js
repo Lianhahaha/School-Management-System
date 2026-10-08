@@ -118,3 +118,26 @@ describe('school calendar', () => {
     );
   });
 });
+
+describe('moving a one-day calendar entry', () => {
+  let school;
+  before(async () => {
+    await resetWorld();
+    school = await buildSchool();
+  });
+
+  it('keeps a one-day entry one day long when only its start date changes', async () => {
+    const day = addDaysYmd(todayYmd(), 20);
+    const created = await api
+      .post('/api/v1/calendar-events')
+      .set(as(school.admin))
+      .send({ title: 'Founders day', type: 'event', startsOn: day });
+    const moved = await api
+      .patch(`/api/v1/calendar-events/${created.body.data.id}`)
+      .set(as(school.admin))
+      .send({ startsOn: addDaysYmd(day, -5) });
+    assert.equal(moved.status, 200);
+    assert.equal(moved.body.data.startsOn, addDaysYmd(day, -5));
+    assert.equal(moved.body.data.endsOn, addDaysYmd(day, -5));
+  });
+});

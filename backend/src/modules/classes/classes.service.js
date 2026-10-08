@@ -2,6 +2,7 @@ import { ApiError } from '../../utils/ApiError.js';
 import { currentAcademicYear } from '../../utils/dates.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import { personRef } from '../../utils/shapes.js';
+import * as access from '../access/access.service.js';
 import { changedList, changesOf, nameOf, record } from '../activity/activity.service.js';
 import { notifyTeacher } from '../notifications/notifications.service.js';
 import { assertActiveTeacher } from '../teachers/teachers.service.js';
@@ -21,9 +22,15 @@ export const toClassShape = (row) => ({
   updatedAt: row.updatedAt,
 });
 
+/**
+ * The class list is reference data every role may read (names, years, homeroom teacher, head count). With
+ * `visible=true` it is limited to the caller's own classes, so a teacher's class picker never has to filter
+ * a page of the whole school.
+ */
 export async function listClasses(user, listQuery) {
   const query = { ...listQuery, homeroomTeacherId: resolveMe(user, listQuery.homeroomTeacherId, 'teacher') };
-  const { rows, meta } = await repo.listClasses(query);
+  const scope = listQuery.visible ? access.classScope(user, 'c.id') : null;
+  const { rows, meta } = await repo.listClasses(query, scope);
   return { data: rows.map(toClassShape), meta };
 }
 
@@ -71,10 +78,19 @@ export async function updateClass(id, patch) {
       fields: fixedFields,
     });
   }
-  if (patch.homeroomTeacherId) await assertActiveTeacher(patch.homeroomTeacherId);
+  const homeroomChanged =
+    'homeroomTeacherId' in patch && patch.homeroomTeacherId !== (existing.homeroomTeacher?.id ?? null);
+  // Only a new homeroom teacher must be active: keeping a since-deactivated one on an old class is allowed.
+  if (homeroomChanged && patch.homeroomTeacherId) await assertActiveTeacher(patch.homeroomTeacherId);
   await repo.updateClass(id, patch);
   const klass = await getClass(id);
-  const changes = changesOf(logView(existing), logView(klass));
+  const before = logView(existing);
+  const after = logView(klass);
+  const changes = changesOf(before, after) ?? (homeroomChanged ? {} : null);
+  // Two teachers can share a name: a homeroom change is logged even when the names read the same.
+  if (homeroomChanged && !changes.homeroomTeacher) {
+    changes.homeroomTeacher = { from: before.homeroomTeacher, to: after.homeroomTeacher };
+  }
   if (changes) {
     await record({
       action: 'class.update',
@@ -82,9 +98,10 @@ export async function updateClass(id, patch) {
       summary: `Updated the ${changedList(changes)} of ${klass.name}, ${klass.academicYear}`,
       details: { changes },
     });
-    if (changes.homeroomTeacher && klass.homeroomTeacher) {
-      await notifyTeacher(klass.homeroomTeacher.id, homeroomNote(klass));
-    }
+  }
+  // By id: two teachers may share a name, and the new one must still hear about the class.
+  if (homeroomChanged && klass.homeroomTeacher) {
+    await notifyTeacher(klass.homeroomTeacher.id, homeroomNote(klass));
   }
   return klass;
 }
@@ -106,7 +123,7 @@ const logView = (klass) => ({
 });
 
 export async function deleteClass(id) {
-  const klass = await repo.findClassById(id);
+  const klass = ApiError.assertFound(await repo.findClassById(id), 'class', id);
   if (!(await repo.deleteClass(id))) throw ApiError.notFound('class', id);
   await record({
     action: 'class.delete',

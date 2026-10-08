@@ -65,8 +65,15 @@ export async function createEvent(body) {
   return event;
 }
 
-export async function updateEvent(id, patch) {
+/**
+ * A one-day entry moved by its start date alone stays one day long (as on create, where the end defaults to
+ * the start); otherwise moving it earlier would silently turn it into a multi-day holiday.
+ */
+export async function updateEvent(id, input) {
   const existing = await getEvent(id);
+  const movesOneDay =
+    input.startsOn !== undefined && input.endsOn === undefined && existing.startsOn === existing.endsOn;
+  const patch = movesOneDay ? { ...input, endsOn: input.startsOn } : input;
   assertDates(patch.startsOn ?? existing.startsOn, patch.endsOn ?? existing.endsOn);
   await repo.updateEvent(id, patch);
   const event = await getEvent(id);
@@ -83,7 +90,7 @@ export async function updateEvent(id, patch) {
 }
 
 export async function deleteEvent(id) {
-  const existing = await repo.findEventById(id);
+  const existing = ApiError.assertFound(await repo.findEventById(id), 'calendar event', id);
   if (!(await repo.deleteEvent(id))) throw ApiError.notFound('calendar event', id);
   await record({
     action: 'calendar.delete',

@@ -3,7 +3,8 @@ import { toData, toPage } from '../../lib/envelope';
 
 /**
  * params: page, limit, search (name), sortBy, sortOrder, academicYear, gradeLevel,
- * homeroomTeacherId ('me' allowed for a teacher). Teachers and students only see their visible classes.
+ * homeroomTeacherId ('me' allowed for a teacher), visible (true: only the caller's own classes).
+ * The list is school-wide reference data for every role unless `visible` is set.
  */
 export const listClasses = (params) => api.get('/classes', { params }).then(toPage);
 

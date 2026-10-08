@@ -2,6 +2,7 @@ import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import mysql from 'mysql2/promise';
+import { query } from '../src/config/db.js';
 import { env } from '../src/config/env.js';
 import {
   api,
@@ -336,5 +337,35 @@ describe('announcements', () => {
       assert.ok((await markRead(reader)).body.data.updated > 0);
       assert.equal((await api.delete(`/api/v1/users/${reader.id}`).set(as(school.admin))).status, 200);
     });
+  });
+});
+
+describe('schedule activity', () => {
+  let school;
+  before(async () => {
+    await resetWorld();
+    school = await buildSchool();
+  });
+
+  it('logs moving a period to another subject or class', async () => {
+    const created = await api
+      .post('/api/v1/schedules')
+      .set(as(school.admin))
+      .send(slot(school.csA.id, { dayOfWeek: 3, room: 'R-L' }));
+    assert.equal(created.status, 201);
+    const moved = await api
+      .patch(`/api/v1/schedules/${created.body.data.id}`)
+      .set(as(school.admin))
+      .send({ classSubjectId: school.csB.id });
+    assert.equal(moved.status, 200);
+    const [log] = await query(
+      "SELECT summary, details FROM activity_log WHERE action = 'schedule.update' ORDER BY id DESC LIMIT 1",
+    );
+    assert.ok(log, 'the move is logged');
+    assert.match(log.summary, /lesson/);
+    assert.equal(
+      log.details.changes.lesson.to,
+      `${moved.body.data.classSubject.subjectName} · ${school.classB.name}`,
+    );
   });
 });

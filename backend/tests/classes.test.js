@@ -267,3 +267,26 @@ describe('teacher reassignment and the timetable lock', () => {
     }
   });
 });
+
+describe('the visible-classes filter', () => {
+  let school;
+  before(async () => {
+    await resetWorld();
+    school = await buildSchool();
+  });
+
+  it("limits the class list to a teacher's taught and homeroom classes", async () => {
+    const all = await api.get('/api/v1/classes').set(as(school.other));
+    assert.equal(all.body.meta.total, 2, 'the plain list stays school-wide');
+    const own = await api.get('/api/v1/classes?visible=true').set(as(school.other));
+    assert.deepEqual(
+      own.body.data.map((klass) => klass.id),
+      [school.classB.id],
+    );
+    const student = await api.get('/api/v1/classes?visible=true').set(as(school.s1));
+    assert.deepEqual(
+      student.body.data.map((klass) => klass.id),
+      [school.classA.id],
+    );
+  });
+});

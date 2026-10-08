@@ -719,8 +719,10 @@ paths:
       description: |
         Roles: any authenticated user.
 
-        Reference list; not scoped. Search matches the class name. Default order: academic year descending,
-        then name. `homeroomTeacherId=me` lists the caller's homeroom classes (teachers only).
+        Reference list, school-wide for every role unless `visible=true`, which limits it to the caller's
+        own classes (a teacher's taught and homeroom classes, a student's class). Search matches the class
+        name. Default order: academic year descending, then name. `homeroomTeacherId=me` lists the caller's
+        homeroom classes (teachers only).
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Limit'
@@ -739,6 +741,12 @@ paths:
           description: Only classes led by this teacher. Accepts `me`.
           schema:
             $ref: '#/components/schemas/IdOrMe'
+        - name: visible
+          in: query
+          description: Only the classes the caller can see.
+          schema:
+            type: string
+            enum: ['true', 'false']
       responses:
         '200': { $ref: '#/components/responses/ClassListResponse' }
         '400': { $ref: '#/components/responses/BadRequest' }

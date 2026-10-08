@@ -39,25 +39,36 @@ export async function findScheduleById(id, conn) {
   return (await query(`SELECT ${COLUMNS} ${FROM} WHERE sch.id = ?`, [id], conn))[0] ?? null;
 }
 
-export function listSchedules(listQuery, scope) {
-  const where = new WhereBuilder()
-    .addSearch(listQuery.search, ['sub.name', 'c.name', 'sch.room'])
-    .addIf(listQuery.classId, 'cs.class_id = ?')
-    .addIf(listQuery.teacherId, 'cs.teacher_id = ?')
-    .addIf(listQuery.classSubjectId, 'sch.class_subject_id = ?')
-    .addIf(listQuery.dayOfWeek, 'sch.day_of_week = ?')
-    .addIf(listQuery.room, 'sch.room = ?')
-    .addIf(listQuery.academicYear, 'c.academic_year = ?')
+const filtersToWhere = (filters, scope) =>
+  new WhereBuilder()
+    .addSearch(filters.search, ['sub.name', 'c.name', 'sch.room'])
+    .addIf(filters.classId, 'cs.class_id = ?')
+    .addIf(filters.teacherId, 'cs.teacher_id = ?')
+    .addIf(filters.classSubjectId, 'sch.class_subject_id = ?')
+    .addIf(filters.dayOfWeek, 'sch.day_of_week = ?')
+    .addIf(filters.room, 'sch.room = ?')
+    .addIf(filters.academicYear, 'c.academic_year = ?')
     .addScope(scope);
+
+export function listSchedules(listQuery, scope) {
   return selectPage({
     select: COLUMNS,
     from: FROM,
-    where,
+    where: filtersToWhere(listQuery, scope),
     listQuery,
     sortMap: SCHEDULE_SORT_MAP,
     defaultOrder: 'sch.day_of_week ASC, sch.start_time ASC',
     tieBreaker: 'sch.id',
   });
+}
+
+/** Every slot matching `filters` (no paging), in timetable order: for computations such as dashboards. */
+export function findSchedules(filters) {
+  const where = filtersToWhere(filters, null);
+  return query(
+    `SELECT ${COLUMNS} ${FROM} ${where.sql} ORDER BY sch.day_of_week, sch.start_time, sch.id`,
+    where.params,
+  );
 }
 
 export async function insertSchedule({ classSubjectId, dayOfWeek, startTime, endTime, room }, conn) {
@@ -92,7 +103,9 @@ export async function deleteSchedule(id) {
  * slots do not overlap. `excludeId` is the slot being edited (0 when creating).
  */
 export function findOverlaps({ classSubjectId, dayOfWeek, startTime, endTime, room, excludeId = 0 }, conn) {
-  const sameRoom = `(sch.room IS NOT NULL AND ? IS NOT NULL AND LOWER(TRIM(sch.room)) = LOWER(TRIM(?)))`;
+  // The column's case-insensitive, pad-space collation already matches "Lab 1" with "lab 1 "; rooms are
+  // saved trimmed with single spaces (normalizeRoom), so a plain comparison can use the room index.
+  const sameRoom = `(sch.room IS NOT NULL AND ? IS NOT NULL AND sch.room = ?)`;
   return query(
     `SELECT sch.id AS schedule_id, sch.class_subject_id, c.name AS class_name, sub.name AS subject_name,
             sch.day_of_week, sch.start_time, sch.end_time, sch.room,

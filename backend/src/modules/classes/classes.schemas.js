@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   academicYear,
+  boolQuery,
   gradeLevel,
   id,
   idOrMe,
@@ -17,6 +18,8 @@ export const listClassesQuery = listQuery(Object.keys(CLASS_SORT_MAP), {
   academicYear: academicYear.optional(),
   gradeLevel: gradeLevel.optional(),
   homeroomTeacherId: idOrMe.optional(),
+  // Only the classes the caller can see (a teacher's taught and homeroom classes, a student's class).
+  visible: boolQuery.optional(),
 });
 
 export const createClassBody = z.strictObject({
