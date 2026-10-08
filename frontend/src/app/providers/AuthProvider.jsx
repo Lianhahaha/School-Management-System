@@ -78,6 +78,10 @@ export function AuthProvider({ children }) {
     retry: false, // 4xx must not be retried; the retry screen offers a manual retry
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: true, // picks up a deactivation or profile change made by an administrator
+    // A student's class lives in this session (currentEnrollment): refresh it now and then, so an
+    // enrollment or transfer made by an administrator shows without a reload. A failed background
+    // refresh keeps the current session (status stays 'authenticated' while data is present).
+    refetchInterval: (query) => (query.state.data?.role === 'student' ? 60_000 : false),
   });
 
   const status = deriveStatus(session, meQuery);

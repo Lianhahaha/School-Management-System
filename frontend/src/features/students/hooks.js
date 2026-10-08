@@ -16,9 +16,11 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { useInvalidate } from '../../hooks/useInvalidate';
 import { useToast } from '../../hooks/useToast';
 import { fullName } from '../../utils/names';
+import { attendanceKeys } from '../attendance/keys';
 import { classKeys } from '../classes/keys';
 import { dashboardKeys } from '../dashboard/keys';
 import { enrollmentKeys } from '../enrollments/keys';
+import { gradeKeys } from '../grades/keys';
 import { userKeys } from '../users/keys';
 import { getStudent, importStudents, listStudents, updateStudent } from './api';
 import { studentKeys } from './keys';
@@ -53,7 +55,15 @@ export function useUpdateStudent() {
     mutationFn: ({ id, body }) => updateStudent(id, body),
     meta: { silent: true },
     onSuccess: (student) => {
-      invalidate(studentKeys.all, userKeys.all);
+      // The name shows on rosters, enrollments and dashboards too.
+      invalidate(
+        studentKeys.all,
+        userKeys.all,
+        enrollmentKeys.all,
+        attendanceKeys.all,
+        gradeKeys.all,
+        dashboardKeys.all,
+      );
       toast.success(`${fullName(student)} updated`);
     },
   });

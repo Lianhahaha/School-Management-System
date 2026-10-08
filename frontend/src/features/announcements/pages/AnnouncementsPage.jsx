@@ -124,11 +124,7 @@ export default function AnnouncementsPage() {
       <EmptyState
         icon={Megaphone}
         title="No announcements yet"
-        description={
-          isAdmin && list.params.status && list.params.status !== DEFAULT_STATUS
-            ? 'Nothing is in this state right now.'
-            : 'Post one to tell students and teachers what is going on.'
-        }
+        description="Post one to tell students and teachers what is going on."
         action={createButton}
       />
     );

@@ -41,7 +41,9 @@ function StudentAttendanceContent({ academicYear, notEnrolled = false }) {
   const dateTo = list.params.dateTo || today;
   // Typing can still produce an end before the start; the API rejects it, so ask instead of requesting.
   const isRangeValid = dateFrom <= dateTo;
-  const records = useAttendance({ ...list.apiParams, dateFrom, dateTo }, { enabled: isRangeValid });
+  // GET /attendance has no text search: a `search` left in the URL (a shared link) would be refused.
+  const { search: _search, ...listParams } = list.apiParams;
+  const records = useAttendance({ ...listParams, dateFrom, dateTo }, { enabled: isRangeValid });
 
   const subjectOptions = subjects.data?.map(({ value, item }) => ({ value, label: item.subjectName }));
 

@@ -15,9 +15,26 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { createOptionsHook } from '../../hooks/createOptionsHook';
 import { useInvalidate } from '../../hooks/useInvalidate';
 import { useToast } from '../../hooks/useToast';
+import { attendanceKeys } from '../attendance/keys';
 import { classSubjectKeys } from '../classSubjects/keys';
+import { dashboardKeys } from '../dashboard/keys';
+import { gradeKeys } from '../grades/keys';
+import { scheduleKeys } from '../schedules/keys';
 import { createSubject, deleteSubject, listSubjects, updateSubject } from './api';
 import { subjectKeys } from './keys';
+
+/**
+ * Everything that shows a subject's name or is computed with its grade weights: lists of subjects and
+ * lessons, timetables, attendance and grade pages, and the dashboards.
+ */
+const SUBJECT_VIEWS = [
+  subjectKeys.all,
+  classSubjectKeys.all,
+  scheduleKeys.all,
+  attendanceKeys.all,
+  gradeKeys.all,
+  dashboardKeys.all,
+];
 
 export function useSubjects(params, { enabled = true } = {}) {
   return useQuery({
@@ -35,7 +52,7 @@ export function useCreateSubject() {
     mutationFn: createSubject,
     meta: { silent: true },
     onSuccess: (subject) => {
-      invalidate(subjectKeys.all, classSubjectKeys.all);
+      invalidate(...SUBJECT_VIEWS);
       toast.success(`${subject.name} created`);
     },
   });
@@ -48,7 +65,7 @@ export function useUpdateSubject() {
     mutationFn: ({ id, body }) => updateSubject(id, body),
     meta: { silent: true },
     onSuccess: (subject) => {
-      invalidate(subjectKeys.all, classSubjectKeys.all);
+      invalidate(...SUBJECT_VIEWS);
       toast.success(`${subject.name} updated`);
     },
   });
@@ -60,7 +77,7 @@ export function useSetSubjectActive() {
   return useMutation({
     mutationFn: ({ id, isActive }) => updateSubject(id, { isActive }),
     onSuccess: (subject) => {
-      invalidate(subjectKeys.all, classSubjectKeys.all);
+      invalidate(...SUBJECT_VIEWS);
       toast.success(`${subject.name} ${subject.isActive ? 'reactivated' : 'retired'}`);
     },
   });
@@ -72,7 +89,7 @@ export function useDeleteSubject() {
   return useMutation({
     mutationFn: deleteSubject,
     onSuccess: () => {
-      invalidate(subjectKeys.all, classSubjectKeys.all);
+      invalidate(...SUBJECT_VIEWS);
       toast.success('Subject deleted');
     },
   });

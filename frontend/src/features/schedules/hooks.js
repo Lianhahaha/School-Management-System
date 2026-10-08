@@ -18,6 +18,7 @@
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { useInvalidate } from '../../hooks/useInvalidate';
 import { useToast } from '../../hooks/useToast';
+import { attendanceKeys } from '../attendance/keys';
 import { dashboardKeys } from '../dashboard/keys';
 import { createSchedule, deleteSchedule, listSchedules, updateSchedule } from './api';
 import { scheduleKeys } from './keys';
@@ -38,7 +39,7 @@ export function useCreateSchedule() {
     mutationFn: createSchedule,
     meta: { silent: true },
     onSuccess: () => {
-      invalidate(scheduleKeys.all, dashboardKeys.all);
+      invalidate(scheduleKeys.all, dashboardKeys.all, attendanceKeys.all);
       toast.success('Period added to the schedule');
     },
   });
@@ -51,7 +52,7 @@ export function useUpdateSchedule() {
     mutationFn: ({ id, body }) => updateSchedule(id, body),
     meta: { silent: true },
     onSuccess: () => {
-      invalidate(scheduleKeys.all, dashboardKeys.all);
+      invalidate(scheduleKeys.all, dashboardKeys.all, attendanceKeys.all);
       toast.success('Period updated');
     },
   });
@@ -63,7 +64,7 @@ export function useDeleteSchedule() {
   return useMutation({
     mutationFn: deleteSchedule,
     onSuccess: () => {
-      invalidate(scheduleKeys.all, dashboardKeys.all);
+      invalidate(scheduleKeys.all, dashboardKeys.all, attendanceKeys.all);
       toast.success('Period removed');
     },
   });

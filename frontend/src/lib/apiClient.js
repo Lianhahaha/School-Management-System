@@ -6,12 +6,11 @@
  * refreshed token; a second 401 means the session is dead and the user is signed out.
  * Failures become `ApiError`, successes resolve with the whole envelope `{ data, meta? }` (a 204 No
  * Content resolves `{ data: null }`).
- * Feature `api.js` files own the URL paths and unwrap the envelope, so hooks and components
- * never see it:
+ * Feature `api.js` files own the URL paths and unwrap the envelope with lib/envelope, so hooks and
+ * components never see it:
  *
- *   export const listStudents = (params) =>
- *     api.get('/students', { params }).then((r) => ({ items: r.data, meta: r.meta }));
- *   export const getStudent = (id) => api.get(`/students/${id}`).then((r) => r.data);
+ *   export const listStudents = (params) => api.get('/students', { params }).then(toPage);
+ *   export const getStudent = (id) => api.get(`/students/${id}`).then(toData);
  */
 import { signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
@@ -20,6 +19,7 @@ import { ERROR_CODES } from '../constants/shared';
 import { SESSION_EXPIRED_MESSAGE } from '../constants/ui';
 import { toApiParams } from '../utils/listParams';
 import { trackSlow } from './serverWake';
+import { toastBus } from './toastBus';
 
 /** Error codes raised by this client itself; every other code comes from the backend's ERROR_CODES. */
 export const CLIENT_ERROR_CODES = Object.freeze({
@@ -84,14 +84,35 @@ async function getToken(forceRefresh) {
     return await user.getIdToken(forceRefresh);
   } catch (error) {
     if (error?.code === 'auth/network-request-failed') throw networkError();
-    // The refresh token was rejected (revoked, user disabled or deleted): the session is over.
-    await signOut(auth);
-    throw new ApiError({
-      status: 401,
-      code: ERROR_CODES.UNAUTHORIZED,
-      message: SESSION_EXPIRED_MESSAGE,
-    });
+    if (!SESSION_OVER_CODES.has(error?.code)) {
+      // Firebase was busy or failed for a moment (too many requests, internal error): keep the session.
+      throw new ApiError({
+        status: 0,
+        code: CLIENT_ERROR_CODES.NETWORK_ERROR,
+        message: 'Could not check your sign-in just now. Try again in a moment.',
+      });
+    }
+    return endSession();
   }
+}
+
+/** Firebase answers that mean the sign-in itself is gone (revoked, user disabled or deleted). */
+const SESSION_OVER_CODES = new Set([
+  'auth/user-token-expired',
+  'auth/user-disabled',
+  'auth/user-not-found',
+  'auth/invalid-user-token',
+]);
+
+/** Signs out after a rejected session and says why on the next screen; always throws. */
+async function endSession() {
+  toastBus.error(SESSION_EXPIRED_MESSAGE);
+  await signOut(auth);
+  throw new ApiError({
+    status: 401,
+    code: ERROR_CODES.UNAUTHORIZED,
+    message: SESSION_EXPIRED_MESSAGE,
+  });
 }
 
 async function send(path, { method, body, params, needsAuth }, forceRefresh) {
@@ -141,7 +162,8 @@ async function request(path, { method = 'GET', body, params, auth: needsAuth = t
   let response = await send(path, options, false);
   if (response.status === 401 && needsAuth) {
     response = await send(path, options, true);
-    if (response.status === 401) await signOut(auth);
+    // A fresh token was refused too: the session is over.
+    if (response.status === 401) await endSession();
   }
   return readEnvelope(response);
 }

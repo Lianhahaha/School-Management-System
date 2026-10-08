@@ -4,6 +4,7 @@ import {
   dateYMD,
   name,
   nullableField,
+  pastDateYMD,
   phone,
   studentNumber as studentNumberField,
 } from '../../lib/validators';
@@ -17,7 +18,7 @@ export const updateStudentSchema = z.object({
   lastName: name,
   phone: nullableField(phone),
   studentNumber: studentNumberField,
-  dateOfBirth: nullableField(dateYMD),
+  dateOfBirth: nullableField(pastDateYMD), // the API refuses a date of birth that is not in the past
   gender: nullableField(z.enum(GENDERS)),
   address: nullableField(z.string().max(255, 'Use 255 characters or fewer')),
   guardianName: nullableField(name),

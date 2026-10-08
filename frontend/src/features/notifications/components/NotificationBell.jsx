@@ -6,7 +6,7 @@ import { ROLE_HOME } from '../../../constants/ui';
 import { cx } from '../../../utils/cx';
 import { relativeTime } from '../../../utils/date';
 import { countOf } from '../../../utils/format';
-import { useNewAnnouncements } from '../../announcements/hooks';
+import { useMarkAnnouncementsRead, useNewAnnouncements } from '../../announcements/hooks';
 import { useAuth } from '../../auth/hooks';
 import { useMarkNotificationsRead, useNotifications, useUnreadCount } from '../hooks';
 
@@ -54,12 +54,12 @@ function NotificationItem({ notification, onOpen }) {
 /**
  * The bell in the top bar: a red count of unread notifications plus new announcements, and a panel with the
  * newest notifications (and a line for new announcements). Opening a notification marks it read and follows
- * its link; "Mark all read" clears the count. The panel closes on Escape (focus returns to the bell), a
- * click outside it and navigation. The count follows the live refresh, so new notifications appear by
- * themselves.
+ * its link; "Mark all read" clears the whole count, announcements included. The panel closes on Escape
+ * (focus returns to the bell), a click outside it and navigation. The count follows the live refresh, so
+ * new notifications appear by themselves.
  */
 export function NotificationBell() {
-  const { role } = useAuth();
+  const { role, refreshMe } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const panelId = useId();
@@ -75,6 +75,12 @@ export function NotificationBell() {
   const total = unread + newAnnouncements;
   const list = useNotifications({ limit: PANEL_SIZE }, { enabled: isOpen });
   const markRead = useMarkNotificationsRead();
+  const markAnnouncementsRead = useMarkAnnouncementsRead();
+
+  const markAllRead = () => {
+    if (unread > 0) markRead.mutate();
+    if (newAnnouncements > 0) markAnnouncementsRead.mutate();
+  };
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -96,6 +102,8 @@ export function NotificationBell() {
 
   const open = (notification) => {
     if (!notification.isRead) markRead.mutate([notification.id]);
+    // A student's class comes from the session (/auth/me): reload it so the class page shows the new one.
+    if (notification.type === 'enrollment') refreshMe();
     setOpenedOn(null);
     if (notification.link) navigate(notification.link);
   };
@@ -134,12 +142,12 @@ export function NotificationBell() {
         >
           <div className="flex items-center justify-between gap-2 px-3 pt-2 pb-1">
             <h2 className="text-sm font-semibold text-gray-900">Notifications</h2>
-            {unread > 0 && (
+            {total > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => markRead.mutate()}
-                isLoading={markRead.isPending}
+                onClick={markAllRead}
+                isLoading={markRead.isPending || markAnnouncementsRead.isPending}
               >
                 Mark all read
               </Button>
@@ -148,6 +156,7 @@ export function NotificationBell() {
           {newAnnouncements > 0 && (
             <Link
               to={`${ROLE_HOME[role]}/announcements`}
+              onClick={() => setOpenedOn(null)}
               className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-100"
             >
               <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-ink">

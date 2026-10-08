@@ -120,7 +120,11 @@ export function AnnouncementFormModal({ open, onClose, announcement }) {
           <FormField
             label="Class"
             error={errors.classId?.message}
-            hint={isTeacher ? 'Only students of this class see it.' : 'Leave empty for the whole school.'}
+            hint={
+              isTeacher
+                ? 'Only people of this class in the audience above see it.'
+                : 'Leave empty for the whole school.'
+            }
             required={isTeacher}
           >
             <ClassSelect

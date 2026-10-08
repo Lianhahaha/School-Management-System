@@ -20,6 +20,7 @@ import { useToast } from '../../hooks/useToast';
 import { fullName } from '../../utils/names';
 import { classKeys } from '../classes/keys';
 import { classSubjectKeys } from '../classSubjects/keys';
+import { dashboardKeys } from '../dashboard/keys';
 import { scheduleKeys } from '../schedules/keys';
 import { userKeys } from '../users/keys';
 import { getTeacher, listTeachers, updateTeacher } from './api';
@@ -45,7 +46,14 @@ export function useUpdateTeacher() {
     mutationFn: ({ id, body }) => updateTeacher(id, body),
     meta: { silent: true },
     onSuccess: (teacher) => {
-      invalidate(teacherKeys.all, userKeys.all, classSubjectKeys.all, classKeys.all, scheduleKeys.all);
+      invalidate(
+        teacherKeys.all,
+        userKeys.all,
+        classSubjectKeys.all,
+        classKeys.all,
+        scheduleKeys.all,
+        dashboardKeys.all,
+      );
       toast.success(`${fullName(teacher)} updated`);
     },
   });
