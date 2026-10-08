@@ -151,7 +151,7 @@ GitHub runs the same backend checks (lint, secrets check, `npm test` against MyS
 
 ```
 backend/
-  database/    schema.sql (12 tables) and seed.sql (demo data)
+  database/    schema.sql (17 tables) and seed.sql (demo data)
   docs/        openapi.yaml, the spec behind /api/docs
   scripts/     migrate, seed, doctor, get-token, check-constants, check-secrets
   src/

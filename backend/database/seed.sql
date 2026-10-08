@@ -217,6 +217,8 @@ INSERT INTO announcements (author_id, title, body, audience, class_id, published
 -- ---------- Reset (dev only) ---------------------------------------------------
 -- Preferred: npm run db:reset (drops the database, migrate, seed).
 -- Manual alternative — children before parents, so FK checks can stay ON:
+-- DELETE FROM announcement_reads; DELETE FROM notifications; DELETE FROM activity_log;
 -- DELETE FROM grades; DELETE FROM assessments; DELETE FROM attendance;
 -- DELETE FROM schedules; DELETE FROM announcements; DELETE FROM enrollments;
--- DELETE FROM class_subjects; DELETE FROM classes; DELETE FROM subjects;
+-- DELETE FROM class_subjects; DELETE FROM subject_grade_weights; DELETE FROM classes;
+-- DELETE FROM subjects; DELETE FROM calendar_events;

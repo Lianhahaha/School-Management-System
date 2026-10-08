@@ -36,9 +36,13 @@ for (const file of trackedFiles) {
   }
 }
 
-const keyHits = git('grep', '-l', '--cached', '-e', '"private_key"', '--', ':!*.md', ':!**/check-secrets.js');
-for (const file of keyHits.split('\n').filter(Boolean))
-  problems.push(`${file}: contains a private_key field`);
+// Staged/tracked content, then untracked files that are not ignored (they would be picked up by `git add .`).
+const grepKey = (...scope) =>
+  git('grep', '-l', ...scope, '-e', '"private_key"', '--', ':!*.md', ':!**/check-secrets.js');
+const keyHits = new Set(
+  [grepKey('--cached'), grepKey('--untracked', '--exclude-standard')].join('\n').split('\n').filter(Boolean),
+);
+for (const file of keyHits) problems.push(`${file}: contains a private_key field`);
 
 if (problems.length) {
   console.error('✖ Secrets check failed:');

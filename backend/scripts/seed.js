@@ -160,6 +160,12 @@ export async function seed() {
 async function main() {
   assertFirebaseReady();
   console.log(`Seeding ${env.DB_NAME} (Firebase project ${firebase.projectId})`);
+  if (!process.env.SEED_PASSWORD && !['127.0.0.1', 'localhost', '::1'].includes(env.DB_HOST)) {
+    console.warn(
+      `! ${env.DB_HOST} is not this machine and SEED_PASSWORD is not set: every demo account, admins included,\n` +
+        `  gets the password published in the README. Set SEED_PASSWORD for a site that is not a public demo.`,
+    );
+  }
   await seed();
   console.log(`✔ Seed complete. Sign in with any account above, password: ${env.SEED_PASSWORD}`);
 }

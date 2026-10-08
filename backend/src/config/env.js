@@ -15,7 +15,15 @@ const backendRoot = path.resolve(import.meta.dirname, '..', '..');
 const boolString = z.enum(['true', 'false']).transform((value) => value === 'true');
 
 const machineTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-const isSupportedTimeZone = (tz) => tz === 'UTC' || Intl.supportedValuesOf('timeZone').includes(tz);
+/** Any zone the runtime can format in. Intl.supportedValuesOf lists canonical ids only and misses aliases such as Asia/Kolkata. */
+const isSupportedTimeZone = (tz) => {
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),

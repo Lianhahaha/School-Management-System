@@ -5,7 +5,7 @@
  * Checks: Node version, backend/.env, MySQL (reachable, version, database, tables), Firebase service
  * account (valid, accepted by Firebase), frontend/.env (same project as the service account), API port.
  */
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import path from 'node:path';
 import mysql from 'mysql2/promise';
@@ -16,7 +16,13 @@ import { frontendEnvPath, readFrontendEnv } from './lib/frontendEnv.js';
 
 const REQUIRED_NODE = [22, 22];
 const REQUIRED_MYSQL = [8, 0, 19];
-const EXPECTED_TABLES = 12;
+
+/** Every table schema.sql creates, so a database migrated by an older schema is caught by name. */
+const EXPECTED_TABLES = [
+  ...readFileSync(path.join(env.backendRoot, 'database', 'schema.sql'), 'utf8').matchAll(
+    /CREATE TABLE IF NOT EXISTS (\w+)/g,
+  ),
+].map((match) => match[1]);
 
 const results = [];
 const record = (level, name, detail = '') => {
@@ -69,17 +75,14 @@ async function checkDatabase() {
       return record('fail', `database ${env.DB_NAME}`, 'missing; run `npm run db:migrate`');
     }
     const [tables] = await conn.query(
-      'SELECT COUNT(*) AS total FROM information_schema.tables WHERE table_schema = ?',
+      'SELECT table_name AS name FROM information_schema.tables WHERE table_schema = ?',
       [env.DB_NAME],
     );
-    if (tables[0].total >= EXPECTED_TABLES)
-      record('ok', `database ${env.DB_NAME}`, `${tables[0].total} tables`);
+    const present = new Set(tables.map((table) => table.name));
+    const missing = EXPECTED_TABLES.filter((name) => !present.has(name));
+    if (!missing.length) record('ok', `database ${env.DB_NAME}`, `all ${EXPECTED_TABLES.length} tables`);
     else
-      record(
-        'fail',
-        `database ${env.DB_NAME}`,
-        `${tables[0].total} tables, expected ${EXPECTED_TABLES}; run \`npm run db:migrate\``,
-      );
+      record('fail', `database ${env.DB_NAME}`, `missing ${missing.join(', ')}; run \`npm run db:migrate\``);
   } finally {
     await conn.end();
   }
