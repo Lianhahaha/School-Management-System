@@ -19,7 +19,8 @@ export async function insertMany(notes) {
 
 export function listForUser(userId, listQuery) {
   const where = new WhereBuilder().add('n.user_id = ?', userId);
-  if (listQuery.unread) where.add('n.read_at IS NULL');
+  if (listQuery.unread === true) where.add('n.read_at IS NULL');
+  if (listQuery.unread === false) where.add('n.read_at IS NOT NULL');
   return selectPage({
     select: COLUMNS,
     from: 'FROM notifications n',

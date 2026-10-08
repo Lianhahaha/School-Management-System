@@ -58,13 +58,14 @@ export class WhereBuilder {
 /**
  * Builds the SET list of an UPDATE from a camelCase patch.
  * `columnMap` is the allow-list: API field -> SQL column (qualified when the UPDATE joins tables).
- * Returns `{ sql, params }`, or null when the patch touches no mapped field.
+ * Returns `{ sql, params }`, or null when the patch touches no mapped field. A field set to `undefined`
+ * is left out (only `null` clears a column), so `{ ...patch, phone: maybePhone }` never wipes by accident.
  */
 export function buildSet(columnMap, fields) {
   const sets = [];
   const params = [];
   for (const [key, column] of Object.entries(columnMap)) {
-    if (key in fields) {
+    if (fields[key] !== undefined) {
       sets.push(`${column} = ?`);
       params.push(fields[key]);
     }

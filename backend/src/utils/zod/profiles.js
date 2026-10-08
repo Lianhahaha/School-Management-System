@@ -12,7 +12,7 @@ import {
   password,
   pastDate,
   phone,
-  shortText,
+  optionalText,
   studentNumber,
 } from './common.js';
 
@@ -29,7 +29,7 @@ export const accountFields = {
 export const studentDetailFields = {
   dateOfBirth: pastDate.optional(),
   gender: z.enum(GENDERS).optional(),
-  address: shortText(255).optional(),
+  address: optionalText(255).optional(),
   guardianName: name.optional(),
   guardianPhone: phone.optional(),
 };
@@ -45,6 +45,6 @@ export const studentProfileInput = z.strictObject({
 export const teacherProfileInput = z.strictObject({
   employeeNumber: employeeNumber.optional(),
   hireDate: dateStr.optional(),
-  department: shortText(100).optional(),
-  qualification: shortText(150).optional(),
+  department: optionalText(100).optional(),
+  qualification: optionalText(150).optional(),
 });

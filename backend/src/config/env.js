@@ -56,6 +56,8 @@ const schema = z.object({
   DB_NAME: z
     .string()
     .regex(/^[A-Za-z0-9_]+$/, { error: 'letters, digits and underscores only' })
+    // The timetable lock is named "<DB_NAME>:timetable" and MySQL lock names stop at 64 characters.
+    .max(54, { error: 'at most 54 characters' })
     .default('school_management'),
   DB_CONNECTION_LIMIT: z.coerce.number().int().min(1).max(50).default(10),
   // A hosted MySQL requires an encrypted connection: DB_SSL=true, plus the provider's CA certificate

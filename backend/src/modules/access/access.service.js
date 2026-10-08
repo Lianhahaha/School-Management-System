@@ -8,9 +8,11 @@
  *   student  : own records and the class of their active enrollment.
  *
  * Every `assert*` throws 403 FORBIDDEN with a stable `details.reason`.
- * List endpoints follow one rule: an omitted filter means "my own scope"
- * (`classScope`, `scopedStudentId`); an explicit filter outside the caller's
- * scope is a 403, never silently narrowed.
+ * List endpoints follow one rule: rows are always limited to the caller's scope (`classScope`,
+ * `scopedStudentId`). An explicit class or class-subject filter outside it is a 403
+ * (`assertFiltersInScope`), as is a student asking for another student; other filters (a student,
+ * teacher or assessment id from a teacher) only narrow the rows within the scope, so a foreign id
+ * simply matches nothing.
  */
 import { ApiError } from '../../utils/ApiError.js';
 import * as repo from './access.repository.js';
@@ -22,7 +24,7 @@ export const isStudent = (user) => user.role === 'student';
 export async function assertCanViewClass(user, classId) {
   if (isAdmin(user)) return;
   if (isTeacher(user) && (await repo.teacherCanViewClass(user.teacherId, classId))) return;
-  if (isStudent(user) && user.activeClassId === classId) return;
+  if (isStudent(user) && classId != null && user.activeClassId === classId) return;
   throw ApiError.forbidden('class_not_visible', 'you do not have access to this class');
 }
 

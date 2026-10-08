@@ -35,7 +35,10 @@ const toEnrollmentShape = (row) => ({
 
 export async function listEnrollments(user, listQuery) {
   const studentId = access.scopedStudentId(user, resolveMe(user, listQuery.studentId, 'student'));
-  if (listQuery.classId !== undefined) await access.assertCanViewClass(user, listQuery.classId);
+  // A student's rows are already limited to themselves, so filtering by a class they left is fine.
+  if (listQuery.classId !== undefined && !access.isStudent(user)) {
+    await access.assertCanViewClass(user, listQuery.classId);
+  }
   // Students see their own whole history (no class scope); teachers only enrollments of visible classes.
   const scope = access.isStudent(user) ? null : access.classScope(user, 'e.class_id');
   const { rows, meta } = await repo.listEnrollments({ ...listQuery, studentId }, scope);

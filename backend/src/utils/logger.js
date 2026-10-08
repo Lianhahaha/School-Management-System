@@ -7,14 +7,24 @@ import { env } from '../config/env.js';
 const LEVELS = { debug: 10, info: 20, warn: 30, error: 40 };
 const threshold = LEVELS[env.LOG_LEVEL];
 
+/** JSON of `value`; a value JSON cannot hold (a BigInt, a cycle) is logged as a note instead of throwing. */
+function toJson(value) {
+  try {
+    return JSON.stringify(value);
+  } catch (error) {
+    return JSON.stringify({ unserializableMeta: String(error) });
+  }
+}
+
 function write(level, message, meta) {
   if (LEVELS[level] < threshold) return;
   const stream = level === 'error' || level === 'warn' ? process.stderr : process.stdout;
   if (env.isProd) {
-    stream.write(`${JSON.stringify({ t: new Date().toISOString(), level, message, ...meta })}\n`);
+    // The fixed keys come last, so a meta key named "message" or "level" cannot replace them.
+    stream.write(`${toJson({ ...meta, t: new Date().toISOString(), level, message })}\n`);
     return;
   }
-  const extra = meta && Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
+  const extra = meta && Object.keys(meta).length ? ` ${toJson(meta)}` : '';
   stream.write(`[${new Date().toISOString()}] ${level.toUpperCase().padEnd(5)} ${message}${extra}\n`);
 }
 

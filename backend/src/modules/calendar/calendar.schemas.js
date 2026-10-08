@@ -6,12 +6,13 @@ import {
   idParams,
   listQuery,
   patchOf,
+  optionalText,
   shortText,
 } from '../../utils/zod/common.js';
 import { CALENDAR_SORT_MAP } from './calendar.repository.js';
 
 const title = shortText(150).min(1, { error: 'required' });
-const description = shortText(500);
+const description = optionalText(500);
 const type = z.enum(CALENDAR_EVENT_TYPES);
 
 /** dateFrom / dateTo select the events that overlap the range (a month view asks for its first and last day). */

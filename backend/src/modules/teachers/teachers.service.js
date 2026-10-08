@@ -33,7 +33,9 @@ const toTeacherShape = (row) => ({
 
 /** The `profile` object of a teacher user, for the account shape. */
 export async function getProfileByUserId(userId) {
-  return toTeacherProfile(await repo.findTeacherByUserId(userId));
+  return toTeacherProfile(
+    ApiError.assertFound(await repo.findTeacherByUserId(userId), 'teacher profile', userId),
+  );
 }
 
 /**

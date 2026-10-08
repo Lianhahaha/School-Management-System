@@ -12,7 +12,7 @@ import {
   pastDate,
   patchOf,
   phone,
-  shortText,
+  optionalText,
   studentNumber,
 } from '../../utils/zod/common.js';
 import { STUDENT_SORT_MAP } from './students.repository.js';
@@ -32,7 +32,7 @@ export const updateStudentBody = patchOf({
   studentNumber,
   dateOfBirth: pastDate.nullable(),
   gender: z.enum(GENDERS).nullable(),
-  address: shortText(255).nullable(),
+  address: optionalText(255).nullable(),
   guardianName: name.nullable(),
   guardianPhone: phone.nullable(),
   admissionDate: dateStr,

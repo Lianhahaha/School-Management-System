@@ -55,19 +55,25 @@ async function start() {
     process.exit(1);
   });
 
-  const shutdown = (signal) => {
+  const shutdown = (signal, exitCode = 0) => {
     logger.info(`${signal} received, shutting down`);
     server.close(async () => {
       await closePool().catch(() => {});
-      process.exit(0);
+      process.exit(exitCode);
     });
     setTimeout(() => process.exit(1), 5000).unref();
   };
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('unhandledRejection', (reason) =>
-    logger.error('unhandled rejection', { reason: String(reason) }),
-  );
+  // A rejection nobody handled leaves the process in an unknown state: log it and restart cleanly
+  // (the host starts the service again), rather than keep serving as if nothing happened.
+  process.on('unhandledRejection', (reason) => {
+    logger.error('unhandled rejection, shutting down', {
+      reason: String(reason),
+      stack: reason instanceof Error ? reason.stack : undefined,
+    });
+    shutdown('unhandledRejection', 1);
+  });
 }
 
 start();

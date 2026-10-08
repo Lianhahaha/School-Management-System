@@ -36,7 +36,7 @@ export async function register(body) {
 export const getMe = (user) => usersService.getAccount(user.id);
 
 export async function updateMe(user, patch) {
-  if (user.studentId) {
+  if (user.role === 'student') {
     await studentsService.updateStudent(user.studentId, patch);
     return usersService.getAccount(user.id);
   }

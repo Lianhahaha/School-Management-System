@@ -46,9 +46,15 @@ export const name = z
   .string()
   .trim()
   .min(1, 'This field is required')
-  .max(100, 'Use 100 characters or fewer');
+  .max(100, 'Use 100 characters or fewer')
+  .refine((value) => /\p{L}/u.test(value), 'Use letters in a name');
 
-export const phone = z.string().trim().regex(PHONE_REGEX, 'Enter a valid phone number');
+/** Same rule as the API: digits with + ( ) - and spaces, at least 7 digits. */
+export const phone = z
+  .string()
+  .trim()
+  .regex(PHONE_REGEX, 'Enter a valid phone number')
+  .refine((value) => (value.match(/\d/g) ?? []).length >= 7, 'Enter a valid phone number');
 
 export const dateYMD = z
   .string()
@@ -69,12 +75,14 @@ export const studentNumber = z
   .string()
   .trim()
   .toUpperCase()
+  .max(20, 'Use 20 characters or fewer')
   .regex(STUDENT_NUMBER_REGEX, 'Use the format STU-2026-0001');
 
 export const employeeNumber = z
   .string()
   .trim()
   .toUpperCase()
+  .max(20, 'Use 20 characters or fewer')
   .regex(EMPLOYEE_NUMBER_REGEX, 'Use the format EMP-2026-0001');
 
 export const subjectCode = z

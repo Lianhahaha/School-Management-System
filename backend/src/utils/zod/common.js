@@ -43,14 +43,24 @@ export const timeStr = z.string().regex(TIME_REGEX, { error: 'expected HH:MM (24
 
 export const isoDateTime = z.iso.datetime({ offset: true, error: 'expected an ISO-8601 date-time' });
 
-export const email = z.email({ error: 'invalid email address' }).trim().toLowerCase().max(255);
+/** Trimmed and lower-cased before the format check, so a pasted " Ana@School.ph " is accepted. */
+export const email = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .pipe(z.email({ error: 'invalid email address' }).max(255));
 
 export const password = z
   .string()
   .min(PASSWORD_MIN_LENGTH, { error: `password must be at least ${PASSWORD_MIN_LENGTH} characters` })
   .max(PASSWORD_MAX_LENGTH);
 
-export const phone = z.string().trim().regex(PHONE_REGEX, { error: 'invalid phone number' });
+/** Digits with optional +, spaces, dashes and brackets, and at least 7 digits ("-------" is not a phone). */
+export const phone = z
+  .string()
+  .trim()
+  .regex(PHONE_REGEX, { error: 'invalid phone number' })
+  .refine((value) => (value.match(/\d/g) ?? []).length >= 7, { error: 'invalid phone number' });
 
 /**
  * A name typed all in lower case ("lian harhar", "o'brien") gets a capital at the start of each word
@@ -61,21 +71,34 @@ export const capitalizeIfLowercase = (value) =>
     ? value.replace(/(^|[\s'-])(\p{L})/gu, (_, separator, letter) => separator + letter.toUpperCase())
     : value;
 
-/** A person's name (first, last, guardian), stored with capitals even when typed in lower case. */
-export const name = z.string().trim().min(1, { error: 'required' }).max(100).transform(capitalizeIfLowercase);
+/**
+ * A person's name (first, last, guardian), stored with capitals even when typed in lower case. It must
+ * contain a letter, so digits, punctuation or invisible characters alone are refused.
+ */
+export const name = z
+  .string()
+  .trim()
+  .min(1, { error: 'required' })
+  .max(100)
+  .refine((value) => /\p{L}/u.test(value), { error: 'must contain a letter' })
+  .transform(capitalizeIfLowercase);
 
 export const shortText = (max) => z.string().trim().max(max);
+
+/** Optional free text: trimmed, and blank becomes null, so an empty field is stored as "no value". */
+export const optionalText = (max) => shortText(max).transform((value) => value || null);
 
 export const academicYear = z
   .string()
   .regex(ACADEMIC_YEAR_REGEX, { error: 'expected YYYY-YYYY' })
   .refine(isConsecutiveAcademicYear, { error: 'second year must be the first year + 1' });
 
-export const studentNumber = z.string().trim().toUpperCase().regex(STUDENT_NUMBER_REGEX, {
+// At most 20 characters: the columns are VARCHAR(20).
+export const studentNumber = z.string().trim().toUpperCase().max(20).regex(STUDENT_NUMBER_REGEX, {
   error: 'expected STU-YYYY-NNNN',
 });
 
-export const employeeNumber = z.string().trim().toUpperCase().regex(EMPLOYEE_NUMBER_REGEX, {
+export const employeeNumber = z.string().trim().toUpperCase().max(20).regex(EMPLOYEE_NUMBER_REGEX, {
   error: 'expected EMP-YYYY-NNNN',
 });
 

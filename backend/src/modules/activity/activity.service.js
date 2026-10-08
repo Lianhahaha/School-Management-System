@@ -66,6 +66,9 @@ export function changedList(changes) {
  *   request's user (pass it when there is none, for example the account a self-registration created)
  */
 export async function record({ action, entityId, summary, details, actor = currentUser() }) {
+  // Cut by whole characters (code points), as the column counts them, so an emoji is never split in two.
+  const chars = [...summary];
+  const fittedSummary = chars.length > 255 ? `${chars.slice(0, 254).join('')}…` : summary;
   try {
     await repo.insertEntry({
       actorId: actor?.id ?? null,
@@ -74,7 +77,7 @@ export async function record({ action, entityId, summary, details, actor = curre
       action,
       area: AREA_OF[action.split('.')[0]],
       entityId,
-      summary: summary.length > 255 ? `${summary.slice(0, 254)}…` : summary,
+      summary: fittedSummary,
       details,
     });
   } catch (error) {

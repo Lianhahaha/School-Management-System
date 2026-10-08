@@ -54,7 +54,10 @@ export const pool = mysql.createPool({
 });
 
 pool.on('connection', (connection) => {
-  connection.query("SET time_zone = '+00:00'");
+  // A callback, so a failure is logged instead of surfacing as an unhandled 'error' event.
+  connection.query("SET time_zone = '+00:00'", (error) => {
+    if (error) logger.error('could not set the session time zone to UTC', { error: String(error) });
+  });
 });
 
 /**

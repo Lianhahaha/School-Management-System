@@ -50,7 +50,8 @@ const toStudentShape = (row) => ({
 
 /** `{ profile, currentEnrollment }` of a student user, for the account shape. */
 export async function getProfileByUserId(userId) {
-  const row = await repo.findStudentByUserId(userId);
+  // A student account always has its profile row; a missing one (a manual fix gone wrong) is a 404, not a crash.
+  const row = ApiError.assertFound(await repo.findStudentByUserId(userId), 'student profile', userId);
   return { profile: toStudentProfile(row), currentEnrollment: toCurrentEnrollment(row) };
 }
 

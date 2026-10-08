@@ -11,11 +11,23 @@ import { logger } from '../../utils/logger.js';
 import { currentUser } from '../../utils/requestContext.js';
 import * as repo from './notifications.repository.js';
 
+/** `text` cut to `max` characters (whole code points) with an ellipsis, so a long name cannot overflow a column. */
+const fit = (text, max) => {
+  if (text == null) return text;
+  const chars = [...text];
+  return chars.length > max ? `${chars.slice(0, max - 1).join('')}…` : text;
+};
+
 /** Inserts the notes `[{ userId, type, title, body?, link? }]`, leaving out the caller's own. Never throws. */
 async function notify(notes) {
   const actorId = currentUser()?.id;
   try {
-    await repo.insertMany(notes.filter((note) => note.userId && note.userId !== actorId));
+    await repo.insertMany(
+      notes
+        .filter((note) => note.userId && note.userId !== actorId)
+        // title VARCHAR(200), body VARCHAR(300): names in titles can be up to 100 characters each.
+        .map((note) => ({ ...note, title: fit(note.title, 200), body: fit(note.body, 300) })),
+    );
   } catch (error) {
     logger.error('could not write notifications', { count: notes.length, error: String(error) });
   }

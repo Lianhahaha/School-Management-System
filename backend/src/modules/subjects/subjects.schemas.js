@@ -1,10 +1,18 @@
 import { z } from 'zod';
 import { ASSESSMENT_TYPES } from '../../constants/shared.js';
-import { boolQuery, idParams, listQuery, patchOf, shortText, subjectCode } from '../../utils/zod/common.js';
+import {
+  boolQuery,
+  idParams,
+  listQuery,
+  optionalText,
+  patchOf,
+  shortText,
+  subjectCode,
+} from '../../utils/zod/common.js';
 import { SUBJECT_SORT_MAP } from './subjects.repository.js';
 
 const name = shortText(100).min(1, { error: 'required' });
-const description = shortText(1000);
+const description = optionalText(1000);
 
 /** Percent per assessment type, whole numbers adding up to 100; a type left out counts 0. */
 const gradeWeights = z
