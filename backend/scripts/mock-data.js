@@ -1,5 +1,5 @@
 /**
- * mock-data.js — a complete, clearly tagged mock school for manual testing, and its removal.
+ * mock-data.js â€” a complete, clearly tagged mock school for manual testing, and its removal.
  *
  *   node --env-file=.env.cloud scripts/mock-data.js add      create it (refused while mock data exists)
  *   node --env-file=.env.cloud scripts/mock-data.js status   count what is there
@@ -391,7 +391,7 @@ async function buildSchool({ admin, teachers, students }, conn) {
         addDaysYmd(examWeek, 2),
       ],
       [
-        '[Mock] Teachers’ in-service day',
+        '[Mock] Teachersâ€™ in-service day',
         'No classes for students.',
         'holiday',
         addDaysYmd(examWeek, 10),
@@ -663,7 +663,7 @@ async function buildSchool({ admin, teachers, students }, conn) {
     admin.id,
     'signup',
     `New student sign-up: ${students[30].firstName} ${students[30].lastName}`,
-    `${email(students[30].key)} · needs a class`,
+    `${email(students[30].key)} Â· needs a class`,
     `/admin/students/${students[30].studentId}`,
     null,
   ]);
@@ -695,7 +695,7 @@ async function add() {
   const totals = await withTransaction((conn) => buildSchool(cast, conn));
   await firebase.updateUser(totals.deactivated.firebaseUid, { disabled: true });
   console.log(
-    `✔ Mock school added: 39 accounts, 5 classes, 6 subjects, ${totals.attendance} attendance marks, ${totals.grades} grades.`,
+    `âœ” Mock school added: 39 accounts, 5 classes, 6 subjects, ${totals.attendance} attendance marks, ${totals.grades} grades.`,
   );
   console.log(`  Sign in with any account below, password: ${PASSWORD}`);
   console.log(`    admin    ${email(ADMIN.key)}`);
@@ -725,9 +725,11 @@ async function findMock(conn) {
     'SELECT id FROM class_subjects WHERE class_id IN (?) OR subject_id IN (?) OR teacher_id IN (?)',
     [ids(classIds), ids(subjectIds), ids(teacherIds)],
   );
-  const assessmentIds = await column('SELECT id FROM assessments WHERE class_subject_id IN (?)', [
-    ids(classSubjectIds),
-  ]);
+  // Mock assessments: in mock lessons, or "[Mock]" ones added to a real class by `attach`.
+  const assessmentIds = await column(
+    "SELECT id FROM assessments WHERE class_subject_id IN (?) OR title LIKE '[Mock]%'",
+    [ids(classSubjectIds)],
+  );
   const announcementIds = await column(
     "SELECT id FROM announcements WHERE author_id IN (?) OR class_id IN (?) OR title LIKE '[Mock]%'",
     [ids(userIds), ids(classIds)],
@@ -846,18 +848,120 @@ async function remove() {
     }
   }
   console.log(`  Firebase: ${known.size} sign-ins deleted`);
-  console.log('✔ Mock school removed.');
+  console.log('âœ” Mock school removed.');
 }
 
-const COMMANDS = { add, status, remove };
+/**
+ * Gives an existing (real) student mock grades, so their own sign-in has something to show: a completed place
+ * in last year's mock class with grades in all three periods, and "[Mock]" 1st-semester assessments with
+ * grades in their current class. `remove` deletes all of it and leaves the account and its class as they were.
+ */
+async function attach() {
+  const target = process.argv[3];
+  if (!target) throw new Error('Usage: mock-data.js attach <student e-mail>');
+  const [student] = await query(
+    'SELECT s.id AS student_id FROM students s JOIN users u ON u.id = s.user_id WHERE u.email = ?',
+    [target.toLowerCase()],
+  );
+  if (!student) throw new Error(`No student account ${target}`);
+  const [pastClass] = await query(
+    "SELECT id FROM classes WHERE name = 'Grade 9 - A (Mock)' AND academic_year = ?",
+    [PAST_YEAR],
+  );
+  if (!pastClass) throw new Error('Run `add` first: last yearâ€™s mock class is missing.');
+  const [active] = await query(
+    "SELECT class_id, enrolled_on FROM enrollments WHERE student_id = ? AND status = 'active'",
+    [student.studentId],
+  );
+  const ability = 0.7 + rand() * 0.25;
+  const scoreOf = (maxScore) => Math.round(maxScore * Math.min(1, ability + (rand() - 0.5) * 0.2) * 2) / 2;
+
+  const summary = await withTransaction(async (conn) => {
+    const gradeRows = [];
+    // Last year: a completed place in Grade 9 - A (Mock) and a grade on each of its assessments.
+    const pastEnrolled = await query(
+      'SELECT 1 FROM enrollments WHERE student_id = ? AND class_id = ?',
+      [student.studentId, pastClass.id],
+      conn,
+    );
+    if (!pastEnrolled.length) {
+      await run(
+        "INSERT INTO enrollments (student_id, class_id, status, enrolled_on, left_on) VALUES (?, ?, 'completed', ?, ?)",
+        [student.studentId, pastClass.id, academicYearStart(PAST_YEAR), YEAR_START],
+        conn,
+      );
+    }
+    const pastAssessments = await query(
+      `SELECT a.id, a.max_score, t.user_id AS grader FROM assessments a
+       JOIN class_subjects cs ON cs.id = a.class_subject_id JOIN teachers t ON t.id = cs.teacher_id
+       WHERE cs.class_id = ? AND a.id NOT IN (SELECT assessment_id FROM grades WHERE student_id = ?)`,
+      [pastClass.id, student.studentId],
+      conn,
+    );
+    for (const a of pastAssessments)
+      gradeRows.push([a.id, student.studentId, scoreOf(a.maxScore), null, a.grader]);
+
+    // This year: "[Mock]" assessments in each lesson of the student's current class, graded.
+    let added = 0;
+    if (active) {
+      const lessons = await query(
+        'SELECT cs.id, t.user_id AS grader FROM class_subjects cs JOIN teachers t ON t.id = cs.teacher_id WHERE cs.class_id = ?',
+        [active.classId],
+        conn,
+      );
+      const plan = [
+        ['[Mock] Quiz 1', 'quiz', 20, 17],
+        ['[Mock] Quiz 2', 'quiz', 20, 31],
+        ['[Mock] Unit test', 'test', 50, 45],
+        ['[Mock] Reflection paper', 'assignment', 10, 52],
+      ];
+      for (const [index, lesson] of lessons.entries()) {
+        for (const [title, type, maxScore, offset] of plan) {
+          const day = weekdayFrom(addDaysYmd(YEAR_START, offset + index));
+          if (day >= TODAY) continue;
+          const exists = await query(
+            'SELECT id FROM assessments WHERE class_subject_id = ? AND term = ? AND title = ?',
+            [lesson.id, 'term1', title],
+            conn,
+          );
+          const assessmentId = exists.length
+            ? exists[0].id
+            : (
+                await run(
+                  'INSERT INTO assessments (class_subject_id, title, type, term, max_score, assessed_on) VALUES (?, ?, ?, ?, ?, ?)',
+                  [lesson.id, title, type, 'term1', maxScore, day],
+                  conn,
+                )
+              ).insertId;
+          gradeRows.push([assessmentId, student.studentId, scoreOf(maxScore), null, lesson.grader]);
+          added += 1;
+        }
+      }
+    }
+    await run(
+      'INSERT IGNORE INTO grades (assessment_id, student_id, score, remarks, graded_by) VALUES ?',
+      [gradeRows],
+      conn,
+    );
+    return { past: pastAssessments.length, current: added };
+  });
+  console.log(
+    `âœ” ${target}: ${summary.past} grades last year (${PAST_YEAR}, Grade 9 - A (Mock)), ${summary.current} this year in their own class.`,
+  );
+  console.log('  `remove` deletes them together with the rest of the mock school.');
+}
+
+const COMMANDS = { add, status, remove, attach };
 const command = COMMANDS[process.argv[2]];
 if (!command) {
-  console.error('Usage: node --env-file=<.env or .env.cloud> scripts/mock-data.js add | status | remove');
+  console.error(
+    'Usage: node --env-file=<.env or .env.cloud> scripts/mock-data.js add | status | remove | attach <student e-mail>',
+  );
   process.exitCode = 1;
 } else {
   command()
     .catch((error) => {
-      console.error(`✖ ${error.message}`);
+      console.error(`âœ– ${error.message}`);
       if (error.sqlMessage) console.error(`  ${error.sqlMessage}`);
       process.exitCode = 1;
     })
