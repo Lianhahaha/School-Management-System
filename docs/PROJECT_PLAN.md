@@ -1,9 +1,9 @@
 # School Management System — Project Plan
 
-Status: implemented. Sections 1–15 are the plan the build followed; section 16 records where the code deliberately differs.
-Date: 2026-10-03 (plan), updated 2026-10-04.
+Status: implemented. Sections 1–12 are the plan the build followed, section 13 the decisions taken before it, and section 14 records where the code deliberately differs and what was added later.
+Date: 2026-10-03 (plan), updated 2026-10-08.
 
-This document is the contract for the whole project. The detailed design documents in `docs/design/` expand on it; where a detailed document disagrees with this plan, this plan wins (the decisions in section 5 list every such case).
+This document is the contract for the whole project. For details the code is the source of truth: `backend/database/schema.sql` for the data, `backend/docs/openapi.yaml` (checked against the routes by a test) for the API.
 
 ---
 
@@ -32,8 +32,8 @@ Hard constraints:
 |---|---|---|---|---|---|
 | 1 | Student, teacher, and administrator accounts | `users.role` ENUM + 1:1 `students` / `teachers` profile tables | `POST /users` (admin, any role), `POST /auth/register` (public, student only), `PATCH /users/:id/status`, `DELETE /users/:id` (only while unused) | Admin → Users page: create user of any role, activate/deactivate | Create a teacher as admin, log in as that teacher in a private window |
 | 2 | Firebase Authentication | `users.firebase_uid` UNIQUE | `authenticate` middleware verifies the Firebase ID token on every request; Admin SDK creates/disables users | Firebase JS SDK login, register, forgot password, logout | Register, log out, log in, reload page: session survives; wrong password shows a generic error |
-| 3 | MySQL database | 12 InnoDB tables, 18 FKs, 15 UNIQUE keys, 11 CHECK constraints, 1 generated column | `mysql2` pool, parameterized SQL only, repository layer | — | `npm run db:migrate` creates the schema from `schema.sql`; Workbench shows the ERD |
-| 4 | Backend REST API | — | 76 endpoints under `/api/v1` (64 designed, see section 16), one JSON envelope, closed error catalogue | all data via `apiClient` | Swagger UI "Try it out" with a token |
+| 3 | MySQL database | 17 InnoDB tables, 22 FKs, 15 UNIQUE keys, 13 CHECK constraints, 1 generated column | `mysql2` pool, parameterized SQL only, repository layer | — | `npm run db:migrate` creates the schema from `schema.sql`; Workbench shows the ERD |
+| 4 | Backend REST API | — | 74 endpoints under `/api/v1` (64 planned, see section 14), one JSON envelope, closed error catalogue | all data via `apiClient` | Swagger UI "Try it out" with a token |
 | 5 | Student enrollment and profile management | `students`, `enrollments` (one active row per student, enforced by a unique index) | students CRUD, `POST /enrollments`, `/enrollments/bulk`, `/enrollments/transfer`, `PATCH /enrollments/:id` | Students list (enroll / transfer), Student detail (profile, enrollment history, attendance, grades), Profile page (self-service contact fields) | Enroll a new student, try to enroll them in a second class (409), transfer them |
 | 6 | Subjects and class management | `subjects`, `classes` (UNIQUE per academic year) | subjects CRUD, classes CRUD | Subjects page, Classes list + Class detail (tabs) | Create a class for `2026-2027`; try `2026/2027` (400); delete a used subject (409) |
 | 7 | Teacher assignment | `class_subjects (class_id, subject_id) → teacher_id`, UNIQUE per class+subject | `/class-subjects` CRUD (assign, reassign teacher, remove) | Class detail → "Subjects & Teachers" tab | Assign Physics to Grade 10-A with teacher1; assign again (409); teacher1 sees it under "My classes" |
@@ -69,7 +69,7 @@ Hard constraints:
 | Frontend | tailwindcss, @tailwindcss/vite | ^4.3 | no `tailwind.config.js`, no PostCSS; `@import "tailwindcss"` + `@theme` |
 | Frontend | firebase | ^12.19 | modular SDK; never `firebase@next` |
 | Frontend | react-hook-form, @hookform/resolvers, zod | ^7.89, ^5, ^4.6 | same zod major as the backend |
-| Frontend | lucide-react | latest | only icon dependency |
+| Frontend | lucide-react, @phosphor-icons/react | latest | lucide for interface icons; Phosphor's duotone set for the dashboard cards (DESIGN.md) |
 | Tooling | eslint ^10 (flat config), prettier ^3, prettier-plugin-tailwindcss | | |
 | Local services | MySQL Server 8.0 (service `MySQL80`, installed), Firebase project on the Spark plan | | MySQL 8.0 is out of Oracle support since 2026-04-30; fine for local use |
 
@@ -81,8 +81,8 @@ Hard constraints:
 | Firebase Admin SDK (`verifyIdToken`, `createUser`, `updateUser`, `revokeRefreshTokens`) and service-account key download | Free; only rate quotas (100 new accounts/hour/IP, far above the seed's 13) | firebase.google.com/docs/auth/limits |
 | MySQL Community Server (local) | Free | already installed |
 | All npm packages above | Free, MIT/Apache licences | npm registry |
-| Optional later: Firebase Hosting (SPA), Render free web service (API, sleeps after 15 min), Aiven free MySQL or TiDB Cloud Starter | Free, no card | verified in `docs/design/01-stack-and-free-tier.md` |
-| Not free, never used: Cloud Storage (Blaze since 2026-02-03), Cloud Functions, Phone auth, Identity Platform upgrade toggle, Google Cloud "$300 trial" banner, Koyeb, Fly.io, Railway | — | same document |
+| Optional later: Firebase Hosting (SPA), Render free web service (API, sleeps after 15 min), Aiven free MySQL or TiDB Cloud Starter | Free, no card | providers' pricing pages, 2026-10-03; the deployment is described in the README |
+| Not free, never used: Cloud Storage (Blaze since 2026-02-03), Cloud Functions, Phone auth, Identity Platform upgrade toggle, Google Cloud "$300 trial" banner, Koyeb, Fly.io, Railway | — | same check |
 
 Firebase console rule for the README: create the project with Google Analytics off, enable only **Authentication → Sign-in method → Email/Password**, register one Web app, download one service-account key. Never click "Upgrade", "Storage → Get started", "Functions", "Phone", or "Upgrade to Identity Platform".
 
@@ -118,7 +118,7 @@ Principles:
 
 | # | Topic | Decision | Why |
 |---|---|---|---|
-| D1 | Language | JavaScript (ESM) on both sides, zod for runtime validation, JSDoc where helpful | No build step on the backend, fewer config files, fewer failure modes for a reviewer; zod gives the runtime safety that matters here (section 14 asks you to confirm) |
+| D1 | Language | JavaScript (ESM) on both sides, zod for runtime validation, JSDoc where helpful | No build step on the backend, fewer config files, fewer failure modes for a reviewer; zod gives the runtime safety that matters here (confirmed, section 13) |
 | D2 | Valid Firebase token but no MySQL row | `403 USER_NOT_REGISTERED` (not 401) | The token *is* authenticated; the account is not provisioned. Frontend treats `USER_NOT_REGISTERED` and `ACCOUNT_DISABLED` as "sign out + message" |
 | D3 | Enrollment statuses | `active`, `completed`, `transferred`, `withdrawn` (no `dropped`) | Matches the validated schema and its CHECK constraints (`left_on` required once closed) |
 | D4 | Class transfer | Single endpoint `POST /enrollments/transfer { studentId, classId }` — one transaction: close the active row as `transferred`, insert a new row (every enrollment is its own row, so re-joining a class keeps the earlier period) | Removes the half-done state a two-call transfer leaves behind; the DB order (close first, then insert) is exactly what the unique index requires |
@@ -152,7 +152,7 @@ Principles:
 | D32 | Transactions and pool | Repositories accept an optional trailing `conn`; `withTransaction(fn)` is the only place that calls `getConnection` and always releases in `finally`; `multipleStatements` only in the migrate/seed scripts | Prevents the "API hangs after 10 requests" class of bug |
 | D33 | Validated input location | `validate()` writes to `req.validated = { params, query, body }`; nothing ever assigns to `req.query` | Express 5 getter |
 | D34 | Grade level | 1..12 in CHECK, zod and UI | |
-| D35 | Repository location | Recommended: move out of OneDrive to `C:\dev\school-management-system`; GitHub is the backup | `node_modules` inside a synced folder causes `EPERM`/`EBUSY` and watcher flakiness (section 14, decision 1) |
+| D35 | Repository location | Any folder; GitHub is the backup. Inside OneDrive, pause syncing during `npm install` (README, Troubleshooting) | `node_modules` inside a synced folder can cause `EPERM`/`EBUSY` and watcher flakiness (section 13) |
 | D36 | Grade weights (added 2026-10-05) | Optional per subject: `subject_grade_weights` holds a whole percent per assessment type (adding up to 100). A weighted subject's result = each type's points percentage × its weight, over the types that have grades; without weights D18 applies. A student's result over several subjects (report card "general average", `groupBy=student` across subjects) is the mean of the subject results | Report cards such as DepEd's weight written work, tasks and exams differently; every subject counts once in the general average |
 | D37 | School calendar (added 2026-10-05) | `calendar_events`: school-wide entries of type `holiday` (no classes: `PUT /attendance/sheet` answers 400 `school_holiday`, the sheet shows why and is read-only) or `event` (informational); inclusive `starts_on`..`ends_on`, at most 366 days. Admins write, everyone reads; dashboards list the next 30 days, timetables mark this week's entries | Teachers should not be able to mark a no-class day, and students should see it on their schedule |
 | D38 | Student import (added 2026-10-05) | `POST /imports/students` takes raw spreadsheet cells, so each row is checked on its own (formats, duplicates in the file, emails and student numbers in use, class name of the current year) and problems come back per row. A dry run writes nothing; a create call writes nothing unless every row passes, then creates each account through `createUserAccount` with one temporary password and enrolls it in its class. The browser parses the CSV and sends rows in batches of 20 for a progress bar | Setting up a school by hand means hundreds of forms; all-or-nothing checking keeps a half-imported file from happening, while per-row creation keeps one Firebase hiccup from losing the rest |
@@ -161,7 +161,7 @@ Principles:
 
 ---
 
-## 6. Data model (summary; full DDL in `docs/design/02-database.md`)
+## 6. Data model (summary; full DDL in `backend/database/schema.sql`)
 
 MySQL 8.0, InnoDB, `utf8mb4_unicode_ci`, snake_case, `id INT UNSIGNED AUTO_INCREMENT`, `created_at`/`updated_at` on every table, every FK `ON DELETE RESTRICT`.
 
@@ -173,18 +173,20 @@ MySQL 8.0, InnoDB, `utf8mb4_unicode_ci`, snake_case, `id INT UNSIGNED AUTO_INCRE
 | `subjects` | catalogue: `code` UNIQUE, `name`, `description`, `is_active` | |
 | `classes` | section in one academic year: `name`, `grade_level`, `academic_year` (`YYYY-YYYY`, CHECK consecutive), `homeroom_teacher_id` | `UNIQUE(academic_year, name)` |
 | `class_subjects` | **teacher assignment**: `class_id` + `subject_id` → `teacher_id` NOT NULL | `UNIQUE(class_id, subject_id)` |
-| `enrollments` | student ↔ class with history: `status`, `enrolled_on`, `left_on`, generated `active_flag` | `UNIQUE(student_id, class_id)`; `UNIQUE(student_id, active_flag)` = at most one active enrollment per student; CHECKs tie `left_on` to status |
+| `enrollments` | student ↔ class with history: `status`, `enrolled_on`, `left_on`, generated `active_flag` | `UNIQUE(student_id, active_flag)` = at most one active enrollment per student; every period in a class is its own row; CHECKs tie `left_on` to status |
 | `schedules` | weekly slot per class_subject: `day_of_week` 1..7 (Monday = 1), `start_time`, `end_time`, `room` | CHECK `end_time > start_time`; overlaps rejected by the service (class, teacher, room) |
 | `attendance` | one mark per student per class_subject per date; `status`, `remarks`, `marked_by` | `UNIQUE(student_id, class_subject_id, attendance_date)`; writes are upserts |
 | `assessments` | graded event per class_subject: `title`, `type`, `term`, `max_score` DECIMAL(6,2), `assessed_on` | `UNIQUE(class_subject_id, term, title)`; CHECK `max_score > 0` |
 | `grades` | one score per student per assessment; `remarks`, `graded_by` | `UNIQUE(assessment_id, student_id)`; CHECK `score >= 0`; `score <= max_score` checked by the service in the same transaction |
 | `announcements` | `author_id`, `title`, `body`, `audience`, optional `class_id`, `published_at`, `expires_at` | CHECK `expires_at > published_at`; visibility = audience matches role AND (no class OR my class) |
 
+Added after the plan (section 14): `subject_grade_weights`, `calendar_events`, `activity_log`, `notifications`, `announcement_reads`.
+
 Shared enum values (section 11) are the only values these ENUM columns accept.
 
 ---
 
-## 7. API (summary; full contract in `docs/design/03-api-and-rbac.md`)
+## 7. API (summary; full contract in `backend/docs/openapi.yaml`, served at `/api/docs`)
 
 ### 7.1 Conventions
 
@@ -197,7 +199,7 @@ Shared enum values (section 11) are the only values these ENUM columns accept.
 - Scoping: omitted filter = caller's own scope; explicit filter outside the caller's scope = 403 (never silently narrowed); admin unscoped. The literal `me` is accepted wherever a `studentId`, `teacherId` or `authorId` appears.
 - Teacher *visible* set = class-subjects they teach or any class-subject of a class they are homeroom teacher of; teacher *owns* = `class_subjects.teacher_id = me`. Reads use visible, writes use owns.
 
-### 7.2 Endpoints (64)
+### 7.2 Endpoints as planned (64; 74 today, see section 14 and the OpenAPI spec)
 
 | Module | Endpoints | Roles |
 |---|---|---|
@@ -218,7 +220,7 @@ Shared enum values (section 11) are the only values these ENUM columns accept.
 
 ### 7.3 Request pipeline
 
-`requestId` → `helmet` → `cors` → `express.json` → `morgan` → `/api/docs` → `/api/v1` router (`/health`, `/auth/register` public; `authenticate` for everything else; per-route `authorize(...)` → `validate({...})` → controller) → `notFound` → `errorHandler` (last; maps `ApiError`, zod, body-parser, Firebase `auth/*` and MySQL `ER_*` errors to the envelope; stack only outside production).
+`requestId` → `helmet` → `cors` → `morgan` → `express.json` → `/api/docs` → `/api/v1` router (`/health`, `/auth/register` public; `authenticate` for everything else; per-route `authorize(...)` → `validate({...})` → controller) → `notFound` → `errorHandler` (last; maps `ApiError`, zod, body-parser, Firebase `auth/*` and MySQL `ER_*` errors to the envelope; stack only outside production).
 
 Startup: zod-validated env (fails with a readable list), service-account file validated, `SELECT 1` against MySQL, Firebase probe; the banner prints port, DB and Firebase project id.
 
@@ -248,11 +250,11 @@ Enforcement: role column = `authorize(...)` on the route; every `own` cell = a n
 
 ---
 
-## 9. Frontend (summary; full spec in `docs/design/04-frontend.md`)
+## 9. Frontend (summary)
 
 - **Auth state machine** in one `AuthProvider`: `initializing → anonymous | resolving → authenticated | profile-error`. `onAuthStateChanged` → `GET /auth/me` (TanStack Query, no retry on 4xx, refetch on window focus) → role. `USER_NOT_REGISTERED` / `ACCOUNT_DISABLED` → sign out with a message; network / 5xx → retry screen, no sign-out. `apiClient` retries a 401 once with a forced token refresh, then signs out.
 - **Guards as layout routes**: `PublicOnly` (`/login`, `/register`, `/forgot-password`), `RequireAuth` → `AppShell`, `RequireRole` per area. A page cannot be added unguarded.
-- **Routes**: public 3 · shared 4 (`/` role redirect, `/profile`, `/403`, `*`) · `/admin/*` 13 · `/teacher/*` 8 · `/student/*` 6 = 34 routes, 30 page components. `AttendanceMarkPage`, `AssessmentsPage`, `GradeSheetPage`, `AnnouncementsPage` are shared by admin and teacher and branch only on data source and action visibility.
+- **Routes**: public (`/login`, `/register`, `/forgot-password`), shared (`/` role redirect, `/profile`, `/403`, `*`) and one area per role under `/admin`, `/teacher` and `/student` (`frontend/src/app/router.jsx`). `AttendanceMarkPage`, `AssessmentsPage`, `GradeSheetPage`, `AnnouncementsPage` are shared by admin and teacher and branch only on data source and action visibility.
 - **Three dashboards, three products**: admin = "is the school running" (KPI tiles, today's attendance, enrollment by grade, upcoming assessments, announcements); teacher = "what do I do today" (today's periods with Mark now / Marked, sessions marked, pending grading, my classes); student = "how am I doing" (class card, attendance ring, grade summary per subject, today's timetable, recent grades, announcements). Each binds 1:1 to its `GET /dashboard` payload; no client-side aggregation.
 - **One list pattern**: `useListParams` (page/limit/search/sort/filters in the URL) + feature hook + `DataTable` (columns config, skeletons, dimmed refetch, inline error, empty states) + `Pagination` + one modal. Every list page is this file with different columns.
 - **Forms**: react-hook-form + zod (same regexes as the backend); server `VALIDATION_ERROR.issues` and `CONFLICT.details.key` mapped to fields by one helper; destructive actions always confirm; `SCHEDULE_CONFLICT` rendered inside the slot modal.
@@ -271,8 +273,7 @@ school-management-system/
 ├── README.md                       # setup ($0 path), demo credentials, project tour, troubleshooting
 ├── docs/
 │   ├── PROJECT_PLAN.md             # this file
-│   ├── ARCHITECTURE.md             # short reviewer-facing overview + ERD (written in phase 10)
-│   └── design/                     # detailed design documents (01..05)
+│   └── ARCHITECTURE.md             # short reviewer-facing overview + ERD
 ├── backend/
 │   ├── package.json                # "type": "module"; scripts: dev, start, test, lint, format, db:migrate, db:seed, db:reset, check:constants, check:secrets, doctor
 │   ├── .env.example
@@ -285,8 +286,10 @@ school-management-system/
 │   ├── scripts/
 │   │   ├── migrate.js              # runs schema.sql (dedicated multipleStatements connection); --fresh drops first
 │   │   ├── seed.js                 # Firebase users + users/profile rows, then seed.sql
+│   │   ├── create-admin.js         # first administrator for a database without demo data
 │   │   ├── doctor.js               # env, service account, project-id parity with frontend/.env, DB reachable, tables present, ports free
 │   │   ├── check-constants.js      # shared.js byte-equality + schema.sql ENUM parity
+│   │   ├── check-secrets.js        # fails if a key or .env file would be committed
 │   │   └── get-token.js            # prints a Firebase ID token for Swagger "Authorize" (uses the public web API key)
 │   ├── tests/                      # node:test + supertest, app built with fake Firebase verifier
 │   └── src/
@@ -309,7 +312,7 @@ school-management-system/
     ├── package.json                # scripts: dev, build, preview, lint, format, check
     ├── .env.example
     ├── index.html
-    ├── vite.config.js              # react(), tailwindcss(), port 5173 strictPort, proxy /api → 127.0.0.1:3000
+    ├── vite.config.js              # react(), tailwindcss(), port 5173 strictPort, proxy /api → 127.0.0.1:API_PORT (default 3000)
     ├── eslint.config.js, .prettierrc
     └── src/
         ├── main.jsx, index.css     # @import "tailwindcss"; @theme tokens
@@ -319,9 +322,9 @@ school-management-system/
         ├── constants/              # shared.js (identical to backend), ui.js (labels, tone classes)
         ├── utils/                  # date.js, schedule.js, roles.js, names.js, format.js, grades.js, listParams.js
         ├── hooks/                  # useDebounce, useListParams, useDisclosure, useConfirm, useDiscardConfirm, useUnsavedChangesBlocker, useTheme, ...
-        ├── components/ui/          # Button, Input, Select, Textarea, Checkbox, RadioGroup, FormField, Table, DataTable, Pagination, SearchInput, Modal, ConfirmDialog, Badge, Spinner, Skeleton, EmptyState, ErrorState, Tabs, Card, StatTile, Tooltip, Dropdown, Toast
+        ├── components/ui/          # one primitive per file: Button, Input, Select, OptionSelect, Textarea, Checkbox, RadioGroup, FormField, Table, DataTable, Pagination, SearchInput, FilterBar, Modal, ConfirmDialog, Alert, Badge, Spinner, Skeleton, EmptyState, ErrorState, Tabs, Card, StatTile, Dropdown, Toast, TrendChart, BarChart, ...
         ├── components/layout/      # AppShell, Sidebar, Topbar, NavItem, UserMenu, PageHeader, PageSkeleton, SplashScreen, DevProjectBanner, AuthLayout, navConfig.js
-        └── features/               # auth, dashboard, users, students, teachers, subjects, classes, classSubjects, enrollments, attendance, grades, schedules, announcements, profile, health
+        └── features/               # one folder per resource: auth, dashboard, users, students, teachers, subjects, classes, enrollments, attendance, grades, schedules, announcements, calendar, activity, notifications, ...
             └── <feature>/          # keys.js, api.js, hooks.js, schemas.js, components/, pages/  (a feature has only the parts it needs)
 ```
 
@@ -350,7 +353,7 @@ Frontend rule: if a file mentions a school resource it lives in `features/<resou
 | `PAGINATION` | `DEFAULT_LIMIT 20`, `MAX_LIMIT 100` |
 | `DATE_REGEX`, `TIME_REGEX`, `ACADEMIC_YEAR_REGEX`, `STUDENT_NUMBER_REGEX`, `EMPLOYEE_NUMBER_REGEX`, `SUBJECT_CODE_REGEX` | `YYYY-MM-DD`; `HH:MM`; `YYYY-YYYY` (consecutive checked in code); `STU-YYYY-NNNN`; `EMP-YYYY-NNNN`; `^[A-Z0-9-]{2,20}$` |
 | `PASSWORD_MIN_LENGTH` | 8 (Firebase minimum is 6; both sides enforce 8) |
-| `ERROR_CODES` | the eleven codes of decision D20 |
+| `ERROR_CODES` | the eleven codes of decision D20 (`RATE_LIMITED` and `SERVICE_UNAVAILABLE` included) |
 | `API_BASE_PATH` | `/api/v1` |
 
 Other agreements: ids are positive integers (route params coerced); booleans in query strings are `true`/`false`; `null` clears a nullable field in PATCH; empty form strings are converted to `null` before submit; emails lower-cased on both sides.
@@ -375,52 +378,22 @@ Pre-submission gate (in order): `npm test` (backend) → `npm run lint` and `npm
 
 ---
 
-## 13. Execution plan
+## 13. Decisions taken before the build
 
-Each phase ends with a verification step; the next phase starts only when it passes.
-
-| Phase | Deliverables | Done when |
+| Question | Decision | Why |
 |---|---|---|
-| 0. Preparation (you) | Confirm section 14 decisions; create the Firebase project ($0 path, section 15); move the folder if agreed | `backend/firebase-service-account.json` and the web config values exist |
-| 1. Scaffold | `git init`, `.gitignore`, `.gitattributes`, README skeleton, both `package.json` with pinned versions and scripts, ESLint/Prettier, `constants/shared.js` on both sides, `.env.example` files, `check-constants.js` | `npm ci` succeeds in both folders; `npm run check:constants` passes; first commit contains no secrets |
-| 2. Database | `schema.sql`, `migrate.js`, `seed.sql`, `seed.js` (Firebase + MySQL, idempotent), `doctor.js` | `db:migrate` → `db:seed` twice → `doctor` all PASS; row counts match the seed plan; every demo account can sign in (checked with `get-token.js`) |
-| 3. Backend core | env, db (pool, typeCast, camelize, withTransaction), firebase, middleware chain, `ApiError`, error maps, health, auth module (register, me), users module (createUserAccount, status) | supertest: health, auth middleware cases, register forces student, admin creates teacher, deactivate blocks on next request |
-| 4. Backend reference data | students, teachers, subjects, classes, class-subjects, enrollments (incl. bulk and transfer), access module | list/search/sort/filter on each; 409 on duplicates and in-use deletes; one-active-enrollment 409; transfer atomic |
-| 5. Backend operations | attendance (sheet, summary), assessments + grades (roster, bulk, summary), schedules (conflicts), announcements (visibility), dashboard (three payloads) | ownership tests (teacher vs not-owner), score bounds, conflict matrix, announcement visibility per role, dashboard per seeded role |
-| 6. API documentation | `docs/openapi.yaml` (tags per module, shared components, examples, `bearerAuth`), Swagger UI, `openapi.json`, route-vs-spec check | every router path appears in the spec; "Try it out" works with a token from `get-token.js` |
-| 7. Frontend foundation | Vite + Tailwind + router + providers + guards + `apiClient` + `queryClient` + UI kit + layout + `useListParams` + `DataTable` + login/register/forgot-password/profile + dev project banner | log in as each role, land on the right area; hard reload shows no login flash; 403 page on a foreign URL; deactivated user is signed out on next click |
-| 8. Frontend admin area | dashboard, users, students (+ detail), teachers (+ detail), subjects, classes (+ detail tabs: subjects & teachers, students, schedule), attendance, grades (+ grade sheet), announcements | every admin manual check in section 2 passes in the browser |
-| 9. Frontend teacher and student areas | teacher dashboard, my classes, class-subject page, schedule, attendance, grades, announcements; student dashboard, my class, schedule, attendance, grades, announcements; empty states for an unenrolled student | the 14 manual checks pass as teacher1 and student1, and as a freshly registered student |
-| 10. Hardening and delivery | remaining tests, `ARCHITECTURE.md` with ERD, README final (setup, credentials, tour, troubleshooting), lint/format pass, clean-clone rehearsal, pre-submission gate | gate of section 12 fully green |
+| JavaScript or TypeScript | JavaScript (ESM) with zod and ESLint | No build step on the backend; a reviewer runs `npm install` and `npm run dev` |
+| Public student self-registration | On by default (`ALLOW_PUBLIC_REGISTRATION`); the role is forced to `student` on the server | A reviewer can try the app before using the admin |
+| Time zone and school year | `APP_TIMEZONE` (default: the machine's zone); the school year starts in August | Matches the school calendar used here |
+| Deployment | Local-first; a free deployment (Firebase Hosting, Render, Aiven) was added afterwards | Running locally is the deliverable; the live demo is a bonus |
+| Project folder | Stays where it is; the README's troubleshooting covers OneDrive syncing `node_modules` | The owner's choice |
+| Git | One commit per completed step, conventional messages, every change pushed | Readable history for the review |
 
-Git: one commit per completed phase at minimum, conventional commit messages, no secrets, lockfiles committed. Pushing to GitHub happens when you say so.
+The Firebase console steps are in the README (Quick start, step 2).
 
 ---
 
-## 14. Decisions that need your confirmation before phase 1
-
-1. **Move the project out of OneDrive** to `C:\dev\school-management-system` (recommended: yes). `node_modules` inside a synced folder causes `EPERM`/`EBUSY` during installs and unreliable file watching. Git/GitHub becomes the backup. If you prefer to stay, pause OneDrive sync during installs and expect occasional flakiness.
-2. **JavaScript (recommended) or TypeScript.** JavaScript with zod and ESLint keeps the backend free of a build step and keeps the reviewer's setup to `npm ci` + `npm run dev`. TypeScript would add type safety at the cost of a compile step, more configuration and more places where the first-run can fail.
-3. **Public student self-registration on by default** (recommended: yes, with the flag `ALLOW_PUBLIC_REGISTRATION` documented). It lets the reviewer try the app before using the admin; the role is forced to `student` server-side.
-4. **Time zone and academic year start.** Default: the machine's time zone and an academic year that starts in August (`2026-2027` today). Tell me if your school year starts in another month.
-5. **Deployment.** Local-first is the deliverable. A free deployment (Firebase Hosting + Render + Aiven/TiDB) can be added afterwards as a bonus; not planned for now.
-6. **Git.** I will initialise the repository in phase 1 and commit per phase. You create the GitHub remote and tell me when to push.
-
----
-
-## 15. Setup you will do in the Firebase console (about 5 minutes, $0)
-
-1. https://console.firebase.google.com → **Create a project** → name it (for example `school-mgmt-lian`) → turn **Google Analytics off** → Create. The plan shown is Spark (no-cost); never click Upgrade.
-2. **Build → Authentication → Get started → Sign-in method → Email/Password → Enable** (leave "Email link" off) → Save.
-3. **Project settings (gear) → General → Your apps → `</>` Web** → nickname `web` → do **not** tick Firebase Hosting → Register. Copy `apiKey`, `authDomain`, `projectId`, `appId` into `frontend/.env`.
-4. **Project settings → Service accounts → Generate new private key** → save the file as `backend/firebase-service-account.json` (git-ignored; never rename it to anything else, never paste it into `.env`).
-5. Do not touch Storage, Functions, Phone provider, App Check, or "Upgrade to Identity Platform".
-
-Both `.env` files must point at the **same** Firebase project; `npm run doctor` checks this.
-
----
-
-## 16. Implementation notes (where the built code deliberately differs from the design documents)
+## 14. Implementation notes (where the built code deliberately differs from the plan)
 
 The code is the source of truth; `backend/docs/openapi.yaml` is checked against the routes by a test. Differences found while building and testing:
 
@@ -474,6 +447,11 @@ The code is the source of truth; `backend/docs/openapi.yaml` is checked against 
 - `GET /grades` and `GET /grades/summary` take `academicYear` (the academic year of the assessment's class).
 - My grades shows one school year at a time, with one picker for the year and semester ("AY 2025-2026 · 2nd Semester"). It loads every grade of that year (the 100-grade cap is gone), and the report card prints for any year with that year's class. My attendance has a school-year picker that sets the dates to August–July. Both open on the year of the student's class (this year when the class starts next year), or the last year they had a class.
 - `POST /enrollments/complete` (Admin → Classes → a class → Students → End of school year) closes the listed students' enrollments as `completed` and, with `nextClassId`, enrolls them in a class of a later year, all or nothing. Unlisted students stay. It refuses a year that has not started, a next class that is not later, and students not active in the class (409 `not_active_in_class`). Runs for one class are serialised on the class row.
+
+**Clean-up (2026-10-08)**
+- `PATCH /attendance/:id` and `DELETE /attendance/:id` are gone: no screen used them, and a single-record edit skipped the check that stops two people overwriting each other. Marks are written and corrected through the sheet (`PUT /attendance/sheet`) only.
+- Single and bulk enrollment share one transaction (`enrollInClass`) and one activity entry and notification step; the admin's teacher timetable reuses the schedule panel of the teacher and student pages.
+- The design drafts that preceded this plan and an outdated PDF guide were removed; this plan, `ARCHITECTURE.md`, the OpenAPI spec and `schema.sql` describe the system.
 
 **Known limits (accepted for this project)**
 - The frontend works out "today" in the browser's time zone; the API uses `APP_TIMEZONE`. They agree while the school's users are in one zone (Asia/Manila here).

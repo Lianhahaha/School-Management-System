@@ -3,7 +3,7 @@
  */
 import { query, run } from '../../config/db.js';
 import { selectPage } from '../../utils/pagination.js';
-import { CLASS_SUBJECT_REF_COLUMNS, WhereBuilder, buildSet, joinClassSubject } from '../../utils/sql.js';
+import { CLASS_SUBJECT_REF_COLUMNS, WhereBuilder, joinClassSubject } from '../../utils/sql.js';
 import { enrolledInClassOn } from '../access/access.repository.js';
 
 export const ATTENDANCE_SORT_MAP = {
@@ -32,10 +32,6 @@ function filtersToWhere(filters, scope) {
     .addIf(filters.dateFrom, 'a.attendance_date >= ?')
     .addIf(filters.dateTo, 'a.attendance_date <= ?')
     .addScope(scope);
-}
-
-export async function findAttendanceById(id) {
-  return (await query(`SELECT ${COLUMNS} ${FROM} WHERE a.id = ?`, [id]))[0] ?? null;
 }
 
 export function listAttendance(listQuery, scope) {
@@ -171,15 +167,4 @@ export async function findMarksOf(classSubjectId, date, studentIds, conn) {
     conn,
   );
   return new Map(rows.map((row) => [row.studentId, { status: row.status, remarks: row.remarks }]));
-}
-
-const PATCH_COLUMNS = { status: 'status', remarks: 'remarks', markedBy: 'marked_by' };
-
-export async function updateAttendance(id, fields) {
-  const set = buildSet(PATCH_COLUMNS, fields);
-  if (set) await run(`UPDATE attendance SET ${set.sql} WHERE id = ?`, [...set.params, id]);
-}
-
-export async function deleteAttendance(id) {
-  return (await run('DELETE FROM attendance WHERE id = ?', [id])).affectedRows;
 }

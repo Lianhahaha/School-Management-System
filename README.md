@@ -24,7 +24,7 @@ Skole can be installed like an app: on Android, Chrome or Edge use the browser's
 | Student, teacher and admin accounts | Admin → Users (create any role, deactivate, delete an unused account); students can also self-register on the sign-up page; Admin → Students → Import creates up to 200 students from a CSV file (template included), each checked before anything is created and each given their own temporary password, listed in a file to download |
 | Firebase Authentication | Sign in / sign up / forgot password; the API verifies the Firebase ID token on every request |
 | MySQL database | 17 tables with foreign keys, unique keys and checks: [backend/database/schema.sql](backend/database/schema.sql) |
-| Backend REST API | 76 endpoints under `/api/v1`, one JSON envelope, one error catalogue |
+| Backend REST API | 74 endpoints under `/api/v1`, one JSON envelope, one error catalogue |
 | Student enrollment and profiles | Admin → Students (enroll, transfer, profile, history); students edit their own contact details; at the end of a school year, Admin → Classes → a class → Students → **End of school year** closes the year for all or some students and enrolls them in next year's class in one step |
 | Subjects and class management | Admin → Subjects, Classes |
 | Teacher assignment | Class detail → Subjects & Teachers |
@@ -32,17 +32,25 @@ Skole can be installed like an app: on Android, Chrome or Edge use the browser's
 | Grade management | Assessments with a maximum score, grade sheets, per-subject results for students; each assessment belongs to the 1st Semester, 2nd Semester or Summer; Admin → Subjects can weight a subject by assessment type (for example quizzes 20 %, exams 80 %); a score-spread chart on every grade sheet and each student's results over time per subject; students pick a school year and semester ("AY 2025-2026 · 2nd Semester") and can print the report card of any year |
 | Class schedules | Weekly timetables per class, teacher and student, with clash detection (class, teacher, room) |
 | Announcements | School-wide or per class, per audience, with publish and expiry dates; a "New" label until the reader marks one, or all, as read |
-| Notifications | The bell in the top bar, with a red count: students hear about new or changed grades, absences and a new class; teachers about lessons and homeroom classes they get; admins about students who signed up and need a class; new announcements are listed there too |
-| Activity history | Admin → Activity: who changed what and when (grades with the previous score, attendance marks, enrollments, accounts, classes, timetable, announcements, calendar), searchable by name and filterable by area and day |
-| School calendar | Admin → Calendar: holidays (no classes, attendance can't be marked) and school events; every role sees the calendar, the next 30 days on its dashboard and this week's entries on its timetable |
 | Separate dashboards | Admin, teacher and student each get their own content, not three skins of one page; admins and teachers see the students who need attention (attendance under 80 % or an average under 75 %) |
-| Light and dark themes | Switch in the top bar (and on the sign-in page); the choice is remembered on the device, and the system setting is followed until you pick one |
-| Live updates | The page you are looking at refreshes itself about every 20 seconds (and when you return to the tab), so other people's changes appear without a reload; the sheets a teacher is editing are left alone |
 | Search and filtering | Every list: search, whitelisted sorting, pagination and filters, kept in the URL |
 | Role-based access control | Route guards in the UI, `authorize` + ownership rules in the API (the API is the enforcement point) |
 | API documentation | Swagger UI at <http://localhost:3000/api/docs> |
 
 The full requirement-to-implementation matrix, with a way to verify each row, is in [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md#2-requirement-coverage-matrix).
+
+Beyond the brief, kept small and built on the same API:
+
+| Extra | Where to see it |
+|---|---|
+| Notifications | The bell in the top bar, with a red count: students hear about new or changed grades, absences and a new class; teachers about lessons and homeroom classes they get; admins about students who signed up and need a class; new announcements are listed there too |
+| Activity history | Admin → Activity: who changed what and when (grades with the previous score, attendance marks, enrollments, accounts, classes, timetable, announcements, calendar), searchable by name and filterable by area and day |
+| School calendar | Admin → Calendar: holidays (no classes, attendance can't be marked) and school events; every role sees the calendar, the next 30 days on its dashboard and this week's entries on its timetable |
+| Live updates | The page you are looking at refreshes itself about every 20 seconds (and when you return to the tab), so other people's changes appear without a reload; the sheets a teacher is editing are left alone |
+| Light and dark themes | Switch in the top bar (and on the sign-in page); the choice is remembered on the device, and the system setting is followed until you pick one |
+| Search everywhere | Admins press Ctrl+K (⌘K on a Mac) to find a student, teacher, class or subject from any page |
+| CSV and printing | Lists of grades and attendance download as CSV; report cards and timetables print cleanly |
+| Install as an app | See above: the browser's install button, or Add to Home Screen on an iPhone |
 
 ## Quick start (Windows, $0)
 
@@ -170,7 +178,7 @@ A bug is found by following one path: the URL names the route file, the route na
 
 ## Design decisions and known limits
 
-These are deliberate choices, not oversights. The reasons are in [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md#16-implementation-notes-where-the-built-code-deliberately-differs-from-the-design-documents).
+These are deliberate choices, not oversights. The reasons are in [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md#14-implementation-notes-where-the-built-code-deliberately-differs-from-the-plan).
 
 - **Email addresses are not verified before first use.** A student who registers can sign in straight away, so the demo works without a mailbox. Accounts created by an admin, the CSV import or the seed are marked verified. An admin can delete an account that was registered by mistake and has no history.
 - **Deactivation takes effect on the next request.** The API reads the account from MySQL on every request, so a deactivated user is refused at once, even though their Firebase token stays valid for up to an hour.

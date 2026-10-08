@@ -112,34 +112,17 @@ async function enrollingTransaction(studentIds, work) {
   }
 }
 
-export async function enroll({ studentId, classId }) {
-  const id = await enrollingTransaction([studentId], async (conn) => {
-    await assertEnrollable([studentId], conn);
-    await assertEnrollableClass(classId, conn);
-    const active = await repo.findActiveByStudent(studentId, conn);
-    if (active) throw alreadyEnrolled(active);
-    return repo.insertEnrollment(studentId, classId, todayYmd(), conn);
-  });
-  const enrollment = toEnrollmentShape(await repo.findEnrollmentById(id));
-  await record({
-    action: 'enrollment.create',
-    entityId: id,
-    summary: `Enrolled ${nameOf(enrollment.student)} in ${enrollment.class.name}, ${enrollment.class.academicYear}`,
-    details: { student: nameOf(enrollment.student), className: enrollment.class.name },
-  });
-  await notifyStudents([
-    enrollmentNote(enrollment, `You are enrolled in ${enrollment.class.name}`, enrollment.class.academicYear),
-  ]);
-  return enrollment;
-}
-
-/** All-or-nothing: nothing is written when the class or any student is invalid or already enrolled. */
-export async function enrollMany({ classId, studentIds }) {
-  const ids = await enrollingTransaction(studentIds, async (conn) => {
+/**
+ * Opens an active enrollment in `classId` for each student, all or nothing, and returns the new ids in order.
+ * Nothing is written when the class or any student is invalid or already in a class; `refusal(activeRows)`
+ * builds that 409 (one student or a list).
+ */
+function enrollInClass(classId, studentIds, refusal) {
+  return enrollingTransaction(studentIds, async (conn) => {
     await assertEnrollable(studentIds, conn);
     await assertEnrollableClass(classId, conn);
     const active = await repo.findActiveByStudents(studentIds, conn);
-    if (active.length) throw someAlreadyEnrolled(active);
+    if (active.length) throw refusal(active);
     const today = todayYmd();
     const created = [];
     for (const studentId of studentIds) {
@@ -147,23 +130,46 @@ export async function enrollMany({ classId, studentIds }) {
     }
     return created;
   });
-  // One query for the whole batch: a query per row would exhaust the connection pool on large batches.
-  const enrollments = (await repo.findEnrollmentsByIds(ids)).map(toEnrollmentShape);
-  const { class: klass } = enrollments[0];
+}
+
+/** One activity entry for the new enrollments (all in one class) and a bell notification for each student. */
+async function announceEnrollments(enrollments) {
+  const [first] = enrollments;
+  const { name: className, academicYear } = first.class;
+  const names = enrollments.map((enrollment) => nameOf(enrollment.student));
   await record({
     action: 'enrollment.create',
-    summary: `Enrolled ${ids.length} student${ids.length === 1 ? '' : 's'} in ${klass.name}, ${klass.academicYear}`,
-    details: { className: klass.name, students: enrollments.map((enrollment) => nameOf(enrollment.student)) },
+    ...(enrollments.length === 1
+      ? {
+          entityId: first.id,
+          summary: `Enrolled ${names[0]} in ${className}, ${academicYear}`,
+          details: { student: names[0], className },
+        }
+      : {
+          summary: `Enrolled ${enrollments.length} students in ${className}, ${academicYear}`,
+          details: { className, students: names },
+        }),
   });
   await notifyStudents(
     enrollments.map((enrollment) =>
-      enrollmentNote(
-        enrollment,
-        `You are enrolled in ${enrollment.class.name}`,
-        enrollment.class.academicYear,
-      ),
+      enrollmentNote(enrollment, `You are enrolled in ${className}`, academicYear),
     ),
   );
+}
+
+export async function enroll({ studentId, classId }) {
+  const [id] = await enrollInClass(classId, [studentId], (active) => alreadyEnrolled(active[0]));
+  const enrollment = toEnrollmentShape(await repo.findEnrollmentById(id));
+  await announceEnrollments([enrollment]);
+  return enrollment;
+}
+
+/** All-or-nothing: nothing is written when the class or any student is invalid or already enrolled. */
+export async function enrollMany({ classId, studentIds }) {
+  const ids = await enrollInClass(classId, studentIds, someAlreadyEnrolled);
+  // One query for the whole batch: a query per row would exhaust the connection pool on large batches.
+  const enrollments = (await repo.findEnrollmentsByIds(ids)).map(toEnrollmentShape);
+  await announceEnrollments(enrollments);
   return { classId, created: ids.length, enrollments };
 }
 

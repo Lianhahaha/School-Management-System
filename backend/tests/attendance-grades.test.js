@@ -219,18 +219,12 @@ describe('attendance', () => {
     assert.equal(teacherDefault.body.meta.total, 0);
   });
 
-  it('lets the owner correct a record and reserves deletion for admins', async () => {
+  it('changes marks only through the sheet, so every save checks what the teacher saw', async () => {
     const list = await api
       .get(`/api/v1/attendance?studentId=${school.s1.studentId}&limit=100`)
       .set(as(school.admin));
-    const record = list.body.data[0];
-    const url = `/api/v1/attendance/${record.id}`;
-    const patched = await api.patch(url).set(as(school.owner)).send({ status: 'excused', remarks: null });
-    assert.equal(patched.status, 200);
-    assert.equal(patched.body.data.status, 'excused');
-    assert.equal((await api.patch(url).set(as(school.other)).send({ status: 'present' })).status, 403);
-    assert.equal((await api.delete(url).set(as(school.owner))).status, 403);
-    assert.equal((await api.delete(url).set(as(school.admin))).status, 200);
+    const url = `/api/v1/attendance/${list.body.data[0].id}`;
+    assert.equal((await api.patch(url).set(as(school.admin)).send({ status: 'excused' })).status, 404);
     assert.equal((await api.delete(url).set(as(school.admin))).status, 404);
   });
 });

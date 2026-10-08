@@ -253,42 +253,8 @@ async function recordSheetChanges(sheet, records, previous) {
   );
 }
 
-export async function updateAttendance(user, id, patch) {
-  const existing = ApiError.assertFound(await repo.findAttendanceById(id), 'attendance record', id);
-  await access.assertCanManageClassSubject(user, existing.classSubjectId);
-  const fields = 'remarks' in patch ? { ...patch, remarks: remarksOf(patch.remarks) } : patch;
-  const statusChanged = 'status' in fields && fields.status !== existing.status;
-  const remarksChanged = 'remarks' in fields && fields.remarks !== remarksOf(existing.remarks);
-  // An edit that changes nothing leaves the record (and who marked it) as it is.
-  if (!statusChanged && !remarksChanged) return toAttendanceShape(existing);
-  await repo.updateAttendance(id, { ...fields, markedBy: user.id });
-  const updated = toAttendanceShape(await repo.findAttendanceById(id));
-  const where = `in ${updated.classSubject.subjectName} · ${updated.classSubject.className} on ${formatDayLabel(updated.attendanceDate)}`;
-  await record({
-    action: 'attendance.update',
-    entityId: updated.classSubjectId,
-    summary: statusChanged
-      ? `Changed ${nameOf(updated.student)}'s mark ${where} from ${existing.status} to ${updated.status}`
-      : `Changed the remarks on ${nameOf(updated.student)}'s ${updated.status} mark ${where}`,
-    details: {
-      date: updated.attendanceDate,
-      marks: [
-        {
-          studentId: updated.studentId,
-          student: nameOf(updated.student),
-          from: existing.status,
-          to: updated.status,
-          ...(remarksChanged && { remarks: { from: remarksOf(existing.remarks), to: updated.remarks } }),
-        },
-      ],
-    },
-  });
-  if (statusChanged) await notifyAbsences(updated, [{ studentId: updated.studentId, to: updated.status }]);
-  return updated;
-}
-
 /** Tells each student marked absent or late (new marks, or marks changed to it) about it. */
-function notifyAbsences({ classSubject, date, attendanceDate }, marks) {
+function notifyAbsences({ classSubject, date }, marks) {
   return notifyStudents(
     marks
       .filter((mark) => mark.to === 'absent' || mark.to === 'late')
@@ -296,24 +262,8 @@ function notifyAbsences({ classSubject, date, attendanceDate }, marks) {
         studentId: mark.studentId,
         type: 'attendance',
         title: `Marked ${mark.to} in ${classSubject.subjectName}`,
-        body: `${formatDayLabel(date ?? attendanceDate)} · ${classSubject.className}`,
+        body: `${formatDayLabel(date)} · ${classSubject.className}`,
         link: '/student/attendance',
       })),
   );
-}
-
-export async function deleteAttendance(id) {
-  const existing = ApiError.assertFound(await repo.findAttendanceById(id), 'attendance record', id);
-  if (!(await repo.deleteAttendance(id))) throw ApiError.notFound('attendance record', id);
-  const mark = toAttendanceShape(existing);
-  await record({
-    action: 'attendance.delete',
-    entityId: mark.classSubjectId,
-    summary: `Removed ${nameOf(mark.student)}'s ${mark.status} mark in ${mark.classSubject.subjectName} · ${mark.classSubject.className} on ${formatDayLabel(mark.attendanceDate)}`,
-    details: {
-      date: mark.attendanceDate,
-      marks: [{ studentId: mark.studentId, student: nameOf(mark.student), from: mark.status, to: null }],
-    },
-  });
-  return { id };
 }

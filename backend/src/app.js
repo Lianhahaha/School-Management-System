@@ -1,5 +1,5 @@
 /**
- * Builds the Express application. Middleware order matters (docs/design/03-api-and-rbac.md section 7):
+ * Builds the Express application. Middleware order matters (docs/PROJECT_PLAN.md, section 7.3):
  *
  *   requestId -> helmet -> cors -> http log -> json body -> /api/docs -> /api/v1 -> 404 -> error handler
  *

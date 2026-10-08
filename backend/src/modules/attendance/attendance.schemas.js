@@ -6,9 +6,7 @@ import {
   dateStr,
   id,
   idOrMe,
-  idParams,
   listQuery,
-  patchOf,
   shortText,
 } from '../../utils/zod/common.js';
 import { ATTENDANCE_SORT_MAP } from './attendance.repository.js';
@@ -60,7 +58,3 @@ export const saveSheetBody = z.strictObject({
     'studentId',
   ),
 });
-
-export const updateAttendanceBody = patchOf({ status, remarks: remarks.nullable() });
-
-export { idParams };

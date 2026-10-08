@@ -1428,48 +1428,6 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
-  /attendance/{id}:
-    patch:
-      tags: [attendance]
-      operationId: updateAttendance
-      summary: Correct one attendance record
-      description: |
-        Roles: admin, teacher (only the teacher assigned to the class-subject).
-
-        Single-row correction; the caller becomes `markedBy`.
-      parameters:
-        - $ref: '#/components/parameters/IdPath'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateAttendanceRequest'
-            example:
-              status: excused
-              remarks: medical certificate
-      responses:
-        '200': { $ref: '#/components/responses/AttendanceRecordResponse' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-    delete:
-      tags: [attendance]
-      operationId: deleteAttendance
-      summary: Delete an attendance record
-      description: |
-        Roles: admin.
-
-        Removes a record that was entered by mistake.
-      parameters:
-        - $ref: '#/components/parameters/IdPath'
-      responses:
-        '200': { $ref: '#/components/responses/Deleted' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
   /assessments:
     get:
       tags: [assessments]
@@ -4602,15 +4560,6 @@ components:
           description: One entry per student; `studentId` values must be unique.
           items:
             $ref: '#/components/schemas/AttendanceRecordInput'
-    UpdateAttendanceRequest:
-      type: object
-      additionalProperties: false
-      minProperties: 1
-      properties:
-        status:
-          $ref: '#/components/schemas/AttendanceStatus'
-        remarks:
-          $ref: '#/components/schemas/AttendanceRecordInput/properties/remarks'
     CreateAssessmentRequest:
       type: object
       additionalProperties: false
@@ -5310,16 +5259,6 @@ components:
                     type: array
                     items:
                       $ref: '#/components/schemas/AttendanceRecord'
-    AttendanceRecordResponse:
-      description: The attendance record.
-      headers:
-        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
-      content:
-        application/json:
-          schema:
-            allOf:
-              - $ref: '#/components/schemas/Envelope'
-              - { type: object, properties: { data: { $ref: '#/components/schemas/AttendanceRecord' } } }
     AssessmentResponse:
       description: The assessment.
       headers:

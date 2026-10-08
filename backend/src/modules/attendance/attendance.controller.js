@@ -16,11 +16,3 @@ export async function getSheet(req, res) {
 export async function saveSheet(req, res) {
   ok(res, await service.saveSheet(req.user, req.validated.body));
 }
-
-export async function update(req, res) {
-  ok(res, await service.updateAttendance(req.user, req.validated.params.id, req.validated.body));
-}
-
-export async function remove(req, res) {
-  ok(res, await service.deleteAttendance(req.validated.params.id));
-}

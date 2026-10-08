@@ -2,14 +2,14 @@
 
 React single-page app of Skole, the school management system. It talks to the REST API in `../backend`
 (the source of truth for every request and response shape) and signs users in with Firebase
-Authentication. Design reference: `../docs/design/04-frontend.md`.
+Authentication. Architecture overview: `../docs/ARCHITECTURE.md`.
 
 ## Stack
 
 | Concern      | Choice                                                                                                           |
 | ------------ | ---------------------------------------------------------------------------------------------------------------- |
 | Build        | Vite 8, `@vitejs/plugin-react`, JavaScript + JSX only                                                            |
-| UI           | React 19, Tailwind CSS v4 (`@tailwindcss/vite`, tokens in `src/index.css`), lucide-react icons                   |
+| UI           | React 19, Tailwind CSS v4 (`@tailwindcss/vite`, tokens in `src/index.css`), lucide-react icons, Phosphor duotone icons on dashboard cards |
 | Routing      | `react-router` 8 in data mode (`RouterProvider` comes from `react-router/dom`; never install `react-router-dom`) |
 | Server state | TanStack Query v5                                                                                                |
 | Forms        | react-hook-form + zod 4 (`@hookform/resolvers`)                                                                  |
@@ -20,7 +20,7 @@ Authentication. Design reference: `../docs/design/04-frontend.md`.
 ```bash
 npm install
 cp .env.example .env     # then fill in the Firebase web app values
-npm run dev              # http://localhost:5173 (strict port; /api is proxied to http://127.0.0.1:3000)
+npm run dev              # http://localhost:5173 (strict port; /api is proxied to 127.0.0.1:API_PORT, default 3000)
 npm run lint             # ESLint (react-hooks rules included)
 npm run build            # production build into dist/
 npm run format           # Prettier (with the Tailwind class sorter)
@@ -57,7 +57,7 @@ src/
   app/          App, router (every route), providers, route guards, pages/ (403, 404, route error)
   config/       env validation, Firebase client
   constants/    shared.js (backend copy), ui.js (labels, tones, options, error tables)
-  lib/          apiClient, queryClient, queryKeys, formErrors, validators, toastBus
+  lib/          apiClient, envelope, queryClient, queryKeys, liveRefresh, formErrors, validators, csv, toastBus
   utils/        date, schedule, roles, names, format, grades, listParams, cx
   hooks/        useListParams, useDebounce, useDisclosure, useConfirm, useDiscardConfirm, useToast,
                 useUnsavedChangesBlocker, ...
@@ -73,16 +73,15 @@ src/
 
 Conventions: components, hooks and helpers are named exports; only pages are default exports (they are
 lazy-loaded). Pages read the URL and compose; components take props; only `api.js` knows paths and unwraps
-the `{ success, data, meta }` envelope.
+the `{ success, data, meta }` envelope, with `toData` and `toPage` from `lib/envelope.js`.
 
 ## Adding a feature page
 
 1. Write the endpoint functions in `features/<feature>/api.js`:
 
    ```js
-   export const listSubjects = (params) =>
-     api.get('/subjects', { params }).then((r) => ({ items: r.data, meta: r.meta }));
-   export const createSubject = (body) => api.post('/subjects', body).then((r) => r.data);
+   export const listSubjects = (params) => api.get('/subjects', { params }).then(toPage); // { items, meta }
+   export const createSubject = (body) => api.post('/subjects', body).then(toData);
    ```
 
 2. Wrap them in `hooks.js` using the keys from `keys.js` (`subjectKeys = createKeys('subjects')`):
@@ -95,12 +94,12 @@ the `{ success, data, meta }` envelope.
        placeholderData: keepPreviousData,
      });
    export function useCreateSubject() {
-     const queryClient = useQueryClient();
+     const invalidate = useInvalidate();
      const toast = useToast();
      return useMutation({
        mutationFn: createSubject,
        onSuccess: (subject) => {
-         queryClient.invalidateQueries({ queryKey: subjectKeys.all });
+         invalidate(subjectKeys.all); // plus the keys of every other view that shows subjects
          toast.success(`${subject.name} created`);
        },
      });

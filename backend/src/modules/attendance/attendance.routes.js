@@ -6,8 +6,8 @@ import * as schemas from './attendance.schemas.js';
 
 export const attendanceRoutes = Router();
 
+// Marks are written and corrected through the sheet only, which checks what the teacher saw (previous).
 attendanceRoutes.get('/', validate({ query: schemas.listAttendanceQuery }), controller.list);
-// Fixed sub-paths are declared before '/:id'.
 attendanceRoutes.get('/summary', validate({ query: schemas.summaryQuery }), controller.summary);
 attendanceRoutes.get(
   '/sheet',
@@ -20,16 +20,4 @@ attendanceRoutes.put(
   authorize('admin', 'teacher'),
   validate({ body: schemas.saveSheetBody }),
   controller.saveSheet,
-);
-attendanceRoutes.patch(
-  '/:id',
-  authorize('admin', 'teacher'),
-  validate({ params: schemas.idParams, body: schemas.updateAttendanceBody }),
-  controller.update,
-);
-attendanceRoutes.delete(
-  '/:id',
-  authorize('admin'),
-  validate({ params: schemas.idParams }),
-  controller.remove,
 );
