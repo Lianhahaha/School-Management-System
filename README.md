@@ -236,3 +236,12 @@ Not required to run or review the project: everything above works on one machine
    ```
    The site is served at `https://<site-id>.web.app`, where the site id is the `site` in `firebase.json` (`skoleph` here; create another with `npx firebase-tools hosting:sites:create <name>`). Firebase Authentication trusts it automatically, but add the new address to the API's `CORS_ORIGINS` on Render.
 
+### Keeping the live site healthy
+
+- **Releases.** The frontend is released by GitHub Actions only after the backend tests pass for that commit ([deploy-frontend.yml](.github/workflows/deploy-frontend.yml)). Set Render to do the same: service → Settings → Build & Deploy → Auto-Deploy → **After CI Checks Pass**.
+- **Schema changes.** `migrate.js` creates missing tables and runs the upgrades listed in it; it never alters an existing table on its own. A change to an existing table gets an entry in its `UPGRADES` list, and runs on the hosted database before the code that needs it: `node --env-file=.env.cloud scripts/migrate.js`.
+- **Resetting the demo data.** The demo is shared, and some actions cannot be undone (a completed school year, a deleted account). To start over: `node --env-file=.env.cloud scripts/migrate.js --fresh --allow-remote-drop`, then `node --env-file=.env.cloud scripts/seed.js`. **This deletes every row in the hosted database.**
+- **Local work and live sign-ins.** While local development shares the Firebase project with the live site, seeding a local database resets the demo accounts' passwords and signs them out everywhere, the live site included. A second free Firebase project for local work (step 2 of the quick start, with its own `.env` values) keeps the two apart.
+- **Secrets.** `.env.cloud`, the service-account key and the CA certificate are git-ignored. Keep them out of synced folders (OneDrive, Dropbox) too.
+- **Before a demo.** Open the API's `/api/v1/health` a minute ahead so the free server is awake, and check in the Aiven console that the database is powered on.
+

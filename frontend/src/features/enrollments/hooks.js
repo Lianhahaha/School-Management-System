@@ -62,6 +62,7 @@ export function useSchoolYear(studentId, requested, currentEnrollment) {
     queryKey: enrollmentKeys.list(params),
     queryFn: () => listEnrollments(params),
     select: (page) => schoolYearsOf(page.items),
+    meta: { live: false }, // a student's school years change once a year
   });
   const schoolYears = query.data ?? [];
   const years = yearChoices(schoolYears);

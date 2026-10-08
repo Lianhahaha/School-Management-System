@@ -30,10 +30,21 @@ export function typeCast(field, next) {
   return next();
 }
 
+/** Column name -> camelCase key. The set of column names is small and fixed, so each is converted once. */
+const camelNames = new Map();
+const camelName = (key) => {
+  let name = camelNames.get(key);
+  if (name === undefined) {
+    name = toCamel(key);
+    camelNames.set(key, name);
+  }
+  return name;
+};
+
 /** Shallow key conversion: rows are flat, and Date/Buffer values are leaves. */
 export function camelizeRow(row) {
   const out = {};
-  for (const [key, value] of Object.entries(row)) out[toCamel(key)] = value;
+  for (const key in row) out[camelName(key)] = row[key];
   return out;
 }
 
@@ -44,6 +55,10 @@ export const pool = mysql.createPool({
   waitForConnections: true,
   queueLimit: 100,
   connectTimeout: 10_000,
+  // TCP keep-alive on idle connections, so a hosted database (or a NAT on the way) does not silently drop
+  // them between requests, and a dead one is noticed instead of hanging the next query.
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 30_000,
   charset: 'utf8mb4_unicode_ci',
   dateStrings: ['DATE'],
   timezone: 'Z',
@@ -52,10 +67,13 @@ export const pool = mysql.createPool({
   typeCast,
 });
 
+/** A SELECT that runs longer than this is stopped by MySQL (ER_QUERY_TIMEOUT, answered as a retryable 503). */
+const MAX_SELECT_MS = 15_000;
+
 pool.on('connection', (connection) => {
   // A callback, so a failure is logged instead of surfacing as an unhandled 'error' event.
-  connection.query("SET time_zone = '+00:00'", (error) => {
-    if (error) logger.error('could not set the session time zone to UTC', { error: String(error) });
+  connection.query(`SET time_zone = '+00:00', max_execution_time = ${MAX_SELECT_MS}`, (error) => {
+    if (error) logger.error('could not set the session settings', { error: String(error) });
   });
 });
 

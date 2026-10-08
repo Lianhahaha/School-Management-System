@@ -31,6 +31,9 @@ export function createApp() {
       allowedHeaders: ['Authorization', 'Content-Type', 'X-Request-Id'],
       exposedHeaders: ['X-Request-Id', 'Retry-After'],
       credentials: false,
+      // Browsers may reuse a preflight answer for 2 hours (Chrome caps it there); without this every call
+      // from the web app, which sends an Authorization header, would be preceded by an OPTIONS request.
+      maxAge: 7200,
     }),
   );
   app.use(httpLogger);

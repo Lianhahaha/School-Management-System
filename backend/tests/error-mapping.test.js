@@ -1,6 +1,7 @@
 import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
+import { pool } from '../src/config/db.js';
 import { toApiError } from '../src/utils/toApiError.js';
 import { api, as, closeWorld, makeUser, resetWorld } from './helpers/harness.js';
 
@@ -26,6 +27,7 @@ describe('error mapping', () => {
     for (const error of [
       driverError('ER_LOCK_DEADLOCK', 1213),
       driverError('ER_LOCK_WAIT_TIMEOUT', 1205),
+      driverError('ER_QUERY_TIMEOUT', 3024),
       new Error('Queue limit reached.'),
     ]) {
       const mapped = toApiError(error);
@@ -53,6 +55,17 @@ describe('error mapping', () => {
       assert.equal(mapped.status, 503, code);
       assert.equal(mapped.details.component, 'auth');
     }
+  });
+
+  it('lets a browser cache the CORS preflight, and caps how long a SELECT may run', async () => {
+    const preflight = await api
+      .options('/api/v1/students')
+      .set('Origin', 'http://localhost:5173')
+      .set('Access-Control-Request-Method', 'GET')
+      .set('Access-Control-Request-Headers', 'authorization');
+    assert.equal(preflight.headers['access-control-max-age'], '7200');
+    const [[row]] = await pool.query('SELECT @@SESSION.max_execution_time AS ms, @@SESSION.time_zone AS tz');
+    assert.deepEqual([row.ms, row.tz], [15000, '+00:00']);
   });
 
   it('still answers 500 for an unknown error', () => {

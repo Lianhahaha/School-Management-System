@@ -60,6 +60,19 @@ const networkError = () =>
     message: 'Cannot reach the server. Check your connection.',
   });
 
+/**
+ * How long a request may wait for an answer: longer than the free host's cold start (about a minute), short
+ * enough that a stalled request ends as an error the page can retry instead of a spinner forever.
+ */
+const REQUEST_TIMEOUT_MS = 90_000;
+
+const timeoutError = () =>
+  new ApiError({
+    status: 0,
+    code: CLIENT_ERROR_CODES.NETWORK_ERROR,
+    message: 'The server took too long to answer. Please try again.',
+  });
+
 /** The backend writes lower-case messages; users see them in toasts and alerts. */
 const toSentence = (message) => message.charAt(0).toUpperCase() + message.slice(1);
 
@@ -125,10 +138,11 @@ async function send(path, { method, body, params, needsAuth }, forceRefresh) {
         method,
         headers,
         body: body === undefined ? undefined : JSON.stringify(body),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       }),
     );
-  } catch {
-    throw networkError();
+  } catch (error) {
+    throw error?.name === 'TimeoutError' ? timeoutError() : networkError();
   }
 }
 

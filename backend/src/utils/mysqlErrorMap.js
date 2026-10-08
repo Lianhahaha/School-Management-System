@@ -17,8 +17,8 @@ const CONNECTION_CODES = new Set([
   'ENOTFOUND',
 ]);
 
-/** Refusals that a second attempt normally gets past. */
-const BUSY_CODES = new Set(['ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT']);
+/** Refusals that a second attempt normally gets past (a stopped slow SELECT included, see config/db.js). */
+const BUSY_CODES = new Set(['ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT', 'ER_QUERY_TIMEOUT']);
 
 /** mysql2's pool rejects with a plain Error (no code) when more requests wait than queueLimit allows. */
 const isPoolQueueFull = (error) => error?.message === 'Queue limit reached.' && error.code === undefined;

@@ -18,7 +18,7 @@ import {
   getManagedAssessment,
   lockMaxScoreForGrading,
 } from '../assessments/assessments.service.js';
-import { gradeWeightsBySubject } from '../subjects/subjects.service.js';
+import { allGradeWeights } from '../subjects/subjects.service.js';
 import * as repo from './grades.repository.js';
 
 const toAssessmentRef = ({
@@ -85,10 +85,11 @@ const totalsOf = (rows) => ({
  *   classSubject  one row per class-subject: its result (`method` points or weighted) and the weights used;
  *   student       one row per student: the result of their one class-subject, or the general average of
  *                 several (`average`), each subject counting once per academic year (utils/grading.js).
+ * `weights` comes from allGradeWeights; a subject missing from it is graded on points.
  */
-async function foldSummary(rows, groupBy) {
-  const weights = await gradeWeightsBySubject(rows.map((row) => row.subjectId));
-  const classSubjectResult = (typeRows) => subjectResult(typeRows, weights.get(typeRows[0].subjectId));
+function foldSummary(rows, groupBy, weights) {
+  const weightsOf = (subjectId) => weights.get(subjectId) ?? null;
+  const classSubjectResult = (typeRows) => subjectResult(typeRows, weightsOf(typeRows[0].subjectId));
 
   if (groupBy === 'student') {
     return [...groupRows(rows, (row) => row.studentId).values()].map((studentRows) => {
@@ -120,9 +121,15 @@ async function foldSummary(rows, groupBy) {
       label: first.label,
       ...totalsOf(typeRows),
       ...classSubjectResult(typeRows),
-      gradeWeights: weights.get(first.subjectId),
+      gradeWeights: weightsOf(first.subjectId),
     };
   });
+}
+
+/** The summary rows for `filters` within `scope`; the grades and the weights are read at the same time. */
+async function summarize(filters, scope) {
+  const [rows, weights] = await Promise.all([repo.summarizeGrades(filters, scope), allGradeWeights()]);
+  return foldSummary(rows, filters.groupBy, weights);
 }
 
 /** Applies the scoping rule shared by list and summary: own grades for students, visible classes for teachers. */
@@ -144,7 +151,7 @@ export async function getSummary(user, query) {
     throw ApiError.forbidden('group_by_student_not_allowed', 'students cannot group grades by student');
   }
   const { filters, scope } = await scopeFilters(user, query);
-  return foldSummary(await repo.summarizeGrades(filters, scope), filters.groupBy);
+  return summarize(filters, scope);
 }
 
 /**
@@ -152,8 +159,7 @@ export async function getSummary(user, query) {
  * (a student who changed class keeps the grades of the first one) (dashboards; the caller did the checks).
  */
 export async function summarizeStudentGradesUnscoped(studentId, academicYear) {
-  const filters = { groupBy: 'classSubject', studentId, academicYear };
-  return foldSummary(await repo.summarizeGrades(filters, null), filters.groupBy);
+  return summarize({ groupBy: 'classSubject', studentId, academicYear }, null);
 }
 
 /**
@@ -162,8 +168,7 @@ export async function summarizeStudentGradesUnscoped(studentId, academicYear) {
  * @returns {Promise<Map<number, number | null>>} studentId -> percentage
  */
 export async function studentResultsUnscoped(academicYear, scope) {
-  const filters = { groupBy: 'student', academicYear };
-  const rows = await foldSummary(await repo.summarizeGrades(filters, scope), filters.groupBy);
+  const rows = await summarize({ groupBy: 'student', academicYear }, scope);
   return new Map(rows.map((row) => [row.studentId, row.percentage]));
 }
 

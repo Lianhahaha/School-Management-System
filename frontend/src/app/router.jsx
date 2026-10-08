@@ -102,15 +102,21 @@ export const router = createBrowserRouter([
         children: [
           {
             element: <AppShell />,
-            errorElement: <RouteErrorPage />, // a failing page keeps the sidebar and top bar
             children: [
-              { index: true, element: <RoleRedirect /> },
-              { path: 'profile', element: page(() => import('../features/profile/pages/ProfilePage')) },
-              { path: '403', element: page(() => import('./pages/ForbiddenPage')) },
-              { path: 'admin', element: <RequireRole roles={['admin']} />, children: adminRoutes },
-              { path: 'teacher', element: <RequireRole roles={['teacher']} />, children: teacherRoutes },
-              { path: 'student', element: <RequireRole roles={['student']} />, children: studentRoutes },
-              { path: '*', element: page(() => import('./pages/NotFoundPage')) },
+              {
+                // On a pathless child, not on the shell itself: an errorElement replaces its own route's
+                // element, so here a failing page keeps the sidebar and top bar and the user can move on.
+                errorElement: <RouteErrorPage />,
+                children: [
+                  { index: true, element: <RoleRedirect /> },
+                  { path: 'profile', element: page(() => import('../features/profile/pages/ProfilePage')) },
+                  { path: '403', element: page(() => import('./pages/ForbiddenPage')) },
+                  { path: 'admin', element: <RequireRole roles={['admin']} />, children: adminRoutes },
+                  { path: 'teacher', element: <RequireRole roles={['teacher']} />, children: teacherRoutes },
+                  { path: 'student', element: <RequireRole roles={['student']} />, children: studentRoutes },
+                  { path: '*', element: page(() => import('./pages/NotFoundPage')) },
+                ],
+              },
             ],
           },
         ],

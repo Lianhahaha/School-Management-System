@@ -53,6 +53,8 @@ export function useClassRoster(classId, { enabled = true } = {}) {
     queryKey: [...studentKeys.lists(), 'all', params],
     queryFn: () => fetchAllPages(listStudents, params),
     enabled,
+    // Not refreshed in the background: the list an admin is ticking must not change under their hands.
+    meta: { live: false },
   });
 }
 

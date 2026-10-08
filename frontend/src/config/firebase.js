@@ -1,9 +1,15 @@
 /**
- * Firebase client. Only Authentication is used (email and password); the default
- * persistence keeps users signed in across tabs and browser restarts.
+ * Firebase client. Only Authentication is used (email and password), so the app initialises it with the
+ * same persistence getAuth would use (users stay signed in across tabs and browser restarts) but without the
+ * popup and redirect sign-in code getAuth bundles.
  */
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import {
+  browserLocalPersistence,
+  browserSessionPersistence,
+  indexedDBLocalPersistence,
+  initializeAuth,
+} from 'firebase/auth';
 import { env } from './env';
 
 const app = initializeApp({
@@ -13,4 +19,6 @@ const app = initializeApp({
   appId: env.firebase.appId,
 });
 
-export const auth = getAuth(app);
+export const auth = initializeAuth(app, {
+  persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence],
+});

@@ -1,9 +1,12 @@
 name: Deploy frontend
 
-# Every push to main builds the frontend and releases it to Firebase Hosting (https://skoleph.web.app).
+# Releases the frontend to Firebase Hosting (https://skoleph.web.app) once the backend tests have passed for a
+# commit on main, so a commit that fails them never reaches the live site. It can also be started by hand.
 # The backend deploys itself: Render watches this repository.
 on:
-  push:
+  workflow_run:
+    workflows: [Backend tests]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -13,9 +16,13 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The commit the tests ran on, not whatever main points to by now.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - uses: actions/setup-node@v4
         with:
@@ -33,8 +40,12 @@ jobs:
 
       # The VITE_* values are public (they end up in the built JavaScript), so they are repository
       # variables, not secrets. Only the Firebase deploy key is a secret.
+      # Without the API address the site would call /api/v1 on Firebase Hosting, which answers every path
+      # with index.html, so the build is refused instead of deployed broken.
       - name: Build
-        run: npm run build
+        run: |
+          test -n "$VITE_API_BASE_URL" || { echo "::error::Repository variable VITE_API_BASE_URL is not set"; exit 1; }
+          npm run build
         working-directory: frontend
         env:
           VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}

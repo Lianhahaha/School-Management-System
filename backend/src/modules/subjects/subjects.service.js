@@ -8,9 +8,8 @@ import { ApiError } from '../../utils/ApiError.js';
 import { changedList, changesOf, record } from '../activity/activity.service.js';
 import * as repo from './subjects.repository.js';
 
-/** Map subjectId -> weights of every assessment type (0 when not weighted), or null for a subject on points. */
-export async function gradeWeightsBySubject(subjectIds, conn) {
-  const rows = await repo.findGradeWeights([...new Set(subjectIds)], conn);
+/** Map subjectId -> weights of every assessment type (0 when not weighted), for the subjects that have rows. */
+function weightsBySubject(rows) {
   const bySubject = new Map();
   for (const row of rows) {
     if (!bySubject.has(row.subjectId)) {
@@ -18,7 +17,21 @@ export async function gradeWeightsBySubject(subjectIds, conn) {
     }
     bySubject.get(row.subjectId)[row.assessmentType] = row.weight;
   }
+  return bySubject;
+}
+
+/** Map subjectId -> weights of every assessment type (0 when not weighted), or null for a subject on points. */
+export async function gradeWeightsBySubject(subjectIds, conn) {
+  const bySubject = weightsBySubject(await repo.findGradeWeights([...new Set(subjectIds)], conn));
   return new Map(subjectIds.map((id) => [id, bySubject.get(id) ?? null]));
+}
+
+/**
+ * The weights of every weighted subject (a subject missing from the map is on points). The table is small, so
+ * a grade summary reads it at the same time as the grades instead of after them.
+ */
+export async function allGradeWeights() {
+  return weightsBySubject(await repo.findGradeWeights(null));
 }
 
 async function withGradeWeights(rows, conn) {

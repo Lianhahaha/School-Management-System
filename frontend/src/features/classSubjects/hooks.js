@@ -52,6 +52,7 @@ export function useClassSubject(id) {
     queryKey: classSubjectKeys.detail(id),
     queryFn: () => getClassSubject(id),
     enabled: Boolean(id),
+    meta: { live: false }, // a lesson's header (class, subject, teacher) rarely changes
   });
 }
 

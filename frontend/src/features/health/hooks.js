@@ -14,5 +14,6 @@ export function useHealth() {
     queryFn: getHealth,
     staleTime: Infinity,
     retry: false,
+    meta: { live: false }, // once per session, as said above: never in the 20-s refresh (lib/liveRefresh)
   });
 }

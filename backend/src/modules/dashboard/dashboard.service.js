@@ -277,30 +277,32 @@ async function studentDashboard(user) {
   const year = klass && klass.academicYear <= thisYear ? klass.academicYear : thisYear;
   const isClassOfThisYear = klass?.academicYear === thisYear;
   const dateFrom = academicYearStart(year);
-  const attendance = await summarizeAttendanceUnscoped({
+  const attendanceOfYear = summarizeAttendanceUnscoped({
     studentId: user.studentId,
     dateFrom,
     dateTo: today,
   });
-  const attendanceSummary = { dateFrom, dateTo: today, ...attendance };
   if (!klass) {
     return {
       ...base,
       currentEnrollment: null,
       todaySchedule: [],
-      attendanceSummary,
+      attendanceSummary: { dateFrom, dateTo: today, ...(await attendanceOfYear) },
       gradeSummary: [],
       recentGrades: [],
       upcomingAssessments: [],
     };
   }
 
-  const [slots, gradeSummary, recent, upcoming] = await Promise.all([
+  // One round of queries for the rest, the attendance summary included.
+  const [attendance, slots, gradeSummary, recent, upcoming] = await Promise.all([
+    attendanceOfYear,
     holiday || !isClassOfThisYear ? [] : findSlotsUnscoped({ classId, dayOfWeek: todayIsoWeekday() }),
     summarizeStudentGradesUnscoped(user.studentId, year),
     recentGradesUnscoped(user.studentId, 5),
     upcomingAssessmentsUnscoped({ classId, days: 7, limit: 5 }),
   ]);
+  const attendanceSummary = { dateFrom, dateTo: today, ...attendance };
   return {
     ...base,
     currentEnrollment: {

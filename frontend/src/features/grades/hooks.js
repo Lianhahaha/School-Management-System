@@ -54,7 +54,12 @@ export function useAssessments(params, { enabled = true } = {}) {
 }
 
 export function useAssessment(id) {
-  return useQuery({ queryKey: gradeKeys.detail(id), queryFn: () => getAssessment(id), enabled: Boolean(id) });
+  return useQuery({
+    queryKey: gradeKeys.detail(id),
+    queryFn: () => getAssessment(id),
+    enabled: Boolean(id),
+    meta: { live: false }, // the grade sheet's header; the sheet's own saves refresh it
+  });
 }
 
 export function useGradeRoster(assessmentId) {

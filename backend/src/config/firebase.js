@@ -70,6 +70,21 @@ export function assertFirebaseReady() {
 }
 
 /**
+ * How long a token check may take. It runs locally, except when Google's signing keys are downloaded again
+ * (about every six hours), which has no time limit of its own; a stall there must not hang every request.
+ */
+const VERIFY_TIMEOUT_MS = 10_000;
+
+/** `promise`, or a rejection with a plain Error after `ms` (answered as 503 auth by tokenVerificationError). */
+function withTimeout(promise, ms, message) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+/**
  * The Admin SDK surface the application uses. Properties are plain functions
  * so tests can replace them (e.g. `firebase.verifyIdToken = async () => ...`).
  */
@@ -78,7 +93,10 @@ export const firebase = {
     init();
     return projectId;
   },
-  verifyIdToken: (token) => (init(), adminAuth.verifyIdToken(token)),
+  verifyIdToken: (token) => (
+    init(),
+    withTimeout(adminAuth.verifyIdToken(token), VERIFY_TIMEOUT_MS, 'Firebase token check timed out')
+  ),
   createUser: (properties) => (init(), adminAuth.createUser(properties)),
   getUserByEmail: (emailAddress) => (init(), adminAuth.getUserByEmail(emailAddress)),
   updateUser: (uid, properties) => (init(), adminAuth.updateUser(uid, properties)),

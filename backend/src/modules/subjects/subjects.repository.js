@@ -46,8 +46,14 @@ export async function deleteSubject(id, conn) {
   return (await run('DELETE FROM subjects WHERE id = ?', [id], conn)).affectedRows;
 }
 
-/** `{ subjectId, assessmentType, weight }` rows of the given subjects (only types weighted above 0 are stored). */
+/**
+ * `{ subjectId, assessmentType, weight }` rows of the given subjects, or of every subject when `subjectIds`
+ * is null (only types weighted above 0 are stored, so the table stays small).
+ */
 export async function findGradeWeights(subjectIds, conn) {
+  if (subjectIds === null) {
+    return query('SELECT subject_id, assessment_type, weight FROM subject_grade_weights', [], conn);
+  }
   if (!subjectIds.length) return [];
   return query(
     'SELECT subject_id, assessment_type, weight FROM subject_grade_weights WHERE subject_id IN (?)',

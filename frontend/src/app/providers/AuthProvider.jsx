@@ -75,7 +75,8 @@ export function AuthProvider({ children }) {
     queryKey: authKeys.me(),
     queryFn: () => loadMe(forceSignOut),
     enabled: session.firebaseUser !== null,
-    retry: false, // 4xx must not be retried; the retry screen offers a manual retry
+    // A network blip or 5xx is retried once before the retry screen; a 4xx (a session answer) never is.
+    retry: (failureCount, error) => Boolean(error?.isTransient) && failureCount < 1,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: true, // picks up a deactivation or profile change made by an administrator
     // A student's class lives in this session (currentEnrollment): refresh it now and then, so an

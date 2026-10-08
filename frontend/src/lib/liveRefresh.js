@@ -6,7 +6,9 @@
  * Left alone on purpose:
  *   - hidden tabs, offline browsers and moments when a save is running (nothing to compare against);
  *   - /auth/me, which AuthProvider refreshes on its own and treats a failed fetch as a sign-in problem;
- *   - queries with `meta: { live: false }`: the attendance and grade sheets, which a teacher is editing.
+ *   - queries with `meta: { live: false }`: the attendance and grade sheets, which a teacher is editing, and
+ *     reference data that rarely changes (picker options, a lesson's or assessment's header, school years);
+ *     the app's own saves still refresh those.
  *
  * A failed background fetch is silent (see isLiveRefreshing in queryClient): the next round tries again.
  */
@@ -32,7 +34,8 @@ export function startLiveRefresh(queryClient) {
     if (isRefreshing || document.hidden || !navigator.onLine || queryClient.isMutating() > 0) return;
     isRefreshing = true;
     try {
-      await queryClient.refetchQueries({ type: 'active', predicate: isLiveQuery });
+      // A query already being fetched (after a save, say) is left to finish rather than fetched twice.
+      await queryClient.refetchQueries({ type: 'active', predicate: isLiveQuery }, { cancelRefetch: false });
     } finally {
       isRefreshing = false;
     }

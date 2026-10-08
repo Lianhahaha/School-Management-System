@@ -19,11 +19,16 @@ export const enrolledInClassOn = (classSql, daySql) =>
  * Sub-select of the class ids a teacher can see: classes where they teach a
  * subject, plus classes where they are the homeroom teacher. Takes the teacher
  * id twice as parameters (see visibleClassParams).
+ *
+ * The UNION sits in a derived table on purpose: MySQL cannot turn `IN (SELECT … UNION SELECT …)` into a join,
+ * so it would run the UNION once per candidate row; wrapped, it runs once and joins (checked with EXPLAIN).
  */
 export const VISIBLE_CLASS_IDS_SQL = `(
-  SELECT cs.class_id FROM class_subjects cs WHERE cs.teacher_id = ?
-  UNION
-  SELECT c.id FROM classes c WHERE c.homeroom_teacher_id = ?
+  SELECT visible.class_id FROM (
+    SELECT cs.class_id FROM class_subjects cs WHERE cs.teacher_id = ?
+    UNION
+    SELECT c.id FROM classes c WHERE c.homeroom_teacher_id = ?
+  ) AS visible
 )`;
 
 export const visibleClassParams = (teacherId) => [teacherId, teacherId];

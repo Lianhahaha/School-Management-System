@@ -21,7 +21,11 @@ export function buildListClauses(listQuery, sortMap, defaultOrderBy, tieBreaker)
     if (!column) throw new Error(`sortBy "${sortBy}" is not in the sort map`); // zod guarantees this never happens
     orderBy = `${column} ${sortOrder === 'desc' ? 'DESC' : 'ASC'}`;
   }
-  if (tieBreaker && !orderBy.includes(tieBreaker)) orderBy = `${orderBy}, ${tieBreaker} ASC`;
+  // The tie-breaker follows the main sort's direction: a mixed `x DESC, id ASC` cannot use an index's order.
+  if (tieBreaker && !orderBy.includes(tieBreaker)) {
+    const direction = /\bDESC\b/i.test(orderBy.split(',')[0]) ? 'DESC' : 'ASC';
+    orderBy = `${orderBy}, ${tieBreaker} ${direction}`;
+  }
   const offset = (page - 1) * limit;
   return {
     orderBySql: `ORDER BY ${orderBy}`,

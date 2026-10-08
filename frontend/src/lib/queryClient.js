@@ -31,8 +31,11 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 30_000,
-      retry: (failureCount, error) => Boolean(error?.isTransient) && failureCount < MAX_RETRIES,
+      // A background refresh does not retry: the next round, 20 s later, is the retry.
+      retry: (failureCount, error) =>
+        !isLiveRefreshing() && Boolean(error?.isTransient) && failureCount < MAX_RETRIES,
       refetchOnWindowFocus: false, // only /auth/me opts in
+      refetchOnReconnect: false, // lib/liveRefresh refreshes the page once when the browser is back online
     },
     mutations: { retry: false },
   },

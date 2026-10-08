@@ -33,6 +33,7 @@ export function createOptionsHook({ keys, fetchList, baseParams = {}, toOption }
       select,
       staleTime: OPTIONS_STALE_TIME,
       placeholderData: keepPreviousData,
+      meta: { live: false }, // picker options rarely change: not re-fetched every 20 s (lib/liveRefresh)
     });
   };
 }
