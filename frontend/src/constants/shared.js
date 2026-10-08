@@ -23,6 +23,33 @@ export const ATTENDANCE_STATUSES = Object.freeze(['present', 'absent', 'late', '
 
 export const ASSESSMENT_TYPES = Object.freeze(['quiz', 'test', 'exam', 'assignment', 'project', 'other']);
 
+/**
+ * K-12 grading (DepEd Order 8, s. 2015). A subject in one of these groups is graded by three components,
+ * each with the group's weight in percent; the weighted result (initial grade) is transmuted to 60-100.
+ */
+export const GRADING_GROUPS = Object.freeze(['languages', 'math_science', 'mapeh']);
+
+export const GRADING_COMPONENTS = Object.freeze(['written', 'performance', 'quarterly']);
+
+export const COMPONENT_WEIGHTS = Object.freeze({
+  languages: Object.freeze({ written: 30, performance: 50, quarterly: 20 }),
+  math_science: Object.freeze({ written: 40, performance: 40, quarterly: 20 }),
+  mapeh: Object.freeze({ written: 20, performance: 60, quarterly: 20 }),
+});
+
+/** The K-12 component each assessment type counts towards. */
+export const COMPONENT_OF_TYPE = Object.freeze({
+  quiz: 'written',
+  test: 'written',
+  assignment: 'written',
+  project: 'performance',
+  other: 'performance',
+  exam: 'quarterly',
+});
+
+/** The lowest passing grade (the transmuted 60-100 scale; also the at-risk line). */
+export const PASSING_GRADE = 75;
+
 export const TERMS = Object.freeze(['term1', 'term2', 'term3']);
 
 export const ANNOUNCEMENT_AUDIENCES = Object.freeze(['all', 'students', 'teachers']);

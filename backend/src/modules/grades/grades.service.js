@@ -1,8 +1,9 @@
 /**
  * Grades: roster-with-scores per assessment, bulk entry, flat reads and summaries.
- * A subject's result is on points (SUM(score) / SUM(max_score) * 100 over graded assessments) or, when the
- * subject has grade weights, weighted per assessment type; a student's result over several subjects is the
- * mean of the subject results. The arithmetic lives in utils/grading.js.
+ * A subject's result is its K-12 grade when the subject has a grading group (components weighted by the
+ * group, transmuted to 60-100), else on points (SUM(score) / SUM(max_score) * 100 over graded assessments) or,
+ * when the subject has grade weights, weighted per assessment type; a student's result over several subjects
+ * is the mean of the subject results. The arithmetic lives in utils/grading.js.
  */
 import { withTransaction } from '../../config/db.js';
 import { ApiError } from '../../utils/ApiError.js';
@@ -18,7 +19,7 @@ import {
   getManagedAssessment,
   lockMaxScoreForGrading,
 } from '../assessments/assessments.service.js';
-import { allGradeWeights } from '../subjects/subjects.service.js';
+import { allGradingRules } from '../subjects/subjects.service.js';
 import * as repo from './grades.repository.js';
 
 const toAssessmentRef = ({
@@ -82,14 +83,17 @@ const totalsOf = (rows) => ({
 
 /**
  * Folds the per-type rows of repo.summarizeGrades into summary rows:
- *   classSubject  one row per class-subject: its result (`method` points or weighted) and the weights used;
+ *   classSubject  one row per class-subject: its result (`method` k12, points or weighted; for K-12 the
+ *                 transmuted grade, with `initialGrade` and the `components`) and the rules used;
  *   student       one row per student: the result of their one class-subject, or the general average of
  *                 several (`average`), each subject counting once per academic year (utils/grading.js).
- * `weights` comes from allGradeWeights; a subject missing from it is graded on points.
+ * `rules` comes from allGradingRules; a subject in neither of its maps is graded on points.
  */
-function foldSummary(rows, groupBy, weights) {
-  const weightsOf = (subjectId) => weights.get(subjectId) ?? null;
-  const classSubjectResult = (typeRows) => subjectResult(typeRows, weightsOf(typeRows[0].subjectId));
+function foldSummary(rows, groupBy, rules) {
+  const weightsOf = (subjectId) => rules.weights.get(subjectId) ?? null;
+  const groupOf = (subjectId) => rules.groups.get(subjectId) ?? null;
+  const classSubjectResult = (typeRows) =>
+    subjectResult(typeRows, weightsOf(typeRows[0].subjectId), groupOf(typeRows[0].subjectId));
 
   if (groupBy === 'student') {
     return [...groupRows(rows, (row) => row.studentId).values()].map((studentRows) => {
@@ -121,15 +125,16 @@ function foldSummary(rows, groupBy, weights) {
       label: first.label,
       ...totalsOf(typeRows),
       ...classSubjectResult(typeRows),
+      gradingGroup: groupOf(first.subjectId),
       gradeWeights: weightsOf(first.subjectId),
     };
   });
 }
 
-/** The summary rows for `filters` within `scope`; the grades and the weights are read at the same time. */
+/** The summary rows for `filters` within `scope`; the grades and the grading rules are read at the same time. */
 async function summarize(filters, scope) {
-  const [rows, weights] = await Promise.all([repo.summarizeGrades(filters, scope), allGradeWeights()]);
-  return foldSummary(rows, filters.groupBy, weights);
+  const [rows, rules] = await Promise.all([repo.summarizeGrades(filters, scope), allGradingRules()]);
+  return foldSummary(rows, filters.groupBy, rules);
 }
 
 /** Applies the scoping rule shared by list and summary: own grades for students, visible classes for teachers. */

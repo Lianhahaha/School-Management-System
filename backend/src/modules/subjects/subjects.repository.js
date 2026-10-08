@@ -4,7 +4,8 @@ import { WhereBuilder, buildSet } from '../../utils/sql.js';
 
 export const SUBJECT_SORT_MAP = { code: 'sub.code', name: 'sub.name', createdAt: 'sub.created_at' };
 
-const COLUMNS = 'sub.id, sub.code, sub.name, sub.description, sub.is_active, sub.created_at, sub.updated_at';
+const COLUMNS =
+  'sub.id, sub.code, sub.name, sub.description, sub.is_active, sub.grading_group, sub.created_at, sub.updated_at';
 const FROM = 'FROM subjects sub';
 
 export async function findSubjectById(id, conn) {
@@ -26,16 +27,32 @@ export function listSubjects(listQuery) {
   });
 }
 
-export async function insertSubject({ code, name, description }, conn) {
+export async function insertSubject({ code, name, description, gradingGroup }, conn) {
   const result = await run(
-    'INSERT INTO subjects (code, name, description) VALUES (?, ?, ?)',
-    [code, name, description ?? null],
+    'INSERT INTO subjects (code, name, description, grading_group) VALUES (?, ?, ?, ?)',
+    [code, name, description ?? null, gradingGroup ?? null],
     conn,
   );
   return result.insertId;
 }
 
-const PATCH_COLUMNS = { code: 'code', name: 'name', description: 'description', isActive: 'is_active' };
+const PATCH_COLUMNS = {
+  code: 'code',
+  name: 'name',
+  description: 'description',
+  isActive: 'is_active',
+  gradingGroup: 'grading_group',
+};
+
+/** Map subjectId -> K-12 grading group of every subject that has one (the table is small). */
+export async function findGradingGroups(conn) {
+  const rows = await query(
+    'SELECT id, grading_group FROM subjects WHERE grading_group IS NOT NULL',
+    [],
+    conn,
+  );
+  return new Map(rows.map((row) => [row.id, row.gradingGroup]));
+}
 
 export async function updateSubject(id, fields, conn) {
   const set = buildSet(PATCH_COLUMNS, fields);

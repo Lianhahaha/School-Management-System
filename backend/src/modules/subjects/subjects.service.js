@@ -27,11 +27,13 @@ export async function gradeWeightsBySubject(subjectIds, conn) {
 }
 
 /**
- * The weights of every weighted subject (a subject missing from the map is on points). The table is small, so
- * a grade summary reads it at the same time as the grades instead of after them.
+ * How every subject is graded: `groups` (subjectId -> K-12 grading group) and `weights` (subjectId -> weights
+ * per assessment type); a subject in neither map is graded on points. Both tables are small, so a grade
+ * summary reads them at the same time as the grades instead of after them.
  */
-export async function allGradeWeights() {
-  return weightsBySubject(await repo.findGradeWeights(null));
+export async function allGradingRules() {
+  const [groups, weightRows] = await Promise.all([repo.findGradingGroups(), repo.findGradeWeights(null)]);
+  return { groups, weights: weightsBySubject(weightRows) };
 }
 
 async function withGradeWeights(rows, conn) {
@@ -63,17 +65,28 @@ export async function createSubject({ gradeWeights, ...body }) {
     action: 'subject.create',
     entityId: id,
     summary: `Created the subject ${subject.code} · ${subject.name}`,
-    details: { code: subject.code, name: subject.name, gradeWeights: subject.gradeWeights },
+    details: {
+      code: subject.code,
+      name: subject.name,
+      gradingGroup: subject.gradingGroup,
+      gradeWeights: subject.gradeWeights,
+    },
   });
   return subject;
 }
 
-/** `gradeWeights` replaces the subject's weights; null puts it back on points. */
+/**
+ * `gradeWeights` replaces the subject's weights and `gradingGroup` its K-12 group; a subject is graded one way,
+ * so setting either clears the other. Both null put it back on points.
+ */
 export async function updateSubject(id, patch) {
   const before = await getSubject(id);
+  const fields = patch.gradeWeights ? { ...patch, gradingGroup: null } : patch;
   await withTransaction(async (conn) => {
-    await repo.updateSubject(id, patch, conn);
-    if ('gradeWeights' in patch) await repo.replaceGradeWeights(id, patch.gradeWeights, conn);
+    await repo.updateSubject(id, fields, conn);
+    if ('gradeWeights' in patch || patch.gradingGroup) {
+      await repo.replaceGradeWeights(id, patch.gradingGroup ? null : patch.gradeWeights, conn);
+    }
   });
   const subject = await getSubject(id);
   // Compared on the stored values, so weights sent with zeros left out still match.

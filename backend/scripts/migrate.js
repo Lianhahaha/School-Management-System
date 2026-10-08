@@ -43,6 +43,14 @@ const UPGRADES = [
               WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'enrollments' AND INDEX_NAME = 'uq_enrollments_student_class'`,
     apply: 'ALTER TABLE enrollments DROP INDEX uq_enrollments_student_class',
   },
+  {
+    // K-12 grading: the subject group that sets a subject's component weights (NULL keeps today's grading).
+    description: 'add subjects.grading_group',
+    needed: `SELECT 1 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'subjects' AND COLUMN_NAME = 'grading_group')`,
+    apply: `ALTER TABLE subjects ADD COLUMN grading_group ENUM('languages','math_science','mapeh') NULL
+              COMMENT 'K-12 components group; NULL = points or custom weights' AFTER is_active`,
+  },
 ];
 
 async function applyUpgrades(conn) {

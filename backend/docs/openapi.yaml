@@ -673,9 +673,11 @@ paths:
         new classes (`POST /class-subjects` rejects it) while existing history keeps working. This is the way to
         take a subject that is in use out of circulation.
 
-        `gradeWeights` sets how much each assessment type counts towards results in the subject (whole percents
-        adding up to 100, else 400); `null` puts the subject back on points. Results change immediately,
-        including past ones.
+        `gradingGroup` grades the subject by K-12 components (written work, performance tasks, quarterly
+        assessment) with that group's weights, transmuted to 60-100; `gradeWeights` sets how much each assessment
+        type counts instead (whole percents adding up to 100, else 400). A subject is graded one way: setting
+        either clears the other, and sending both non-null is a 400. Both null put the subject back on points.
+        Results change immediately, including past ones.
       parameters:
         - $ref: '#/components/parameters/IdPath'
       requestBody:
@@ -1596,9 +1598,12 @@ paths:
         Aggregate over graded assessments only. `groupBy=classSubject` (default) returns one row per
         class-subject, `groupBy=student` one row per student (403 for students).
 
-        A subject's result is on points, `SUM(score) / SUM(maxScore) * 100` (`method: points`), unless the
-        subject has grade weights (`Subject.gradeWeights`): then each assessment type's points percentage counts
-        with its weight, over the types that have grades (`method: weighted`). A student row that spans several
+        A subject with a grading group (`Subject.gradingGroup`) is graded by K-12 components (`method: k12`): each
+        component's points percentage times the group's weight, over the components that have grades, gives
+        `initialGrade`, transmuted to the 60-100 scale as `percentage` (75 passes). Otherwise a subject's result
+        is on points, `SUM(score) / SUM(maxScore) * 100` (`method: points`), unless the subject has grade weights
+        (`Subject.gradeWeights`): then each assessment type's points percentage counts with its weight, over the
+        types that have grades (`method: weighted`). A student row that spans several
         class-subjects is the mean of their results (`method: average`). `totalScore` and `totalMaxScore` are
         always the plain points.
       parameters:
@@ -2391,6 +2396,14 @@ components:
     AssessmentType:
       type: string
       enum: [quiz, test, exam, assignment, project, other]
+    GradingGroup:
+      type: string
+      description: |
+        K-12 subject group (DepEd Order 8, s. 2015). Component weights written work / performance tasks /
+        quarterly assessment: languages (and Araling Panlipunan, EsP) 30/50/20, math_science 40/40/20,
+        mapeh (and EPP, TLE) 20/60/20. Quiz, test and assignment count as written work; project and other as
+        performance tasks; exam as quarterly assessment.
+      enum: [languages, math_science, mapeh]
     Term:
       type: string
       description: The grading period of an assessment; the app shows term1 as 1st Semester, term2 as 2nd Semester and term3 as Summer.
@@ -2741,7 +2754,7 @@ components:
       example: { quiz: 20, test: 30, exam: 50, assignment: 0, project: 0, other: 0 }
     Subject:
       type: object
-      required: [id, code, name, description, isActive, gradeWeights, createdAt, updatedAt]
+      required: [id, code, name, description, isActive, gradingGroup, gradeWeights, createdAt, updatedAt]
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -2756,6 +2769,11 @@ components:
         isActive:
           type: boolean
           description: False for a retired subject, which cannot be assigned to new classes.
+        gradingGroup:
+          nullable: true
+          description: The K-12 subject group whose component weights grade the subject, or null.
+          allOf:
+            - $ref: '#/components/schemas/GradingGroup'
         gradeWeights:
           nullable: true
           description: Weights per assessment type, or null when results in the subject are on points.
@@ -3289,17 +3307,50 @@ components:
           type: number
           nullable: true
           description: |
-            The result, 0-100 rounded to 2 decimals (see `method`). Null when a weighted subject has grades only
-            in types weighted 0.
-          example: 87.5
+            The result (see `method`): for K-12 the transmuted grade, a whole number from 60 to 100; otherwise
+            0-100 rounded to 2 decimals. Null when a weighted subject has grades only in types weighted 0.
+          example: 90
+        initialGrade:
+          type: number
+          nullable: true
+          description: Present with `groupBy=classSubject`; the result before transmutation (equal to `percentage` unless `method` is k12).
+          example: 84.6
         method:
           type: string
-          enum: [points, weighted, average]
+          enum: [k12, points, weighted, average]
           description: |
+            k12 = the subject's grading group weights its components, transmuted to 60-100;
             points = totalScore / totalMaxScore * 100; weighted = the subject's grade weights per assessment type;
             average = mean of the student's subject results (a student row spanning several class-subjects),
             each subject counting once per academic year: a subject graded in two classes of a year (the
             student changed class) averages those class results first.
+        components:
+          type: array
+          nullable: true
+          description: Present with `groupBy=classSubject`; for `method` k12 the three components, otherwise null.
+          items:
+            type: object
+            required: [component, weight, percentage, assessmentsGraded]
+            properties:
+              component:
+                type: string
+                enum: [written, performance, quarterly]
+              weight:
+                type: integer
+                example: 40
+              percentage:
+                type: number
+                nullable: true
+                description: Points percentage of the component; null while nothing in it is graded.
+                example: 88.5
+              assessmentsGraded:
+                type: integer
+                example: 5
+        gradingGroup:
+          nullable: true
+          description: Present with `groupBy=classSubject`; the subject's K-12 group, null when it is not graded by components.
+          allOf:
+            - $ref: '#/components/schemas/GradingGroup'
         gradeWeights:
           nullable: true
           description: Present with `groupBy=classSubject`; the weights applied, null for a subject on points.
@@ -4230,9 +4281,14 @@ components:
           type: string
           maxLength: 1000
           nullable: true
+        gradingGroup:
+          nullable: true
+          description: Grade by K-12 components with this group's weights. Not together with `gradeWeights`.
+          allOf:
+            - $ref: '#/components/schemas/GradingGroup'
         gradeWeights:
           nullable: true
-          description: Weights per assessment type (must add up to 100); null or left out grades on points.
+          description: Weights per assessment type (must add up to 100); null or left out (and no `gradingGroup`) grades on points.
           allOf:
             - $ref: '#/components/schemas/GradeWeights'
     UpdateSubjectRequest:
@@ -4249,6 +4305,8 @@ components:
         isActive:
           type: boolean
           description: False retires the subject, true reactivates it.
+        gradingGroup:
+          $ref: '#/components/schemas/CreateSubjectRequest/properties/gradingGroup'
         gradeWeights:
           $ref: '#/components/schemas/CreateSubjectRequest/properties/gradeWeights'
     ImportStudentsRequest:
@@ -5744,7 +5802,13 @@ components:
                     excused: 1
                     rate: 0.9583
                   gradeSummary:
-                    - { classSubjectId: 12, subjectName: Biology, className: Grade 10 - A, assessmentsGraded: 4, percentage: 87.5 }
+                    - {
+                        classSubjectId: 12,
+                        subjectName: Biology,
+                        className: Grade 10 - A,
+                        assessmentsGraded: 4,
+                        percentage: 87.5,
+                      }
                   recentGrades:
                     - gradeId: 501
                       assessmentId: 31

@@ -1,5 +1,5 @@
 /**
- * mock-data.js â€” a complete, clearly tagged mock school for manual testing, and its removal.
+ * mock-data.js — a complete, clearly tagged mock school for manual testing, and its removal.
  *
  *   node --env-file=.env.cloud scripts/mock-data.js add      create it (refused while mock data exists)
  *   node --env-file=.env.cloud scripts/mock-data.js status   count what is there
@@ -16,8 +16,9 @@
  *
  * What `add` builds, so every screen has something to show:
  *   1 admin, 6 teachers (one subject each), 32 students; this year three classes of 10 with a full weekly
- *   timetable, marks on every school day since August (today's lessons left to mark), 1st-semester grades with
- *   one weighted subject, a quiz waiting to be graded and upcoming exams; last year's class with grades in all
+ *   timetable, marks on every school day since August (today's lessons left to mark), K-12 graded subjects with
+ *   1st-semester written work, projects and quarterly exams, a quiz waiting to be graded and upcoming
+ *   midterms; last year's class with grades in all
  *   three periods (for the school-year picker); next year's empty class (to try End of school year); one
  *   transfer, one student without a class, one deactivated student; announcements (current, scheduled,
  *   expired, class-only), calendar holidays and events, and unread notifications.
@@ -58,16 +59,33 @@ const TEACHERS = [
 ];
 
 const SUBJECTS = [
-  { code: 'MK-MATH', name: 'Mathematics (Mock)', description: 'Algebra, geometry and statistics.' },
-  { code: 'MK-ENG', name: 'English (Mock)', description: 'Reading, writing and speaking.' },
-  { code: 'MK-SCI', name: 'Science (Mock)', description: 'Biology, chemistry and physics.' },
-  { code: 'MK-FIL', name: 'Filipino (Mock)', description: 'Wika at panitikan.' },
-  { code: 'MK-AP', name: 'Araling Panlipunan (Mock)', description: 'History and civics.' },
-  { code: 'MK-MAPEH', name: 'MAPEH (Mock)', description: 'Music, arts, PE and health.' },
+  {
+    code: 'MK-MATH',
+    name: 'Mathematics (Mock)',
+    description: 'Algebra, geometry and statistics.',
+    group: 'math_science',
+  },
+  {
+    code: 'MK-ENG',
+    name: 'English (Mock)',
+    description: 'Reading, writing and speaking.',
+    group: 'languages',
+  },
+  {
+    code: 'MK-SCI',
+    name: 'Science (Mock)',
+    description: 'Biology, chemistry and physics.',
+    group: 'math_science',
+  },
+  { code: 'MK-FIL', name: 'Filipino (Mock)', description: 'Wika at panitikan.', group: 'languages' },
+  {
+    code: 'MK-AP',
+    name: 'Araling Panlipunan (Mock)',
+    description: 'History and civics.',
+    group: 'languages',
+  },
+  { code: 'MK-MAPEH', name: 'MAPEH (Mock)', description: 'Music, arts, PE and health.', group: 'mapeh' },
 ];
-
-/** Mathematics is graded with weights per assessment type; the others on points. */
-const MATH_WEIGHTS = { quiz: 30, test: 30, exam: 40 };
 
 const STUDENT_NAMES = [
   ['Juan', 'Dela Cruz', 'male'],
@@ -236,22 +254,16 @@ async function buildSchool({ admin, teachers, students }, conn) {
   const now = new Date();
   const ts = (ymd, hour = 8) => `${ymd} ${String(hour).padStart(2, '0')}:00:00`;
 
-  // Subjects (Mathematics weighted).
+  // Subjects, each graded by K-12 components with its DepEd subject group.
   const subjectIds = {};
   for (const subject of SUBJECTS) {
     const result = await run(
-      'INSERT INTO subjects (code, name, description) VALUES (?, ?, ?)',
-      [subject.code, subject.name, subject.description],
+      'INSERT INTO subjects (code, name, description, grading_group) VALUES (?, ?, ?, ?)',
+      [subject.code, subject.name, subject.description, subject.group],
       conn,
     );
     subjectIds[subject.code] = result.insertId;
   }
-  await insertMany(
-    'subject_grade_weights',
-    ['subject_id', 'assessment_type', 'weight'],
-    Object.entries(MATH_WEIGHTS).map(([type, weight]) => [subjectIds['MK-MATH'], type, weight]),
-    conn,
-  );
 
   // Classes: three this year, last year's 9-A, next year's 11-A (empty, for End of school year).
   const addClass = async (name, gradeLevel, academicYear, homeroom) =>
@@ -391,7 +403,7 @@ async function buildSchool({ admin, teachers, students }, conn) {
         addDaysYmd(examWeek, 2),
       ],
       [
-        '[Mock] Teachersâ€™ in-service day',
+        '[Mock] Teachers’ in-service day',
         'No classes for students.',
         'holiday',
         addDaysYmd(examWeek, 10),
@@ -491,12 +503,15 @@ async function buildSchool({ admin, teachers, students }, conn) {
       ]);
     }
   };
-  // This year, 1st Semester: graded quizzes, a test and an assignment; a quiz still to grade; an upcoming exam.
+  // This year, 1st Semester: graded written work (quizzes, a test, an assignment), a performance task and the
+  // quarterly exam; a quiz still to grade; an upcoming midterm.
   const plan = [
     ['Quiz 1', 'quiz', 20, 17],
     ['Quiz 2', 'quiz', 20, 31],
+    ['Group project', 'project', 50, 38],
     ['Unit test', 'test', 50, 45],
     ['Reflection paper', 'assignment', 10, 52],
+    ['1st quarterly exam', 'exam', 50, 58],
   ];
   for (const [classIndex, klass] of current.entries()) {
     for (const [subjectIndex, classSubject] of klass.classSubjects.entries()) {
@@ -526,7 +541,7 @@ async function buildSchool({ admin, teachers, students }, conn) {
       );
     }
   }
-  // Last year: a quiz, a test and an exam in each of the 1st Semester, 2nd Semester and Summer.
+  // Last year: a quiz, a test, a project and an exam in each of the 1st Semester, 2nd Semester and Summer.
   const pastTerms = [
     ['term1', `${FIRST - 1}-09-15`],
     ['term2', `${FIRST}-01-20`],
@@ -537,6 +552,7 @@ async function buildSchool({ admin, teachers, students }, conn) {
       for (const [index, [title, type, maxScore]] of [
         ['Quiz', 'quiz', 20],
         ['Long test', 'test', 50],
+        ['Project', 'project', 50],
         ['Exam', 'exam', 100],
       ].entries()) {
         const day = weekdayFrom(addDaysYmd(start, index * 14 + subjectIndex));
@@ -663,7 +679,7 @@ async function buildSchool({ admin, teachers, students }, conn) {
     admin.id,
     'signup',
     `New student sign-up: ${students[30].firstName} ${students[30].lastName}`,
-    `${email(students[30].key)} Â· needs a class`,
+    `${email(students[30].key)} · needs a class`,
     `/admin/students/${students[30].studentId}`,
     null,
   ]);
@@ -695,7 +711,7 @@ async function add() {
   const totals = await withTransaction((conn) => buildSchool(cast, conn));
   await firebase.updateUser(totals.deactivated.firebaseUid, { disabled: true });
   console.log(
-    `âœ” Mock school added: 39 accounts, 5 classes, 6 subjects, ${totals.attendance} attendance marks, ${totals.grades} grades.`,
+    `✔ Mock school added: 39 accounts, 5 classes, 6 subjects, ${totals.attendance} attendance marks, ${totals.grades} grades.`,
   );
   console.log(`  Sign in with any account below, password: ${PASSWORD}`);
   console.log(`    admin    ${email(ADMIN.key)}`);
@@ -848,7 +864,7 @@ async function remove() {
     }
   }
   console.log(`  Firebase: ${known.size} sign-ins deleted`);
-  console.log('âœ” Mock school removed.');
+  console.log('✔ Mock school removed.');
 }
 
 /**
@@ -868,7 +884,7 @@ async function attach() {
     "SELECT id FROM classes WHERE name = 'Grade 9 - A (Mock)' AND academic_year = ?",
     [PAST_YEAR],
   );
-  if (!pastClass) throw new Error('Run `add` first: last yearâ€™s mock class is missing.');
+  if (!pastClass) throw new Error('Run `add` first: last year’s mock class is missing.');
   const [active] = await query(
     "SELECT class_id, enrolled_on FROM enrollments WHERE student_id = ? AND status = 'active'",
     [student.studentId],
@@ -914,6 +930,8 @@ async function attach() {
         ['[Mock] Quiz 2', 'quiz', 20, 31],
         ['[Mock] Unit test', 'test', 50, 45],
         ['[Mock] Reflection paper', 'assignment', 10, 52],
+        ['[Mock] Group project', 'project', 50, 38],
+        ['[Mock] 1st quarterly exam', 'exam', 50, 58],
       ];
       for (const [index, lesson] of lessons.entries()) {
         for (const [title, type, maxScore, offset] of plan) {
@@ -946,7 +964,7 @@ async function attach() {
     return { past: pastAssessments.length, current: added };
   });
   console.log(
-    `âœ” ${target}: ${summary.past} grades last year (${PAST_YEAR}, Grade 9 - A (Mock)), ${summary.current} this year in their own class.`,
+    `✔ ${target}: ${summary.past} grades last year (${PAST_YEAR}, Grade 9 - A (Mock)), ${summary.current} this year in their own class.`,
   );
   console.log('  `remove` deletes them together with the rest of the mock school.');
 }
@@ -961,7 +979,7 @@ if (!command) {
 } else {
   command()
     .catch((error) => {
-      console.error(`âœ– ${error.message}`);
+      console.error(`✖ ${error.message}`);
       if (error.sqlMessage) console.error(`  ${error.sqlMessage}`);
       process.exitCode = 1;
     })

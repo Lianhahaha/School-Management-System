@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ASSESSMENT_TYPES } from '../../constants/shared.js';
+import { ASSESSMENT_TYPES, GRADING_GROUPS } from '../../constants/shared.js';
 import {
   boolQuery,
   idParams,
@@ -23,22 +23,36 @@ const gradeWeights = z
     error: 'weights must add up to 100',
   });
 
+/** The K-12 subject group; null: not graded by K-12 components. */
+const gradingGroup = z.enum(GRADING_GROUPS);
+
+/** A subject is graded one way: K-12 components (`gradingGroup`) or custom weights, not both. */
+const oneGradingMethod = [
+  (body) => !(body.gradingGroup && body.gradeWeights),
+  { error: 'choose either a grading group or custom weights', path: ['gradingGroup'] },
+];
+
 export const listSubjectsQuery = listQuery(Object.keys(SUBJECT_SORT_MAP), { isActive: boolQuery.optional() });
 
-/** `gradeWeights` null or left out: the subject is graded on points. */
-export const createSubjectBody = z.strictObject({
-  code: subjectCode,
-  name,
-  description: description.nullable().optional(),
-  gradeWeights: gradeWeights.nullable().optional(),
-});
+/** Neither `gradingGroup` nor `gradeWeights`: the subject is graded on points. */
+export const createSubjectBody = z
+  .strictObject({
+    code: subjectCode,
+    name,
+    description: description.nullable().optional(),
+    gradingGroup: gradingGroup.nullable().optional(),
+    gradeWeights: gradeWeights.nullable().optional(),
+  })
+  .refine(...oneGradingMethod);
 
+/** Setting a grading group clears custom weights, and setting weights clears the group (subjects.service). */
 export const updateSubjectBody = patchOf({
   code: subjectCode,
   name,
   description: description.nullable(),
   isActive: z.boolean(),
+  gradingGroup: gradingGroup.nullable(),
   gradeWeights: gradeWeights.nullable(),
-});
+}).refine(...oneGradingMethod);
 
 export { idParams };

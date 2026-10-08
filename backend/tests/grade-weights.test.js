@@ -22,14 +22,24 @@ describe('grade arithmetic (utils/grading.js)', () => {
   ];
 
   it('scores on points without weights', () => {
-    assert.deepEqual(subjectResult(totals, null), { percentage: 58, method: 'points' });
+    assert.deepEqual(subjectResult(totals, null), {
+      percentage: 58,
+      initialGrade: 58,
+      method: 'points',
+      components: null,
+    });
     assert.equal(percentOf(1, 3), 33.33);
     assert.equal(percentOf(5, 0), null);
     assert.equal(sumPoints([0.1, 0.2]), 0.3);
   });
 
   it('weights each type and leaves ungraded or zero-weighted types out', () => {
-    assert.deepEqual(subjectResult(totals, { quiz: 50, exam: 50 }), { percentage: 70, method: 'weighted' });
+    assert.deepEqual(subjectResult(totals, { quiz: 50, exam: 50 }), {
+      percentage: 70,
+      initialGrade: 70,
+      method: 'weighted',
+      components: null,
+    });
     // test (30) has no grades: quiz and exam share the remaining 70 in their 20 : 50 ratio
     assert.equal(subjectResult(totals, { quiz: 20, test: 30, exam: 50 }).percentage, 61.43);
     // only a zero-weighted type is graded: no result yet
@@ -146,6 +156,41 @@ describe('subject grade weights', () => {
     const s1 = rows.find((row) => row.studentId === school.s1.studentId);
     assert.equal(s1.method, 'average');
     assert.equal(s1.percentage, 85); // (70 + 100) / 2
+  });
+
+  it('grades a subject by K-12 components once it has a grading group', async () => {
+    // Weights and a group together are refused; a group replaces the weights.
+    const both = await patchSubject(school.admin, {
+      gradingGroup: 'math_science',
+      gradeWeights: { exam: 100 },
+    });
+    assert.equal(both.status, 400);
+    assert.equal((await patchSubject(school.admin, { gradingGroup: 'arts' })).status, 400);
+    const res = await patchSubject(school.admin, { gradingGroup: 'math_science' });
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.equal(res.body.data.gradingGroup, 'math_science');
+    assert.equal(res.body.data.gradeWeights, null);
+
+    // Quiz 18/20 (written 90 %), exam 40/80 (quarterly 50 %), no performance task yet:
+    // (90 * 40 + 50 * 20) / 60 = 76.67, transmuted to 85.
+    const [row] = await summary(school.s1, `?classSubjectId=${school.csA.id}`);
+    assert.equal(row.method, 'k12');
+    assert.equal(row.initialGrade, 76.67);
+    assert.equal(row.percentage, 85);
+    assert.equal(row.gradingGroup, 'math_science');
+    assert.deepEqual(
+      row.components.map((part) => [part.component, part.percentage]),
+      [
+        ['written', 90],
+        ['performance', null],
+        ['quarterly', 50],
+      ],
+    );
+
+    // Setting custom weights again takes the subject off K-12.
+    const back = await patchSubject(school.admin, { gradeWeights: { quiz: 50, exam: 50 } });
+    assert.equal(back.body.data.gradingGroup, null);
+    assert.equal((await summary(school.s1, `?classSubjectId=${school.csA.id}`))[0].method, 'weighted');
   });
 
   it('goes back to points with null, and a subject with weights can still be deleted while unused', async () => {
