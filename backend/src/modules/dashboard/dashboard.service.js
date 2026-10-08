@@ -271,7 +271,12 @@ async function studentDashboard(user) {
     recentAnnouncements: announcements,
     upcomingEvents: events,
   };
-  const dateFrom = academicYearStart(klass?.academicYear ?? currentAcademicYear());
+  // The school year the figures cover: the class's, unless the student is already placed in next year's
+  // class; that year has not started, so its dates would run backwards and its timetable is not today's.
+  const thisYear = currentAcademicYear();
+  const year = klass && klass.academicYear <= thisYear ? klass.academicYear : thisYear;
+  const isClassOfThisYear = klass?.academicYear === thisYear;
+  const dateFrom = academicYearStart(year);
   const attendance = await summarizeAttendanceUnscoped({
     studentId: user.studentId,
     dateFrom,
@@ -291,8 +296,8 @@ async function studentDashboard(user) {
   }
 
   const [slots, gradeSummary, recent, upcoming] = await Promise.all([
-    holiday ? [] : findSlotsUnscoped({ classId, dayOfWeek: todayIsoWeekday() }),
-    summarizeStudentGradesUnscoped(user.studentId, classId),
+    holiday || !isClassOfThisYear ? [] : findSlotsUnscoped({ classId, dayOfWeek: todayIsoWeekday() }),
+    summarizeStudentGradesUnscoped(user.studentId, year),
     recentGradesUnscoped(user.studentId, 5),
     upcomingAssessmentsUnscoped({ classId, days: 7, limit: 5 }),
   ]);
@@ -318,6 +323,7 @@ async function studentDashboard(user) {
     gradeSummary: gradeSummary.map((row) => ({
       classSubjectId: row.classSubjectId,
       subjectName: row.subjectName,
+      className: row.className,
       assessmentsGraded: row.assessmentsGraded,
       percentage: row.percentage,
     })),

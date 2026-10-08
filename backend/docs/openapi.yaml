@@ -2989,7 +2989,7 @@ components:
         holiday:
           type: object
           nullable: true
-          description: The school holiday on `date` (the sheet cannot be saved), or null.
+          description: The school holiday on `date` (the sheet cannot be saved unless it already has marks), or null.
           required: [id, title]
           properties:
             id:
@@ -3232,6 +3232,10 @@ components:
           $ref: '#/components/schemas/Id'
         classSubjectId:
           $ref: '#/components/schemas/Id'
+        subjectId:
+          allOf:
+            - $ref: '#/components/schemas/Id'
+          description: Present with `groupBy=classSubject`; the same subject in two classes of a year counts once in an average.
         subjectName:
           type: string
           description: Present with `groupBy=classSubject`.
@@ -3268,7 +3272,9 @@ components:
           enum: [points, weighted, average]
           description: |
             points = totalScore / totalMaxScore * 100; weighted = the subject's grade weights per assessment type;
-            average = mean of the student's subject results (a student row spanning several class-subjects).
+            average = mean of the student's subject results (a student row spanning several class-subjects),
+            each subject counting once per academic year: a subject graded in two classes of a year (the
+            student changed class) averages those class results first.
         gradeWeights:
           nullable: true
           description: Present with `groupBy=classSubject`; the weights applied, null for a subject on points.
@@ -3903,14 +3909,18 @@ components:
                   $ref: '#/components/schemas/DateYmd'
         gradeSummary:
           type: array
-          description: One row per subject.
+          description: >
+            One row per subject and class of the school year: a student who changed class mid-year has a row
+            for each class a subject was graded in.
           items:
             type: object
-            required: [classSubjectId, subjectName, assessmentsGraded, percentage]
+            required: [classSubjectId, subjectName, className, assessmentsGraded, percentage]
             properties:
               classSubjectId:
                 $ref: '#/components/schemas/Id'
               subjectName:
+                type: string
+              className:
                 type: string
               assessmentsGraded:
                 type: integer
@@ -5702,7 +5712,7 @@ components:
                     excused: 1
                     rate: 0.9583
                   gradeSummary:
-                    - { classSubjectId: 12, subjectName: Biology, assessmentsGraded: 4, percentage: 87.5 }
+                    - { classSubjectId: 12, subjectName: Biology, className: Grade 10 - A, assessmentsGraded: 4, percentage: 87.5 }
                   recentGrades:
                     - gradeId: 501
                       assessmentId: 31

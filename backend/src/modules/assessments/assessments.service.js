@@ -1,9 +1,10 @@
 import { withTransaction } from '../../config/db.js';
 import { ApiError } from '../../utils/ApiError.js';
-import { addDaysYmd, todayYmd } from '../../utils/dates.js';
+import { academicYearOf, addDaysYmd, todayYmd } from '../../utils/dates.js';
 import { classSubjectRef } from '../../utils/shapes.js';
 import * as access from '../access/access.service.js';
 import { changedList, changesOf, record } from '../activity/activity.service.js';
+import { getClassSubjectRefUnscoped } from '../classSubjects/classSubjects.service.js';
 import * as repo from './assessments.repository.js';
 
 const toAssessmentShape = (row) => ({
@@ -53,9 +54,28 @@ const assessmentFields = ({ title, type, term, maxScore, assessedOn }) => ({
   assessedOn,
 });
 
+/**
+ * 400 unless `date` falls in the class's academic year: the roster is the class on that date, so a date in
+ * another year would grade the wrong students (or nobody) and the assessment would never show up as
+ * upcoming or pending. `defaulted` says the client sent no date (today was assumed).
+ */
+function assertDateInClassYear(date, academicYear, defaulted = false) {
+  if (academicYearOf(date) === academicYear) return;
+  throw ApiError.validation(
+    defaulted
+      ? `today is outside the class's academic year ${academicYear}; choose the assessment date`
+      : `the date is outside the class's academic year ${academicYear}`,
+    undefined,
+    { reason: 'outside_academic_year', academicYear, field: 'assessedOn' },
+  );
+}
+
 export async function createAssessment(user, body) {
   await access.assertCanManageClassSubject(user, body.classSubjectId);
-  const id = await repo.insertAssessment({ ...body, assessedOn: body.assessedOn ?? todayYmd() });
+  const { academicYear } = await getClassSubjectRefUnscoped(body.classSubjectId);
+  const assessedOn = body.assessedOn ?? todayYmd();
+  assertDateInClassYear(assessedOn, academicYear, !body.assessedOn);
+  const id = await repo.insertAssessment({ ...body, assessedOn });
   const assessment = toAssessmentShape(await repo.findAssessmentById(id));
   await record({
     action: 'assessment.create',
@@ -68,6 +88,10 @@ export async function createAssessment(user, body) {
 
 export async function updateAssessment(user, id, patch) {
   const before = await getManagedAssessment(user, id);
+  if (patch.assessedOn !== undefined) {
+    const { academicYear } = await getClassSubjectRefUnscoped(before.classSubjectId);
+    assertDateInClassYear(patch.assessedOn, academicYear);
+  }
   await withTransaction(async (conn) => {
     if (patch.maxScore !== undefined) {
       // Lock first: a grade save running now finishes before the check, and none starts until this commits.

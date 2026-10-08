@@ -68,8 +68,8 @@ export function summarizeGrades({ groupBy = 'classSubject', ...filters }, scope)
   if (groupBy === 'student') {
     return query(
       `SELECT s.id AS student_id, CONCAT(u.first_name, ' ', u.last_name) AS label, cs.id AS class_subject_id,
-              cs.subject_id, a.type, ${TOTALS} ${FROM} ${where.sql}
-        GROUP BY s.id, u.first_name, u.last_name, cs.id, cs.subject_id, a.type
+              cs.subject_id, c.academic_year, a.type, ${TOTALS} ${FROM} ${where.sql}
+        GROUP BY s.id, u.first_name, u.last_name, cs.id, cs.subject_id, c.academic_year, a.type
         ORDER BY u.last_name, u.first_name, s.id, cs.id`,
       where.params,
     );

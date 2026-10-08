@@ -4,7 +4,7 @@ import { DescriptionList } from '../../../components/ui/DescriptionList';
 import { StatTile } from '../../../components/ui/StatTile';
 import { academicYearStart, currentAcademicYear, todayYmd } from '../../../utils/date';
 import { countOf, formatPercent } from '../../../utils/format';
-import { averageOf, formatResult } from '../../../utils/grades';
+import { formatResult, generalAverage } from '../../../utils/grades';
 import { useAttendanceSummary } from '../../attendance/hooks';
 import { useGradeSummary } from '../../grades/hooks';
 
@@ -30,7 +30,7 @@ export function StudentOverview({ student, onOpenTab }) {
   const grades = useGradeSummary({ studentId: student.id, groupBy: 'classSubject' });
 
   const subjectsThisYear = (grades.data ?? []).filter((subject) => subject.academicYear === academicYear);
-  const average = averageOf(subjectsThisYear.map((subject) => subject.percentage));
+  const average = generalAverage(subjectsThisYear);
   const marks = attendance.data?.total ?? 0;
 
   return (

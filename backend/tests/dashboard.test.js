@@ -147,6 +147,26 @@ describe('dashboard', () => {
     assert.equal(data.attendanceSummary.rate, null);
   });
 
+  it("keeps this year's figures for a student already placed in next year's class", async () => {
+    const firstYear = Number(currentAcademicYear().slice(0, 4));
+    const next = await api
+      .post('/api/v1/classes')
+      .set(as(school.admin))
+      .send({ name: 'Next year class', gradeLevel: 11, academicYear: `${firstYear + 1}-${firstYear + 2}` });
+    const placed = await makeUser('student');
+    await api
+      .post('/api/v1/enrollments')
+      .set(as(school.admin))
+      .send({ studentId: placed.studentId, classId: next.body.data.id });
+    const data = await dashboard(placed);
+    assert.equal(data.currentEnrollment.classId, next.body.data.id);
+    assert.ok(
+      data.attendanceSummary.dateFrom <= data.attendanceSummary.dateTo,
+      'the date range runs forwards',
+    );
+    assert.deepEqual(data.todaySchedule, [], "next year's timetable is not today's");
+  });
+
   it("lists today's lessons that have no attendance yet for the admin", async () => {
     const before = (await dashboard(school.admin)).attendanceToday;
     assert.equal(before.lessonsScheduled, 1);

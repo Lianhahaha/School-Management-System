@@ -5,8 +5,19 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { TextLink } from '../../../components/ui/TextLink';
 import { formatResult, resultWidth } from '../../../utils/grades';
 
-/** One row per subject with its result (points or the subject's weights) as a bar (payload `gradeSummary`). */
+/**
+ * One row per subject with its result (points or the subject's weights) as a bar (payload `gradeSummary`).
+ * A subject graded in two classes this year (the student changed class) shows each class's result, named.
+ */
 export function StudentGradeSummaryCard({ subjects }) {
+  const timesTaken = new Map();
+  for (const subject of subjects) {
+    timesTaken.set(subject.subjectName, (timesTaken.get(subject.subjectName) ?? 0) + 1);
+  }
+  const labelOf = (subject) =>
+    timesTaken.get(subject.subjectName) > 1 && subject.className
+      ? `${subject.subjectName} · ${subject.className}`
+      : subject.subjectName;
   return (
     <Card
       icon={CertificateIcon}
@@ -26,12 +37,12 @@ export function StudentGradeSummaryCard({ subjects }) {
           {subjects.map((subject) => (
             <li key={subject.classSubjectId}>
               <div className="flex items-baseline justify-between gap-3 text-sm">
-                <span className="font-medium text-gray-900">{subject.subjectName}</span>
+                <span className="font-medium text-gray-900">{labelOf(subject)}</span>
                 <span className="text-gray-700 tabular-nums">{formatResult(subject.percentage)}</span>
               </div>
               <div
                 role="progressbar"
-                aria-label={`${subject.subjectName} percentage`}
+                aria-label={`${labelOf(subject)} percentage`}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={subject.percentage ?? undefined}

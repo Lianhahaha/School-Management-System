@@ -33,14 +33,24 @@ export const formatResult = (percentage) => formatPercent(percentage === null ? 
 export const resultWidth = (percentage) => `${Math.min(100, Math.max(0, percentage ?? 0))}%`;
 
 /**
- * The general average: the mean of subject results, each subject counting once, ignoring subjects
- * without a result. The same rule as the API's `method: average`. Rounded to 2 decimals; null when empty.
+ * The mean of results, ignoring those without one. Rounded to 2 decimals; null when empty.
  * @param {Array<number|null>} percentages
  */
 export function averageOf(percentages) {
   const values = percentages.filter((value) => value !== null && value !== undefined);
   if (values.length === 0) return null;
   return Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 100) / 100;
+}
+
+/**
+ * The general average of summary rows (`GET /grades/summary?groupBy=classSubject`): each subject counts once
+ * per school year. A subject graded in two classes of a year (the student changed class) first averages
+ * those class results. The same rule as the API's `method: average`.
+ * @param {Array<{ subjectId: number, academicYear: string, percentage: number|null }>} subjects
+ */
+export function generalAverage(subjects) {
+  const bySubject = groupBy(subjects, (subject) => `${subject.subjectId}:${subject.academicYear}`);
+  return averageOf([...bySubject.values()].map((rows) => averageOf(rows.map((row) => row.percentage))));
 }
 
 /**

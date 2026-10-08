@@ -532,16 +532,13 @@ describe('two people editing one sheet', () => {
     await resetWorld();
     school = await buildSchool();
     quiz = (
-      await api
-        .post('/api/v1/assessments')
-        .set(as(school.owner))
-        .send({
-          classSubjectId: school.csA.id,
-          title: 'Shared quiz',
-          type: 'quiz',
-          term: 'term1',
-          maxScore: 20,
-        })
+      await api.post('/api/v1/assessments').set(as(school.owner)).send({
+        classSubjectId: school.csA.id,
+        title: 'Shared quiz',
+        type: 'quiz',
+        term: 'term1',
+        maxScore: 20,
+      })
     ).body.data;
   });
 
@@ -623,5 +620,43 @@ describe('two people editing one sheet', () => {
     );
     assert.equal(fresh.status, 400);
     assert.equal(fresh.body.error.details.reason, 'school_holiday');
+  });
+});
+
+describe('assessment dates and the academic year', () => {
+  let school;
+  before(async () => {
+    await resetWorld();
+    school = await buildSchool();
+  });
+
+  const create = (body) =>
+    api
+      .post('/api/v1/assessments')
+      .set(as(school.owner))
+      .send({
+        classSubjectId: school.csA.id,
+        title: 'Dated',
+        type: 'quiz',
+        term: 'term1',
+        maxScore: 10,
+        ...body,
+      });
+
+  it('refuses an assessment dated outside the class academic year, on create and on edit', async () => {
+    const nextYearDate = addDaysYmd(today, 400);
+    const refused = await create({ assessedOn: nextYearDate });
+    assert.equal(refused.status, 400);
+    assert.equal(refused.body.error.details.reason, 'outside_academic_year');
+    assert.equal(refused.body.error.details.field, 'assessedOn');
+
+    const created = await create({});
+    assert.equal(created.status, 201);
+    const moved = await api
+      .patch(`/api/v1/assessments/${created.body.data.id}`)
+      .set(as(school.owner))
+      .send({ assessedOn: addDaysYmd(today, -400) });
+    assert.equal(moved.status, 400);
+    assert.equal(moved.body.error.details.reason, 'outside_academic_year');
   });
 });

@@ -4,7 +4,7 @@ import { Button } from '../../../components/ui/Button';
 import { APP_NAME, TERM_LABELS } from '../../../constants/ui';
 import { formatDate, todayYmd } from '../../../utils/date';
 import { formatScore } from '../../../utils/format';
-import { averageOf, describeWeights, formatResult } from '../../../utils/grades';
+import { describeWeights, formatResult, generalAverage } from '../../../utils/grades';
 import { fullName } from '../../../utils/names';
 import { useGradeSummary } from '../hooks';
 
@@ -36,7 +36,7 @@ export function ReportCard({ student, enrollment, studentId, term }) {
   const subjects = enrollment
     ? allYears.filter((subject) => subject.academicYear === enrollment.academicYear)
     : allYears;
-  const generalAverage = averageOf(subjects.map((subject) => subject.percentage));
+  const average = generalAverage(subjects);
   const weighted = subjects.filter((subject) => subject.method === 'weighted');
 
   return createPortal(
@@ -94,9 +94,9 @@ export function ReportCard({ student, enrollment, studentId, term }) {
           <tfoot>
             <tr className="border-t-2 border-black">
               <td colSpan={4} className="py-2 font-semibold">
-                General average (mean of the subject results)
+                General average (mean of the subject results, each subject counted once)
               </td>
-              <td className="py-2 text-right font-semibold">{formatResult(generalAverage)}</td>
+              <td className="py-2 text-right font-semibold">{formatResult(average)}</td>
             </tr>
           </tfoot>
         )}

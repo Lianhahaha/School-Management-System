@@ -6,7 +6,7 @@
  */
 import { withTransaction } from '../../config/db.js';
 import { ApiError } from '../../utils/ApiError.js';
-import { averageOf, percentOf, subjectResult, sumPoints } from '../../utils/grading.js';
+import { generalAverageOf, percentOf, subjectResult, sumPoints } from '../../utils/grading.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import { personRef } from '../../utils/shapes.js';
 import * as access from '../access/access.service.js';
@@ -83,7 +83,8 @@ const totalsOf = (rows) => ({
 /**
  * Folds the per-type rows of repo.summarizeGrades into summary rows:
  *   classSubject  one row per class-subject: its result (`method` points or weighted) and the weights used;
- *   student       one row per student: the result of their one subject, or the mean of several (`average`).
+ *   student       one row per student: the result of their one class-subject, or the general average of
+ *                 several (`average`), each subject counting once per academic year (utils/grading.js).
  */
 async function foldSummary(rows, groupBy) {
   const weights = await gradeWeightsBySubject(rows.map((row) => row.subjectId));
@@ -91,13 +92,15 @@ async function foldSummary(rows, groupBy) {
 
   if (groupBy === 'student') {
     return [...groupRows(rows, (row) => row.studentId).values()].map((studentRows) => {
-      const results = [...groupRows(studentRows, (row) => row.classSubjectId).values()].map(
-        classSubjectResult,
-      );
+      const results = [...groupRows(studentRows, (row) => row.classSubjectId).values()].map((typeRows) => ({
+        ...classSubjectResult(typeRows),
+        subjectId: typeRows[0].subjectId,
+        academicYear: typeRows[0].academicYear,
+      }));
       const result =
         results.length === 1
-          ? results[0]
-          : { percentage: averageOf(results.map((r) => r.percentage)), method: 'average' };
+          ? { percentage: results[0].percentage, method: results[0].method }
+          : { percentage: generalAverageOf(results), method: 'average' };
       return {
         studentId: studentRows[0].studentId,
         label: studentRows[0].label,
@@ -110,6 +113,7 @@ async function foldSummary(rows, groupBy) {
     const first = typeRows[0];
     return {
       classSubjectId: first.classSubjectId,
+      subjectId: first.subjectId,
       subjectName: first.subjectName,
       className: first.className,
       academicYear: first.academicYear,
@@ -143,9 +147,12 @@ export async function getSummary(user, query) {
   return foldSummary(await repo.summarizeGrades(filters, scope), filters.groupBy);
 }
 
-/** Unscoped per-subject summary of one student (dashboards; the caller did the access checks). */
-export async function summarizeStudentGradesUnscoped(studentId, classId) {
-  const filters = { groupBy: 'classSubject', studentId, classId };
+/**
+ * Unscoped per-class-subject summary of one student in an academic year, every class of that year included
+ * (a student who changed class keeps the grades of the first one) (dashboards; the caller did the checks).
+ */
+export async function summarizeStudentGradesUnscoped(studentId, academicYear) {
+  const filters = { groupBy: 'classSubject', studentId, academicYear };
   return foldSummary(await repo.summarizeGrades(filters, null), filters.groupBy);
 }
 

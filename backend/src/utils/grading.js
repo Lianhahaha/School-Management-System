@@ -6,9 +6,11 @@
  *                    weighted (the subject has weights per assessment type): each type's points percentage
  *                    times its weight, divided by the weights of the types that have grades, so a type with
  *                    nothing graded yet neither helps nor hurts. Types weighted 0 do not count.
- *   general average  the plain mean of subject results, each subject counting once.
+ *   general average  the plain mean of subject results, each subject counting once: a subject taken in two
+ *                    classes of one academic year (a student who changed class) first averages its
+ *                    class results into one (see generalAverageOf).
  *
- * Percentages are 0-100 and rounded to 2 decimals only at the end.
+ * Percentages are 0-100 and rounded to 2 decimals.
  */
 
 const round2 = (value) => Math.round(value * 100) / 100;
@@ -47,4 +49,19 @@ export function subjectResult(typeTotals, weights) {
 export function averageOf(percentages) {
   const values = percentages.filter((value) => value !== null && value !== undefined);
   return values.length ? round2(values.reduce((sum, value) => sum + value, 0) / values.length) : null;
+}
+
+/**
+ * The general average of class-subject results, each subject counting once per academic year: the results
+ * of one subject in several classes of a year are averaged first, then the subjects. Mirrored by the
+ * frontend's utils/grades generalAverage.
+ * @param {Array<{ subjectId: number, academicYear: string, percentage: number | null }>} results
+ */
+export function generalAverageOf(results) {
+  const bySubject = new Map();
+  for (const result of results) {
+    const key = `${result.subjectId}:${result.academicYear}`;
+    bySubject.set(key, [...(bySubject.get(key) ?? []), result.percentage]);
+  }
+  return averageOf([...bySubject.values()].map(averageOf));
 }
