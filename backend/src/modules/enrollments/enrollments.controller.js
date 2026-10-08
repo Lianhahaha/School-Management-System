@@ -21,6 +21,10 @@ export async function transfer(req, res) {
   ok(res, await service.transfer(req.validated.body), { status: 201 });
 }
 
+export async function completeYear(req, res) {
+  ok(res, await service.completeYear(req.validated.body));
+}
+
 export async function setStatus(req, res) {
   ok(res, await service.setStatus(req.validated.params.id, req.validated.body.status));
 }

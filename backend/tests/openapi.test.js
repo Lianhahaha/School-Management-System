@@ -299,6 +299,7 @@ describe('OpenAPI specification', () => {
 
     const bulkArrays = [
       schemas.BulkEnrollmentRequest.properties.studentIds,
+      schemas.CompleteSchoolYearRequest.properties.studentIds,
       schemas.SaveAttendanceSheetRequest.properties.records,
       schemas.SaveGradesRequest.properties.grades,
     ];

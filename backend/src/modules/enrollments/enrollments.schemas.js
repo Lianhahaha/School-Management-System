@@ -20,6 +20,13 @@ export const enrollManyBody = z.strictObject({ classId: id, studentIds: idList }
 
 export const transferBody = z.strictObject({ studentId: id, classId: id });
 
+/** End of a school year: close these students' enrollments in `classId`, optionally enroll them in `nextClassId`. */
+export const completeYearBody = z.strictObject({
+  classId: id,
+  studentIds: idList,
+  nextClassId: id.optional(),
+});
+
 /** Only closing transitions exist; `active` can be reached solely through enroll / transfer. */
 export const setStatusBody = z.strictObject({ status: z.enum(['completed', 'withdrawn']) });
 

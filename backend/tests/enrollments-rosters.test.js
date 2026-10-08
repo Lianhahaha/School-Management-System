@@ -7,6 +7,7 @@ import { academicYearStart, addDaysYmd, currentAcademicYear, todayYmd } from '..
 import {
   api,
   as,
+  assignTeacher,
   buildSchool,
   closeWorld,
   enrollStudent,
@@ -227,5 +228,205 @@ describe('rosters of past dates', () => {
       ],
     );
     assert.ok(!res.body.data.pendingGrading.some((row) => row.assessmentId === qTomorrow.id));
+  });
+});
+
+describe('end of school year', () => {
+  let admin;
+  const complete = (body, who = admin) => api.post('/api/v1/enrollments/complete').set(as(who)).send(body);
+  /** A class of `academicYear` (default: this year) with `count` newly enrolled students. */
+  const classWith = async (count, overrides = {}) => {
+    const klass = await makeClass(admin, overrides);
+    const students = [];
+    for (let i = 0; i < count; i += 1) {
+      const student = await makeUser('student');
+      await enrollStudent(admin, { studentId: student.studentId, classId: klass.id });
+      students.push(student);
+    }
+    return { klass, students };
+  };
+  const enrollmentsOf = async (student) =>
+    (await api.get(`/api/v1/enrollments?studentId=${student.studentId}`).set(as(admin))).body.data;
+
+  before(async () => {
+    await resetWorld();
+    admin = await makeUser('admin');
+  });
+
+  it('closes the listed students as completed and leaves the others in the class', async () => {
+    const { klass, students } = await classWith(3);
+    const [s1, s2, s3] = students;
+    const res = await complete({ classId: klass.id, studentIds: [s1.studentId, s2.studentId] });
+    assert.equal(res.status, 200);
+    assert.deepEqual(res.body.data, { classId: klass.id, nextClassId: null, completed: 2, enrollments: [] });
+    const [closed] = await enrollmentsOf(s1);
+    assert.equal(closed.status, 'completed');
+    assert.equal(closed.leftOn, today);
+    assert.equal((await enrollmentsOf(s3))[0].status, 'active');
+  });
+
+  it('moves the listed students into a class of a later year, and tells them', async () => {
+    const { klass, students } = await classWith(2);
+    const next = await makeClass(admin, { academicYear: yearLabel(1) });
+    const studentIds = students.map((student) => student.studentId);
+    const res = await complete({ classId: klass.id, studentIds, nextClassId: next.id });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.data.completed, 2);
+    assert.deepEqual(
+      res.body.data.enrollments.map((row) => [row.studentId, row.class.id, row.status, row.enrolledOn]),
+      studentIds.map((studentId) => [studentId, next.id, 'active', today]),
+    );
+    const history = await enrollmentsOf(students[0]);
+    assert.deepEqual(
+      history.map((row) => [row.classId, row.status]).sort(),
+      [
+        [klass.id, 'completed'],
+        [next.id, 'active'],
+      ].sort(),
+    );
+
+    const bell = await api.get('/api/v1/notifications').set(as(students[0]));
+    assert.equal(bell.body.data[0].title, `You are enrolled in ${next.name}`);
+    const log = await api.get('/api/v1/activity?area=enrollments').set(as(admin));
+    assert.equal(log.body.data[0].action, 'enrollment.complete');
+  });
+
+  it('writes nothing when a listed student is not active in the class', async () => {
+    const { klass, students } = await classWith(1);
+    const { students: elsewhere } = await classWith(1);
+    const res = await complete({
+      classId: klass.id,
+      studentIds: [students[0].studentId, elsewhere[0].studentId],
+    });
+    assert.equal(res.status, 409);
+    assert.equal(res.body.error.details.reason, 'not_active_in_class');
+    assert.deepEqual(res.body.error.details.invalidStudentIds, [elsewhere[0].studentId]);
+    assert.equal((await enrollmentsOf(students[0]))[0].status, 'active');
+  });
+
+  it('checks both classes', async () => {
+    const { klass, students } = await classWith(1);
+    const studentIds = [students[0].studentId];
+    const expect400 = async (body, reason, field) => {
+      const res = await complete(body);
+      assert.equal(res.status, 400, reason);
+      assert.equal(res.body.error.details.reason, reason);
+      assert.equal(res.body.error.details.field, field);
+    };
+    const sameYear = await makeClass(admin);
+    await expect400(
+      { classId: klass.id, studentIds, nextClassId: klass.id },
+      'not_later_academic_year',
+      'nextClassId',
+    );
+    await expect400(
+      { classId: klass.id, studentIds, nextClassId: sameYear.id },
+      'not_later_academic_year',
+      'nextClassId',
+    );
+    await expect400(
+      { classId: klass.id, studentIds, nextClassId: 999999 },
+      'invalid_reference',
+      'nextClassId',
+    );
+    await expect400({ classId: 999999, studentIds }, 'invalid_reference', 'classId');
+    const nextYear = await makeClass(admin, { academicYear: yearLabel(1) });
+    await expect400({ classId: nextYear.id, studentIds }, 'year_not_started', 'classId');
+    const twoYearsAgo = await makeClass(admin, { academicYear: yearLabel(-2) });
+    const lastYear = await makeClass(admin, { academicYear: yearLabel(-1) });
+    await expect400(
+      { classId: twoYearsAgo.id, studentIds, nextClassId: lastYear.id },
+      'past_academic_year',
+      'nextClassId',
+    );
+  });
+
+  it('is for admins only and checks the body', async () => {
+    const { klass, students } = await classWith(1);
+    const teacher = await makeUser('teacher');
+    const studentId = students[0].studentId;
+    assert.equal((await complete({ classId: klass.id, studentIds: [studentId] }, teacher)).status, 403);
+    for (const body of [
+      { classId: klass.id, studentIds: [] },
+      { classId: klass.id, studentIds: [studentId, studentId] },
+      { classId: klass.id, studentIds: [studentId], extra: true },
+      { classId: klass.id, studentIds: Array.from({ length: BULK_MAX_ROWS + 1 }, (_, i) => i + 1) },
+    ]) {
+      assert.equal((await complete(body)).status, 400, JSON.stringify(body).slice(0, 80));
+    }
+  });
+
+  it('closes each student once when the same request runs twice at once', async () => {
+    const { klass, students } = await classWith(2);
+    const body = { classId: klass.id, studentIds: students.map((student) => student.studentId) };
+    const statuses = (await Promise.all([complete(body), complete(body)])).map((res) => res.status).sort();
+    assert.deepEqual(statuses, [200, 409]);
+  });
+});
+
+describe('grades of one school year', () => {
+  let school;
+  let lastYearGrade;
+  before(async () => {
+    await resetWorld();
+    school = await buildSchool();
+    const { admin, owner, s1, csA } = school;
+    // Last year s1 was in another class; that enrollment is history, so it is written directly.
+    const lastYear = yearLabel(-1);
+    const past = await makeClass(admin, { academicYear: lastYear });
+    const pastCs = await assignTeacher(admin, {
+      classId: past.id,
+      subjectId: csA.subjectId,
+      teacherId: owner.teacherId,
+    });
+    const yearStart = academicYearStart(lastYear);
+    await run(
+      `INSERT INTO enrollments (student_id, class_id, status, enrolled_on, left_on) VALUES (?, ?, 'completed', ?, ?)`,
+      [s1.studentId, past.id, yearStart, addDaysYmd(academicYearStart(currentAcademicYear()), -1)],
+    );
+    const grade = async (classSubjectId, assessedOn, score) => {
+      const assessment = await api
+        .post('/api/v1/assessments')
+        .set(as(owner))
+        .send({
+          classSubjectId,
+          title: `Quiz ${assessedOn}`,
+          type: 'quiz',
+          term: 'term1',
+          maxScore: 10,
+          assessedOn,
+        });
+      assert.equal(assessment.status, 201, JSON.stringify(assessment.body));
+      const saved = await api
+        .put(`/api/v1/assessments/${assessment.body.data.id}/grades`)
+        .set(as(owner))
+        .send({ grades: [{ studentId: s1.studentId, score }] });
+      assert.equal(saved.status, 200, JSON.stringify(saved.body));
+      return assessment.body.data;
+    };
+    lastYearGrade = await grade(pastCs.id, addDaysYmd(yearStart, 14), 6);
+    await grade(csA.id, today, 9);
+  });
+
+  it('lists and sums up only the grades of the chosen year', async () => {
+    const { s1 } = school;
+    const lastYear = await api.get(`/api/v1/grades?academicYear=${yearLabel(-1)}`).set(as(s1));
+    assert.equal(lastYear.status, 200);
+    assert.deepEqual(
+      lastYear.body.data.map((row) => row.assessmentId),
+      [lastYearGrade.id],
+    );
+    const thisYear = await api.get(`/api/v1/grades?academicYear=${currentAcademicYear()}`).set(as(s1));
+    assert.deepEqual(
+      thisYear.body.data.map((row) => row.score),
+      [9],
+    );
+
+    const summary = await api.get(`/api/v1/grades/summary?academicYear=${yearLabel(-1)}`).set(as(s1));
+    assert.deepEqual(
+      summary.body.data.map((row) => [row.academicYear, row.percentage]),
+      [[yearLabel(-1), 60]],
+    );
+    assert.equal((await api.get('/api/v1/grades?academicYear=2026').set(as(s1))).status, 400);
   });
 });

@@ -38,22 +38,32 @@ export async function getClass(id) {
   return toClassShape(ApiError.assertFound(await repo.findClassById(id), 'class', id));
 }
 
-/** 400 unless the class exists and belongs to the current or a future academic year (past rosters are history). */
-export async function assertEnrollableClass(classId, conn) {
-  const klass = await repo.findClassById(classId, conn);
+/**
+ * The class a request body refers to in `field`; 400 invalid_reference when it does not exist.
+ * `options.forUpdate` locks the class row until the caller's transaction ends.
+ */
+export async function findReferencedClass(classId, field, conn, options) {
+  const klass = await repo.findClassById(classId, conn, options);
   if (!klass) {
-    throw ApiError.validation('class does not exist', undefined, {
-      reason: 'invalid_reference',
-      field: 'classId',
-    });
+    throw ApiError.validation('class does not exist', undefined, { reason: 'invalid_reference', field });
   }
+  return klass;
+}
+
+/**
+ * The class, unless it does not exist or belongs to a past academic year (past rosters are history): 400.
+ * `field` names the body field the class came from.
+ */
+export async function assertEnrollableClass(classId, conn, field = 'classId') {
+  const klass = await findReferencedClass(classId, field, conn);
   if (klass.academicYear < currentAcademicYear()) {
     throw ApiError.validation(`class belongs to the past academic year ${klass.academicYear}`, undefined, {
       reason: 'past_academic_year',
-      field: 'classId',
+      field,
       academicYear: klass.academicYear,
     });
   }
+  return klass;
 }
 
 export async function createClass(body) {

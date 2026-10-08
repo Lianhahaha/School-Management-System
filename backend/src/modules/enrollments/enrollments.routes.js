@@ -21,6 +21,12 @@ enrollmentsRoutes.post(
   validate({ body: schemas.transferBody }),
   controller.transfer,
 );
+enrollmentsRoutes.post(
+  '/complete',
+  authorize('admin'),
+  validate({ body: schemas.completeYearBody }),
+  controller.completeYear,
+);
 enrollmentsRoutes.get('/:id', validate({ params: schemas.idParams }), controller.get);
 enrollmentsRoutes.patch(
   '/:id',

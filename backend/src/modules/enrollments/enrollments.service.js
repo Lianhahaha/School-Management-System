@@ -4,15 +4,16 @@
  * transaction. Every enrollment is a new row, also a return to a class the
  * student left, so each period in a class stays on record for dated rosters.
  * Only classes of the current or a future academic year accept students.
+ * The end of a school year closes a class's rows as `completed` and can move the students on in one step.
  */
 import { withTransaction } from '../../config/db.js';
 import { ApiError } from '../../utils/ApiError.js';
-import { todayYmd } from '../../utils/dates.js';
+import { currentAcademicYear, todayYmd } from '../../utils/dates.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import * as access from '../access/access.service.js';
 import { nameOf, record } from '../activity/activity.service.js';
 import { notifyStudents } from '../notifications/notifications.service.js';
-import { assertEnrollableClass } from '../classes/classes.service.js';
+import { assertEnrollableClass, findReferencedClass } from '../classes/classes.service.js';
 import * as repo from './enrollments.repository.js';
 
 const toEnrollmentShape = (row) => ({
@@ -82,6 +83,15 @@ const someAlreadyEnrolled = (activeRows) =>
     })),
   });
 
+/** The bell notification of a student who joined `enrollment`'s class. */
+const enrollmentNote = (enrollment, title, body) => ({
+  studentId: enrollment.studentId,
+  type: 'enrollment',
+  title,
+  body,
+  link: '/student/class',
+});
+
 const isOneActiveCollision = (error) =>
   error?.code === 'ER_DUP_ENTRY' && /uq_enrollments_one_active/.test(error.sqlMessage ?? '');
 
@@ -118,13 +128,7 @@ export async function enroll({ studentId, classId }) {
     details: { student: nameOf(enrollment.student), className: enrollment.class.name },
   });
   await notifyStudents([
-    {
-      studentId: enrollment.studentId,
-      type: 'enrollment',
-      title: `You are enrolled in ${enrollment.class.name}`,
-      body: enrollment.class.academicYear,
-      link: '/student/class',
-    },
+    enrollmentNote(enrollment, `You are enrolled in ${enrollment.class.name}`, enrollment.class.academicYear),
   ]);
   return enrollment;
 }
@@ -152,13 +156,13 @@ export async function enrollMany({ classId, studentIds }) {
     details: { className: klass.name, students: enrollments.map((enrollment) => nameOf(enrollment.student)) },
   });
   await notifyStudents(
-    enrollments.map((enrollment) => ({
-      studentId: enrollment.studentId,
-      type: 'enrollment',
-      title: `You are enrolled in ${enrollment.class.name}`,
-      body: enrollment.class.academicYear,
-      link: '/student/class',
-    })),
+    enrollments.map((enrollment) =>
+      enrollmentNote(
+        enrollment,
+        `You are enrolled in ${enrollment.class.name}`,
+        enrollment.class.academicYear,
+      ),
+    ),
   );
   return { classId, created: ids.length, enrollments };
 }
@@ -181,7 +185,7 @@ export async function transfer({ studentId, classId }) {
     // One date for both rows: the student leaves the old class and joins the new one on the same day.
     const today = todayYmd();
     // Another request (a withdrawal, a deactivation) may have closed the row since it was read.
-    if ((await repo.closeEnrollment(active.id, 'transferred', today, conn)) === 0) {
+    if ((await repo.closeEnrollments([active.id], 'transferred', today, conn)) === 0) {
       throw ApiError.conflict('the enrollment was closed meanwhile; reload and try again', {
         reason: 'invalid_status_transition',
       });
@@ -197,15 +201,93 @@ export async function transfer({ studentId, classId }) {
     details: { student: nameOf(enrollment.student), fromClass, toClass: enrollment.class.name },
   });
   await notifyStudents([
-    {
-      studentId: enrollment.studentId,
-      type: 'enrollment',
-      title: `You moved to ${enrollment.class.name}`,
-      body: `From ${fromClass}`,
-      link: '/student/class',
-    },
+    enrollmentNote(enrollment, `You moved to ${enrollment.class.name}`, `From ${fromClass}`),
   ]);
   return enrollment;
+}
+
+/**
+ * The end of a school year for one class: the listed students' active enrollments in `classId` close as
+ * `completed` and, with `nextClassId`, they join that class of a later year. All or nothing; students of the
+ * class who are not listed stay active. Both rows carry today's date, as in a transfer, so this belongs after
+ * the last school day: from today the students leave this class's sheets, earlier days stay editable.
+ */
+export async function completeYear({ classId, studentIds, nextClassId }) {
+  let klass;
+  let next = null;
+  let closedIds = [];
+  const createdIds = await enrollingTransaction(studentIds, async (conn) => {
+    // Runs for one class are serialised on the class row: a second run waits, then finds the students closed
+    // (locking only the enrollment rows lets two runs deadlock on the index gaps their updates touch).
+    klass = await findReferencedClass(classId, 'classId', conn, { forUpdate: true });
+    // A completed row can never be reopened, so a year that has not started cannot be closed by mistake.
+    if (klass.academicYear > currentAcademicYear()) {
+      throw ApiError.validation(`the ${klass.academicYear} school year has not started yet`, undefined, {
+        reason: 'year_not_started',
+        field: 'classId',
+        academicYear: klass.academicYear,
+      });
+    }
+    if (nextClassId !== undefined) {
+      next = await assertEnrollableClass(nextClassId, conn, 'nextClassId');
+      if (next.academicYear <= klass.academicYear) {
+        throw ApiError.validation('the next class must belong to a later school year', undefined, {
+          reason: 'not_later_academic_year',
+          field: 'nextClassId',
+          academicYear: next.academicYear,
+        });
+      }
+      await assertEnrollable(studentIds, conn);
+    }
+    // Locked until commit: a transfer or withdrawal of one of these students waits, then finds the row closed.
+    const active = await repo.findActiveByStudents(studentIds, conn, { forUpdate: true });
+    const inClass = new Map(
+      active.filter((row) => row.classId === classId).map((row) => [row.studentId, row.id]),
+    );
+    const invalidStudentIds = studentIds.filter((studentId) => !inClass.has(studentId));
+    if (invalidStudentIds.length) {
+      throw ApiError.conflict('some students are not active in this class', {
+        reason: 'not_active_in_class',
+        classId,
+        invalidStudentIds,
+      });
+    }
+    const today = todayYmd();
+    closedIds = studentIds.map((studentId) => inClass.get(studentId));
+    await repo.closeEnrollments(closedIds, 'completed', today, conn);
+    if (!next) return [];
+    const created = [];
+    for (const studentId of studentIds) {
+      created.push(await repo.insertEnrollment(studentId, nextClassId, today, conn));
+    }
+    return created;
+  });
+
+  const closed = (await repo.findEnrollmentsByIds(closedIds)).map(toEnrollmentShape);
+  const enrollments = (await repo.findEnrollmentsByIds(createdIds)).map(toEnrollmentShape);
+  const count = `${closed.length} student${closed.length === 1 ? '' : 's'}`;
+  await record({
+    action: 'enrollment.complete',
+    summary: `Completed the ${klass.academicYear} school year of ${count} in ${klass.name}${
+      next ? `, now in ${next.name}, ${next.academicYear}` : ''
+    }`,
+    details: {
+      className: klass.name,
+      academicYear: klass.academicYear,
+      ...(next && { nextClass: `${next.name}, ${next.academicYear}` }),
+      students: closed.map((enrollment) => nameOf(enrollment.student)),
+    },
+  });
+  await notifyStudents(
+    enrollments.map((enrollment) =>
+      enrollmentNote(
+        enrollment,
+        `You are enrolled in ${enrollment.class.name}`,
+        `${enrollment.class.academicYear} · ${klass.name} completed`,
+      ),
+    ),
+  );
+  return { classId, nextClassId: next?.id ?? null, completed: closed.length, enrollments };
 }
 
 /** Close an active enrollment as `completed` or `withdrawn`. Closed rows cannot be changed. */
@@ -220,7 +302,7 @@ export async function setStatus(id, status) {
   if (row.status !== 'active') throw alreadyClosed(row.status);
   await withTransaction(async (conn) => {
     // Another request (a transfer, a second admin) may have closed it since the check above.
-    if ((await repo.closeEnrollment(id, status, todayYmd(), conn)) === 0) {
+    if ((await repo.closeEnrollments([id], status, todayYmd(), conn)) === 0) {
       throw alreadyClosed((await repo.findEnrollmentById(id, conn)).status);
     }
   });

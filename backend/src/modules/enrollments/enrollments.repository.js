@@ -65,11 +65,11 @@ export async function insertEnrollment(studentId, classId, enrolledOn, conn) {
   return result.insertId;
 }
 
-/** Closes the row if it is still active; returns the number of rows closed (0 when it was closed meanwhile). */
-export async function closeEnrollment(id, status, leftOn, conn) {
+/** Closes the rows that are still active; returns how many it closed (fewer when some were closed meanwhile). */
+export async function closeEnrollments(ids, status, leftOn, conn) {
   const result = await run(
-    `UPDATE enrollments SET status = ?, left_on = ? WHERE id = ? AND status = 'active'`,
-    [status, leftOn, id],
+    `UPDATE enrollments SET status = ?, left_on = ? WHERE id IN (?) AND status = 'active'`,
+    [status, leftOn, ids],
     conn,
   );
   return result.affectedRows;
@@ -97,9 +97,11 @@ export function findStudentsActivity(ids, conn) {
   );
 }
 
-export function findActiveByStudents(studentIds, conn) {
+/** The active rows of these students. `forUpdate` locks them until the transaction ends. */
+export function findActiveByStudents(studentIds, conn, { forUpdate = false } = {}) {
   return query(
-    `SELECT e.id, e.student_id, e.class_id FROM enrollments e WHERE e.status = 'active' AND e.student_id IN (?)`,
+    `SELECT e.id, e.student_id, e.class_id FROM enrollments e WHERE e.status = 'active' AND e.student_id IN (?)
+     ${forUpdate ? 'FOR UPDATE' : ''}`,
     [studentIds],
     conn,
   );

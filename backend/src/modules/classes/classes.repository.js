@@ -18,8 +18,10 @@ const FROM = `FROM classes c
   LEFT JOIN teachers ht ON ht.id = c.homeroom_teacher_id
   LEFT JOIN users hu ON hu.id = ht.user_id`;
 
-export async function findClassById(id, conn) {
-  return (await query(`SELECT ${COLUMNS} ${FROM} WHERE c.id = ?`, [id], conn))[0] ?? null;
+/** `forUpdate` locks the class row (only that row) until the transaction ends. */
+export async function findClassById(id, conn, { forUpdate = false } = {}) {
+  const lock = forUpdate ? 'FOR UPDATE OF c' : '';
+  return (await query(`SELECT ${COLUMNS} ${FROM} WHERE c.id = ? ${lock}`, [id], conn))[0] ?? null;
 }
 
 /**

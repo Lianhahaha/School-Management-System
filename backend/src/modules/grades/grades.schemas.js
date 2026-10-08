@@ -1,12 +1,23 @@
 import { z } from 'zod';
 import { ASSESSMENT_TYPES, TERMS } from '../../constants/shared.js';
-import { bulkArray, id, idOrMe, idParams, listQuery, score, shortText } from '../../utils/zod/common.js';
+import {
+  academicYear,
+  bulkArray,
+  id,
+  idOrMe,
+  idParams,
+  listQuery,
+  score,
+  shortText,
+} from '../../utils/zod/common.js';
 import { GRADE_SORT_MAP } from './grades.repository.js';
 
 const scopeFilters = {
   studentId: idOrMe.optional(),
   classSubjectId: id.optional(),
   classId: id.optional(),
+  /** The academic year of the assessment's class. */
+  academicYear: academicYear.optional(),
   term: z.enum(TERMS).optional(),
 };
 

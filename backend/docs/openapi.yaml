@@ -1078,6 +1078,42 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /enrollments/complete:
+    post:
+      tags: [enrollments]
+      operationId: completeSchoolYear
+      summary: End the school year for students of a class
+      description: |
+        Roles: admin.
+
+        All or nothing: one transaction closes the listed students' active enrollments in `classId` as
+        `completed` (left today) and, with `nextClassId`, enrolls them in that class from today. Students of the
+        class who are not listed stay active. Like a transfer, both rows carry today's date, so run it after the
+        last school day: from today the students leave this class's attendance and grade sheets, earlier days
+        stay editable.
+
+        400 `invalid_reference` (`details.field` names `classId` or `nextClassId`), `year_not_started` (the
+        class's academic year is after the current one), `past_academic_year` or `not_later_academic_year` (the
+        next class must be of the current or a future year, later than the class's year), and
+        `student_not_enrollable` (with `nextClassId`: unknown or deactivated students). 409
+        `not_active_in_class` lists in `details.invalidStudentIds` the students without an active enrollment in
+        the class.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteSchoolYearRequest'
+            example:
+              classId: 3
+              studentIds: [12, 13, 14]
+              nextClassId: 7
+      responses:
+        '200': { $ref: '#/components/responses/CompletedSchoolYearResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /enrollments/{id}:
     get:
       tags: [enrollments]
@@ -1582,6 +1618,7 @@ paths:
             $ref: '#/components/schemas/Id'
         - $ref: '#/components/parameters/ClassSubjectIdFilter'
         - $ref: '#/components/parameters/ClassIdFilter'
+        - $ref: '#/components/parameters/AcademicYearFilter'
         - $ref: '#/components/parameters/TermFilter'
         - $ref: '#/components/parameters/AssessmentTypeFilter'
       responses:
@@ -1610,6 +1647,7 @@ paths:
         - $ref: '#/components/parameters/StudentIdFilter'
         - $ref: '#/components/parameters/ClassSubjectIdFilter'
         - $ref: '#/components/parameters/ClassIdFilter'
+        - $ref: '#/components/parameters/AcademicYearFilter'
         - $ref: '#/components/parameters/TermFilter'
         - name: groupBy
           in: query
@@ -2265,7 +2303,7 @@ components:
     AcademicYearFilter:
       name: academicYear
       in: query
-      description: Only records of this academic year.
+      description: Only records of this academic year (for grades, the academic year of the assessment's class).
       schema:
         $ref: '#/components/schemas/AcademicYear'
     TeacherIdFilter:
@@ -2307,7 +2345,7 @@ components:
     TermFilter:
       name: term
       in: query
-      description: Only assessments of this term.
+      description: Only assessments of this term (shown in the app as 1st Semester, 2nd Semester, Summer).
       schema:
         $ref: '#/components/schemas/Term'
   schemas:
@@ -2397,6 +2435,7 @@ components:
       enum: [quiz, test, exam, assignment, project, other]
     Term:
       type: string
+      description: The grading period of an assessment; the app shows term1 as 1st Semester, term2 as 2nd Semester and term3 as Summer.
       enum: [term1, term2, term3]
     AnnouncementAudience:
       type: string
@@ -2849,6 +2888,26 @@ components:
           example: 3
         enrollments:
           type: array
+          items:
+            $ref: '#/components/schemas/Enrollment'
+    CompletedSchoolYear:
+      type: object
+      required: [classId, nextClassId, completed, enrollments]
+      properties:
+        classId:
+          $ref: '#/components/schemas/Id'
+        nextClassId:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: The class the students joined, or null when the year was only closed.
+        completed:
+          type: integer
+          description: How many enrollments closed as `completed`.
+          example: 24
+        enrollments:
+          type: array
+          description: The new enrollments in the next class (empty without `nextClassId`).
           items:
             $ref: '#/components/schemas/Enrollment'
     Schedule:
@@ -4439,6 +4498,22 @@ components:
           uniqueItems: true
           items:
             $ref: '#/components/schemas/Id'
+    CompleteSchoolYearRequest:
+      type: object
+      additionalProperties: false
+      required: [classId, studentIds]
+      properties:
+        classId:
+          $ref: '#/components/schemas/Id'
+        studentIds:
+          type: array
+          minItems: 1
+          maxItems: 200
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Id'
+        nextClassId:
+          $ref: '#/components/schemas/Id'
     CloseEnrollmentRequest:
       type: object
       additionalProperties: false
@@ -5175,6 +5250,16 @@ components:
                     type: array
                     items:
                       $ref: '#/components/schemas/Enrollment'
+    CompletedSchoolYearResponse:
+      description: How many enrollments closed, and the new enrollments when the students moved on.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/CompletedSchoolYear' } } }
     BulkEnrollmentResponse:
       description: The created enrollments.
       headers:
