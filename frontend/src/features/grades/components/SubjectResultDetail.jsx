@@ -1,6 +1,5 @@
 import { DataTable } from '../../../components/ui/DataTable';
-import { TrendChart } from '../../../components/ui/TrendChart';
-import { COMPONENT_OF_TYPE, GRADING_COMPONENTS } from '../../../constants/shared';
+import { ASSESSMENT_TYPES, COMPONENT_OF_TYPE, GRADING_COMPONENTS } from '../../../constants/shared';
 import { ASSESSMENT_TYPE_LABELS, COMPONENT_LABELS } from '../../../constants/ui';
 import { cx } from '../../../utils/cx';
 import { formatDate } from '../../../utils/date';
@@ -11,6 +10,7 @@ import {
   formatResult,
   groupBy,
   passMarkOf,
+  percentageByType,
   resultWidth,
 } from '../../../utils/grades';
 import { GradeDescriptor } from './GradeDescriptor';
@@ -49,20 +49,45 @@ const COLUMNS = [
   { key: 'remarks', header: 'Remarks', hideBelow: 'md', cell: (row) => row.remarks ?? '—' },
 ];
 
-/** One component's share of the grade: its name and weight, a bar and its percentage (below 60 % in red). */
-function ComponentBar({ part }) {
-  const low = part.percentage !== null && part.percentage < passMarkOf('k12');
+/**
+ * The parts of a subject's grade, one bar each: the K-12 components with their weights, or the assessment types
+ * graded so far (with their weights in a weighted subject; a weighted type not graded yet shows "Not yet").
+ * @returns {Array<{ key: string, label: string, weight: number | null, percentage: number | null }>}
+ */
+function partsOf(subject, grades) {
+  if (subject.method === 'k12') {
+    return subject.components.map((part) => ({
+      key: part.component,
+      label: COMPONENT_LABELS[part.component],
+      weight: part.weight,
+      percentage: part.percentage,
+    }));
+  }
+  const byType = percentageByType(grades);
+  const weights = subject.method === 'weighted' ? subject.gradeWeights : null;
+  return ASSESSMENT_TYPES.filter((type) => (weights ? weights[type] > 0 : type in byType)).map((type) => ({
+    key: type,
+    label: ASSESSMENT_TYPE_LABELS[type],
+    weight: weights?.[type] ?? null,
+    percentage: byType[type] ?? null,
+  }));
+}
+
+/** One part of the grade: its name (and weight), a bar and its percentage, red below the passing mark. */
+function PartBar({ part, passMark }) {
+  const low = part.percentage !== null && part.percentage < passMark;
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 sm:grid-cols-[13rem_minmax(0,1fr)_3.5rem]">
       <span className="text-sm text-gray-700">
-        {COMPONENT_LABELS[part.component]} · {part.weight}%
+        {part.label}
+        {part.weight !== null && ` · ${part.weight}%`}
       </span>
       <span className="text-right text-sm font-semibold text-gray-900 tabular-nums sm:order-last">
         {part.percentage === null ? 'Not yet' : formatPercentage(part.percentage)}
       </span>
       <div
         role="meter"
-        aria-label={`${COMPONENT_LABELS[part.component]}`}
+        aria-label={part.label}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={part.percentage ?? undefined}
@@ -77,25 +102,26 @@ function ComponentBar({ part }) {
   );
 }
 
-/** How the grade was worked out, in one sentence. */
-function workings(subject) {
-  if (subject.method !== 'k12') {
-    return subject.method === 'weighted'
-      ? `Each assessment type counts with its weight: ${describeGrading(subject)}.`
-      : `All points scored divided by all points possible: ${formatScore(subject.totalScore, subject.totalMaxScore)}.`;
+/** How the grade was worked out, in one sentence, from the parts its bars show. */
+function workings(subject, parts) {
+  if (subject.method === 'points') {
+    return `All points scored divided by all points possible: ${formatScore(subject.totalScore, subject.totalMaxScore)}.`;
   }
-  const counted = subject.components.filter((part) => part.percentage !== null);
+  const counted = parts.filter((part) => part.percentage !== null);
   if (!counted.length) return 'Nothing is graded yet.';
   const terms = counted.map((part) => `${formatResult(part.percentage)} × ${part.weight}%`).join(' + ');
-  const partial = counted.length < subject.components.length;
-  return `Initial grade ${formatResult(subject.initialGrade)} = ${terms}${
-    partial ? ', over the components graded so far' : ''
-  }; transmuted to ${formatResult(subject.percentage)} on the 60–100 scale.`;
+  const partial =
+    counted.length < parts.length
+      ? `, over the ${subject.method === 'k12' ? 'components' : 'types'} graded so far`
+      : '';
+  return subject.method === 'k12'
+    ? `Initial grade ${formatResult(subject.initialGrade)} = ${terms}${partial}; transmuted to ${formatResult(subject.percentage)} on the 60–100 scale.`
+    : `Result ${formatResult(subject.percentage)} = ${terms}${partial}.`;
 }
 
 /**
- * One subject in detail: its grade and descriptor, the components that make it up (K-12), how it was worked
- * out, its results over time and every graded assessment (grouped by component for K-12).
+ * One subject in detail: its grade and descriptor, a bar per part of the grade (K-12 components or assessment
+ * types), how it was worked out and every graded assessment (grouped by component for K-12).
  *
  * @param {object} props
  * @param {object} props.subject a summary row (GET /grades/summary?groupBy=classSubject)
@@ -111,7 +137,8 @@ export function SubjectResultDetail({ subject, grades, teacher, next }) {
         groupBy(grades, (grade) => COMPONENT_OF_TYPE[grade.assessment.type]).get(component) ?? [],
       ]).filter(([, rows]) => rows.length > 0)
     : [['Assessments', grades]];
-  const oldestFirst = [...grades].reverse();
+  const passMark = passMarkOf(subject.method);
+  const parts = partsOf(subject, grades);
 
   return (
     <section
@@ -136,33 +163,12 @@ export function SubjectResultDetail({ subject, grades, teacher, next }) {
         </div>
       </header>
 
-      {isK12 && (
-        <div className="grid gap-3">
-          {subject.components.map((part) => (
-            <ComponentBar key={part.component} part={part} />
-          ))}
-        </div>
-      )}
-      <p className="text-xs text-gray-600">{workings(subject)}</p>
-
-      {oldestFirst.length > 1 && (
-        <div className="grid gap-1.5">
-          <h3 className="text-xs font-semibold tracking-[0.04em] text-gray-600 uppercase">
-            Results over time · dashed line {passMarkOf(subject.method)}%
-          </h3>
-          <TrendChart
-            compact
-            height={44}
-            label={`${subject.subjectName} results over time`}
-            points={oldestFirst.map((grade) => ({
-              label: `${grade.assessment.title}, ${formatDate(grade.assessment.assessedOn)}`,
-              value: grade.percentage,
-            }))}
-            threshold={passMarkOf(subject.method)}
-            formatValue={formatPercentage}
-          />
-        </div>
-      )}
+      <div className="grid gap-3">
+        {parts.map((part) => (
+          <PartBar key={part.key} part={part} passMark={passMark} />
+        ))}
+      </div>
+      <p className="text-xs text-gray-600">{workings(subject, parts)}</p>
 
       {sections.map(([title, rows]) => (
         <div key={title} className="grid gap-1.5">

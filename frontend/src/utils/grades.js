@@ -73,6 +73,23 @@ export const resultWidth = (percentage) => `${Math.min(100, Math.max(0, percenta
 const round2 = (value) => Math.round(Number((value * 100).toPrecision(15))) / 100;
 
 /**
+ * The points percentage of each assessment type in one subject's grades, { quiz: 85, exam: 92 }, the same
+ * figure the API weights for a weighted subject. Types without grades are left out.
+ * @param {Array<{ score: number, assessment: { type: string, maxScore: number } }>} grades
+ */
+export function percentageByType(grades) {
+  const totals = {};
+  for (const { score, assessment } of grades) {
+    totals[assessment.type] ??= { score: 0, max: 0 };
+    totals[assessment.type].score += Number(score);
+    totals[assessment.type].max += Number(assessment.maxScore);
+  }
+  return Object.fromEntries(
+    Object.entries(totals).map(([type, total]) => [type, round2((total.score / total.max) * 100)]),
+  );
+}
+
+/**
  * The mean of results, ignoring those without one. Rounded to 2 decimals; null when empty.
  * @param {Array<number|null>} percentages
  */

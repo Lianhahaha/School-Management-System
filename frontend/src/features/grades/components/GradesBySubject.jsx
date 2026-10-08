@@ -16,7 +16,7 @@ import { SubjectResultList } from './SubjectResultList';
 /**
  * The signed-in student's grades of one school year or semester: an overview (general average, subjects
  * passed, those below 75), the subjects as a list on the left and the chosen subject in detail on the right
- * (its components, how the grade was worked out, its results over time and every graded assessment). The
+ * (a bar per part of the grade, how it was worked out and every graded assessment). The
  * chosen subject lives in the URL (`subject`, a class-subject id) and falls back to the first one.
  * Grades come from every page of GET /grades, results from GET /grades/summary. A student who is not in a
  * class (`notEnrolled`) still sees the grades of earlier classes, under a note; with no grades at all they get

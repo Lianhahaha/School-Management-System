@@ -456,9 +456,9 @@ The code is the source of truth; `backend/docs/openapi.yaml` is checked against 
 
 **K-12 grading (2026-10-08)**
 - New subjects start on K-12 components; existing subjects keep their method until an admin changes it (Admin → Subjects). The live database needed one added column (`npm run db:migrate`).
-- My grades shows an overview (general average and its DepEd descriptor, subjects passed, subjects below 75, grades so far), the subjects as a list and the chosen subject in detail: its components, the calculation in one sentence, its results over time and its assessments grouped by component. The chosen subject is in the URL (`subject`).
+- My grades shows an overview (general average and its DepEd descriptor, subjects passed, subjects below 75, grades so far), the subjects as a list and the chosen subject in detail: a bar per part of the grade (the K-12 components, or the assessment types of other subjects), the calculation in one sentence and its assessments (grouped by component for K-12). The chosen subject is in the URL (`subject`).
 - The report card lists the initial grade, the grade and Passed / Failed per subject, and the descriptor of the general average.
-- Charts of score percentages draw the passing mark at 60 % in K-12 subjects (an initial grade of 60 becomes 75) and at 75 % otherwise.
+- Score percentages count as low below 60 % in K-12 subjects (an initial grade of 60 becomes 75) and below 75 % otherwise: the bars turn red there, and the admin's results-over-time chart draws that line.
 
 **Known limits (accepted for this project)**
 - The frontend works out "today" in the browser's time zone; the API uses `APP_TIMEZONE`. They agree while the school's users are in one zone (Asia/Manila here).
