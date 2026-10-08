@@ -33,7 +33,7 @@ Hard constraints:
 | 1 | Student, teacher, and administrator accounts | `users.role` ENUM + 1:1 `students` / `teachers` profile tables | `POST /users` (admin, any role), `POST /auth/register` (public, student only), `PATCH /users/:id/status`, `DELETE /users/:id` (only while unused) | Admin → Users page: create user of any role, activate/deactivate | Create a teacher as admin, log in as that teacher in a private window |
 | 2 | Firebase Authentication | `users.firebase_uid` UNIQUE | `authenticate` middleware verifies the Firebase ID token on every request; Admin SDK creates/disables users | Firebase JS SDK login, register, forgot password, logout | Register, log out, log in, reload page: session survives; wrong password shows a generic error |
 | 3 | MySQL database | 12 InnoDB tables, 18 FKs, 15 UNIQUE keys, 11 CHECK constraints, 1 generated column | `mysql2` pool, parameterized SQL only, repository layer | — | `npm run db:migrate` creates the schema from `schema.sql`; Workbench shows the ERD |
-| 4 | Backend REST API | — | 64 endpoints under `/api/v1`, one JSON envelope, closed error catalogue | all data via `apiClient` | Swagger UI "Try it out" with a token |
+| 4 | Backend REST API | — | 75 endpoints under `/api/v1` (64 designed, see section 16), one JSON envelope, closed error catalogue | all data via `apiClient` | Swagger UI "Try it out" with a token |
 | 5 | Student enrollment and profile management | `students`, `enrollments` (one active row per student, enforced by a unique index) | students CRUD, `POST /enrollments`, `/enrollments/bulk`, `/enrollments/transfer`, `PATCH /enrollments/:id` | Students list (enroll / transfer), Student detail (profile, enrollment history, attendance, grades), Profile page (self-service contact fields) | Enroll a new student, try to enroll them in a second class (409), transfer them |
 | 6 | Subjects and class management | `subjects`, `classes` (UNIQUE per academic year) | subjects CRUD, classes CRUD | Subjects page, Classes list + Class detail (tabs) | Create a class for `2026-2027`; try `2026/2027` (400); delete a used subject (409) |
 | 7 | Teacher assignment | `class_subjects (class_id, subject_id) → teacher_id`, UNIQUE per class+subject | `/class-subjects` CRUD (assign, reassign teacher, remove) | Class detail → "Subjects & Teachers" tab | Assign Physics to Grade 10-A with teacher1; assign again (409); teacher1 sees it under "My classes" |
@@ -278,7 +278,7 @@ school-management-system/
 │   ├── .env.example
 │   ├── firebase-service-account.json   # git-ignored; downloaded from the Firebase console
 │   ├── database/
-│   │   ├── schema.sql              # CREATE DATABASE + 12 tables (idempotent)
+│   │   ├── schema.sql              # CREATE DATABASE + 17 tables (idempotent)
 │   │   └── seed.sql                # non-user demo data, ids resolved by natural keys, dates relative to today
 │   ├── docs/
 │   │   └── openapi.yaml            # the API contract served at /api/docs
@@ -440,7 +440,7 @@ The code is the source of truth; `backend/docs/openapi.yaml` is checked against 
 - No `toCreatePayload`/`toUpdatePayload` helpers: the zod schemas already produce the exact request body.
 - Select inputs for classes, teachers and subjects are native selects fed by option hooks, not searchable async selects.
 - `ClassSubjectSelectorBar`, `ClassSubjectSelect` and `useClassSubjectSelection` live in `features/classSubjects`; `NotEnrolledState` lives in `features/enrollments/components`. Grades, schedules, classes and the dashboard import them from there.
-- Teachers only see their own classes in class pickers (the API list is unscoped by design).
+- Teachers only see their own classes in class pickers: the pickers ask for `GET /classes?visible=true`, which applies the caller's class scope (the plain list stays unscoped by design).
 
 **QA round (2026-10-04)**
 - Enrollment history: every enrollment is a new row (the `UNIQUE(student_id, class_id)` key was dropped), so leaving and re-joining a class keeps both periods. Enroll, bulk enroll and transfer refuse classes of a past academic year (400 `past_academic_year`).
@@ -448,13 +448,25 @@ The code is the source of truth; `backend/docs/openapi.yaml` is checked against 
 - Pending grading excludes assessments dated after today; graded and enrolled counts both come from the dated roster.
 - Reassigning a class-subject's teacher runs the timetable clash check under the same lock as slot writes (409 `SCHEDULE_CONFLICT`). The lock is per database and is released only after the write commits.
 - A class's academic year or grade level cannot change while it has enrollments or subjects (409 `class_in_use`).
-- `DELETE /users/:id` removes an account created by mistake while nothing refers to it (409 `has_history` otherwise). Creating an account whose email already has a Firebase user without a MySQL row deletes that Firebase user and creates a fresh one, so a pre-registered outsider cannot inherit it.
+- `DELETE /users/:id` removes an account created by mistake while nothing refers to it (409 `has_history` otherwise). Creating an account whose email already has a Firebase user without a MySQL row deletes that Firebase user and creates a fresh one, so a pre-registered outsider cannot inherit it. Since the audit round below, this happens only outside development (a local database shares the Firebase project with the live site), and never for a Firebase user that a MySQL row links to.
 - A token check that fails because Google's signing keys could not be fetched answers 503 (`details.component = 'auth'`) instead of 401, so a network blip does not sign everyone out.
 - Search matches full names ("Liam Cruz"); unknown top-level API paths answer 404 to everyone.
 - The academic-year start month is the shared constant only; the `ACADEMIC_YEAR_START_MONTH` env var is gone.
 - Helpers that skip access checks (used only by the dashboard) carry an `Unscoped` suffix.
 - Live updates: `AppShell` starts `lib/liveRefresh.js`, which re-fetches the active queries every 20 seconds while the tab is visible (and on return to the tab). It skips `/auth/me` and queries marked `meta: { live: false }` (the attendance and grade sheets), stays silent when a background fetch fails, and tables do not dim for it.
 - Existing local databases keep the dropped unique key until `npm run db:reset` (or `ALTER TABLE enrollments DROP INDEX uq_enrollments_student_class`).
+
+**Audit round (2026-10-08)**
+- Attendance and grade sheets: each saved row carries the value the teacher saw (`previous`). Saves of one lesson or one assessment run one after the other under row locks, and a row that changed in between answers 409 `sheet_changed` with the students concerned. "Marked by" and "graded by" stay on the rows a save did not change.
+- A deadlock, a lock-wait timeout or a full connection queue answers 503 with `details.reason = 'busy'` (worth retrying) instead of 500; a dropped database connection answers 503 as well.
+- Bulk enrollment reads the new rows back in one query. When two requests enroll the same student at once, the unique index refuses the second and it answers the same 409 `already_enrolled` as the check.
+- Sign-up answers one 409 `email_in_use` message whatever the reason, so it cannot be used to find out which emails have accounts; repeated failed sign-ups are rate-limited.
+- The CSV import gives each new student a random temporary password (the request has no password field) and answers 201 only when it created someone.
+- Account status changes run under row locks: two admins cannot deactivate each other into a school without an admin, and a teacher with classes this year or a later one cannot be deactivated. The activity log entry is written once MySQL has the change; a Firebase failure after that answers 503, and repeating the request finishes the Firebase step.
+- The general average counts each subject once per academic year (a student who changed class mid-year). Assessment dates must fall inside the class's academic year (400 `outside_academic_year`).
+- Timetable counts and the teacher's class pickers are no longer cut off at 100 rows.
+- Input rules shared by the API and the forms: a name needs a letter, a phone number at least 7 digits, student and employee numbers at most 20 characters, and blank optional text is stored as null.
+- Operations: `migrate --fresh` refuses a database that is not on this machine (or `NODE_ENV=production`) without `--allow-remote-drop`; `APP_TIMEZONE` and the length of `DB_NAME` are checked at start-up; an unhandled promise rejection is logged and the server exits with code 1 so the host restarts it.
 
 **Open polish items (cosmetic, not required by the brief)**
 - Transfer modal lacks the "from A to B" confirmation sentence; homeroom teacher picker is a plain select.

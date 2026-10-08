@@ -23,8 +23,8 @@ Skole can be installed like an app: on Android, Chrome or Edge use the browser's
 |---|---|
 | Student, teacher and admin accounts | Admin → Users (create any role, deactivate, delete an unused account); students can also self-register on the sign-up page; Admin → Students → Import creates up to 200 students from a CSV file (template included), each checked before anything is created |
 | Firebase Authentication | Sign in / sign up / forgot password; the API verifies the Firebase ID token on every request |
-| MySQL database | 12 tables with foreign keys, unique keys and checks: [backend/database/schema.sql](backend/database/schema.sql) |
-| Backend REST API | 64 endpoints under `/api/v1`, one JSON envelope, one error catalogue |
+| MySQL database | 17 tables with foreign keys, unique keys and checks: [backend/database/schema.sql](backend/database/schema.sql) |
+| Backend REST API | 75 endpoints under `/api/v1`, one JSON envelope, one error catalogue |
 | Student enrollment and profiles | Admin → Students (enroll, transfer, profile, history); students edit their own contact details |
 | Subjects and class management | Admin → Subjects, Classes |
 | Teacher assignment | Class detail → Subjects & Teachers |
@@ -78,7 +78,7 @@ Both `.env` files must belong to the **same** Firebase project.
 ```powershell
 cd ..\backend
 npm run doctor        # every line should be a green tick; it tells you what to fix otherwise
-npm run db:migrate    # creates the database and the 12 tables
+npm run db:migrate    # creates the database and the 17 tables
 npm run db:seed       # 13 demo accounts (Firebase + MySQL), subjects, classes, timetable, attendance, grades
 ```
 
@@ -167,6 +167,20 @@ DESIGN.md      the visual design system: colours for both themes, type, componen
 ```
 
 A bug is found by following one path: the URL names the route file, the route names its controller, the controller calls a service, the service calls a repository. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains the design with an ER diagram; [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md) records every decision and why.
+
+## Design decisions and known limits
+
+These are deliberate choices, not oversights. The reasons are in [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md#16-implementation-notes-where-the-built-code-deliberately-differs-from-the-design-documents).
+
+- **Email addresses are not verified before first use.** A student who registers can sign in straight away, so the demo works without a mailbox. Accounts created by an admin, the CSV import or the seed are marked verified. An admin can delete an account that was registered by mistake and has no history.
+- **Deactivation takes effect on the next request.** The API reads the account from MySQL on every request, so a deactivated user is refused at once, even though their Firebase token stays valid for up to an hour.
+- **Attendance rate = (present + late) / all marks.** An excused absence counts as a missed lesson; the status keeps the reason on record.
+- **Grade weights belong to a subject, not to a year.** Changing them recalculates the subject's results in every year, past ones too, and the subject form says so. An assessment type with nothing graded yet is left out and the other weights are scaled up, so an ungraded exam neither helps nor hurts a result in the middle of a term.
+- **Past academic years stay editable** by the lesson's teacher and by admins, for late corrections. Every change is in the activity log with the previous value. A date must fall inside the class's academic year.
+- **Two people editing one sheet do not overwrite each other.** When an attendance or grade sheet changed since it was loaded, the second save is refused (409 `sheet_changed`) and the page offers a reload.
+- **Imported students get a random temporary password each**, shown once in a file to download; nothing in the request sets a shared password.
+- **Local development shares the Firebase project with the live site.** Outside production the API never deletes a Firebase user it does not know, because it may be a live user.
+- **`npm run db:migrate` creates missing tables and applies the upgrades listed in [scripts/migrate.js](backend/scripts/migrate.js)**; it does not change existing columns. `--fresh` drops the database first and is refused for a database that is not on this machine unless `--allow-remote-drop` is added.
 
 ## Troubleshooting
 
