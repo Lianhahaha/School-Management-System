@@ -187,7 +187,7 @@ Rules the service layer enforces because SQL cannot express them: schedule overl
 
 Activity log: services call `activity.record()` after each successful change; the actor is read from the request context that `authenticate` opens (`utils/requestContext.js`), and a failed log write never fails the request.
 
-Results: a subject is graded on points (`SUM(score) / SUM(max_score)`) unless it has grade weights per assessment type; a student's general average is the mean of their subject results. The arithmetic is in `backend/src/utils/grading.js`.
+Results: a subject with a grading group is graded on the DepEd K-12 components (written work, performance tasks, quarterly assessment; the weighted initial grade is transmuted to 60–100, 75 passes); a subject with grade weights per assessment type uses those; any other subject is graded on points (`SUM(score) / SUM(max_score)`). A student's general average is the mean of their subject results. The arithmetic is in `backend/src/utils/grading.js`.
 
 ## 6. Roles and what they can do
 

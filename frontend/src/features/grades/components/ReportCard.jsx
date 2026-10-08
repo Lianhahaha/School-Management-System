@@ -3,8 +3,14 @@ import { createPortal } from 'react-dom';
 import { Button } from '../../../components/ui/Button';
 import { APP_NAME, TERM_LABELS } from '../../../constants/ui';
 import { formatDate, todayYmd } from '../../../utils/date';
-import { formatScore } from '../../../utils/format';
-import { describeWeights, formatResult, generalAverage } from '../../../utils/grades';
+import { PASSING_GRADE } from '../../../constants/shared';
+import {
+  describeWeights,
+  descriptorOf,
+  formatResult,
+  generalAverage,
+  isPassing,
+} from '../../../utils/grades';
 import { fullName } from '../../../utils/names';
 import { useGradeSummary } from '../hooks';
 
@@ -17,10 +23,13 @@ export function PrintReportCardButton() {
   );
 }
 
+/** Passed / Failed against the passing grade (75), a dash without a result. */
+const remarksOf = (result) => (result === null ? '—' : isPassing(result) ? 'Passed' : 'Failed');
+
 /**
- * A student's report card for paper: who, which class, school year and semester, per subject its result (on
- * points, or with the subject's weights per assessment type, which a note lists), and the general average,
- * the mean of the subject results, for one school year. It is mounted at the end of <body> (a portal) and
+ * A student's report card for paper: who, which class, school year and semester, per subject its initial
+ * grade, its grade and Passed / Failed, and the general average (the mean of the subject grades) with its
+ * DepEd descriptor, for one school year. Notes explain the K-12 grading and list any weighted subjects. It is mounted at the end of <body> (a portal) and
  * shown only when printing, in plain black on white whatever the screen theme; the app itself is hidden then
  * (see `.print-only` in index.css).
  *
@@ -35,6 +44,7 @@ export function ReportCard({ student, studentId, academicYear, className, term }
   const { data: subjects = [] } = useGradeSummary({ studentId, academicYear, term, groupBy: 'classSubject' });
   const average = generalAverage(subjects);
   const weighted = subjects.filter((subject) => subject.method === 'weighted');
+  const hasK12 = subjects.some((subject) => subject.method === 'k12');
 
   return createPortal(
     <article className="print-only bg-white font-sans text-[11pt] text-black">
@@ -63,8 +73,9 @@ export function ReportCard({ student, studentId, academicYear, className, term }
             <th className="py-1.5 pr-3">Subject</th>
             <th className="py-1.5 pr-3">Class</th>
             <th className="py-1.5 pr-3 text-right">Graded</th>
-            <th className="py-1.5 pr-3 text-right">Points</th>
-            <th className="py-1.5 text-right">Result</th>
+            <th className="py-1.5 pr-3 text-right">Initial</th>
+            <th className="py-1.5 pr-3 text-right">Grade</th>
+            <th className="py-1.5">Remarks</th>
           </tr>
         </thead>
         <tbody>
@@ -73,15 +84,14 @@ export function ReportCard({ student, studentId, academicYear, className, term }
               <td className="py-1.5 pr-3">{subject.subjectName}</td>
               <td className="py-1.5 pr-3">{subject.className}</td>
               <td className="py-1.5 pr-3 text-right">{subject.assessmentsGraded}</td>
-              <td className="py-1.5 pr-3 text-right">
-                {formatScore(subject.totalScore, subject.totalMaxScore)}
-              </td>
-              <td className="py-1.5 text-right font-semibold">{formatResult(subject.percentage)}</td>
+              <td className="py-1.5 pr-3 text-right">{formatResult(subject.initialGrade)}</td>
+              <td className="py-1.5 pr-3 text-right font-semibold">{formatResult(subject.percentage)}</td>
+              <td className="py-1.5">{remarksOf(subject.percentage)}</td>
             </tr>
           ))}
           {subjects.length === 0 && (
             <tr>
-              <td colSpan={5} className="py-3">
+              <td colSpan={6} className="py-3">
                 No grades recorded.
               </td>
             </tr>
@@ -91,14 +101,22 @@ export function ReportCard({ student, studentId, academicYear, className, term }
           <tfoot>
             <tr className="border-t-2 border-black">
               <td colSpan={4} className="py-2 font-semibold">
-                General average (mean of the subject results, each subject counted once)
+                General average (mean of the subject grades, each subject counted once)
               </td>
-              <td className="py-2 text-right font-semibold">{formatResult(average)}</td>
+              <td className="py-2 pr-3 text-right font-semibold">{formatResult(average)}</td>
+              <td className="py-2 font-semibold">{descriptorOf(average)?.label ?? '—'}</td>
             </tr>
           </tfoot>
         )}
       </table>
 
+      {hasK12 && (
+        <p className="mt-3 text-[9pt]">
+          K-12 subjects: the initial grade weighs written work, performance tasks and the quarterly assessment
+          (DepEd Order No. 8, s. 2015) and is transmuted to the grade, 60 to 100. Passing grade is{' '}
+          {PASSING_GRADE}.
+        </p>
+      )}
       {weighted.length > 0 && (
         <div className="mt-3 text-[9pt]">
           <p className="font-semibold">Weighted subjects</p>

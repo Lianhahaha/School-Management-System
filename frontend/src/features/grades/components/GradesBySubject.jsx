@@ -1,59 +1,26 @@
 import { GraduationCap } from 'lucide-react';
-import { Badge } from '../../../components/ui/Badge';
-import { Card } from '../../../components/ui/Card';
-import { DataTable } from '../../../components/ui/DataTable';
+import { useSearchParams } from 'react-router';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { ErrorState } from '../../../components/ui/ErrorState';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { PAGINATION } from '../../../constants/shared';
-import { ASSESSMENT_TYPE_LABELS } from '../../../constants/ui';
-import { formatDate, todayYmd } from '../../../utils/date';
-import { countOf, formatPercent, formatScore } from '../../../utils/format';
+import { todayYmd } from '../../../utils/date';
 import { groupBy } from '../../../utils/grades';
 import { fullName } from '../../../utils/names';
-import { useAllGrades, useAssessments } from '../hooks';
-import { GradeSummaryPanel } from './GradeSummaryPanel';
-import { GradeTrendCard } from './GradeTrendCard';
 import { NotEnrolledState, NotInClassNote } from '../../enrollments/components/NotEnrolledState';
-
-const COLUMNS = [
-  {
-    key: 'title',
-    header: 'Assessment',
-    cell: (row) => <span className="font-medium text-gray-900">{row.assessment.title}</span>,
-  },
-  {
-    key: 'type',
-    header: 'Type',
-    hideBelow: 'sm',
-    cell: (row) => <Badge tone="gray">{ASSESSMENT_TYPE_LABELS[row.assessment.type]}</Badge>,
-  },
-  {
-    key: 'assessedOn',
-    header: 'Date',
-    cell: (row) => <time dateTime={row.assessment.assessedOn}>{formatDate(row.assessment.assessedOn)}</time>,
-  },
-  {
-    key: 'score',
-    header: 'Score',
-    align: 'right',
-    cell: (row) => formatScore(row.score, row.assessment.maxScore),
-  },
-  {
-    key: 'percentage',
-    header: 'Percent',
-    align: 'right',
-    cell: (row) => formatPercent(row.percentage / 100),
-  },
-  { key: 'remarks', header: 'Remarks', hideBelow: 'md', cell: (row) => row.remarks ?? '—' },
-  { key: 'gradedBy', header: 'Graded by', hideBelow: 'lg', cell: (row) => fullName(row.gradedBy) },
-];
+import { useAllGrades, useAssessments, useGradeSummary } from '../hooks';
+import { GradesOverview } from './GradesOverview';
+import { SubjectResultDetail } from './SubjectResultDetail';
+import { SubjectResultList } from './SubjectResultList';
 
 /**
- * The signed-in student's grades of one school year: the per-subject percentage cards (GradeSummaryPanel)
- * and, per subject, the recorded grades with the next upcoming assessment. Every grade of the year is loaded
- * (all pages of GET /grades) and grouped client-side. A student who is not in a class (`notEnrolled`) still
- * sees the grades of earlier classes, under a note; with no grades at all they get the not-enrolled state.
+ * The signed-in student's grades of one school year or semester: an overview (general average, subjects
+ * passed, those below 75), the subjects as a list on the left and the chosen subject in detail on the right
+ * (its components, how the grade was worked out, its results over time and every graded assessment). The
+ * chosen subject lives in the URL (`subject`, a class-subject id) and falls back to the first one.
+ * Grades come from every page of GET /grades, results from GET /grades/summary. A student who is not in a
+ * class (`notEnrolled`) still sees the grades of earlier classes, under a note; with no grades at all they get
+ * the not-enrolled state.
  *
  * @param {object} props
  * @param {string} props.academicYear the school year shown
@@ -62,20 +29,22 @@ const COLUMNS = [
  * @param {boolean} [props.withUpcoming] show upcoming assessments (only the current class has any)
  */
 export function GradesBySubject({ academicYear, term, notEnrolled = false, withUpcoming = false }) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const grades = useAllGrades({ academicYear, term, sortBy: 'assessedOn', sortOrder: 'desc' });
+  const summary = useGradeSummary({ studentId: 'me', academicYear, term, groupBy: 'classSubject' });
   const upcoming = useAssessments(
     { term, dateFrom: todayYmd(), sortBy: 'assessedOn', sortOrder: 'asc', limit: PAGINATION.MAX_LIMIT },
     { enabled: withUpcoming },
   );
 
-  if (grades.error) {
-    return (
-      <ErrorState title="Couldn't load grades" message={grades.error.message} onRetry={grades.refetch} />
-    );
+  const failed = grades.error ?? summary.error;
+  if (failed) {
+    const retry = () => Promise.all([grades.refetch(), summary.refetch()]);
+    return <ErrorState title="Couldn't load grades" message={failed.message} onRetry={retry} />;
   }
-  if (grades.isPending) return <Skeleton className="h-40 w-full" />;
+  if (grades.isPending || summary.isPending) return <Skeleton className="h-96 w-full" />;
   if (grades.data.length === 0 && notEnrolled && !term) return <NotEnrolledState />;
-  if (grades.data.length === 0) {
+  if (summary.data.length === 0) {
     return (
       <EmptyState
         icon={GraduationCap}
@@ -87,11 +56,30 @@ export function GradesBySubject({ academicYear, term, notEnrolled = false, withU
     );
   }
 
-  const groups = [...groupBy(grades.data, (grade) => grade.assessment.classSubjectId)];
-  const nextUp = (classSubjectId) =>
-    withUpcoming
-      ? upcoming.data?.items.find((assessment) => assessment.classSubjectId === classSubjectId)
-      : undefined;
+  const subjects = summary.data;
+  const gradesBySubject = groupBy(grades.data, (grade) => grade.assessment.classSubjectId);
+  const upcomingItems = withUpcoming ? (upcoming.data?.items ?? []) : [];
+  const wanted = Number(searchParams.get('subject'));
+  const selected = subjects.find((subject) => subject.classSubjectId === wanted) ?? subjects[0];
+  // The teacher who graded the subject's latest result; the API has no per-subject teacher for students.
+  const teacherOf = (classSubjectId) => {
+    const latest = gradesBySubject.get(classSubjectId)?.[0];
+    return latest?.gradedBy ? fullName(latest.gradedBy) : '';
+  };
+  // replace: picking a subject is not a new page, so Back leaves My grades. Where the detail sits below the
+  // list (narrow screens), the page moves to it.
+  const select = (classSubjectId) => {
+    setSearchParams(
+      (params) => {
+        params.set('subject', String(classSubjectId));
+        return params;
+      },
+      { replace: true },
+    );
+    if (!window.matchMedia('(min-width: 64rem)').matches) {
+      document.getElementById('subject-detail')?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -100,27 +88,26 @@ export function GradesBySubject({ academicYear, term, notEnrolled = false, withU
           You're not in a class right now. These are your grades from earlier classes.
         </NotInClassNote>
       )}
-      <GradeSummaryPanel studentId="me" academicYear={academicYear} term={term} />
-      <GradeTrendCard academicYear={academicYear} term={term} />
-      {groups.map(([classSubjectId, rows]) => {
-        const next = nextUp(classSubjectId);
-        const { subjectName, className } = rows[0].assessment;
-        return (
-          <Card
-            key={classSubjectId}
-            title={subjectName}
-            description={`${className} · ${countOf(rows.length, 'grade')}`}
-            padded={false}
-          >
-            <DataTable label={`${subjectName} grades`} columns={COLUMNS} rows={rows} rowKey="id" />
-            {next && (
-              <p className="border-t border-gray-100 px-5 py-3 text-sm text-gray-600">
-                Upcoming: {next.title} · <time dateTime={next.assessedOn}>{formatDate(next.assessedOn)}</time>
-              </p>
-            )}
-          </Card>
-        );
-      })}
+      <GradesOverview
+        subjects={subjects}
+        graded={grades.data.length}
+        upcoming={withUpcoming && upcoming.data ? upcomingItems.length : null}
+      />
+      <div className="grid items-start gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
+        <SubjectResultList
+          subjects={subjects}
+          selectedId={selected.classSubjectId}
+          onSelect={select}
+          teacherOf={teacherOf}
+        />
+        <SubjectResultDetail
+          key={selected.classSubjectId}
+          subject={selected}
+          grades={gradesBySubject.get(selected.classSubjectId) ?? []}
+          teacher={teacherOf(selected.classSubjectId)}
+          next={upcomingItems.find((assessment) => assessment.classSubjectId === selected.classSubjectId)}
+        />
+      </div>
     </div>
   );
 }

@@ -3,20 +3,22 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { ErrorState } from '../../../components/ui/ErrorState';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { formatScore } from '../../../utils/format';
-import { describeWeights, formatResult, resultWidth } from '../../../utils/grades';
+import { describeGrading, formatResult, resultWidth } from '../../../utils/grades';
 import { useGradeSummary } from '../hooks';
+import { GradeDescriptor } from './GradeDescriptor';
 
-/** How the result was reached: the subject's weights, or the points. */
+/** How the result was reached: K-12 components (with the initial grade), the subject's weights, or points. */
 function resultBasis(subject) {
   const graded = `${subject.assessmentsGraded} graded`;
-  if (subject.method === 'weighted') return `Weighted: ${describeWeights(subject.gradeWeights)} · ${graded}`;
+  if (subject.method === 'k12') return `Initial grade ${formatResult(subject.initialGrade)} · ${graded}`;
+  if (subject.method === 'weighted') return `${describeGrading(subject)} · ${graded}`;
   return `${formatScore(subject.totalScore, subject.totalMaxScore)} points · ${graded}`;
 }
 
 /**
- * Grades of one student: a card per class-subject (newest academic year first) with its result as a bar and
- * text. The result is on points (sum of scores / sum of max scores over graded assessments) or uses the
- * subject's weights per assessment type; the card says which.
+ * Grades of one student: a card per class-subject (newest academic year first) with its result, its DepEd
+ * descriptor and a bar. The result is the K-12 grade (components, transmuted to 60-100), on points (sum of
+ * scores / sum of max scores) or uses the subject's weights per assessment type; the card says which.
  * Fetches its own data, so the admin's student page and the student's own pages use the same panel.
  *
  * @param {object} props
@@ -46,10 +48,15 @@ export function GradeSummaryPanel({ studentId, academicYear, term, enabled = tru
             <p className="text-xs text-gray-600">
               {subject.className} · {subject.academicYear}
             </p>
-            <p className="mt-2 text-2xl font-semibold text-gray-900">{formatResult(subject.percentage)}</p>
+            <p className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="text-2xl font-semibold text-gray-900 tabular-nums">
+                {formatResult(subject.percentage)}
+              </span>
+              <GradeDescriptor result={subject.percentage} />
+            </p>
             <div
               role="progressbar"
-              aria-label={`${subject.subjectName}, ${subject.className} percentage`}
+              aria-label={`${subject.subjectName}, ${subject.className} result`}
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={subject.percentage ?? undefined}

@@ -122,6 +122,29 @@ export const ASSESSMENT_TYPE_LABELS = Object.freeze({
 });
 export const ASSESSMENT_TYPE_OPTIONS = optionsOf(ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS);
 
+/** K-12 subject groups (DepEd Order 8, s. 2015) as an admin picks them for a subject. */
+export const GRADING_GROUP_LABELS = Object.freeze({
+  languages: 'Languages, AP, EsP',
+  math_science: 'Math and Science',
+  mapeh: 'MAPEH, EPP, TLE',
+});
+
+/** The three K-12 grade components. */
+export const COMPONENT_LABELS = Object.freeze({
+  written: 'Written work',
+  performance: 'Performance tasks',
+  quarterly: 'Quarterly assessment',
+});
+
+/** DepEd descriptors of a grade, highest band first, each with its Badge tone. */
+export const GRADE_DESCRIPTORS = Object.freeze([
+  { min: 90, label: 'Outstanding', tone: 'sage' },
+  { min: 85, label: 'Very Satisfactory', tone: 'maroon' },
+  { min: 80, label: 'Satisfactory', tone: 'blue' },
+  { min: 75, label: 'Fairly Satisfactory', tone: 'cream' },
+  { min: 0, label: 'Did Not Meet Expectations', tone: 'oxblood' },
+]);
+
 /** The API's terms as the school names them: two semesters and a summer term in each school year. */
 export const TERM_LABELS = Object.freeze({ term1: '1st Semester', term2: '2nd Semester', term3: 'Summer' });
 export const TERM_OPTIONS = optionsOf(TERMS, TERM_LABELS);

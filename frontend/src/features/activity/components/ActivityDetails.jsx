@@ -1,12 +1,12 @@
 import { TBody, THead, Table, Td, Th, Tr } from '../../../components/ui/Table';
-import { ATTENDANCE_STATUS_LABELS, TERM_LABELS } from '../../../constants/ui';
+import { ATTENDANCE_STATUS_LABELS, GRADING_GROUP_LABELS, TERM_LABELS } from '../../../constants/ui';
 import { formatDateTime } from '../../../utils/date';
 import { describeWeights } from '../../../utils/grades';
 
 const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 
 /** Logged field names that read differently in the app. */
-const FIELD_LABELS = { term: 'Semester' };
+const FIELD_LABELS = { term: 'Semester', gradingGroup: 'Grading' };
 
 /** "guardianPhone" -> "Guardian phone". */
 const fieldLabel = (field) => {
@@ -22,6 +22,7 @@ const fieldLabel = (field) => {
 function formatValue(value, field) {
   if (field === 'gradeWeights') return describeWeights(value) || 'On points';
   if (field === 'term' && TERM_LABELS[value]) return TERM_LABELS[value];
+  if (field === 'gradingGroup') return value ? `K-12 · ${GRADING_GROUP_LABELS[value] ?? value}` : 'Not K-12';
   if (value === null || value === undefined || value === '') return '—';
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   if (typeof value === 'string' && ISO_INSTANT.test(value)) return formatDateTime(value);

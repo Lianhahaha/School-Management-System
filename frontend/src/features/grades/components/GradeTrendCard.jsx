@@ -4,11 +4,8 @@ import { Skeleton } from '../../../components/ui/Skeleton';
 import { TrendChart } from '../../../components/ui/TrendChart';
 import { formatDate } from '../../../utils/date';
 import { countOf } from '../../../utils/format';
-import { formatResult, groupBy } from '../../../utils/grades';
-import { useAllGrades } from '../hooks';
-
-/** The usual passing mark, drawn as a dashed line. */
-const PASS_MARK = 75;
+import { formatPercentage, groupBy, passMarkOf } from '../../../utils/grades';
+import { useAllGrades, useGradeSummary } from '../hooks';
 
 /** "+6 pts since the first" / "−4 pts since the first" / "same as the first", in percentage points. */
 function changeText(first, latest) {
@@ -19,7 +16,8 @@ function changeText(first, latest) {
 
 /**
  * One student's results over time: per subject, a small line of each graded assessment's percentage, oldest
- * to newest, with the 75 % line dashed, the latest result and how far it moved since the first. Fetches its
+ * to newest, with the passing mark dashed (60 % in K-12 subjects, 75 % otherwise), the latest result and how far
+ * it moved since the first. Fetches its
  * own data (every page of GET /grades), so the admin's student page and the student's own page share it; on the
  * student's page it is the same request as GradesBySubject, so both share one cached answer.
  *
@@ -36,6 +34,9 @@ export function GradeTrendCard({ studentId, academicYear, term }) {
     sortBy: 'assessedOn',
     sortOrder: 'desc',
   });
+  // The same request as GradeSummaryPanel's beside it; only the grading method of each subject is used.
+  const { data: summary = [] } = useGradeSummary({ studentId, academicYear, term, groupBy: 'classSubject' });
+  const methodOf = (classSubjectId) => summary.find((row) => row.classSubjectId === classSubjectId)?.method;
 
   if (error) return <ErrorState title="Couldn't load results" message={error.message} onRetry={refetch} />;
   if (isPending) return <Skeleton className="h-40 w-full" />;
@@ -45,7 +46,10 @@ export function GradeTrendCard({ studentId, academicYear, term }) {
   const subjects = [...groupBy([...data].reverse(), (grade) => grade.assessment.classSubjectId).values()];
 
   return (
-    <Card title="Results over time" description="Each graded assessment, oldest to newest. Dashed line: 75%.">
+    <Card
+      title="Results over time"
+      description="Each graded assessment, oldest to newest. Dashed line: the passing mark, 60% in K-12 subjects and 75% in others."
+    >
       <ul className="divide-y divide-gray-200">
         {subjects.map((grades) => {
           const { subjectName, className } = grades[0].assessment;
@@ -69,13 +73,13 @@ export function GradeTrendCard({ studentId, academicYear, term }) {
                   label: `${grade.assessment.title}, ${formatDate(grade.assessment.assessedOn)}`,
                   value: grade.percentage,
                 }))}
-                threshold={PASS_MARK}
-                formatValue={formatResult}
+                threshold={passMarkOf(methodOf(latest.assessment.classSubjectId))}
+                formatValue={formatPercentage}
                 className="col-span-2 row-start-2 sm:col-span-1 sm:row-start-auto"
               />
               <div className="text-right">
                 <p className="text-sm font-semibold text-gray-900 tabular-nums">
-                  {formatResult(latest.percentage)}
+                  {formatPercentage(latest.percentage)}
                 </p>
                 <p className="text-xs text-gray-600">
                   {grades.length > 1 ? changeText(grades[0].percentage, latest.percentage) : 'first result'}

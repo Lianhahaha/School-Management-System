@@ -7,9 +7,13 @@ import { cx } from '../../utils/cx';
  *   outline (gray)          off or secondary: Disabled, Not enrolled, Quiz
  *   positive (green)        "on": Active, Present, Enrolled, a deep green fill
  *   solid   (amber, red)    needs attention: Late, Absent, 3/8 graded
- *   oxblood                 something new to look at: New
+ *   oxblood                 something new to look at: New; a grade below the passing mark
+ *   sage, maroon, cream     the school palette, for grade descriptors (Outstanding, Very Satisfactory, ...)
  */
 const TONE_CLASSES = {
+  sage: 'bg-mark-sage text-white ring-black/10',
+  maroon: 'bg-mark-maroon text-mark-cream ring-white/10',
+  cream: 'bg-mark-cream text-mark-maroon ring-mark-edge',
   gray: 'text-gray-700 ring-gray-400',
   green: 'badge-positive text-white ring-black/5',
   blue: 'bg-gray-200 text-gray-900 ring-gray-300',
@@ -21,7 +25,7 @@ const TONE_CLASSES = {
 
 /**
  * @param {object} props
- * @param {'gray'|'green'|'amber'|'red'|'blue'|'violet'|'oxblood'} [props.tone]
+ * @param {'gray'|'green'|'amber'|'red'|'blue'|'violet'|'oxblood'|'sage'|'maroon'|'cream'} [props.tone]
  * Other props (title, aria-*) go to the span.
  */
 export function Badge({ tone = 'gray', className, children, ...props }) {

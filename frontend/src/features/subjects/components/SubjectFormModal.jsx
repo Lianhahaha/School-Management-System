@@ -12,15 +12,21 @@ import { createSubjectSchema, subjectDefaults, updateSubjectSchema } from '../sc
 import { GradeWeightsFields } from './GradeWeightsFields';
 
 const FORM_ID = 'subject-form';
-const FIELDS = ['code', 'name', 'description', 'weights'];
+const FIELDS = ['code', 'name', 'description', 'gradingGroup', 'weights'];
 /** The API's `gradeWeights` errors belong to the weight inputs. */
 const FIELD_MAP = { gradeWeights: 'weights' };
 
-/** The PATCH body: the text fields that changed, and `gradeWeights` when the method or a weight changed. */
+/**
+ * The PATCH body: the text fields that changed, and both grading fields (`gradingGroup`, `gradeWeights`, at
+ * most one of them set) when the method, the group or a weight changed.
+ */
 function changedBody(values, dirtyFields) {
-  const { gradingMethod, weights, ...textFields } = dirtyFields;
+  const { gradingMethod, gradingGroup, weights, ...textFields } = dirtyFields;
   const body = changedFields(values, textFields);
-  if (gradingMethod || weights) body.gradeWeights = values.gradeWeights;
+  if (gradingMethod || gradingGroup || weights) {
+    body.gradingGroup = values.gradingGroup;
+    body.gradeWeights = values.gradeWeights;
+  }
   return body;
 }
 
@@ -82,7 +88,7 @@ function SubjectForm({ subject, mutation, onClose }) {
 
 /**
  * Create or edit a subject (edit mode when `subject` is given): code, name, description and how results
- * are graded (on points or weighted by assessment type). The code is upper-cased when the field loses
+ * are graded (K-12 components, on points or weighted by assessment type). The code is upper-cased when the field loses
  * focus; a duplicate code shows under the field.
  *
  * @param {object} props
