@@ -20,7 +20,14 @@ import {
 } from '../../constants/shared.js';
 import { todayYmd } from '../dates.js';
 
-export const id = z.coerce.number().int().positive();
+/**
+ * A positive whole-number id: a JSON number, or a string of digits (path and query values are always text).
+ * Unlike z.coerce it refuses true, [5], '0x10' and '1e3'.
+ */
+export const id = z.preprocess(
+  (value) => (typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value),
+  z.number({ error: 'expected a whole-number id' }).int().positive(),
+);
 
 export const idOrMe = z.union([z.literal('me'), id]);
 

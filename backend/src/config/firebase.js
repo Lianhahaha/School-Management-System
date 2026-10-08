@@ -80,7 +80,6 @@ export const firebase = {
   },
   verifyIdToken: (token) => (init(), adminAuth.verifyIdToken(token)),
   createUser: (properties) => (init(), adminAuth.createUser(properties)),
-  getUser: (uid) => (init(), adminAuth.getUser(uid)),
   getUserByEmail: (emailAddress) => (init(), adminAuth.getUserByEmail(emailAddress)),
   updateUser: (uid, properties) => (init(), adminAuth.updateUser(uid, properties)),
   deleteUser: (uid) => (init(), adminAuth.deleteUser(uid)),

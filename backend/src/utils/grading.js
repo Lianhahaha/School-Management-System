@@ -13,7 +13,11 @@
  * Percentages are 0-100 and rounded to 2 decimals.
  */
 
-const round2 = (value) => Math.round(value * 100) / 100;
+/**
+ * Rounded to 2 decimals, half up. toPrecision(15) first drops binary dust: 1.005 * 100 is 100.49999999999999
+ * in floating point, which would otherwise round down to 1.00.
+ */
+const round2 = (value) => Math.round(Number((value * 100).toPrecision(15))) / 100;
 
 /** Sum of point values (scores have at most 2 decimals), without floating-point dust. */
 export const sumPoints = (values) => round2(values.reduce((sum, value) => sum + value, 0));

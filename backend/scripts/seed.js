@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import mysql from 'mysql2/promise';
 import { closePool, query } from '../src/config/db.js';
-import { dbConnectionOptions } from '../src/config/dbConnection.js';
+import { dbConnectionOptions, dbErrorHint } from '../src/config/dbConnection.js';
 import { env } from '../src/config/env.js';
 import { assertFirebaseReady, firebase } from '../src/config/firebase.js';
 import { ACADEMIC_YEAR_START_MONTH } from '../src/constants/shared.js';
@@ -170,12 +170,6 @@ async function seedSchoolData() {
   }
 }
 
-const HINTS = {
-  ER_NO_SUCH_TABLE: 'The schema is missing. Run `npm run db:migrate` first.',
-  ER_BAD_DB_ERROR: 'The database does not exist. Run `npm run db:migrate` first.',
-  ECONNREFUSED: `MySQL is not reachable at ${env.DB_HOST}:${env.DB_PORT}. Start the "MySQL80" service.`,
-};
-
 /** Accounts first (Firebase + MySQL), then the school data. Exported for tests. */
 export async function seed() {
   console.log('Accounts:');
@@ -201,7 +195,7 @@ if (import.meta.main) {
   main()
     .catch((error) => {
       console.error(`✖ Seeding failed: ${error.code ?? ''} ${error.message}`);
-      const hint = HINTS[error.code];
+      const hint = dbErrorHint(error);
       if (hint) console.error(`  ${hint}`);
       if (error.sqlMessage) console.error(`  ${error.sqlMessage}`);
       process.exitCode = 1;

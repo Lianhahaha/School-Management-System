@@ -1,8 +1,10 @@
 /**
  * The /api/v1 router. Public routes first (health, auth), then every other
  * resource mounted behind `authenticate`. Authentication is applied per mount,
- * not to the router as a whole, so an unknown path reaches the 404 handler
- * whether or not a token was sent. Role gates live next to each route (authorize).
+ * not to the router as a whole, so a path outside every resource reaches the
+ * 404 handler whether or not a token was sent; a path inside a resource asks
+ * for a token first (401), then answers 404 when no route matches. Role gates
+ * live next to each route (authorize).
  */
 import { Router } from 'express';
 import { authenticate } from './middleware/authenticate.js';
@@ -40,7 +42,7 @@ apiRouter.use('/classes', authenticate, classesRoutes);
 apiRouter.use('/class-subjects', authenticate, classSubjectsRoutes);
 apiRouter.use('/enrollments', authenticate, enrollmentsRoutes);
 apiRouter.use('/attendance', authenticate, attendanceRoutes);
-// Mounted before /assessments so a roster request is authenticated once, not by both mounts.
+// Mounted before /assessments, so a roster request is answered here without passing through that router.
 apiRouter.use('/assessments/:id/grades', authenticate, assessmentGradesRoutes);
 apiRouter.use('/assessments', authenticate, assessmentsRoutes);
 apiRouter.use('/grades', authenticate, gradesRoutes);

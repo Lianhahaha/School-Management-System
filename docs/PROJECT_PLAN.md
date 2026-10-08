@@ -467,6 +467,18 @@ The code is the source of truth; `backend/docs/openapi.yaml` is checked against 
 - Timetable counts and the teacher's class pickers are no longer cut off at 100 rows.
 - Input rules shared by the API and the forms: a name needs a letter, a phone number at least 7 digits, student and employee numbers at most 20 characters, and blank optional text is stored as null.
 - Operations: `migrate --fresh` refuses a database that is not on this machine (or `NODE_ENV=production`) without `--allow-remote-drop`; `APP_TIMEZONE` and the length of `DB_NAME` are checked at start-up; an unhandled promise rejection is logged and the server exits with code 1 so the host restarts it.
+- Smaller fixes: the `Bearer` scheme is read in any case and exactly one token must follow it; a request that passes through two authenticated mounts is checked once; Firebase network, internal and quota errors answer 503; body ids must be numbers or strings of digits (`true`, `[5]` and `'0x10'` are refused); averages round half up without floating-point error; the access log comes before the body parser, so a refused body is logged too; the server and the scripts share one table of MySQL connection hints.
+
+**Known limits (accepted for this project)**
+- The frontend works out "today" in the browser's time zone; the API uses `APP_TIMEZONE`. They agree while the school's users are in one zone (Asia/Manila here).
+- Lesson-day rules for a past date use the current timetable; timetable history is not kept.
+- Nothing stops one teacher from being the homeroom teacher of several classes in a year.
+- Teachers see the full profile (date of birth, address, guardian) of the students in classes they teach or lead.
+- Announcement read marks survive an edit of the announcement.
+- On a few endpoints a 403 instead of a 404 shows that an id exists; ids are sequential and reveal no data.
+- Subjects and timetable periods can still be added to a past year's class; only enrollment refuses past years.
+- The Firebase display name is set when an account is created and not updated later; the app shows names from MySQL only.
+- Placing a student in next year's class is a transfer, which ends this year's enrollment on that day.
 
 **Open polish items (cosmetic, not required by the brief)**
 - Transfer modal lacks the "from A to B" confirmation sentence; homeroom teacher picker is a plain select.

@@ -32,10 +32,6 @@ export function installFakeFirebase() {
     if (!found) throw failure('auth/user-not-found');
     return found;
   };
-  firebase.getUser = async (uid) => {
-    if (!users.has(uid)) throw failure('auth/user-not-found');
-    return users.get(uid);
-  };
   firebase.updateUser = async (uid, properties) => {
     if (!users.has(uid)) throw failure('auth/user-not-found');
     Object.assign(users.get(uid), properties);

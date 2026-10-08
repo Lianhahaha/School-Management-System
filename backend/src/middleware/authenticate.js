@@ -20,10 +20,12 @@ import { tokenVerificationError } from '../utils/firebaseErrorMap.js';
 import { runWithContext } from '../utils/requestContext.js';
 
 export async function authenticate(req, _res, next) {
-  const header = req.get('Authorization') ?? '';
-  const [scheme, token] = header.split(' ');
-  if (scheme !== 'Bearer' || !token)
-    return next(ApiError.unauthorized('missing bearer token', 'missing_token'));
+  // A request that falls through one authenticated mount into another (/assessments/:id/grades, then
+  // /assessments) is checked once; the request context set below is still active.
+  if (req.user) return next();
+  // The scheme name is case-insensitive (RFC 9110); exactly one token must follow it.
+  const token = /^Bearer\s+(\S+)\s*$/i.exec(req.get('Authorization') ?? '')?.[1];
+  if (!token) return next(ApiError.unauthorized('missing bearer token', 'missing_token'));
 
   let decoded;
   try {

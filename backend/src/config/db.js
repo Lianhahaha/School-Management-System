@@ -15,6 +15,7 @@ import mysql from 'mysql2/promise';
 import { dbConnectionOptions } from './dbConnection.js';
 import { env } from './env.js';
 import { logger } from '../utils/logger.js';
+import { toCamel } from '../utils/sql.js';
 
 /** mysql2 typeCast: normalise TIME and BOOLEAN columns; everything else uses the default. */
 export function typeCast(field, next) {
@@ -28,8 +29,6 @@ export function typeCast(field, next) {
   }
   return next();
 }
-
-const toCamel = (key) => key.replace(/_([a-z0-9])/g, (_, char) => char.toUpperCase());
 
 /** Shallow key conversion: rows are flat, and Date/Buffer values are leaves. */
 export function camelizeRow(row) {

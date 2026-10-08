@@ -13,7 +13,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import mysql from 'mysql2/promise';
-import { dbConnectionOptions } from '../src/config/dbConnection.js';
+import { dbConnectionOptions, dbErrorHint } from '../src/config/dbConnection.js';
 import { env } from '../src/config/env.js';
 
 const fresh = process.argv.includes('--fresh');
@@ -54,14 +54,6 @@ async function applyUpgrades(conn) {
   }
 }
 
-const HINTS = {
-  ECONNREFUSED: `MySQL is not reachable at ${env.DB_HOST}:${env.DB_PORT}. Start the "MySQL80" service (services.msc or \`net start MySQL80\` in an admin terminal).`,
-  ER_ACCESS_DENIED_ERROR:
-    'Wrong DB_USER / DB_PASSWORD in backend/.env (wrap the password in double quotes if it contains # or spaces).',
-  ER_DBACCESS_DENIED_ERROR: `DB_USER lacks privileges on database ${env.DB_NAME}. Grant them or use the root account.`,
-  ETIMEDOUT: `Connection to ${env.DB_HOST}:${env.DB_PORT} timed out. Check DB_HOST/DB_PORT and that MySQL is running.`,
-};
-
 async function main() {
   if (fresh) assertSafeToDrop();
   const schema = readFileSync(schemaPath, 'utf8');
@@ -88,7 +80,7 @@ async function main() {
 }
 
 main().catch((error) => {
-  const hint = HINTS[error.code];
+  const hint = dbErrorHint(error);
   console.error(`✖ Migration failed: ${error.code ?? ''} ${error.message}`);
   if (hint) console.error(`  ${hint}`);
   if (error.code === 'ER_PARSE_ERROR' && error.sqlMessage) console.error(`  ${error.sqlMessage}`);

@@ -33,4 +33,10 @@ describe('grading arithmetic', () => {
     assert.deepEqual(subjectResult([], weights), { percentage: null, method: 'weighted' });
     assert.equal(averageOf([null, undefined]), null);
   });
+
+  it('rounds half up even where floating point lands just below the half', () => {
+    // (1 + 1.01) / 2 is 1.005, stored as 1.00499999...; plain Math.round(x * 100) / 100 gives 1.
+    assert.equal(averageOf([1, 1.01]), 1.01);
+    assert.equal(averageOf([2 / 3]), 0.67);
+  });
 });

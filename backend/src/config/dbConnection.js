@@ -12,6 +12,20 @@ function readCa() {
   return undefined;
 }
 
+/** What to do about a MySQL error, by driver code; printed by the server at start-up and by the scripts. */
+const DB_ERROR_HINTS = {
+  ECONNREFUSED: `MySQL is not reachable at ${env.DB_HOST}:${env.DB_PORT}. Start the "MySQL80" service (services.msc, or \`net start MySQL80\` in an administrator terminal).`,
+  ETIMEDOUT: `The connection to ${env.DB_HOST}:${env.DB_PORT} timed out. Check DB_HOST / DB_PORT and that MySQL is running.`,
+  ER_ACCESS_DENIED_ERROR:
+    'Wrong DB_USER / DB_PASSWORD in backend/.env (wrap the password in double quotes if it contains # or spaces).',
+  ER_DBACCESS_DENIED_ERROR: `DB_USER has no privileges on the database ${env.DB_NAME}. Grant them or use the root account.`,
+  ER_BAD_DB_ERROR: 'The database does not exist yet: run `npm run db:migrate`.',
+  ER_NO_SUCH_TABLE: 'A table is missing: run `npm run db:migrate`.',
+};
+
+/** The hint for a MySQL error, or undefined when there is none. */
+export const dbErrorHint = (error) => DB_ERROR_HINTS[error?.code];
+
 export function dbConnectionOptions() {
   return {
     host: env.DB_HOST,

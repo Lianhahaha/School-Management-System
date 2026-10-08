@@ -9,7 +9,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import path from 'node:path';
 import mysql from 'mysql2/promise';
-import { dbConnectionOptions } from '../src/config/dbConnection.js';
+import { dbConnectionOptions, dbErrorHint } from '../src/config/dbConnection.js';
 import { env } from '../src/config/env.js';
 import { firebase, loadServiceAccount } from '../src/config/firebase.js';
 import { frontendEnvPath, readFrontendEnv } from './lib/frontendEnv.js';
@@ -58,11 +58,8 @@ async function checkDatabase() {
       connectTimeout: 5000,
     });
   } catch (error) {
-    const hint =
-      error.code === 'ER_ACCESS_DENIED_ERROR'
-        ? 'wrong DB_USER / DB_PASSWORD in backend/.env'
-        : `is the "MySQL80" service running on ${env.DB_HOST}:${env.DB_PORT}?`;
-    return record('fail', 'MySQL connection', `${error.code ?? error.message} (${hint})`);
+    const hint = dbErrorHint(error) ?? `Is the "MySQL80" service running on ${env.DB_HOST}:${env.DB_PORT}?`;
+    return record('fail', 'MySQL connection', `${error.code ?? error.message}. ${hint}`);
   }
   try {
     const [[{ version }]] = await conn.query('SELECT VERSION() AS version');

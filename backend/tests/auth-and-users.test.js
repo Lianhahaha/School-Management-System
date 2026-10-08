@@ -87,6 +87,15 @@ describe('health, 404 and authentication middleware', () => {
     assert.equal(res.body.error.code, 'UNAUTHORIZED');
   });
 
+  it('reads the Bearer scheme in any case, and refuses a header with more than one token', async () => {
+    const admin = await makeUser('admin');
+    const token = admin.auth.replace(/^Bearer /, '');
+    assert.equal((await api.get('/api/v1/auth/me').set('Authorization', `bearer ${token}`)).status, 200);
+    const extra = await api.get('/api/v1/auth/me').set('Authorization', `Bearer ${token} other`);
+    assert.equal(extra.status, 401);
+    assert.equal(extra.body.error.details.reason, 'missing_token');
+  });
+
   it('rejects a token Firebase does not know with 401 UNAUTHORIZED', async () => {
     const res = await api.get('/api/v1/auth/me').set('Authorization', 'Bearer token-ghost');
     assert.equal(res.status, 401);

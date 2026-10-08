@@ -32,6 +32,9 @@ export const formatResult = (percentage) => formatPercent(percentage === null ? 
 /** CSS width of a result bar: 0-100 %, an empty bar for null. */
 export const resultWidth = (percentage) => `${Math.min(100, Math.max(0, percentage ?? 0))}%`;
 
+/** Rounded to 2 decimals, half up, without floating-point dust (the API's round2). */
+const round2 = (value) => Math.round(Number((value * 100).toPrecision(15))) / 100;
+
 /**
  * The mean of results, ignoring those without one. Rounded to 2 decimals; null when empty.
  * @param {Array<number|null>} percentages
@@ -39,7 +42,7 @@ export const resultWidth = (percentage) => `${Math.min(100, Math.max(0, percenta
 export function averageOf(percentages) {
   const values = percentages.filter((value) => value !== null && value !== undefined);
   if (values.length === 0) return null;
-  return Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 100) / 100;
+  return round2(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
 /**

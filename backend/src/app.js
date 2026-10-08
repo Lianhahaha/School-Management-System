@@ -1,8 +1,9 @@
 /**
- * Builds the Express application. Middleware order matters and is documented
- * in docs/design/03-api-and-rbac.md section 7:
+ * Builds the Express application. Middleware order matters (docs/design/03-api-and-rbac.md section 7):
  *
- *   requestId -> helmet -> cors -> json body -> http log -> /api/docs -> /api/v1 -> 404 -> error handler
+ *   requestId -> helmet -> cors -> http log -> json body -> /api/docs -> /api/v1 -> 404 -> error handler
+ *
+ * The access log comes before the body parser, so a request refused for its body is logged as well.
  */
 import cors from 'cors';
 import express from 'express';
@@ -32,8 +33,8 @@ export function createApp() {
       credentials: false,
     }),
   );
-  app.use(express.json({ limit: '1mb' }));
   app.use(httpLogger);
+  app.use(express.json({ limit: '1mb' }));
 
   if (env.DOCS_ENABLED) app.use('/api/docs', createSwaggerRouter());
   app.use(API_BASE_PATH, apiRouter);

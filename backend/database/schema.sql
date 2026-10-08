@@ -20,8 +20,9 @@ SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
 -- 1. users — one row per account of ANY role (admin / teacher / student).
 --    Identity (password, tokens, MFA) lives in Firebase Auth. This row stores
 --    the profile, the role and the active flag, keyed by firebase_uid.
---    Never hard-deleted: the API sets is_active = 0 (and disables the Firebase
---    user) instead.
+--    An account with history is never deleted: the API sets is_active = 0 (and
+--    disables the Firebase user) instead. Only an account created by mistake,
+--    that nothing refers to yet, can be deleted (DELETE /users/:id).
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS users (
   id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -134,7 +135,7 @@ CREATE TABLE IF NOT EXISTS classes (
   KEY        idx_classes_year_grade (academic_year, grade_level), -- list classes of a year, filter by grade
   KEY        idx_classes_homeroom   (homeroom_teacher_id),        -- FK + "which class is teacher X homeroom of"
   CONSTRAINT fk_classes_homeroom_teacher FOREIGN KEY (homeroom_teacher_id) REFERENCES teachers (id)
-    ON DELETE RESTRICT ON UPDATE RESTRICT,   -- teachers are never deleted; SET NULL would hide a bad delete
+    ON DELETE RESTRICT ON UPDATE RESTRICT,   -- a teacher in use is never deleted; SET NULL would hide a bad delete
   CONSTRAINT chk_classes_academic_year CHECK (
     academic_year REGEXP '^[0-9]{4}-[0-9]{4}$'
     AND CAST(SUBSTRING(academic_year, 6, 4) AS UNSIGNED) = CAST(SUBSTRING(academic_year, 1, 4) AS UNSIGNED) + 1

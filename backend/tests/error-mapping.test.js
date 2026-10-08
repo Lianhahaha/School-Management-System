@@ -42,6 +42,19 @@ describe('error mapping', () => {
     }
   });
 
+  it('turns an unreachable or overloaded Firebase into 503 auth', () => {
+    for (const code of [
+      'app/network-error',
+      'app/network-timeout',
+      'auth/internal-error',
+      'auth/quota-exceeded',
+    ]) {
+      const mapped = toApiError(driverError(code, undefined));
+      assert.equal(mapped.status, 503, code);
+      assert.equal(mapped.details.component, 'auth');
+    }
+  });
+
   it('still answers 500 for an unknown error', () => {
     assert.equal(toApiError(new Error('boom')).status, 500);
   });

@@ -2,9 +2,17 @@ import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { buildSet } from '../src/utils/sql.js';
-import { email, name, optionalText, phone, studentNumber } from '../src/utils/zod/common.js';
+import { email, id, name, optionalText, phone, studentNumber } from '../src/utils/zod/common.js';
 
 describe('shared validation rules', () => {
+  it('takes an id as a number or a string of digits, nothing looser', () => {
+    assert.equal(id.parse(12), 12);
+    assert.equal(id.parse('12'), 12);
+    for (const bad of [true, [5], '0x10', '1e3', ' 5', 0, 1.5]) {
+      assert.equal(id.safeParse(bad).success, false, JSON.stringify(bad));
+    }
+  });
+
   it('trims and lower-cases an email before checking it', () => {
     assert.equal(email.parse('  Ana.Cruz@School.PH '), 'ana.cruz@school.ph');
     assert.equal(email.safeParse('not an email').success, false);

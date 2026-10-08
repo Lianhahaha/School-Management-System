@@ -3,6 +3,9 @@
  * these helpers only assemble clause text.
  */
 
+/** A snake_case column name as the camelCase field name the API uses: class_subject_id -> classSubjectId. */
+export const toCamel = (name) => name.replace(/_([a-z0-9])/g, (_, char) => char.toUpperCase());
+
 /** Make `%` and `_` in a search term literal inside LIKE. */
 export const escapeLike = (term) => term.replace(/[\\%_]/g, '\\$&');
 

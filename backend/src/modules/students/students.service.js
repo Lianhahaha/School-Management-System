@@ -58,7 +58,7 @@ export async function getProfileByUserId(userId) {
 /**
  * Insert the profile row for a new student user. Generates STU-<year>-NNNN
  * (year = admission year) when no number is supplied. Runs inside the caller's
- * transaction; the caller retries once when a generated number collides.
+ * transaction; the caller regenerates the number when it collides (users.service, up to 5 attempts).
  */
 export async function createProfile(userId, profile = {}, conn) {
   const admissionDate = profile.admissionDate ?? todayYmd();
@@ -86,8 +86,10 @@ export async function getStudent(user, idOrMe) {
   return toStudentShape(ApiError.assertFound(await repo.findStudentById(id), 'student', id));
 }
 
-/** Admin edit, and the student's own contact update: users + students columns in one statement. */
-/** Admins edit any student; a student edits their own contact details (through PATCH /auth/me). */
+/**
+ * Admin edit, and the student's own contact update (through PATCH /auth/me): users + students columns in
+ * one statement.
+ */
 export async function updateStudent(id, patch) {
   const before = ApiError.assertFound(await repo.findStudentById(id), 'student', id);
   await withTransaction((conn) => repo.updateStudent(id, patch, conn));

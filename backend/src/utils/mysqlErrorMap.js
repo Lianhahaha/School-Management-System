@@ -3,6 +3,7 @@
  * 400 cases; if one shows up in the logs, a schema rule is missing.
  */
 import { ApiError } from './ApiError.js';
+import { toCamel } from './sql.js';
 
 const CONNECTION_CODES = new Set([
   'ECONNREFUSED',
@@ -21,8 +22,6 @@ const BUSY_CODES = new Set(['ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT']);
 
 /** mysql2's pool rejects with a plain Error (no code) when more requests wait than queueLimit allows. */
 const isPoolQueueFull = (error) => error?.message === 'Queue limit reached.' && error.code === undefined;
-
-const toCamel = (name) => name.replace(/_([a-z0-9])/g, (_, char) => char.toUpperCase());
 
 /**
  * What a refused delete says, by the foreign key that refused it. MySQL names only the first key that

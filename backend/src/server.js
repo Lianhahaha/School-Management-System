@@ -3,24 +3,19 @@
  * A broken setup fails here in under a second with the cause, not on the first request.
  */
 import { closePool, ping } from './config/db.js';
+import { dbErrorHint } from './config/dbConnection.js';
 import { env } from './config/env.js';
 import { assertFirebaseReady, firebase } from './config/firebase.js';
 import { createApp } from './app.js';
 import { logger } from './utils/logger.js';
-
-const DB_HINTS = {
-  ECONNREFUSED:
-    'MySQL is not running or not reachable. Start the "MySQL80" service (services.msc or `net start MySQL80`).',
-  ER_ACCESS_DENIED_ERROR: 'Check DB_USER / DB_PASSWORD in backend/.env.',
-  ER_BAD_DB_ERROR: 'The database does not exist yet: run `npm run db:migrate` (then `npm run db:seed`).',
-};
 
 async function start() {
   try {
     await ping();
   } catch (error) {
     logger.error(`Cannot connect to MySQL at ${env.DB_HOST}:${env.DB_PORT} (${error.code ?? error.message})`);
-    if (DB_HINTS[error.code]) logger.error(DB_HINTS[error.code]);
+    const hint = dbErrorHint(error);
+    if (hint) logger.error(hint);
     process.exit(1);
   }
 
