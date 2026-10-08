@@ -4,7 +4,7 @@
  * spaces and punctuation, so "First name", "first_name" and "FirstName" all work.
  */
 import { BULK_MAX_ROWS } from '../../constants/shared';
-import { parseCsv } from '../../lib/csv';
+import { parseCsvRecords } from '../../lib/csv';
 
 /** API field -> header in the template, and the other spellings accepted. */
 export const IMPORT_COLUMNS = [
@@ -54,23 +54,28 @@ export const TEMPLATE_ROWS = [
   },
 ];
 
+/** A cell as typed: trimmed, without the apostrophe our own exports put before a formula-like value. */
+const cellValue = (text = '') => text.trim().replace(/^'(?=[=+\-@])/, '');
+
 /**
- * Reads the text of a CSV file. `row` is the spreadsheet row number (the header is row 1), sent to the API
- * as `line` so its problems point at the file.
+ * Reads the text of a CSV file. `line` is the row number the spreadsheet shows (the header is row 1, blank
+ * rows still count), sent to the API so its problems point at the file. When two columns map to one field
+ * ("Phone" and "Mobile"), the first non-blank value wins.
  * @returns {{ rows: Array<{ line: number } & Record<string, string>>, missing: string[], ignored: string[],
  *   error: string | null }}
  */
 export function readImportFile(text) {
-  const [headers = [], ...records] = parseCsv(text);
+  const [headerRecord, ...records] = parseCsvRecords(text);
+  const headers = headerRecord?.cells ?? [];
   const fields = headers.map((header) => FIELD_BY_HEADER.get(normalize(header)) ?? null);
   const missing = IMPORT_COLUMNS.filter((column) => column.required && !fields.includes(column.field)).map(
     (column) => column.header,
   );
   const ignored = headers.filter((header, index) => !fields[index] && header.trim() !== '');
-  const rows = records.map((cells, index) => {
-    const row = { line: index + 2 };
+  const rows = records.map(({ line, cells }) => {
+    const row = { line };
     fields.forEach((field, column) => {
-      if (field && row[field] === undefined) row[field] = (cells[column] ?? '').trim();
+      if (field && !row[field]) row[field] = cellValue(cells[column]);
     });
     return row;
   });

@@ -372,11 +372,12 @@ paths:
         With `dryRun: true` every row is checked (formats, duplicates within the batch, emails and student
         numbers already in use, the class name) and nothing is written: `problems` lists each failing line
         with its fields. Without it the same checks run first; if any row fails nothing is written (400,
-        `details.reason = import_invalid`, `details.problems`). Otherwise every row becomes an account with
-        `password` as its temporary password (students can change it with "Forgot password"), enrolled in its
-        class when one is named. Accounts are created one after another, so `results` reports each line:
-        `created` (with a `message` when the enrollment failed) or `failed`. Send a long file in several calls
-        to show progress; at most 200 rows per call.
+        `details.reason = import_invalid`, `details.problems`). Otherwise every row becomes an account with its
+        own random temporary password, returned once as `temporaryPassword` in that row's result (students can
+        change it with "Forgot password"), enrolled in its class when one is named. Accounts are created one
+        after another, so `results` reports each line: `created` (with a `message` when the enrollment failed)
+        or `failed`. The answer is 201 when at least one account was created, otherwise 200. Send a long file
+        in several calls to show progress; at most 200 rows per call.
       requestBody:
         required: true
         content:
@@ -4210,10 +4211,6 @@ components:
           type: boolean
           default: false
           description: Check the rows without writing anything.
-        password:
-          description: Temporary password of every account created; required unless `dryRun`.
-          allOf:
-            - $ref: '#/components/schemas/Password'
         rows:
           type: array
           minItems: 1
@@ -4289,6 +4286,10 @@ components:
                 $ref: '#/components/schemas/StudentNumber'
               email:
                 type: string
+              temporaryPassword:
+                type: string
+                description: The new account's own random password (created rows only); not shown again.
+                example: Xk7m-P2qd-w9Re
               className:
                 type: string
                 nullable: true

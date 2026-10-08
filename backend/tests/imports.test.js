@@ -17,12 +17,12 @@ describe('student import', () => {
     school = await buildSchool();
   });
 
-  it('is for admins only and needs a password unless it is a dry run', async () => {
+  it('is for admins only and takes no shared password', async () => {
     const rows = [{ line: 2, email: 'a@school.test', firstName: 'Ana', lastName: 'Cruz' }];
     assert.equal((await send(school.owner, { dryRun: true, rows })).status, 403);
-    const noPassword = await send(school.admin, { rows });
-    assert.equal(noPassword.status, 400);
-    assert.equal(noPassword.body.error.details.issues[0].path, 'body.password');
+    const shared = await send(school.admin, { password: 'Welcome2026!', rows });
+    assert.equal(shared.status, 400);
+    assert.equal(await studentCount(), 3);
   });
 
   it('checks every row in a dry run and writes nothing', async () => {
@@ -62,7 +62,6 @@ describe('student import', () => {
   it('refuses the whole batch when a row has a problem', async () => {
     const before = await studentCount();
     const res = await send(school.admin, {
-      password: 'Welcome2026!',
       rows: [
         { line: 2, email: 'ok@school.test', firstName: 'Ok', lastName: 'Row' },
         { line: 3, email: 'bad', firstName: 'Bad', lastName: 'Row' },
@@ -77,9 +76,8 @@ describe('student import', () => {
     assert.equal(await studentCount(), before);
   });
 
-  it('creates the accounts with the temporary password and enrolls them in the named class', async () => {
+  it('creates each account with its own temporary password and enrolls it in the named class', async () => {
     const res = await send(school.admin, {
-      password: 'Welcome2026!',
       rows: [
         {
           line: 2,
@@ -101,8 +99,12 @@ describe('student import', () => {
     assert.equal(ben.className, null);
     assert.match(ben.studentNumber, /^STU-\d{4}-\d{4,}$/);
 
+    const passwordFormat = /^[A-HJ-NP-Za-km-z2-9]{4}-[A-HJ-NP-Za-km-z2-9]{4}-[A-HJ-NP-Za-km-z2-9]{4}$/;
+    assert.match(lea.temporaryPassword, passwordFormat);
+    assert.match(ben.temporaryPassword, passwordFormat);
+    assert.notEqual(lea.temporaryPassword, ben.temporaryPassword);
     const firebase = firebaseUsers().find((user) => user.email === 'lea@school.test');
-    assert.equal(firebase.password, 'Welcome2026!');
+    assert.equal(firebase.password, lea.temporaryPassword);
     const [row] = await query(
       `SELECT u.first_name, e.class_id FROM students s JOIN users u ON u.id = s.user_id
          LEFT JOIN enrollments e ON e.student_id = s.id AND e.status = 'active' WHERE s.id = ?`,

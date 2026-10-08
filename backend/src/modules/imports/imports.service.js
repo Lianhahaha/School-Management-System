@@ -4,14 +4,19 @@
  *   dry run   every row is checked (formats, duplicates within the file, emails and student numbers already
  *             in use, the class name) and the problems are listed per spreadsheet line; nothing is written.
  *   create    the same checks; if any row fails nothing is written (400). Otherwise each row becomes an account
- *             (Firebase + MySQL, through the one account-creation path) with the batch's temporary password,
- *             enrolled in its class when one is named. Accounts are created one at a time, so a failure
- *             half-way (Firebase unreachable) is reported per row and the rows before it stay created.
+ *             (Firebase + MySQL, through the one account-creation path) with its own random temporary
+ *             password, returned once in that row's result, enrolled in its class when one is named.
+ *             Accounts are created one at a time, so a failure half-way (Firebase unreachable) is reported
+ *             per row and the rows before it stay created.
  *
- * Clients send a large file in several create calls (after one dry run of the whole file) to show progress.
+ * One password per student, never one per batch: classmates who knew a shared password could sign in as
+ * each other. Clients send a large file in several create calls (after one dry run of the whole file).
  */
+import { randomInt } from 'node:crypto';
 import { ApiError } from '../../utils/ApiError.js';
 import { currentAcademicYear } from '../../utils/dates.js';
+import { logger } from '../../utils/logger.js';
+import { toApiError } from '../../utils/toApiError.js';
 import { enroll } from '../enrollments/enrollments.service.js';
 import { createUserAccount } from '../users/users.service.js';
 import * as repo from './imports.repository.js';
@@ -78,9 +83,26 @@ async function checkRows(rawRows) {
   };
 }
 
+/** Letters and digits that cannot be misread when copied by hand (no 0/O, 1/l/I). */
+const PASSWORD_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+
+/** "Xk7m-P2qd-w9Re": 12 random characters (about 69 bits) in groups of four. */
+export function temporaryPassword() {
+  const chars = Array.from({ length: 12 }, () => PASSWORD_ALPHABET[randomInt(PASSWORD_ALPHABET.length)]);
+  return [0, 4, 8].map((start) => chars.slice(start, start + 4).join('')).join('-');
+}
+
+/** A row's failure as the client may see it: the API's own wording, never a driver or Firebase message. */
+function failureMessage(error) {
+  const apiError = toApiError(error);
+  if (apiError.status >= 500) logger.error('student import row failed', { error: String(error) });
+  return apiError.message;
+}
+
 /** Creates one row's account (and enrollment); never throws, the outcome is reported per line. */
-async function createRow(row, password) {
+async function createRow(row) {
   const { email, firstName, lastName, phone, classId, className, ...profile } = row.data;
+  const password = temporaryPassword();
   let account;
   try {
     account = await createUserAccount(
@@ -88,7 +110,7 @@ async function createRow(row, password) {
       { trusted: true },
     );
   } catch (error) {
-    return { line: row.line, status: 'failed', message: error.message };
+    return { line: row.line, status: 'failed', message: failureMessage(error) };
   }
   const created = {
     line: row.line,
@@ -96,6 +118,7 @@ async function createRow(row, password) {
     studentId: account.studentId,
     studentNumber: account.profile.studentNumber,
     email: account.email,
+    temporaryPassword: password,
     className: null,
   };
   if (!classId) return created;
@@ -103,15 +126,15 @@ async function createRow(row, password) {
     await enroll({ studentId: account.studentId, classId });
     return { ...created, className };
   } catch (error) {
-    return { ...created, message: `account created, but not enrolled: ${error.message}` };
+    return { ...created, message: `account created, but not enrolled: ${failureMessage(error)}` };
   }
 }
 
 /**
- * @param {{ dryRun: boolean, password?: string, rows: object[] }} body
+ * @param {{ dryRun: boolean, rows: object[] }} body
  * @returns {Promise<{ dryRun: boolean, total: number, valid: number, problems: object[], results?: object[] }>}
  */
-export async function importStudents({ dryRun, password, rows: rawRows }) {
+export async function importStudents({ dryRun, rows: rawRows }) {
   const { rows, problems } = await checkRows(rawRows);
   const report = { dryRun, total: rawRows.length, valid: rows.length, problems };
   if (dryRun) return report;
@@ -122,6 +145,6 @@ export async function importStudents({ dryRun, password, rows: rawRows }) {
     });
   }
   const results = [];
-  for (const row of rows) results.push(await createRow(row, password));
+  for (const row of rows) results.push(await createRow(row));
   return { ...report, results };
 }

@@ -12,7 +12,8 @@ export const getStudent = (id) => api.get(`/students/${id}`).then(toData);
 
 /**
  * Admin only. Creates student accounts from spreadsheet rows (POST /imports/students).
- * Body: { dryRun?, password? (required unless dryRun), rows: [{ line, email, firstName, lastName, ... }] }.
+ * Body: { dryRun?, rows: [{ line, email, firstName, lastName, ... }] }. Each created row's result carries
+ * that student's own `temporaryPassword` (returned once).
  * Resolves { dryRun, total, valid, problems: [{ line, errors: [{ field, message }] }], results? }.
  */
 export const importStudents = (body) => api.post('/imports/students', body).then(toData);

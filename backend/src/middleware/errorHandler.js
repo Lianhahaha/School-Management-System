@@ -2,47 +2,13 @@
  * errorHandler — the single place that turns any thrown value into the error
  * envelope. Registered last, with the 4-argument signature Express requires.
  *
- * Decision order: ApiError -> zod error -> body-parser error -> Firebase error
- * -> MySQL error -> 500. The underlying failure (the thrown value itself, or
- * the `cause` of an ApiError) is logged server-side, and returned in
+ * The mapping itself is utils/toApiError. The underlying failure (the thrown value
+ * itself, or the `cause` of an ApiError) is logged server-side, and returned in
  * `details` for 5xx responses only outside production.
  */
-import { ZodError } from 'zod';
 import { env } from '../config/env.js';
-import { ApiError } from '../utils/ApiError.js';
-import { firebaseErrorMap, isFirebaseError } from '../utils/firebaseErrorMap.js';
 import { logger } from '../utils/logger.js';
-import { isMysqlError, mysqlErrorMap } from '../utils/mysqlErrorMap.js';
-
-/** body-parser marks its errors with a string `type` and a 4xx `status`. */
-const isBodyParserClientError = (error) =>
-  typeof error?.type === 'string' &&
-  Number.isInteger(error.status) &&
-  error.status >= 400 &&
-  error.status < 500;
-
-export function toApiError(error) {
-  if (error instanceof ApiError) return error;
-  if (error instanceof ZodError) return ApiError.validation(error, undefined);
-  if (error?.type === 'entity.parse.failed') {
-    return ApiError.validation('malformed JSON body', 'body', { reason: 'invalid_json' });
-  }
-  if (error?.type === 'entity.too.large') {
-    return ApiError.validation('payload exceeds the 1mb limit', 'body', { reason: 'payload_too_large' });
-  }
-  // Any other body-parser refusal (unsupported charset or encoding, aborted or mis-sized request) is the
-  // client's request, not a server failure.
-  if (isBodyParserClientError(error)) {
-    return ApiError.validation(error.message, 'body', { reason: error.type });
-  }
-  // The router reports a path it cannot decode (e.g. "/students/%E0%A4") as a URIError.
-  if (error instanceof URIError) {
-    return ApiError.validation('malformed request URL', undefined, { reason: 'bad_request' });
-  }
-  if (isFirebaseError(error)) return firebaseErrorMap(error);
-  if (isMysqlError(error)) return mysqlErrorMap(error);
-  return ApiError.internal();
-}
+import { toApiError } from '../utils/toApiError.js';
 
 export function errorHandler(error, req, res, next) {
   const apiError = toApiError(error);

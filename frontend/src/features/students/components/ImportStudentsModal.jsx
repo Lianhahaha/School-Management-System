@@ -2,12 +2,9 @@ import { CircleCheck, Download, FileUp } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Alert } from '../../../components/ui/Alert';
 import { Button } from '../../../components/ui/Button';
-import { FormField } from '../../../components/ui/FormField';
 import { Modal } from '../../../components/ui/Modal';
-import { PasswordInput } from '../../../components/ui/PasswordInput';
 import { TBody, THead, Table, Td, Th, Tr } from '../../../components/ui/Table';
-import { PASSWORD_MIN_LENGTH } from '../../../constants/shared';
-import { downloadCsv } from '../../../lib/csv';
+import { downloadCsv, readTextFile } from '../../../lib/csv';
 import { cx } from '../../../utils/cx';
 import { countOf } from '../../../utils/format';
 import { useImportStudents } from '../hooks';
@@ -21,6 +18,7 @@ const CREATED_COLUMNS = [
   { header: 'Student number', value: (result) => result.studentNumber },
   { header: 'Name', value: (result) => result.name },
   { header: 'Email', value: (result) => result.email },
+  { header: 'Temporary password', value: (result) => result.temporaryPassword },
   { header: 'Class', value: (result) => result.className },
   { header: 'Note', value: (result) => result.message },
 ];
@@ -66,7 +64,7 @@ function PickStep({ onRead, error, isChecking }) {
           onChange={(event) => {
             const file = event.target.files?.[0];
             event.target.value = ''; // choosing the same file again still fires
-            if (file) file.text().then((text) => onRead(file.name, text));
+            if (file) readTextFile(file).then((text) => onRead(file.name, text));
           }}
         />
       </div>
@@ -79,8 +77,8 @@ function PickStep({ onRead, error, isChecking }) {
   );
 }
 
-/** Step 2: every row with its problems, then the password and the go. */
-function ReviewStep({ fileName, rows, report, ignored, password, onPasswordChange, passwordError }) {
+/** Step 2: every row with its problems, then the go. */
+function ReviewStep({ fileName, rows, report, ignored }) {
   const problemsByLine = new Map(report.problems.map((problem) => [problem.line, problem.errors]));
   const invalid = report.problems.length;
 
@@ -156,19 +154,11 @@ function ReviewStep({ fileName, rows, report, ignored, password, onPasswordChang
         </Table>
       </div>
       {invalid === 0 && (
-        <FormField
-          label="Temporary password"
-          hint={`Every new student signs in with it at first (at least ${PASSWORD_MIN_LENGTH} characters) and can change it with "Forgot password". Share it with them yourself.`}
-          error={passwordError}
-          required
-        >
-          <PasswordInput
-            value={password}
-            onChange={(event) => onPasswordChange(event.target.value)}
-            autoComplete="new-password"
-            data-autofocus
-          />
-        </FormField>
+        <Alert tone="info">
+          Each new student gets their own temporary password. After the import, download the list of new
+          students: it holds every password, and they are not shown again. Give each student theirs; they can
+          change it with &ldquo;Forgot password&rdquo;.
+        </Alert>
       )}
     </div>
   );
@@ -178,16 +168,20 @@ function ReviewStep({ fileName, rows, report, ignored, password, onPasswordChang
 function ResultStep({ done, total, results }) {
   const created = results.filter((result) => result.status === 'created');
   const failed = results.filter((result) => result.status === 'failed');
+  const unconfirmed = results.filter((result) => result.status === 'unconfirmed');
   const notEnrolled = created.filter((result) => result.message);
   const isRunning = done < total;
+  const outcome = [
+    `${countOf(created.length, 'student')} created`,
+    failed.length && `${failed.length} failed`,
+    unconfirmed.length && `${unconfirmed.length} not confirmed`,
+  ].filter(Boolean);
 
   return (
     <div className="space-y-4">
       <div aria-live="polite">
         <p className="text-sm font-medium text-gray-900">
-          {isRunning
-            ? `Creating accounts… ${done} of ${total}`
-            : `${countOf(created.length, 'student')} created${failed.length ? `, ${failed.length} failed` : ''}.`}
+          {isRunning ? `Creating accounts… ${done} of ${total}` : `${outcome.join(', ')}.`}
         </p>
         <div
           role="progressbar"
@@ -212,6 +206,19 @@ function ResultStep({ done, total, results }) {
           </ul>
         </Alert>
       )}
+      {!isRunning && unconfirmed.length > 0 && (
+        <Alert tone="warning" title="Not confirmed">
+          <p>
+            The connection broke while these rows were being created, so some of them may exist already. Check
+            the student list before you import them again.
+          </p>
+          <ul className="mt-1 space-y-0.5">
+            {unconfirmed.map((result) => (
+              <li key={result.line}>{`Row ${result.line}: ${result.name}`}</li>
+            ))}
+          </ul>
+        </Alert>
+      )}
       {!isRunning && notEnrolled.length > 0 && (
         <Alert tone="warning" title="Created but not enrolled">
           <ul className="space-y-0.5">
@@ -222,14 +229,18 @@ function ResultStep({ done, total, results }) {
         </Alert>
       )}
       {!isRunning && created.length > 0 && (
-        <Button
-          variant="secondary"
-          size="sm"
-          icon={Download}
-          onClick={() => downloadCsv('imported students', CREATED_COLUMNS, created)}
-        >
-          Download the list of new students
-        </Button>
+        <Alert tone="info" title="Download the list before you close this">
+          <p>It is the only copy of each new student&rsquo;s temporary password.</p>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={Download}
+            onClick={() => downloadCsv('imported students', CREATED_COLUMNS, created)}
+            className="mt-2"
+          >
+            Download the list of new students
+          </Button>
+        </Alert>
       )}
     </div>
   );
@@ -237,9 +248,9 @@ function ResultStep({ done, total, results }) {
 
 /**
  * Import students from a CSV file (admin): pick the file (or download the template), review every row as
- * the API checks it (dry run), choose the temporary password, then the accounts are created in batches of
- * 20 with a progress bar and the outcome per row. Nothing is created while any row has a problem. The dialog
- * cannot be closed while accounts are being created.
+ * the API checks it (dry run), then the accounts are created in batches of 20 with a progress bar and the
+ * outcome per row; each account gets its own temporary password, listed in the download. Nothing is created
+ * while any row has a problem. The dialog cannot be closed while accounts are being created.
  *
  * @param {object} props
  * @param {boolean} props.open
@@ -250,16 +261,12 @@ export function ImportStudentsModal({ open, onClose }) {
   // { step: 'pick' } | { step: 'review', fileName, rows, ignored, report } | { step: 'result', total, done, results }
   const [state, setState] = useState({ step: 'pick' });
   const [pickError, setPickError] = useState(null);
-  const [password, setPassword] = useState('');
-  const [passwordError, setPasswordError] = useState(null);
 
   const isCreating = state.step === 'result' && state.done < state.total;
 
   const reset = () => {
     setState({ step: 'pick' });
     setPickError(null);
-    setPassword('');
-    setPasswordError(null);
   };
   const close = () => {
     if (isCreating) return;
@@ -280,10 +287,6 @@ export function ImportStudentsModal({ open, onClose }) {
   };
 
   const create = async () => {
-    if (password.length < PASSWORD_MIN_LENGTH) {
-      return setPasswordError(`Use at least ${PASSWORD_MIN_LENGTH} characters`);
-    }
-    setPasswordError(null);
     const { rows } = state;
     const nameOf = new Map(rows.map((row) => [row.line, `${row.firstName} ${row.lastName}`]));
     let results = [];
@@ -291,23 +294,30 @@ export function ImportStudentsModal({ open, onClose }) {
     for (let start = 0; start < rows.length; start += CHUNK_SIZE) {
       const chunk = rows.slice(start, start + CHUNK_SIZE);
       try {
-        const report = await importStudents.mutateAsync({ password, rows: chunk });
+        const report = await importStudents.mutateAsync({ rows: chunk });
         results = [
           ...results,
           ...report.results.map((result) => ({ ...result, name: nameOf.get(result.line) })),
         ];
       } catch (error) {
-        // The batch was refused as a whole (an email was taken meanwhile, the server is down): every row of
-        // it failed, with its own problem when the API named one.
+        // A 4xx refused the batch as a whole (an email was taken meanwhile): nothing of it was created, and
+        // the API names each row's problem. Without an answer (offline, timeout, server error) some rows may
+        // have been created before the connection broke, so they are not reported as "not created".
         const problems = new Map((error.details?.problems ?? []).map((problem) => [problem.line, problem]));
         const messageOf = (row) => {
           const problem = problems.get(row.line);
           if (problem) return problem.errors.map((e) => `${columnLabel(e.field)}: ${e.message}`).join('; ');
           return problems.size ? 'not created, another row of its batch had a problem' : error.message;
         };
+        const status = error.isTransient ? 'unconfirmed' : 'failed';
         results = [
           ...results,
-          ...chunk.map((row) => ({ line: row.line, status: 'failed', message: messageOf(row) })),
+          ...chunk.map((row) => ({
+            line: row.line,
+            status,
+            name: nameOf.get(row.line),
+            message: status === 'failed' ? messageOf(row) : undefined,
+          })),
         ];
       }
       setState({ step: 'result', total: rows.length, done: start + chunk.length, results });
@@ -326,15 +336,7 @@ export function ImportStudentsModal({ open, onClose }) {
   } else if (state.step === 'review') {
     const isReady = state.report.problems.length === 0;
     body = (
-      <ReviewStep
-        fileName={state.fileName}
-        rows={state.rows}
-        report={state.report}
-        ignored={state.ignored}
-        password={password}
-        onPasswordChange={setPassword}
-        passwordError={passwordError}
-      />
+      <ReviewStep fileName={state.fileName} rows={state.rows} report={state.report} ignored={state.ignored} />
     );
     footer = (
       <>

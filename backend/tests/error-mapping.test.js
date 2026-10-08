@@ -1,7 +1,7 @@
 import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
-import { toApiError } from '../src/middleware/errorHandler.js';
+import { toApiError } from '../src/utils/toApiError.js';
 import { api, as, closeWorld, makeUser, resetWorld } from './helpers/harness.js';
 
 after(closeWorld);
