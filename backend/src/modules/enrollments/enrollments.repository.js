@@ -27,6 +27,14 @@ const findOne = async (where, params, conn) =>
 
 export const findEnrollmentById = (id, conn) => findOne('e.id = ?', [id], conn);
 
+/** The rows with these ids, in the order of `ids` (one query, whatever the batch size). */
+export async function findEnrollmentsByIds(ids, conn) {
+  if (!ids.length) return [];
+  const rows = await query(`SELECT ${COLUMNS} ${FROM} WHERE e.id IN (?)`, [ids], conn);
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  return ids.map((id) => byId.get(id)).filter(Boolean);
+}
+
 export const findActiveByStudent = (studentId, conn) =>
   findOne(`e.student_id = ? AND e.status = 'active'`, [studentId], conn);
 
@@ -77,10 +85,13 @@ export async function closeActiveByStudent(studentId, status, leftOn, conn) {
   return result.affectedRows;
 }
 
-/** `{ id, isActive }` of the students that exist among `ids`. */
+/**
+ * `{ id, isActive }` of the students that exist among `ids`. FOR SHARE: a deactivation running at the
+ * same time either finishes first (and is seen here) or waits until this transaction ends.
+ */
 export function findStudentsActivity(ids, conn) {
   return query(
-    'SELECT s.id, u.is_active FROM students s JOIN users u ON u.id = s.user_id WHERE s.id IN (?)',
+    'SELECT s.id, u.is_active FROM students s JOIN users u ON u.id = s.user_id WHERE s.id IN (?) FOR SHARE OF u',
     [ids],
     conn,
   );

@@ -2,6 +2,7 @@ import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import { run } from '../src/config/db.js';
+import { BULK_MAX_ROWS } from '../src/constants/shared.js';
 import { academicYearStart, addDaysYmd, currentAcademicYear, todayYmd } from '../src/utils/dates.js';
 import {
   api,
@@ -63,6 +64,36 @@ describe('enrollment into past, current and future academic years', () => {
       classId: (await makeClass(admin, { academicYear: yearLabel(1) })).id,
     });
     assert.equal(nextYear.class.academicYear, yearLabel(1));
+  });
+
+  it('bulk-enrolls the largest allowed batch and returns every enrollment', async () => {
+    const klass = await makeClass(admin);
+    const students = [];
+    for (let i = 0; i < BULK_MAX_ROWS; i += 1) students.push(await makeUser('student'));
+    const studentIds = students.map((student) => student.studentId);
+    const res = await api
+      .post('/api/v1/enrollments/bulk')
+      .set(as(admin))
+      .send({ classId: klass.id, studentIds });
+    assert.equal(res.status, 201);
+    assert.equal(res.body.data.created, BULK_MAX_ROWS);
+    assert.deepEqual(
+      res.body.data.enrollments.map((enrollment) => enrollment.studentId),
+      studentIds,
+    );
+  });
+
+  it('answers already_enrolled when the same student is enrolled twice at once', async () => {
+    const student = await makeUser('student');
+    const body = { studentId: student.studentId, classId: (await makeClass(admin)).id };
+    const results = await Promise.all([
+      api.post('/api/v1/enrollments').set(as(admin)).send(body),
+      api.post('/api/v1/enrollments').set(as(admin)).send(body),
+    ]);
+    const statuses = results.map((res) => res.status).sort();
+    assert.deepEqual(statuses, [201, 409]);
+    const refused = results.find((res) => res.status === 409);
+    assert.equal(refused.body.error.details.reason, 'already_enrolled');
   });
 
   it('answers 400 invalid_reference for an unknown class', async () => {

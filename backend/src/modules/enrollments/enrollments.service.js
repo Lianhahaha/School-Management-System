@@ -69,8 +69,38 @@ const alreadyEnrolled = (active) =>
     classId: active.classId,
   });
 
+const someAlreadyEnrolled = (activeRows) =>
+  ApiError.conflict('some students already have an active enrollment', {
+    reason: 'already_enrolled',
+    alreadyActive: activeRows.map((row) => ({
+      studentId: row.studentId,
+      enrollmentId: row.id,
+      classId: row.classId,
+    })),
+  });
+
+const isOneActiveCollision = (error) =>
+  error?.code === 'ER_DUP_ENTRY' && /uq_enrollments_one_active/.test(error.sqlMessage ?? '');
+
+/**
+ * Runs an enrolling transaction. The service checks for an active enrollment first; when another
+ * request enrolls the same student in between, the unique index refuses the insert, and this turns
+ * that into the same 409 the check gives (read after the rollback, so the other row is visible).
+ */
+async function enrollingTransaction(studentIds, work) {
+  try {
+    return await withTransaction(work);
+  } catch (error) {
+    if (!isOneActiveCollision(error)) throw error;
+    const active = await repo.findActiveByStudents(studentIds);
+    throw active.length === 1 && studentIds.length === 1
+      ? alreadyEnrolled(active[0])
+      : someAlreadyEnrolled(active);
+  }
+}
+
 export async function enroll({ studentId, classId }) {
-  const id = await withTransaction(async (conn) => {
+  const id = await enrollingTransaction([studentId], async (conn) => {
     await assertEnrollable([studentId], conn);
     await assertEnrollableClass(classId, conn);
     const active = await repo.findActiveByStudent(studentId, conn);
@@ -98,20 +128,11 @@ export async function enroll({ studentId, classId }) {
 
 /** All-or-nothing: nothing is written when the class or any student is invalid or already enrolled. */
 export async function enrollMany({ classId, studentIds }) {
-  const ids = await withTransaction(async (conn) => {
+  const ids = await enrollingTransaction(studentIds, async (conn) => {
     await assertEnrollable(studentIds, conn);
     await assertEnrollableClass(classId, conn);
     const active = await repo.findActiveByStudents(studentIds, conn);
-    if (active.length) {
-      throw ApiError.conflict('some students already have an active enrollment', {
-        reason: 'already_enrolled',
-        alreadyActive: active.map((row) => ({
-          studentId: row.studentId,
-          enrollmentId: row.id,
-          classId: row.classId,
-        })),
-      });
-    }
+    if (active.length) throw someAlreadyEnrolled(active);
     const today = todayYmd();
     const created = [];
     for (const studentId of studentIds) {
@@ -119,9 +140,8 @@ export async function enrollMany({ classId, studentIds }) {
     }
     return created;
   });
-  const enrollments = (await Promise.all(ids.map((id) => repo.findEnrollmentById(id)))).map(
-    toEnrollmentShape,
-  );
+  // One query for the whole batch: a query per row would exhaust the connection pool on large batches.
+  const enrollments = (await repo.findEnrollmentsByIds(ids)).map(toEnrollmentShape);
   const { class: klass } = enrollments[0];
   await record({
     action: 'enrollment.create',
@@ -143,7 +163,7 @@ export async function enrollMany({ classId, studentIds }) {
 /** Move a student to another class: close the active row as `transferred`, then open the new one. */
 export async function transfer({ studentId, classId }) {
   let fromClass;
-  const id = await withTransaction(async (conn) => {
+  const id = await enrollingTransaction([studentId], async (conn) => {
     await assertEnrollable([studentId], conn);
     await assertEnrollableClass(classId, conn);
     const active = await repo.findActiveByStudent(studentId, conn);
@@ -157,7 +177,12 @@ export async function transfer({ studentId, classId }) {
     }
     // One date for both rows: the student leaves the old class and joins the new one on the same day.
     const today = todayYmd();
-    await repo.closeEnrollment(active.id, 'transferred', today, conn);
+    // Another request (a withdrawal, a deactivation) may have closed the row since it was read.
+    if ((await repo.closeEnrollment(active.id, 'transferred', today, conn)) === 0) {
+      throw ApiError.conflict('the enrollment was closed meanwhile; reload and try again', {
+        reason: 'invalid_status_transition',
+      });
+    }
     fromClass = active.className;
     return repo.insertEnrollment(studentId, classId, today, conn);
   });
