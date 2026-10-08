@@ -3,6 +3,7 @@
  * account reads, admin edits, activation status and deletion of unused accounts.
  */
 import { withTransaction } from '../../config/db.js';
+import { env } from '../../config/env.js';
 import { firebase } from '../../config/firebase.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { currentAcademicYear } from '../../utils/dates.js';
@@ -81,24 +82,32 @@ async function findFirebaseUserByEmail(email) {
 const emailAlreadyRegistered = () =>
   ApiError.conflict('email already registered', { key: 'users.uq_users_email' });
 
+const emailInUse = (message = 'this email is already in use; contact an administrator') =>
+  ApiError.conflict(message, { key: 'users.uq_users_email', reason: 'email_in_use' });
+
 /**
  * Creates the Firebase account of a new person and returns its uid. The caller has checked that no
- * MySQL row uses the email, so an existing Firebase user with it belongs to nobody in the school.
- * It is never reused: anyone can create a Firebase user with the public web key and keep its ID token,
- * and reusing that uid would hand them the new account. Public registration refuses it (409); trusted
- * callers (admin, seed) delete it and create a fresh user with a new uid.
+ * MySQL row uses the email. An existing Firebase user with it is never reused: anyone can create a
+ * Firebase user with the public web key and keep its ID token, and reusing that uid would hand them
+ * the new account. Public registration refuses it (409). Trusted callers (admin, import) replace it
+ * with a fresh user, but only when it is linked to no account here (an account whose email was changed
+ * in Firebase keeps its sign-in) and only outside local development, where the Firebase project is
+ * usually shared with the live site and the user may be a live account.
  */
 async function createFirebaseUser({ email, password, displayName }, trusted) {
   const existing = await findFirebaseUserByEmail(email);
   if (existing) {
-    if (!trusted) {
-      throw ApiError.conflict('this email is already in use; contact an administrator', {
-        key: 'users.uq_users_email',
-        reason: 'email_in_use',
-      });
-    }
+    if (!trusted) throw emailInUse();
     // Re-checked right before the delete: a concurrent create of the same email may have just linked this uid.
     if (await repo.findUserByEmail(email)) throw emailAlreadyRegistered();
+    if (await repo.findUserByFirebaseUid(existing.uid)) {
+      throw emailInUse('this email signs in to another school account; contact an administrator');
+    }
+    if (!env.replacesUnlinkedFirebaseUsers) {
+      throw emailInUse(
+        'this email already has a sign-in in the shared Firebase project (it may belong to the live site); use another email',
+      );
+    }
     await firebase.deleteUser(existing.uid);
     logger.warn('deleted a Firebase user that had no school account', { email, uid: existing.uid });
   }
@@ -124,16 +133,19 @@ const isGeneratedNumberCollision = (error, profile) =>
  *
  * @param {{ email: string, password: string, role: 'admin'|'teacher'|'student', firstName: string,
  *           lastName: string, phone?: string, profile?: object }} input
- * @param {{ trusted: boolean }} options trusted = admin or seed
+ * @param {{ trusted: boolean, firebaseUid?: string }} options trusted = admin, import or seed;
+ *   firebaseUid links an existing Firebase user instead of creating one (the seed's demo accounts only)
  */
-export async function createUserAccount(input, { trusted }) {
+export async function createUserAccount(input, { trusted, firebaseUid }) {
   const email = input.email.toLowerCase();
   if (await repo.findUserByEmail(email)) throw emailAlreadyRegistered();
 
-  const uid = await createFirebaseUser(
-    { email, password: input.password, displayName: `${input.firstName} ${input.lastName}` },
-    trusted,
-  );
+  const uid =
+    firebaseUid ??
+    (await createFirebaseUser(
+      { email, password: input.password, displayName: `${input.firstName} ${input.lastName}` },
+      trusted,
+    ));
 
   const insertAll = () =>
     withTransaction(async (conn) => {
@@ -149,7 +161,8 @@ export async function createUserAccount(input, { trusted }) {
   try {
     userId = await insertWithFreshNumber(insertAll, input.profile);
   } catch (error) {
-    await deleteFirebaseUserOrLog(uid, 'could not delete Firebase user after a failure');
+    // A linked (pre-existing) Firebase user is not this call's to remove.
+    if (!firebaseUid) await deleteFirebaseUserOrLog(uid, 'could not delete Firebase user after a failure');
     throw error;
   }
   const account = await getAccount(userId);
@@ -220,24 +233,29 @@ export async function setStatus(actor, id, isActive) {
     throw ApiError.forbidden('self_status_change', 'you cannot change your own account status');
   const target = await getAccount(id);
 
-  if (!isActive && target.isActive) {
-    if (target.role === 'teacher' && (await teacherHasAssignments(target.teacherId, currentAcademicYear()))) {
+  await withTransaction(async (conn) => {
+    // Status changes of one account run one after the other. Deactivating an admin locks every active
+    // admin in id order (assertNotLastActiveAdmin); locking the target first would deadlock two admins
+    // deactivating each other.
+    if (!isActive && target.role === 'admin') await assertNotLastActiveAdmin(id, conn);
+    else await repo.lockUser(id, conn);
+    // This year and any later one: next year's classes may already be set up with this teacher.
+    if (
+      !isActive &&
+      target.isActive &&
+      target.role === 'teacher' &&
+      (await teacherHasAssignments(target.teacherId, currentAcademicYear(), conn))
+    ) {
       throw ApiError.conflict("reassign this teacher's subjects and homeroom class before deactivating", {
         reason: 'teacher_has_assignments',
       });
     }
-  }
-
-  await withTransaction(async (conn) => {
-    if (!isActive && target.role === 'admin') await assertNotLastActiveAdmin(id, conn);
     await repo.setActive(id, isActive, conn);
     if (!isActive && target.role === 'student')
       await closeActiveForStudent(target.studentId, 'withdrawn', conn);
   });
 
-  await firebase.updateUser(target.firebaseUid, { disabled: !isActive });
-  if (!isActive) await firebase.revokeRefreshTokens(target.firebaseUid);
-
+  // Logged as soon as MySQL has it: the account is (de)activated from here on, whatever Firebase says.
   if (target.isActive !== isActive) {
     const withdrawn = !isActive && target.role === 'student' && target.currentEnrollment;
     await record({
@@ -248,6 +266,15 @@ export async function setStatus(actor, id, isActive) {
       }`,
       details: { email: target.email, role: target.role },
     });
+  }
+
+  // The sign-in follows. A deactivated account is already refused by the API (MySQL is checked on every
+  // request); a failure here answers 503, and repeating the same request re-applies the Firebase step.
+  try {
+    await firebase.updateUser(target.firebaseUid, { disabled: !isActive });
+    if (!isActive) await firebase.revokeRefreshTokens(target.firebaseUid);
+  } catch (error) {
+    throw ApiError.unavailable('auth', { cause: error });
   }
   return getAccount(id);
 }

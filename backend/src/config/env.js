@@ -92,6 +92,9 @@ export const env = Object.freeze({
   ...parsed.data,
   isProd: parsed.data.NODE_ENV === 'production',
   isTest: parsed.data.NODE_ENV === 'test',
+  // A local database usually shares its Firebase project with the live site (README, Deploying): a
+  // Firebase user it does not know may be a live user, so only production and the tests replace one.
+  replacesUnlinkedFirebaseUsers: parsed.data.NODE_ENV !== 'development',
   backendRoot,
   firebaseServiceAccountPath: path.resolve(backendRoot, parsed.data.FIREBASE_SERVICE_ACCOUNT_PATH),
 });

@@ -88,9 +88,10 @@ export function useSetUserStatus() {
   return useMutation({
     mutationFn: ({ id, isActive }) => setUserStatus(id, isActive),
     onSuccess: (user) => {
-      invalidateAccounts();
       toast.success(`${fullName(user)} ${user.isActive ? 'reactivated' : 'deactivated'}`);
     },
+    // Also after a 503: the school side may be saved while the sign-in step failed, so show what is stored.
+    onSettled: () => invalidateAccounts(),
   });
 }
 

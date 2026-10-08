@@ -62,13 +62,16 @@ export async function deleteClassSubject(id) {
   return (await run('DELETE FROM class_subjects WHERE id = ?', [id])).affectedRows;
 }
 
-/** True when the teacher teaches a subject or is homeroom teacher of a class in the given academic year. */
+/**
+ * True when the teacher teaches a subject or is homeroom teacher of a class in `academicYear` or a later
+ * one ("2026-2027" labels compare in calendar order as strings).
+ */
 export async function teacherHasAssignments(teacherId, academicYear, conn) {
   const rows = await query(
     `SELECT 1 AS ok FROM class_subjects cs JOIN classes c ON c.id = cs.class_id
-      WHERE cs.teacher_id = ? AND c.academic_year = ?
+      WHERE cs.teacher_id = ? AND c.academic_year >= ?
      UNION
-     SELECT 1 FROM classes c WHERE c.homeroom_teacher_id = ? AND c.academic_year = ?
+     SELECT 1 FROM classes c WHERE c.homeroom_teacher_id = ? AND c.academic_year >= ?
      LIMIT 1`,
     [teacherId, academicYear, teacherId, academicYear],
     conn,

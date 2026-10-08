@@ -74,7 +74,8 @@ async function relinkAccount(existing, password) {
   let firebaseUser;
   try {
     firebaseUser = await firebase.getUserByEmail(existing.email);
-    await firebase.updateUser(firebaseUser.uid, { password, disabled: false });
+    // A deactivated account stays unable to sign in.
+    await firebase.updateUser(firebaseUser.uid, { password, disabled: !existing.isActive });
   } catch (error) {
     if (error?.code !== 'auth/user-not-found') throw error;
     firebaseUser = await firebase.createUser({
@@ -91,13 +92,39 @@ async function relinkAccount(existing, password) {
   return 'kept';
 }
 
+async function findFirebaseUser(email) {
+  try {
+    return await firebase.getUserByEmail(email);
+  } catch (error) {
+    if (error?.code === 'auth/user-not-found') return null;
+    throw error;
+  }
+}
+
+/**
+ * No MySQL row yet. A demo account's Firebase user usually exists already: the Firebase project is
+ * shared with the other database (local and live). It is linked as it is, so the other database keeps
+ * working, after its password is reset and its sessions are revoked (nobody else keeps using it).
+ */
+async function createAccount(account, password) {
+  const firebaseUser = await findFirebaseUser(account.email);
+  if (!firebaseUser) {
+    await createUserAccount({ ...account, password }, { trusted: true });
+    return 'created';
+  }
+  await firebase.updateUser(firebaseUser.uid, { password, disabled: false, emailVerified: true });
+  await firebase.revokeRefreshTokens(firebaseUser.uid);
+  await createUserAccount({ ...account, password }, { trusted: true, firebaseUid: firebaseUser.uid });
+  return 'linked';
+}
+
 async function seedAccounts() {
   const password = env.SEED_PASSWORD;
   for (const account of accounts) {
     const existing = await usersRepository.findUserByEmail(account.email);
     const outcome = existing
       ? await relinkAccount(existing, password)
-      : (await createUserAccount({ ...account, password }, { trusted: true }), 'created');
+      : await createAccount(account, password);
     console.log(`  ${outcome.padEnd(8)} ${account.role.padEnd(8)} ${account.email}`);
   }
 }

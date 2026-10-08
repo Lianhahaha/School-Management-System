@@ -5,7 +5,18 @@ import { pool, query } from '../src/config/db.js';
 import { firebase } from '../src/config/firebase.js';
 import { logger } from '../src/utils/logger.js';
 import { FAKE_PROJECT_ID, bearer, firebaseUsers } from './helpers/fakeFirebase.js';
-import { api, as, closeWorld, enrollStudent, makeClass, makeUser, resetWorld } from './helpers/harness.js';
+import { currentAcademicYear } from '../src/utils/dates.js';
+import {
+  api,
+  as,
+  assignTeacher,
+  closeWorld,
+  enrollStudent,
+  makeClass,
+  makeSubject,
+  makeUser,
+  resetWorld,
+} from './helpers/harness.js';
 import { openSession, waitForLockWaits } from './helpers/locks.js';
 
 after(closeWorld); // once per file: every suite shares the pool
@@ -312,6 +323,68 @@ describe('user administration', () => {
       firebaseUsers().some((user) => user.email === 'stray@school.test'),
       false,
     );
+  });
+
+  it('never replaces a Firebase user that is linked to another account (email changed in Firebase)', async () => {
+    const admin = await makeUser('admin');
+    const moved = await makeUser('teacher');
+    await firebase.updateUser(moved.firebaseUid, { email: 'moved@school.test' });
+    const res = await api.post('/api/v1/users').set(as(admin)).send({
+      role: 'admin',
+      email: 'moved@school.test',
+      password: 'Password123!',
+      firstName: 'New',
+      lastName: 'Person',
+    });
+    assert.equal(res.status, 409);
+    assert.equal(res.body.error.details.reason, 'email_in_use');
+    assert.ok(firebaseUsers().some((user) => user.uid === moved.firebaseUid));
+  });
+
+  it('refuses to deactivate a teacher who has classes in a later academic year', async () => {
+    const admin = await makeUser('admin');
+    const teacher = await makeUser('teacher');
+    const firstYear = Number(currentAcademicYear().slice(0, 4));
+    await assignTeacher(admin, {
+      classId: (await makeClass(admin, { academicYear: `${firstYear + 1}-${firstYear + 2}` })).id,
+      subjectId: (await makeSubject(admin)).id,
+      teacherId: teacher.teacherId,
+    });
+    const res = await api
+      .patch(`/api/v1/users/${teacher.id}/status`)
+      .set(as(admin))
+      .send({ isActive: false });
+    assert.equal(res.status, 409);
+    assert.equal(res.body.error.details.reason, 'teacher_has_assignments');
+  });
+
+  it('keeps the audit entry when Firebase fails during a deactivation, and a retry finishes the job', async () => {
+    const admin = await makeUser('admin');
+    const student = await makeUser('student');
+    const realUpdate = firebase.updateUser;
+    firebase.updateUser = async () => {
+      throw firebaseError('app/network-error', 'network down');
+    };
+    let res;
+    try {
+      res = await api.patch(`/api/v1/users/${student.id}/status`).set(as(admin)).send({ isActive: false });
+    } finally {
+      firebase.updateUser = realUpdate;
+    }
+    assert.equal(res.status, 503);
+    const logged = await query(
+      "SELECT COUNT(*) AS n FROM activity_log WHERE action = 'user.deactivate' AND entity_id = ?",
+      [student.id],
+    );
+    assert.equal(logged[0].n, 1);
+
+    const retry = await api
+      .patch(`/api/v1/users/${student.id}/status`)
+      .set(as(admin))
+      .send({ isActive: false });
+    assert.equal(retry.status, 200);
+    assert.equal(retry.body.data.isActive, false);
+    assert.equal(firebaseUsers().find((user) => user.uid === student.firebaseUid).disabled, true);
   });
 
   it('refuses to change your own status (403 self_status_change)', async () => {

@@ -179,6 +179,7 @@ A bug is found by following one path: the URL names the route file, the route na
 | `auth/operation-not-allowed` on sign-in | Enable Email/Password under Authentication → Sign-in method. |
 | Signed in, but the API answers `USER_NOT_REGISTERED` | The Firebase user has no row in MySQL (it was created in the console). Run `npm run db:seed`, register from the app, or create the user from Admin → Users. |
 | `ACCOUNT_DISABLED` | An admin deactivated the account; reactivate it from Admin → Users. |
+| Creating a user answers "already has a sign-in in the shared Firebase project" | Local development shares the Firebase project with the live site, so an email that signs in there is left alone. Use another email, or create the account on the live site. |
 | `EADDRINUSE` on 3000 or 5173 | Another process holds the port. Stop it, or move the API: in PowerShell `$env:PORT='3001'; $env:API_PORT='3001'; npm run dev` (`API_PORT` points the frontend's proxy at the same port). |
 | `EPERM` / `EBUSY` during `npm install` | OneDrive is syncing `node_modules`. Move the project outside OneDrive (for example `C:\dev\school-management-system`) or pause syncing. |
 | `Cannot find module` | Run `npm install` in the folder you are starting from. |
@@ -200,7 +201,7 @@ Not required to run or review the project: everything above works on one machine
    node --env-file=.env.cloud scripts/migrate.js
    node --env-file=.env.cloud scripts/seed.js
    ```
-   Any database that shares the Firebase project shares its logins: seeding a second database re-links the accounts, so run `npm run db:seed` on the other one afterwards.
+   Any database that shares the Firebase project shares its logins. Seeding a second database links the demo accounts' existing Firebase users (it resets their password to `SEED_PASSWORD`), so both databases keep working. Outside production the API never deletes a Firebase user it does not know, because it may belong to the other database: creating an account for such an email answers 409 `email_in_use`.
 2. **API.** In Render choose **New > Blueprint**, pick this repository, and enter the secret variables listed in `render.yaml` (database details, `DB_SSL_CA` as one line with a literal backslash and `n` for each line break, `FIREBASE_SERVICE_ACCOUNT_BASE64` = the service-account JSON base64-encoded, and `CORS_ORIGINS` = the frontend's address). Check `https://<service>.onrender.com/api/v1/health`.
 3. **Frontend.** Put `VITE_API_BASE_URL=https://<service>.onrender.com/api/v1` in `frontend/.env.production`, then:
    ```powershell

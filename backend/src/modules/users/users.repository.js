@@ -40,6 +40,17 @@ export async function findUserByEmail(email, conn) {
   return (await query(`SELECT ${COLUMNS} FROM users u WHERE u.email = ?`, [email], conn))[0] ?? null;
 }
 
+export async function findUserByFirebaseUid(firebaseUid, conn) {
+  return (
+    (await query(`SELECT ${COLUMNS} FROM users u WHERE u.firebase_uid = ?`, [firebaseUid], conn))[0] ?? null
+  );
+}
+
+/** Row-locks the account until `conn`'s transaction ends (status changes and the checks that guard them). */
+export async function lockUser(id, conn) {
+  await query('SELECT id FROM users WHERE id = ? FOR UPDATE', [id], conn);
+}
+
 export function listUsers(listQuery) {
   const where = new WhereBuilder()
     .addSearch(listQuery.search, [

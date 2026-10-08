@@ -4,6 +4,7 @@ import { after, before, describe, it, mock } from 'node:test';
 import { query } from '../src/config/db.js';
 import { seed } from '../scripts/seed.js';
 import { api, closeWorld, resetWorld } from './helpers/harness.js';
+import { prepareDatabase } from './helpers/db.js';
 import { bearer, firebaseUsers, installFakeFirebase } from './helpers/fakeFirebase.js';
 
 after(closeWorld);
@@ -76,6 +77,16 @@ describe('seed', () => {
     assert.deepEqual(await counts(), snapshot);
     assert.deepEqual(await query('SELECT id, firebase_uid FROM users ORDER BY id'), uids);
     assert.equal(firebaseUsers().length, 13);
+  });
+
+  it('links the existing Firebase users when seeding a second, empty database (shared project)', async () => {
+    const before = new Map(firebaseUsers().map((user) => [user.email, user.uid]));
+    await prepareDatabase(); // a new database; the Firebase project already has the demo users
+    await seed();
+    assert.equal(firebaseUsers().length, 13);
+    const rows = await query('SELECT email, firebase_uid FROM users');
+    assert.equal(rows.length, 13);
+    assert.ok(rows.every((row) => before.get(row.email) === row.firebaseUid));
   });
 
   it('re-links accounts to a fresh Firebase project instead of failing', async () => {
