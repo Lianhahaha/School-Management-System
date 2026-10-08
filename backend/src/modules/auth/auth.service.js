@@ -7,13 +7,30 @@ import * as usersService from '../users/users.service.js';
 
 const STUDENT_ONLY_FIELDS = ['address', 'guardianName', 'guardianPhone'];
 
-/** Public registration always creates a student; the Firebase account is never adopted. */
-export function register(body) {
+const isEmailTaken = (error) =>
+  (error instanceof ApiError && error.details?.key === 'users.uq_users_email') ||
+  (error?.code === 'ER_DUP_ENTRY' && /uq_users_email/.test(error.sqlMessage ?? ''));
+
+/**
+ * Public registration always creates a student; the Firebase account is never adopted. Every "this email
+ * is taken" case (a school account, a sign-in without one, a parallel sign-up) gets the same answer, so
+ * the form does not tell strangers which kind of account an address has.
+ */
+export async function register(body) {
   const { email, password, firstName, lastName, phone, ...profile } = body;
-  return usersService.createUserAccount(
-    { email, password, firstName, lastName, phone, role: 'student', profile },
-    { trusted: false },
-  );
+  try {
+    return await usersService.createUserAccount(
+      { email, password, firstName, lastName, phone, role: 'student', profile },
+      { trusted: false },
+    );
+  } catch (error) {
+    if (!isEmailTaken(error)) throw error;
+    throw ApiError.conflict(
+      'this email is already registered; sign in, or contact an administrator',
+      { key: 'users.uq_users_email', reason: 'email_in_use' },
+      { cause: error },
+    );
+  }
 }
 
 export const getMe = (user) => usersService.getAccount(user.id);

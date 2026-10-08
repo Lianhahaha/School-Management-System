@@ -132,8 +132,10 @@ paths:
         Firebase client SDK afterwards.
 
         Disabled with `ALLOW_PUBLIC_REGISTRATION=false`: 404 with `details.reason = registration_disabled`.
-        Limited to 30 successful registrations per 15 minutes per IP address; rejected attempts (400, 409) do not
-        count, so one class registering from a school network is not locked out by typos.
+        Limited per IP address and 15 minutes to 30 successful registrations, and separately to 150 rejected
+        attempts (400, 409): one class registering from a school network is not locked out by typos, while a
+        script cannot probe thousands of addresses. An email that is taken in any way (a school account, a
+        sign-in without one) gets the same 409, `details.reason = email_in_use`.
       security: []
       requestBody:
         required: true

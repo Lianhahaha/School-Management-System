@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it, mock } from 'node:test';
 import { pool, query } from '../src/config/db.js';
 import { firebase } from '../src/config/firebase.js';
+import { REGISTER_FAILED_LIMIT } from '../src/modules/auth/auth.routes.js';
 import { logger } from '../src/utils/logger.js';
 import { FAKE_PROJECT_ID, bearer, firebaseUsers } from './helpers/fakeFirebase.js';
 import { currentAcademicYear } from '../src/utils/dates.js';
@@ -199,11 +200,13 @@ describe('registration', () => {
     assert.equal(res.body.error.details.key, 'users.uq_users_email');
   });
 
-  it('never adopts an orphaned Firebase user: 409 email_in_use', async () => {
+  it('never adopts an orphaned Firebase user, and answers it exactly like a registered email', async () => {
     await firebase.createUser({ email: 'orphan2@school.test', password: 'Password123!' });
-    const res = await api.post('/api/v1/auth/register').send({ ...body, email: 'orphan2@school.test' });
-    assert.equal(res.status, 409);
-    assert.equal(res.body.error.details.reason, 'email_in_use');
+    const orphan = await api.post('/api/v1/auth/register').send({ ...body, email: 'orphan2@school.test' });
+    const registered = await api.post('/api/v1/auth/register').send(body);
+    assert.equal(orphan.status, 409);
+    assert.equal(orphan.body.error.details.reason, 'email_in_use');
+    assert.deepEqual(orphan.body.error, registered.body.error);
   });
 
   it('rejects a short password and a missing body with 400', async () => {
@@ -225,6 +228,14 @@ describe('registration', () => {
     const res = await api.post('/api/v1/auth/register').send({ ...body, email: 'lab.ok@school.test' });
     assert.equal(res.status, 201);
     assert.equal(res.headers['ratelimit-limit'], '30');
+  });
+
+  it(`stops an IP after ${REGISTER_FAILED_LIMIT} rejected attempts (no unlimited email probing)`, async () => {
+    let status;
+    for (let attempt = 1; attempt <= REGISTER_FAILED_LIMIT + 1 && status !== 429; attempt += 1) {
+      status = (await api.post('/api/v1/auth/register').send(body)).status;
+    }
+    assert.equal(status, 429);
   });
 });
 
