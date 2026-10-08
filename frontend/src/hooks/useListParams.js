@@ -71,6 +71,8 @@ export function useListParams({ filters = [], defaultSort } = {}) {
     setSearch: (search) => update({ search }),
     setSort: (sortBy, sortOrder) => update({ sortBy, sortOrder }),
     setFilter: (key, value) => update({ [key]: value }),
+    /** Several filters in one step, e.g. a new school year that also resets the dates: setFilters({ a, b }). */
+    setFilters: (patch) => update(patch),
     clearFilters: () => update(Object.fromEntries(['search', ...filters].map((key) => [key, '']))),
   };
 }

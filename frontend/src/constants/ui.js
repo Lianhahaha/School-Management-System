@@ -122,7 +122,8 @@ export const ASSESSMENT_TYPE_LABELS = Object.freeze({
 });
 export const ASSESSMENT_TYPE_OPTIONS = optionsOf(ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS);
 
-export const TERM_LABELS = Object.freeze({ term1: 'Term 1', term2: 'Term 2', term3: 'Term 3' });
+/** The API's terms as the school names them: two semesters and a summer term in each school year. */
+export const TERM_LABELS = Object.freeze({ term1: '1st Semester', term2: '2nd Semester', term3: 'Summer' });
 export const TERM_OPTIONS = optionsOf(TERMS, TERM_LABELS);
 
 export const ANNOUNCEMENT_AUDIENCE_LABELS = Object.freeze({
@@ -260,6 +261,6 @@ export const UNIQUE_KEY_FIELDS = Object.freeze({
   },
   'assessments.uq_assessments_cs_term_title': {
     field: 'title',
-    message: 'An assessment with this title already exists for this term',
+    message: 'An assessment with this title already exists for this semester',
   },
 });

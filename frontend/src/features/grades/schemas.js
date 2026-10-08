@@ -16,7 +16,7 @@ const maxScore = z.coerce
 const assessmentFields = {
   title,
   type: z.enum(ASSESSMENT_TYPES, { error: 'Choose a type' }),
-  term: z.enum(TERMS, { error: 'Choose a term' }),
+  term: z.enum(TERMS, { error: 'Choose a semester' }),
   maxScore,
   assessedOn: dateYMD,
 };

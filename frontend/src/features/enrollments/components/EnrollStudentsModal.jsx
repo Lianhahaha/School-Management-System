@@ -1,12 +1,9 @@
 import { useRef, useState } from 'react';
 import { Alert } from '../../../components/ui/Alert';
 import { Button } from '../../../components/ui/Button';
-import { Checkbox } from '../../../components/ui/Checkbox';
-import { ErrorState } from '../../../components/ui/ErrorState';
 import { FormField } from '../../../components/ui/FormField';
 import { Modal } from '../../../components/ui/Modal';
 import { SearchInput } from '../../../components/ui/SearchInput';
-import { Skeleton } from '../../../components/ui/Skeleton';
 import { BULK_MAX_ROWS, ERROR_CODES, PAGINATION } from '../../../constants/shared';
 import { countOf } from '../../../utils/format';
 import { fullName } from '../../../utils/names';
@@ -14,6 +11,7 @@ import { ClassSelect } from '../../classes/components/ClassSelect';
 import { useStudents } from '../../students/hooks';
 import { useEnrollStudents } from '../hooks';
 import { enrollStudentsSchema } from '../schemas';
+import { StudentCheckboxList } from './StudentCheckboxList';
 
 /** The students who joined the school but have no class yet, with a search box and a checkbox each. */
 function StudentChecklist({ search, onSearch, selected, onToggle, onSelectVisible, onClearSelection }) {
@@ -25,39 +23,6 @@ function StudentChecklist({ search, onSearch, selected, onToggle, onSelectVisibl
   });
   const students = data?.items ?? [];
   const total = data?.meta?.total ?? 0;
-
-  let body;
-  if (isPending) {
-    body = (
-      <div role="status" aria-label="Loading students" className="space-y-3 p-3">
-        {Array.from({ length: 5 }, (_, index) => (
-          <Skeleton key={index} className="h-5 w-2/3" />
-        ))}
-      </div>
-    );
-  } else if (error) {
-    body = <ErrorState title="Couldn't load students" message={error.message} onRetry={refetch} />;
-  } else if (students.length === 0) {
-    body = (
-      <p className="p-6 text-center text-sm text-gray-600">
-        {search ? 'No unenrolled student matches your search.' : 'Every student already has a class.'}
-      </p>
-    );
-  } else {
-    body = (
-      <ul className="divide-y divide-gray-200">
-        {students.map((student) => (
-          <li key={student.id} className="px-3 py-2">
-            <Checkbox
-              label={`${fullName(student)} · ${student.studentNumber}`}
-              checked={student.id in selected}
-              onChange={() => onToggle(student)}
-            />
-          </li>
-        ))}
-      </ul>
-    );
-  }
 
   return (
     <div className="space-y-3">
@@ -92,13 +57,18 @@ function StudentChecklist({ search, onSearch, selected, onToggle, onSelectVisibl
           </Button>
         </span>
       </div>
-      <div
-        role="group"
-        aria-label="Students without a class"
-        className="max-h-72 overflow-y-auto rounded-[1.25rem] bg-gray-50"
-      >
-        {body}
-      </div>
+      <StudentCheckboxList
+        label="Students without a class"
+        students={students}
+        isPending={isPending}
+        error={error}
+        onRetry={refetch}
+        isChecked={(student) => student.id in selected}
+        onToggle={onToggle}
+        emptyText={
+          search ? 'No unenrolled student matches your search.' : 'Every student already has a class.'
+        }
+      />
       {total > students.length && (
         <p className="text-xs text-gray-500">
           Showing the first {students.length} of {total} students. Search to narrow the list.

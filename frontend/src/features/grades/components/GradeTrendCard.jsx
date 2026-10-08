@@ -5,10 +5,7 @@ import { TrendChart } from '../../../components/ui/TrendChart';
 import { formatDate } from '../../../utils/date';
 import { countOf } from '../../../utils/format';
 import { formatResult, groupBy } from '../../../utils/grades';
-import { useGrades } from '../hooks';
-
-/** Same request as GradesBySubject, so on the student's own page both share one cached answer. */
-const MAX_ROWS = 100;
+import { useAllGrades } from '../hooks';
 
 /** The usual passing mark, drawn as a dashed line. */
 const PASS_MARK = 75;
@@ -23,29 +20,29 @@ function changeText(first, latest) {
 /**
  * One student's results over time: per subject, a small line of each graded assessment's percentage, oldest
  * to newest, with the 75 % line dashed, the latest result and how far it moved since the first. Fetches its
- * own data (GET /grades, the newest 100), so the admin's student page and the student's own page share it.
+ * own data (every page of GET /grades), so the admin's student page and the student's own page share it; on the
+ * student's page it is the same request as GradesBySubject, so both share one cached answer.
  *
  * @param {object} props
  * @param {number} [props.studentId] the student; omit for the signed-in student
- * @param {string} [props.term] 'term1' | 'term2' | 'term3' to restrict it (default: all terms)
+ * @param {string} [props.academicYear] one school year (default: every year)
+ * @param {string} [props.term] 'term1' | 'term2' | 'term3' to restrict it (default: all semesters)
  */
-export function GradeTrendCard({ studentId, term }) {
-  const { data, error, isPending, refetch } = useGrades({
+export function GradeTrendCard({ studentId, academicYear, term }) {
+  const { data, error, isPending, refetch } = useAllGrades({
     studentId,
+    academicYear,
     term,
-    limit: MAX_ROWS,
     sortBy: 'assessedOn',
     sortOrder: 'desc',
   });
 
   if (error) return <ErrorState title="Couldn't load results" message={error.message} onRetry={refetch} />;
   if (isPending) return <Skeleton className="h-40 w-full" />;
-  if (data.items.length === 0) return null;
+  if (data.length === 0) return null;
 
   // Oldest first, one group per subject (class-subject), subjects in the order of their first result.
-  const subjects = [
-    ...groupBy([...data.items].reverse(), (grade) => grade.assessment.classSubjectId).values(),
-  ];
+  const subjects = [...groupBy([...data].reverse(), (grade) => grade.assessment.classSubjectId).values()];
 
   return (
     <Card title="Results over time" description="Each graded assessment, oldest to newest. Dashed line: 75%.">
@@ -88,9 +85,6 @@ export function GradeTrendCard({ studentId, term }) {
           );
         })}
       </ul>
-      {data.meta.total > MAX_ROWS && (
-        <p className="mt-3 text-xs text-gray-600">Based on the {MAX_ROWS} most recent grades.</p>
-      )}
     </Card>
   );
 }

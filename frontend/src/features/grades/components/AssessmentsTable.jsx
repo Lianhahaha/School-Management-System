@@ -34,7 +34,7 @@ export function AssessmentsTable({ sheetPath, canManage, onEdit, onDelete, ...ta
       hideBelow: 'sm',
       cell: (row) => <Badge tone="gray">{ASSESSMENT_TYPE_LABELS[row.type]}</Badge>,
     },
-    { key: 'term', header: 'Term', hideBelow: 'md', cell: (row) => TERM_LABELS[row.term] },
+    { key: 'term', header: 'Semester', hideBelow: 'md', cell: (row) => TERM_LABELS[row.term] },
     {
       key: 'assessedOn',
       header: 'Date',

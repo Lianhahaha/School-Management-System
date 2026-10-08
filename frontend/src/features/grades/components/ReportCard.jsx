@@ -18,24 +18,21 @@ export function PrintReportCardButton() {
 }
 
 /**
- * A student's report card for paper: who, which class and term, per subject its result (on points, or with
- * the subject's weights per assessment type, which a note lists), and the general average, the mean of the
- * subject results, for the academic year of `enrollment` (all years without one). It is mounted at the end of <body> (a portal) and shown only
- * when printing, in plain black on white whatever the screen theme; the app itself is hidden then
+ * A student's report card for paper: who, which class, school year and semester, per subject its result (on
+ * points, or with the subject's weights per assessment type, which a note lists), and the general average,
+ * the mean of the subject results, for one school year. It is mounted at the end of <body> (a portal) and
+ * shown only when printing, in plain black on white whatever the screen theme; the app itself is hidden then
  * (see `.print-only` in index.css).
  *
  * @param {object} props
  * @param {{ firstName: string, lastName: string, studentNumber: string }} props.student
- * @param {{ className: string, academicYear: string } | null} props.enrollment the current class
  * @param {number|string} props.studentId a student id, or 'me'
- * @param {string} [props.term] 'term1' | 'term2' | 'term3'; omit for all terms
+ * @param {string} props.academicYear the school year on the card
+ * @param {string} props.className the student's class in that year
+ * @param {string} [props.term] 'term1' | 'term2' | 'term3'; omit for the whole year
  */
-export function ReportCard({ student, enrollment, studentId, term }) {
-  const { data: allYears = [] } = useGradeSummary({ studentId, term, groupBy: 'classSubject' });
-  // The summary covers every year the student has grades in; the card is about the class it names.
-  const subjects = enrollment
-    ? allYears.filter((subject) => subject.academicYear === enrollment.academicYear)
-    : allYears;
+export function ReportCard({ student, studentId, academicYear, className, term }) {
+  const { data: subjects = [] } = useGradeSummary({ studentId, academicYear, term, groupBy: 'classSubject' });
   const average = generalAverage(subjects);
   const weighted = subjects.filter((subject) => subject.method === 'weighted');
 
@@ -55,9 +52,9 @@ export function ReportCard({ student, enrollment, studentId, term }) {
         <dt className="font-semibold">Student no</dt>
         <dd>{student.studentNumber}</dd>
         <dt className="font-semibold">Class</dt>
-        <dd>{enrollment ? `${enrollment.className}, ${enrollment.academicYear}` : 'Not enrolled'}</dd>
-        <dt className="font-semibold">Term</dt>
-        <dd>{term ? TERM_LABELS[term] : 'All terms'}</dd>
+        <dd>{`${className}, ${academicYear}`}</dd>
+        <dt className="font-semibold">Semester</dt>
+        <dd>{term ? TERM_LABELS[term] : 'Whole school year'}</dd>
       </dl>
 
       <table className="mt-6 w-full border-collapse text-left">

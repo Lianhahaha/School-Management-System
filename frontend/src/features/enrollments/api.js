@@ -23,5 +23,13 @@ export const enrollStudents = ({ classId, studentIds }) =>
 export const transferStudent = ({ studentId, classId }) =>
   api.post('/enrollments/transfer', { studentId, classId }).then(toData);
 
+/**
+ * Admin only, all or nothing. Closes the students' enrollments in `classId` as completed and, with
+ * `nextClassId` (a class of a later year), enrolls them there. Resolves
+ * { classId, nextClassId, completed, enrollments }; 409 `not_active_in_class` lists `invalidStudentIds`.
+ */
+export const completeSchoolYear = ({ classId, studentIds, nextClassId }) =>
+  api.post('/enrollments/complete', { classId, studentIds, nextClassId }).then(toData);
+
 /** Admin only. Closes an active enrollment: status is 'completed' or 'withdrawn'. */
 export const setEnrollmentStatus = (id, status) => api.patch(`/enrollments/${id}`, { status }).then(toData);

@@ -13,9 +13,11 @@
  *   useSaveGrades()                      mutate({ assessmentId, grades }) resolves the saved roster; grades from toSaveGradesPayload
  * Recorded grades
  *   useGrades(params, { enabled })       flat rows (no `search`); params: page, limit, sortBy, sortOrder,
- *                                        studentId ('me'), classSubjectId, classId, term, assessmentId, type
+ *                                        studentId ('me'), classSubjectId, classId, academicYear, term,
+ *                                        assessmentId, type
+ *   useAllGrades(params)                 every row the filters match (all pages), as an array
  *   useGradeSummary(params, { enabled }) per-subject (or per-student) points-weighted percentages; params:
- *                                        studentId ('me'), classSubjectId, classId, term, groupBy
+ *                                        studentId ('me'), classSubjectId, classId, academicYear, term, groupBy
  *   useDeleteGrade()                     mutate(id) clears one grade (the caller raises the toast)
  *   useRestoreGrade()                    mutate({ assessmentId, grade }) puts a cleared grade back (Undo)
  *
@@ -25,6 +27,7 @@
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { useInvalidate } from '../../hooks/useInvalidate';
 import { useToast } from '../../hooks/useToast';
+import { fetchAllPages } from '../../lib/csv';
 import { isInlineFormError } from '../../lib/formErrors';
 import { dashboardKeys } from '../dashboard/keys';
 import {
@@ -69,6 +72,15 @@ export function useGrades(params, { enabled = true } = {}) {
     queryFn: () => listGrades(params),
     placeholderData: keepPreviousData,
     enabled,
+  });
+}
+
+/** All pages of GET /grades, so a student's year is never cut off (a year is a few hundred rows at most). */
+export function useAllGrades(params) {
+  return useQuery({
+    queryKey: gradeKeys.allRecords(params),
+    queryFn: () => fetchAllPages(listGrades, params),
+    placeholderData: keepPreviousData,
   });
 }
 

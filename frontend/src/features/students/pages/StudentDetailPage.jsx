@@ -100,12 +100,22 @@ export default function StudentDetailPage() {
             label: 'Grades',
             content: (
               <div className="space-y-4">
-                <div className="flex justify-end">
-                  <PrintReportCardButton />
-                </div>
+                {/* The report card is for the student's current class and its school year. */}
+                {student.currentEnrollment && (
+                  <div className="flex justify-end">
+                    <PrintReportCardButton />
+                  </div>
+                )}
                 <GradeSummaryPanel studentId={student.id} />
                 <GradeTrendCard studentId={student.id} />
-                <ReportCard student={student} enrollment={student.currentEnrollment} studentId={student.id} />
+                {student.currentEnrollment && (
+                  <ReportCard
+                    student={student}
+                    studentId={student.id}
+                    academicYear={student.currentEnrollment.academicYear}
+                    className={student.currentEnrollment.className}
+                  />
+                )}
               </div>
             ),
           },

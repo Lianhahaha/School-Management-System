@@ -1,53 +1,68 @@
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { Alert } from '../../../components/ui/Alert';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { ErrorState } from '../../../components/ui/ErrorState';
 import { ExportCsvButton } from '../../../components/ui/ExportCsvButton';
 import { FilterBar } from '../../../components/ui/FilterBar';
 import { Input } from '../../../components/ui/Input';
 import { OptionSelect } from '../../../components/ui/OptionSelect';
 import { Pagination } from '../../../components/ui/Pagination';
 import { Select } from '../../../components/ui/Select';
+import { Skeleton } from '../../../components/ui/Skeleton';
 import { ATTENDANCE_STATUS_OPTIONS } from '../../../constants/ui';
 import { useListParams } from '../../../hooks/useListParams';
 import { fetchAllPages } from '../../../lib/csv';
-import { academicYearStart, currentAcademicYear, todayYmd } from '../../../utils/date';
+import { academicYearEnd, academicYearStart, todayYmd } from '../../../utils/date';
 import { useAuth } from '../../auth/hooks';
-import { useClassSubjectOptions } from '../../classSubjects/hooks';
 import { NotEnrolledState, NotInClassNote } from '../../enrollments/components/NotEnrolledState';
+import { SchoolYearSelect } from '../../enrollments/components/SchoolYearSelect';
+import { useSchoolYear } from '../../enrollments/hooks';
 import { listAttendance } from '../api';
 import { AttendanceRecordsTable } from '../components/AttendanceRecordsTable';
 import { AttendanceSummaryPanel } from '../components/AttendanceSummaryPanel';
 import { ATTENDANCE_CSV_COLUMNS } from '../csv';
-import { useAttendance } from '../hooks';
+import { useAttendance, useAttendanceSummary } from '../hooks';
+
+const earlier = (a, b) => (a <= b ? a : b);
+
+/** The filters inside a year; the year itself is chosen in the page header. */
+const YEAR_FILTERS = ['dateFrom', 'dateTo', 'classSubjectId', 'status'];
 
 /**
- * The summary and records of a period. A student who is not in a class (`notEnrolled`) still sees the
- * attendance of earlier classes, by default since the start of last school year, under a note; with no
- * records at all they get the not-enrolled state.
+ * The summary and records of one school year (August to July, up to today). The dates can be narrowed inside
+ * the year; the subject filter lists the lessons the student has marks in that year. A student who is not in
+ * a class (`notEnrolled`) still sees the attendance of earlier classes, under a note; with no records at all
+ * they get the not-enrolled state.
  */
-function StudentAttendanceContent({ academicYear, notEnrolled = false }) {
-  const list = useListParams({
-    filters: ['dateFrom', 'dateTo', 'classSubjectId', 'status'],
-    defaultSort: ['attendanceDate', 'desc'],
-  });
-  const subjects = useClassSubjectOptions();
-
+function StudentAttendanceContent({ list, academicYear, notEnrolled = false }) {
   const today = todayYmd();
-  // A class of a year that has not started yet (enrolled ahead, in July) starts today, not in the future.
-  const yearStart = notEnrolled
-    ? academicYearStart(String(Number(academicYear.slice(0, 4)) - 1))
-    : academicYearStart(academicYear);
-  const dateFrom = list.params.dateFrom || (yearStart <= today ? yearStart : today);
-  const dateTo = list.params.dateTo || today;
+  const yearStart = academicYearStart(academicYear);
+  const lastDay = earlier(academicYearEnd(academicYear), today);
+  const dateFrom = list.params.dateFrom || earlier(yearStart, today);
+  const dateTo = list.params.dateTo || lastDay;
   // Typing can still produce an end before the start; the API rejects it, so ask instead of requesting.
   const isRangeValid = dateFrom <= dateTo;
   // GET /attendance has no text search: a `search` left in the URL (a shared link) would be refused.
-  const { search: _search, ...listParams } = list.apiParams;
+  const { search: _search, academicYear: _year, ...listParams } = list.apiParams;
   const records = useAttendance({ ...listParams, dateFrom, dateTo }, { enabled: isRangeValid });
+  // The lessons of that year come from the student's own marks: their past classes are not "their" classes
+  // any more, so the class-subject list would not show them.
+  const lessons = useAttendanceSummary({
+    studentId: 'me',
+    dateFrom: earlier(yearStart, lastDay),
+    dateTo: lastDay,
+    groupBy: 'classSubject',
+  });
 
-  const subjectOptions = subjects.data?.map(({ value, item }) => ({ value, label: item.subjectName }));
+  const subjectOptions = lessons.data?.map((row) => ({
+    value: String(row.classSubjectId),
+    label: row.label,
+  }));
+  const hasYearFilters = YEAR_FILTERS.some((filter) => list.params[filter] !== '');
+  const clearYearFilters = () =>
+    list.setFilters(Object.fromEntries(YEAR_FILTERS.map((filter) => [filter, ''])));
 
-  if (notEnrolled && records.data?.meta.total === 0 && !list.hasActiveFilters) return <NotEnrolledState />;
+  if (notEnrolled && records.data?.meta.total === 0 && !hasYearFilters) return <NotEnrolledState />;
 
   return (
     <div className="space-y-6">
@@ -82,12 +97,13 @@ function StudentAttendanceContent({ academicYear, notEnrolled = false }) {
             />
           )}
         </div>
-        <FilterBar onClear={list.hasActiveFilters ? list.clearFilters : undefined}>
+        <FilterBar onClear={hasYearFilters ? clearYearFilters : undefined}>
           <label className="flex items-center gap-2 text-sm text-gray-700">
             From
             <Input
               type="date"
               value={dateFrom}
+              min={yearStart}
               max={dateTo}
               onChange={(event) => list.setFilter('dateFrom', event.target.value)}
               className="w-40"
@@ -99,7 +115,7 @@ function StudentAttendanceContent({ academicYear, notEnrolled = false }) {
               type="date"
               value={dateTo}
               min={dateFrom}
-              max={today}
+              max={lastDay}
               onChange={(event) => list.setFilter('dateTo', event.target.value)}
               className="w-40"
             />
@@ -107,7 +123,7 @@ function StudentAttendanceContent({ academicYear, notEnrolled = false }) {
           <OptionSelect
             aria-label="Subject"
             options={subjectOptions}
-            isPending={subjects.isPending}
+            isPending={lessons.isPending}
             placeholder="All subjects"
             value={list.params.classSubjectId}
             onChange={(event) => list.setFilter('classSubjectId', event.target.value)}
@@ -147,18 +163,56 @@ function StudentAttendanceContent({ academicYear, notEnrolled = false }) {
   );
 }
 
-/** A student's own attendance: summary tiles plus the records of a period. */
+/**
+ * A student's own attendance in one school year: summary tiles plus the records. The year sits in the page
+ * header (it stays there when the not-enrolled state replaces the content) and in the URL (`academicYear`);
+ * a new year clears the dates and the subject.
+ */
 export default function StudentAttendancePage() {
   const { me } = useAuth();
-  const enrollment = me.currentEnrollment;
+  const list = useListParams({
+    filters: ['academicYear', 'dateFrom', 'dateTo', 'classSubjectId', 'status'],
+    defaultSort: ['attendanceDate', 'desc'],
+  });
+  const schoolYear = useSchoolYear('me', list.params.academicYear, me.currentEnrollment);
+
+  let content;
+  if (schoolYear.isPending) content = <Skeleton className="h-40 w-full" />;
+  else if (schoolYear.error) {
+    content = (
+      <ErrorState
+        title="Couldn't load your school years"
+        message={schoolYear.error.message}
+        onRetry={schoolYear.refetch}
+      />
+    );
+  } else {
+    content = (
+      <StudentAttendanceContent
+        list={list}
+        academicYear={schoolYear.academicYear}
+        notEnrolled={!me.currentEnrollment}
+      />
+    );
+  }
 
   return (
     <>
-      <PageHeader title="My attendance" description="How often you were present in your periods." />
-      <StudentAttendanceContent
-        academicYear={enrollment?.academicYear ?? currentAcademicYear()}
-        notEnrolled={!enrollment}
+      <PageHeader
+        title="My attendance"
+        description="How often you were present in your periods."
+        actions={
+          <SchoolYearSelect
+            years={schoolYear.years}
+            value={schoolYear.academicYear}
+            onChange={(academicYear) =>
+              list.setFilters({ academicYear, dateFrom: '', dateTo: '', classSubjectId: '' })
+            }
+            className="w-44"
+          />
+        }
       />
+      {content}
     </>
   );
 }

@@ -14,6 +14,8 @@ import { useClassOptions } from '../hooks';
  * @param {number[]} [props.excludeIds] classes to leave out, for example the one a student is moving from
  * @param {boolean} [props.fromCurrentYear] only classes of the current or a later academic year: the API
  *   refuses to enroll or transfer a student into a past year's class
+ * @param {string} [props.afterYear] only classes of an academic year after this one ('2026-2027'), for the
+ *   class students move on to at the end of a school year
  * @param {string} [props.placeholder] label of the empty choice (default "Choose a class"); pass "All classes" for a filter
  * Every other prop goes to the native <select>.
  */
@@ -21,6 +23,7 @@ export function ClassSelect({
   filters,
   excludeIds = [],
   fromCurrentYear = false,
+  afterYear,
   placeholder = 'Choose a class',
   ...props
 }) {
@@ -29,7 +32,9 @@ export function ClassSelect({
 
   const firstYear = currentAcademicYear();
   const isOffered = ({ item }) =>
-    !excludeIds.includes(item.id) && (!fromCurrentYear || item.academicYear >= firstYear);
+    !excludeIds.includes(item.id) &&
+    (!fromCurrentYear || item.academicYear >= firstYear) &&
+    (!afterYear || item.academicYear > afterYear);
   const options = classes.data?.filter(isOffered);
 
   return (

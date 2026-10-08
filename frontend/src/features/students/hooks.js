@@ -4,6 +4,7 @@
  *
  *   useStudents(params, { enabled })  paginated list; params: page, limit, search, sortBy, sortOrder,
  *                                     classId, gradeLevel, gender, isActive, hasActiveEnrollment
+ *   useClassRoster(classId)           every student currently in the class, as an array (all pages)
  *   useStudent(id)                    one student ('me' for the signed-in student); includes currentEnrollment
  *   useUpdateStudent() [form]         mutate({ id, body }) admin only; body from changedFields(values, dirtyFields)
  *   useImportStudents() [form]        mutateAsync(body) checks (dryRun) or creates imported students; the
@@ -15,6 +16,7 @@
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { useInvalidate } from '../../hooks/useInvalidate';
 import { useToast } from '../../hooks/useToast';
+import { fetchAllPages } from '../../lib/csv';
 import { fullName } from '../../utils/names';
 import { attendanceKeys } from '../attendance/keys';
 import { classKeys } from '../classes/keys';
@@ -40,6 +42,16 @@ export function useStudents(params, { enabled = true } = {}) {
     queryKey: studentKeys.list(params),
     queryFn: () => listStudents(params),
     placeholderData: keepPreviousData,
+    enabled,
+  });
+}
+
+/** Every student currently in the class (all pages, by last name), e.g. for the end of a school year. */
+export function useClassRoster(classId, { enabled = true } = {}) {
+  const params = { classId, sortBy: 'lastName', sortOrder: 'asc' };
+  return useQuery({
+    queryKey: [...studentKeys.lists(), 'all', params],
+    queryFn: () => fetchAllPages(listStudents, params),
     enabled,
   });
 }

@@ -133,6 +133,11 @@ export function isoWeekdayOf(ymd) {
 /** Monday of the week containing a 'YYYY-MM-DD' date. */
 export const mondayOf = (ymd) => addDaysYmd(ymd, 1 - isoWeekdayOf(ymd));
 
+/** Last day of an academic year label: '2026-2027' -> '2027-07-31' (the day before the next one starts). */
+export function academicYearEnd(label) {
+  return addDaysYmd(`${label.slice(5, 9)}-${pad(ACADEMIC_YEAR_START_MONTH)}-01`, -1);
+}
+
 /** First day of an academic year label: '2026-2027' -> '2026-08-01' (ACADEMIC_YEAR_START_MONTH). */
 export function academicYearStart(label) {
   return `${label.slice(0, 4)}-${pad(ACADEMIC_YEAR_START_MONTH)}-01`;

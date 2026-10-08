@@ -211,7 +211,7 @@ INSERT INTO announcements (author_id, title, body, audience, class_id, published
    'Results for Algebra Quiz 1 are now visible under Grades. Come to Room 101 during Tuesday break if you want to go through your paper.',
    'students', @class_a, @now - INTERVAL 2 DAY, @now + INTERVAL 12 DAY),
   (@admin_user, 'Staff meeting - Friday 15:00',
-   'All teaching staff: term planning meeting in the staff room, Friday at 15:00. Attendance registers must be up to date before the meeting.',
+   'All teaching staff: semester planning meeting in the staff room, Friday at 15:00. Attendance registers must be up to date before the meeting.',
    'teachers', NULL, @now - INTERVAL 1 DAY, @now + INTERVAL 6 DAY);
 
 -- ---------- Reset (dev only) ---------------------------------------------------

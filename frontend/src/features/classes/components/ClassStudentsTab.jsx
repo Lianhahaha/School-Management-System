@@ -1,4 +1,4 @@
-import { ArrowRightLeft, UserMinus, UserPlus, Users } from 'lucide-react';
+import { ArrowRightLeft, CalendarCheck, UserMinus, UserPlus, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '../../../components/ui/Button';
@@ -13,6 +13,7 @@ import { useDisclosure } from '../../../hooks/useDisclosure';
 import { useListParams } from '../../../hooks/useListParams';
 import { currentAcademicYear } from '../../../utils/date';
 import { fullName } from '../../../utils/names';
+import { EndSchoolYearModal } from '../../enrollments/components/EndSchoolYearModal';
 import { EnrollStudentsModal } from '../../enrollments/components/EnrollStudentsModal';
 import { TransferStudentModal } from '../../enrollments/components/TransferStudentModal';
 import { useSetEnrollmentStatus } from '../../enrollments/hooks';
@@ -21,11 +22,12 @@ import { UserStatusBadge } from '../../users/components/UserStatusBadge';
 
 /**
  * "Students" tab of a class (admin): the roster with search, "Enroll students" (many at once; only
- * for a class of the current or a later academic year), Transfer and Withdraw. A student's
- * `currentEnrollment.id` is the active enrollment of this class.
+ * for a class of the current or a later academic year), "End of school year" (for a class of the current or a
+ * past year that has students), Transfer and Withdraw. A student's `currentEnrollment.id` is the active
+ * enrollment of this class.
  *
  * @param {object} props
- * @param {{ id: number, name: string }} props.schoolClass
+ * @param {{ id: number, name: string, academicYear: string, studentCount: number }} props.schoolClass
  */
 export function ClassStudentsTab({ schoolClass }) {
   const list = useListParams({ defaultSort: ['lastName', 'asc'] });
@@ -36,6 +38,7 @@ export function ClassStudentsTab({ schoolClass }) {
   const setStatus = useSetEnrollmentStatus();
   const confirm = useConfirm();
   const enrollModal = useDisclosure();
+  const endYearModal = useDisclosure();
   const [transferring, setTransferring] = useState(null);
 
   const onWithdraw = async (student) => {
@@ -82,8 +85,9 @@ export function ClassStudentsTab({ schoolClass }) {
     },
   ];
 
-  // The API refuses enrollments into a past academic year's class.
+  // The API refuses enrollments into a past academic year's class, and closing a year that has not started.
   const canEnroll = schoolClass.academicYear >= currentAcademicYear();
+  const canEndYear = schoolClass.academicYear <= currentAcademicYear() && schoolClass.studentCount > 0;
   const enrollButton = canEnroll && (
     <Button icon={UserPlus} onClick={enrollModal.open}>
       Enroll students
@@ -96,7 +100,14 @@ export function ClassStudentsTab({ schoolClass }) {
         <FilterBar onClear={list.hasActiveFilters ? list.clearFilters : undefined}>
           <SearchInput value={list.params.search} onChange={list.setSearch} placeholder="Search students" />
         </FilterBar>
-        {enrollButton}
+        <div className="flex flex-wrap gap-2">
+          {canEndYear && (
+            <Button variant="secondary" icon={CalendarCheck} onClick={endYearModal.open}>
+              End of school year
+            </Button>
+          )}
+          {enrollButton}
+        </div>
       </div>
 
       <DataTable
@@ -144,6 +155,7 @@ export function ClassStudentsTab({ schoolClass }) {
         open={enrollModal.isOpen}
         onClose={enrollModal.close}
       />
+      <EndSchoolYearModal schoolClass={schoolClass} open={endYearModal.isOpen} onClose={endYearModal.close} />
       <TransferStudentModal
         student={transferring}
         open={Boolean(transferring)}

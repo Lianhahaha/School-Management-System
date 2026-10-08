@@ -107,8 +107,8 @@ export function AssessmentFormModal({ open, onClose, assessment, classSubjectId,
           <FormField label="Type" error={errors.type?.message} required>
             <Select {...register('type')} options={ASSESSMENT_TYPE_OPTIONS} placeholder="Choose a type" />
           </FormField>
-          <FormField label="Term" error={errors.term?.message} required>
-            <Select {...register('term')} options={TERM_OPTIONS} placeholder="Choose a term" />
+          <FormField label="Semester" error={errors.term?.message} required>
+            <Select {...register('term')} options={TERM_OPTIONS} placeholder="Choose a semester" />
           </FormField>
           <FormField label="Max score" error={errors.maxScore?.message} required>
             <Input

@@ -21,12 +21,13 @@ function resultBasis(subject) {
  *
  * @param {object} props
  * @param {number|string} props.studentId a student id, or 'me' for the signed-in student
- * @param {string} [props.term] 'term1' | 'term2' | 'term3' to restrict the summary (default: all terms)
+ * @param {string} [props.academicYear] one school year (default: every year)
+ * @param {string} [props.term] 'term1' | 'term2' | 'term3' to restrict the summary (default: all semesters)
  * @param {boolean} [props.enabled] set false to hold the request, for example while a student has no class yet
  */
-export function GradeSummaryPanel({ studentId, term, enabled = true }) {
+export function GradeSummaryPanel({ studentId, academicYear, term, enabled = true }) {
   const { data, error, isPending, refetch } = useGradeSummary(
-    { studentId, term, groupBy: 'classSubject' },
+    { studentId, academicYear, term, groupBy: 'classSubject' },
     { enabled },
   );
 

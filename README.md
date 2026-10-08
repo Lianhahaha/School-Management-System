@@ -24,12 +24,12 @@ Skole can be installed like an app: on Android, Chrome or Edge use the browser's
 | Student, teacher and admin accounts | Admin → Users (create any role, deactivate, delete an unused account); students can also self-register on the sign-up page; Admin → Students → Import creates up to 200 students from a CSV file (template included), each checked before anything is created and each given their own temporary password, listed in a file to download |
 | Firebase Authentication | Sign in / sign up / forgot password; the API verifies the Firebase ID token on every request |
 | MySQL database | 17 tables with foreign keys, unique keys and checks: [backend/database/schema.sql](backend/database/schema.sql) |
-| Backend REST API | 75 endpoints under `/api/v1`, one JSON envelope, one error catalogue |
-| Student enrollment and profiles | Admin → Students (enroll, transfer, profile, history); students edit their own contact details |
+| Backend REST API | 76 endpoints under `/api/v1`, one JSON envelope, one error catalogue |
+| Student enrollment and profiles | Admin → Students (enroll, transfer, profile, history); students edit their own contact details; at the end of a school year, Admin → Classes → a class → Students → **End of school year** closes the year for all or some students and enrolls them in next year's class in one step |
 | Subjects and class management | Admin → Subjects, Classes |
 | Teacher assignment | Class detail → Subjects & Teachers |
-| Attendance tracking | Teachers mark the students of each lesson, day by day; students see their own percentage; a week-by-week rate chart for each class, lesson and student |
-| Grade management | Assessments with a maximum score, grade sheets, per-subject results for students; Admin → Subjects can weight a subject by assessment type (for example quizzes 20 %, exams 80 %); a score-spread chart on every grade sheet and each student's results over time per subject |
+| Attendance tracking | Teachers mark the students of each lesson, day by day; students see their own percentage, one school year at a time (earlier years too); a week-by-week rate chart for each class, lesson and student |
+| Grade management | Assessments with a maximum score, grade sheets, per-subject results for students; each assessment belongs to the 1st Semester, 2nd Semester or Summer; Admin → Subjects can weight a subject by assessment type (for example quizzes 20 %, exams 80 %); a score-spread chart on every grade sheet and each student's results over time per subject; students pick a school year and semester ("AY 2025-2026 · 2nd Semester") and can print the report card of any year |
 | Class schedules | Weekly timetables per class, teacher and student, with clash detection (class, teacher, room) |
 | Announcements | School-wide or per class, per audience, with publish and expiry dates; a "New" label until the reader marks one, or all, as read |
 | Notifications | The bell in the top bar, with a red count: students hear about new or changed grades, absences and a new class; teachers about lessons and homeroom classes they get; admins about students who signed up and need a class; new announcements are listed there too |
@@ -177,6 +177,8 @@ These are deliberate choices, not oversights. The reasons are in [docs/PROJECT_P
 - **Attendance rate = (present + late) / all marks.** An excused absence counts as a missed lesson; the status keeps the reason on record.
 - **Grade weights belong to a subject, not to a year.** Changing them recalculates the subject's results in every year, past ones too, and the subject form says so. An assessment type with nothing graded yet is left out and the other weights are scaled up, so an ungraded exam neither helps nor hurts a result in the middle of a term.
 - **Past academic years stay editable** by the lesson's teacher and by admins, for late corrections. Every change is in the activity log with the previous value. A date must fall inside the class's academic year.
+- **Semesters are names, not new data.** The API and the database keep the terms `term1`, `term2` and `term3`; the app shows them as 1st Semester, 2nd Semester and Summer.
+- **End of school year closes enrollments on the day it runs.** Run it after the last school day: from that day the students leave the class's attendance and grade sheets (earlier days stay editable) and appear in next year's class. A completed enrollment cannot be reopened, so the action is refused for a year that has not started.
 - **Two people editing one sheet do not overwrite each other.** When an attendance or grade sheet changed since it was loaded, the second save is refused (409 `sheet_changed`) and the page offers a reload.
 - **Imported students get a random temporary password each**, shown once in a file to download; nothing in the request sets a shared password.
 - **Local development shares the Firebase project with the live site.** Outside production the API never deletes a Firebase user it does not know, because it may be a live user.

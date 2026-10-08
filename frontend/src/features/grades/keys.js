@@ -13,6 +13,8 @@ export const gradeKeys = {
   roster: (assessmentId) => [...base.all, 'roster', String(assessmentId)],
   /** GET /grades: flat grade rows. */
   records: (params) => [...base.all, 'records', params],
+  /** GET /grades, every page: all the grade rows the filters match. */
+  allRecords: (params) => [...base.all, 'records', 'all', params],
   /** GET /grades/summary: params = filters and groupBy. */
   summary: (params) => [...base.all, 'summary', params],
 };

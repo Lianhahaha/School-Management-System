@@ -33,7 +33,7 @@ Hard constraints:
 | 1 | Student, teacher, and administrator accounts | `users.role` ENUM + 1:1 `students` / `teachers` profile tables | `POST /users` (admin, any role), `POST /auth/register` (public, student only), `PATCH /users/:id/status`, `DELETE /users/:id` (only while unused) | Admin → Users page: create user of any role, activate/deactivate | Create a teacher as admin, log in as that teacher in a private window |
 | 2 | Firebase Authentication | `users.firebase_uid` UNIQUE | `authenticate` middleware verifies the Firebase ID token on every request; Admin SDK creates/disables users | Firebase JS SDK login, register, forgot password, logout | Register, log out, log in, reload page: session survives; wrong password shows a generic error |
 | 3 | MySQL database | 12 InnoDB tables, 18 FKs, 15 UNIQUE keys, 11 CHECK constraints, 1 generated column | `mysql2` pool, parameterized SQL only, repository layer | — | `npm run db:migrate` creates the schema from `schema.sql`; Workbench shows the ERD |
-| 4 | Backend REST API | — | 75 endpoints under `/api/v1` (64 designed, see section 16), one JSON envelope, closed error catalogue | all data via `apiClient` | Swagger UI "Try it out" with a token |
+| 4 | Backend REST API | — | 76 endpoints under `/api/v1` (64 designed, see section 16), one JSON envelope, closed error catalogue | all data via `apiClient` | Swagger UI "Try it out" with a token |
 | 5 | Student enrollment and profile management | `students`, `enrollments` (one active row per student, enforced by a unique index) | students CRUD, `POST /enrollments`, `/enrollments/bulk`, `/enrollments/transfer`, `PATCH /enrollments/:id` | Students list (enroll / transfer), Student detail (profile, enrollment history, attendance, grades), Profile page (self-service contact fields) | Enroll a new student, try to enroll them in a second class (409), transfer them |
 | 6 | Subjects and class management | `subjects`, `classes` (UNIQUE per academic year) | subjects CRUD, classes CRUD | Subjects page, Classes list + Class detail (tabs) | Create a class for `2026-2027`; try `2026/2027` (400); delete a used subject (409) |
 | 7 | Teacher assignment | `class_subjects (class_id, subject_id) → teacher_id`, UNIQUE per class+subject | `/class-subjects` CRUD (assign, reassign teacher, remove) | Class detail → "Subjects & Teachers" tab | Assign Physics to Grade 10-A with teacher1; assign again (409); teacher1 sees it under "My classes" |
@@ -469,6 +469,12 @@ The code is the source of truth; `backend/docs/openapi.yaml` is checked against 
 - Operations: `migrate --fresh` refuses a database that is not on this machine (or `NODE_ENV=production`) without `--allow-remote-drop`; `APP_TIMEZONE` and the length of `DB_NAME` are checked at start-up; an unhandled promise rejection is logged and the server exits with code 1 so the host restarts it.
 - Smaller fixes: the `Bearer` scheme is read in any case and exactly one token must follow it; a request that passes through two authenticated mounts is checked once; Firebase network, internal and quota errors answer 503; body ids must be numbers or strings of digits (`true`, `[5]` and `'0x10'` are refused); averages round half up without floating-point error; the access log comes before the body parser, so a refused body is logged too; the server and the scripts share one table of MySQL connection hints.
 
+**School years (2026-10-08)**
+- Terms are shown as 1st Semester, 2nd Semester and Summer. Only the labels changed; the API and the database keep `term1`..`term3`, so the live database needed no migration.
+- `GET /grades` and `GET /grades/summary` take `academicYear` (the academic year of the assessment's class).
+- My grades shows one school year at a time, with one picker for the year and semester ("AY 2025-2026 · 2nd Semester"). It loads every grade of that year (the 100-grade cap is gone), and the report card prints for any year with that year's class. My attendance has a school-year picker that sets the dates to August–July. Both open on the year of the student's class (this year when the class starts next year), or the last year they had a class.
+- `POST /enrollments/complete` (Admin → Classes → a class → Students → End of school year) closes the listed students' enrollments as `completed` and, with `nextClassId`, enrolls them in a class of a later year, all or nothing. Unlisted students stay. It refuses a year that has not started, a next class that is not later, and students not active in the class (409 `not_active_in_class`). Runs for one class are serialised on the class row.
+
 **Known limits (accepted for this project)**
 - The frontend works out "today" in the browser's time zone; the API uses `APP_TIMEZONE`. They agree while the school's users are in one zone (Asia/Manila here).
 - Lesson-day rules for a past date use the current timetable; timetable history is not kept.
@@ -478,7 +484,7 @@ The code is the source of truth; `backend/docs/openapi.yaml` is checked against 
 - On a few endpoints a 403 instead of a 404 shows that an id exists; ids are sequential and reveal no data.
 - Subjects and timetable periods can still be added to a past year's class; only enrollment refuses past years.
 - The Firebase display name is set when an account is created and not updated later; the app shows names from MySQL only.
-- Placing a student in next year's class is a transfer, which ends this year's enrollment on that day.
+- End of school year, like a transfer, closes the enrollment on the day it runs, so it belongs after the last school day. Keeping students in this year's class while already placed in next year's would need a "planned" enrollment status (a schema change).
 
 **Open polish items (cosmetic, not required by the brief)**
 - Transfer modal lacks the "from A to B" confirmation sentence; homeroom teacher picker is a plain select.

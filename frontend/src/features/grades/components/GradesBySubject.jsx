@@ -5,17 +5,16 @@ import { DataTable } from '../../../components/ui/DataTable';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { ErrorState } from '../../../components/ui/ErrorState';
 import { Skeleton } from '../../../components/ui/Skeleton';
+import { PAGINATION } from '../../../constants/shared';
 import { ASSESSMENT_TYPE_LABELS } from '../../../constants/ui';
 import { formatDate, todayYmd } from '../../../utils/date';
 import { countOf, formatPercent, formatScore } from '../../../utils/format';
 import { groupBy } from '../../../utils/grades';
 import { fullName } from '../../../utils/names';
-import { useAssessments, useGrades } from '../hooks';
+import { useAllGrades, useAssessments } from '../hooks';
 import { GradeSummaryPanel } from './GradeSummaryPanel';
 import { GradeTrendCard } from './GradeTrendCard';
 import { NotEnrolledState, NotInClassNote } from '../../enrollments/components/NotEnrolledState';
-
-const MAX_ROWS = 100;
 
 const COLUMNS = [
   {
@@ -51,24 +50,23 @@ const COLUMNS = [
 ];
 
 /**
- * The signed-in student's grades: the per-subject percentage cards (GradeSummaryPanel) and, per subject,
- * the recorded grades with the next upcoming assessment. One GET /grades call, grouped client-side.
- * A student who is not in a class (`notEnrolled`) still sees the grades of earlier classes, under a note;
- * with no grades at all they get the not-enrolled state instead.
+ * The signed-in student's grades of one school year: the per-subject percentage cards (GradeSummaryPanel)
+ * and, per subject, the recorded grades with the next upcoming assessment. Every grade of the year is loaded
+ * (all pages of GET /grades) and grouped client-side. A student who is not in a class (`notEnrolled`) still
+ * sees the grades of earlier classes, under a note; with no grades at all they get the not-enrolled state.
  *
  * @param {object} props
- * @param {string} [props.term] 'term1' | 'term2' | 'term3'; omit for all terms
+ * @param {string} props.academicYear the school year shown
+ * @param {string} [props.term] 'term1' | 'term2' | 'term3'; omit for the whole year
  * @param {boolean} [props.notEnrolled] the student has no active enrollment
+ * @param {boolean} [props.withUpcoming] show upcoming assessments (only the current class has any)
  */
-export function GradesBySubject({ term, notEnrolled = false }) {
-  const grades = useGrades({ term, limit: MAX_ROWS, sortBy: 'assessedOn', sortOrder: 'desc' });
-  const upcoming = useAssessments({
-    term,
-    dateFrom: todayYmd(),
-    sortBy: 'assessedOn',
-    sortOrder: 'asc',
-    limit: MAX_ROWS,
-  });
+export function GradesBySubject({ academicYear, term, notEnrolled = false, withUpcoming = false }) {
+  const grades = useAllGrades({ academicYear, term, sortBy: 'assessedOn', sortOrder: 'desc' });
+  const upcoming = useAssessments(
+    { term, dateFrom: todayYmd(), sortBy: 'assessedOn', sortOrder: 'asc', limit: PAGINATION.MAX_LIMIT },
+    { enabled: withUpcoming },
+  );
 
   if (grades.error) {
     return (
@@ -76,20 +74,24 @@ export function GradesBySubject({ term, notEnrolled = false }) {
     );
   }
   if (grades.isPending) return <Skeleton className="h-40 w-full" />;
-  if (grades.data.items.length === 0 && notEnrolled && !term) return <NotEnrolledState />;
-  if (grades.data.items.length === 0) {
+  if (grades.data.length === 0 && notEnrolled && !term) return <NotEnrolledState />;
+  if (grades.data.length === 0) {
     return (
       <EmptyState
         icon={GraduationCap}
-        title="No grades recorded for this term yet"
+        title={
+          term ? 'No grades recorded for this semester yet' : 'No grades recorded for this school year yet'
+        }
         description="Graded assessments will appear here."
       />
     );
   }
 
-  const groups = [...groupBy(grades.data.items, (grade) => grade.assessment.classSubjectId)];
+  const groups = [...groupBy(grades.data, (grade) => grade.assessment.classSubjectId)];
   const nextUp = (classSubjectId) =>
-    upcoming.data?.items.find((assessment) => assessment.classSubjectId === classSubjectId);
+    withUpcoming
+      ? upcoming.data?.items.find((assessment) => assessment.classSubjectId === classSubjectId)
+      : undefined;
 
   return (
     <div className="space-y-6">
@@ -98,8 +100,8 @@ export function GradesBySubject({ term, notEnrolled = false }) {
           You're not in a class right now. These are your grades from earlier classes.
         </NotInClassNote>
       )}
-      <GradeSummaryPanel studentId="me" term={term} />
-      <GradeTrendCard term={term} />
+      <GradeSummaryPanel studentId="me" academicYear={academicYear} term={term} />
+      <GradeTrendCard academicYear={academicYear} term={term} />
       {groups.map(([classSubjectId, rows]) => {
         const next = nextUp(classSubjectId);
         const { subjectName, className } = rows[0].assessment;
@@ -119,9 +121,6 @@ export function GradesBySubject({ term, notEnrolled = false }) {
           </Card>
         );
       })}
-      {grades.data.meta.total > MAX_ROWS && (
-        <p className="text-sm text-gray-600">Showing your {MAX_ROWS} most recent grades.</p>
-      )}
     </div>
   );
 }

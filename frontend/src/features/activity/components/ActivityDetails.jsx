@@ -1,19 +1,27 @@
 import { TBody, THead, Table, Td, Th, Tr } from '../../../components/ui/Table';
-import { ATTENDANCE_STATUS_LABELS } from '../../../constants/ui';
+import { ATTENDANCE_STATUS_LABELS, TERM_LABELS } from '../../../constants/ui';
 import { formatDateTime } from '../../../utils/date';
 import { describeWeights } from '../../../utils/grades';
 
 const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 
+/** Logged field names that read differently in the app. */
+const FIELD_LABELS = { term: 'Semester' };
+
 /** "guardianPhone" -> "Guardian phone". */
 const fieldLabel = (field) => {
+  if (FIELD_LABELS[field]) return FIELD_LABELS[field];
   const words = field.replace(/[A-Z]/g, (letter) => ` ${letter.toLowerCase()}`);
   return words.charAt(0).toUpperCase() + words.slice(1);
 };
 
-/** A logged value as text: blanks as a dash, timestamps in local time, statuses by name, weights as a list. */
+/**
+ * A logged value as text: blanks as a dash, timestamps in local time, statuses and semesters by name,
+ * weights as a list.
+ */
 function formatValue(value, field) {
   if (field === 'gradeWeights') return describeWeights(value) || 'On points';
+  if (field === 'term' && TERM_LABELS[value]) return TERM_LABELS[value];
   if (value === null || value === undefined || value === '') return '—';
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   if (typeof value === 'string' && ISO_INSTANT.test(value)) return formatDateTime(value);
