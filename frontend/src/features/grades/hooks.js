@@ -25,6 +25,7 @@
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { useInvalidate } from '../../hooks/useInvalidate';
 import { useToast } from '../../hooks/useToast';
+import { isInlineFormError } from '../../lib/formErrors';
 import { dashboardKeys } from '../dashboard/keys';
 import {
   createAssessment,
@@ -154,6 +155,11 @@ export function useRestoreGrade() {
     onSuccess: () => {
       invalidateGrades();
       toast.success('Grade restored');
+    },
+    // No form shows a refused restore (e.g. the maximum was lowered meanwhile), and the global handler
+    // leaves validation errors to forms: say it here.
+    onError: (error) => {
+      if (isInlineFormError(error)) toast.error(`The grade could not be restored: ${error.message}`);
     },
   });
 }

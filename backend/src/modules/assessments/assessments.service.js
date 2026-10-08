@@ -71,7 +71,7 @@ export async function updateAssessment(user, id, patch) {
   await withTransaction(async (conn) => {
     if (patch.maxScore !== undefined) {
       // Lock first: a grade save running now finishes before the check, and none starts until this commits.
-      ApiError.assertFound(await repo.lockMaxScore(id, 'update', conn), 'assessment', id);
+      ApiError.assertFound(await repo.lockMaxScore(id, conn), 'assessment', id);
       const highest = await repo.findHighestScore(id, conn);
       if (highest !== null && patch.maxScore < highest) {
         throw ApiError.conflict('a recorded score is higher than the new maximum', {
@@ -96,11 +96,11 @@ export async function updateAssessment(user, id, patch) {
 }
 
 /**
- * Inside `conn`'s transaction: the assessment's current max score, share-locked so it cannot be lowered
- * until the transaction ends (grades are validated against it). 404 when the assessment is gone.
+ * Inside `conn`'s transaction: the assessment's current max score, locked until the transaction ends so it
+ * cannot be lowered and no other grade save of this assessment runs meanwhile. 404 when it is gone.
  */
 export async function lockMaxScoreForGrading(id, conn) {
-  return ApiError.assertFound(await repo.lockMaxScore(id, 'share', conn), 'assessment', id);
+  return ApiError.assertFound(await repo.lockMaxScore(id, conn), 'assessment', id);
 }
 
 /** Deletes the assessment and its grades in one transaction (the UI confirms with the graded count first). */

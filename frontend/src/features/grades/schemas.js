@@ -89,8 +89,24 @@ export const gradeSheetDefaults = (records) => ({
   })),
 });
 
-/** The `grades` array of the PUT body: only the rows that have a score. `mutate({ assessmentId, grades })`. */
-export const toSaveGradesPayload = ({ rows }) =>
-  rows
+/**
+ * The `grades` array of the PUT body: only the rows that have a score, each with the grade the sheet was
+ * opened with (`previous`), so the API refuses the save when someone changed it meanwhile.
+ * `mutate({ assessmentId, grades })`.
+ * @param {{ rows: object[] }} values the form values
+ * @param {Array<{ studentId: number, score: number|null, remarks: string|null }>} savedRecords the roster as saved
+ */
+export const toSaveGradesPayload = ({ rows }, savedRecords) => {
+  const savedOf = new Map(savedRecords.map((record) => [record.studentId, record]));
+  return rows
     .filter((row) => row.score !== undefined)
-    .map(({ studentId, score: value, remarks }) => ({ studentId, score: value, remarks }));
+    .map(({ studentId, score: value, remarks }) => {
+      const saved = savedOf.get(studentId);
+      return {
+        studentId,
+        score: value,
+        remarks,
+        previous: { score: saved?.score ?? null, remarks: saved?.remarks ?? null },
+      };
+    });
+};

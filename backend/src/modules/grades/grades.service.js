@@ -193,12 +193,29 @@ export async function getRoster(user, assessmentId) {
   return buildRoster(await getAssessment(user, assessmentId));
 }
 
-/** Idempotent bulk upsert of the listed students only; the whole batch is rejected when any row is invalid. */
-export async function saveGrades(user, assessmentId, { grades }) {
+/** Blank remarks are no remarks: '' and null compare and store the same. */
+const remarksOf = (value) => value || null;
+
+/** True when the stored grade (or its absence) is what the client saw (`previous.score` null = ungraded). */
+const isAsSeen = (previous, stored) =>
+  previous.score === null
+    ? stored === undefined
+    : stored !== undefined &&
+      stored.score === previous.score &&
+      remarksOf(stored.remarks) === remarksOf(previous.remarks);
+
+/**
+ * Idempotent bulk upsert of the listed students only; the whole batch is rejected when any row is invalid.
+ * When the rows carry `previous` and a stored grade no longer matches it, someone saved meanwhile: 409
+ * sheet_changed and nothing is written.
+ */
+export async function saveGrades(user, assessmentId, { grades: input }) {
   await getManagedAssessment(user, assessmentId); // 404 or 403 before anything is locked
+  const grades = input.map((grade) => ({ ...grade, remarks: remarksOf(grade.remarks) }));
   let previous;
   await withTransaction(async (conn) => {
-    // Checked against the max score as it is now, locked so a concurrent edit cannot lower it under us.
+    // Checked against the max score as it is now, locked so a concurrent edit cannot lower it under us and
+    // other saves of this assessment wait (first statement: the reads below see what they committed).
     const maxScore = await lockMaxScoreForGrading(assessmentId, conn);
     const tooHigh = grades.find((grade) => grade.score > maxScore);
     if (tooHigh) {
@@ -222,6 +239,18 @@ export async function saveGrades(user, assessmentId, { grades }) {
       grades.map((grade) => grade.studentId),
       conn,
     );
+    const changedStudentIds = grades
+      .filter((grade) => grade.previous && !isAsSeen(grade.previous, previous.get(grade.studentId)))
+      .map((grade) => grade.studentId);
+    if (changedStudentIds.length) {
+      throw ApiError.conflict(
+        'someone saved these grades after you opened them; reload to see their changes',
+        {
+          reason: 'sheet_changed',
+          changedStudentIds,
+        },
+      );
+    }
     await repo.upsertGrades(assessmentId, grades, user.id, conn);
   });
   // The max score may have changed since `assessment` was read: build the roster from the current row.
@@ -231,20 +260,27 @@ export async function saveGrades(user, assessmentId, { grades }) {
   return roster;
 }
 
-/** Logs the new and changed scores of a save, with each student's previous score (unchanged rows are left out). */
+/**
+ * Logs the new and changed grades of a save (score or remarks), with each student's previous score; unchanged
+ * rows are left out. Students hear about new grades and changed scores, not about remark edits.
+ */
 async function recordGradeChanges(assessment, roster, grades, previous) {
   const nameOfStudent = new Map(roster.records.map((record) => [record.studentId, nameOf(record)]));
   const changes = grades
     .map((grade) => ({ grade, before: previous.get(grade.studentId) }))
     .filter(
       ({ grade, before }) =>
-        !before || before.score !== grade.score || (before.remarks ?? null) !== (grade.remarks ?? null),
+        !before || before.score !== grade.score || remarksOf(before.remarks) !== grade.remarks,
     )
     .map(({ grade, before }) => ({
       studentId: grade.studentId,
       student: nameOfStudent.get(grade.studentId),
       from: before ? before.score : null,
       to: grade.score,
+      ...(before &&
+        remarksOf(before.remarks) !== grade.remarks && {
+          remarks: { from: remarksOf(before.remarks), to: grade.remarks },
+        }),
     }));
   if (!changes.length) return;
   const added = changes.filter((change) => change.from === null).length;
@@ -256,15 +292,17 @@ async function recordGradeChanges(assessment, roster, grades, previous) {
     details: { assessment: assessment.title, maxScore: assessment.maxScore, changes },
   });
   await notifyStudents(
-    changes.map((change) => ({
-      studentId: change.studentId,
-      type: 'grade',
-      title: `${change.from === null ? 'New grade' : 'Grade updated'}: ${assessment.title}`,
-      body: `${assessment.classSubject.subjectName} · ${change.to} / ${assessment.maxScore}${
-        change.from === null ? '' : ` (was ${change.from})`
-      }`,
-      link: '/student/grades',
-    })),
+    changes
+      .filter((change) => change.from !== change.to)
+      .map((change) => ({
+        studentId: change.studentId,
+        type: 'grade',
+        title: `${change.from === null ? 'New grade' : 'Grade updated'}: ${assessment.title}`,
+        body: `${assessment.classSubject.subjectName} · ${change.to} / ${assessment.maxScore}${
+          change.from === null ? '' : ` (was ${change.from})`
+        }`,
+        link: '/student/grades',
+      })),
   );
 }
 

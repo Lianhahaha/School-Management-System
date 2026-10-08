@@ -106,15 +106,16 @@ export function GradeSheet({ roster, canSave, onReload }) {
 
   const onSubmit = (values) =>
     save
-      .mutateAsync({ assessmentId: assessment.id, grades: toSaveGradesPayload(values) })
+      .mutateAsync({ assessmentId: assessment.id, grades: toSaveGradesPayload(values, records) })
       .then(adopt)
       .catch((error) => {
-        const { studentId } = error.details ?? {};
+        const { studentId, maxScore } = error.details ?? {};
         const index = records.findIndex((record) => record.studentId === studentId);
         if (error.code === ERROR_CODES.VALIDATION_ERROR && index !== -1) {
+          // The server's maximum: it may have been lowered since this sheet was opened.
           setError(`rows.${index}.score`, {
             type: 'server',
-            message: `Score must be between 0 and ${assessment.maxScore}`,
+            message: `Score must be between 0 and ${maxScore ?? assessment.maxScore}`,
           });
           return;
         }
@@ -177,7 +178,8 @@ export function GradeSheet({ roster, canSave, onReload }) {
   }
 
   const stats = summarize(records);
-  const showReload = save.error?.details?.invalidStudentIds;
+  const isStale = save.error?.details?.reason === 'sheet_changed';
+  const showReload = isStale || save.error?.details?.invalidStudentIds;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
@@ -204,7 +206,11 @@ export function GradeSheet({ roster, canSave, onReload }) {
             {!showReload && <FormRootError error={errors.root?.server} />}
             {showReload && (
               <Alert tone="error" role="alert">
-                <p>Students were added to or removed from this class while you were grading.</p>
+                <p>
+                  {isStale
+                    ? 'Someone saved these grades after you opened the sheet. Reload it to see their changes; your unsaved edits are dropped.'
+                    : 'Some students on this sheet have left the class since you opened it. Reload the sheet.'}
+                </p>
                 <Button variant="secondary" size="sm" icon={RefreshCw} onClick={reload} className="mt-2">
                   Reload sheet
                 </Button>

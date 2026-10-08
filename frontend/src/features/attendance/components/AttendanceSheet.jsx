@@ -55,8 +55,10 @@ function lastEditor(records) {
  * The roster of one lesson on one date with a status per student. The draft lives here; nothing is
  * sent until Save, which PUTs every roster row (the sheet is the unit of truth) and then adopts the
  * returned sheet. Mount it with a key of lesson + date so a different sheet starts from scratch.
- * On a school holiday (`sheet.holiday`), or on a weekday the lesson does not meet while nothing is marked yet
- * (`sheet.lessonDays`), the sheet is read-only and says why; the API refuses both.
+ * On a school holiday (`sheet.holiday`) or a weekday the lesson does not meet (`sheet.lessonDays`), while
+ * nothing is marked yet, the sheet is read-only and says why; the API refuses both. Marks taken before such
+ * a day was declared stay correctable. Each save sends the marks the sheet was opened with, so the API
+ * refuses it (409 sheet_changed) when someone saved meanwhile, and the sheet offers a reload.
  *
  * @param {object} props
  * @param {object} props.sheet GET /attendance/sheet data
@@ -66,13 +68,13 @@ function lastEditor(records) {
 export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
   const save = useSaveAttendanceSheet();
   const { me } = useAuth();
-  // Nobody marks a holiday or a day without this lesson: the API refuses both, so the sheet does not offer it.
+  // Nobody marks a holiday or a day without this lesson: the API refuses both, so the sheet does not offer it,
+  // unless the day already has marks (taken before the holiday or timetable change), which stay correctable.
   const weekday = isoWeekdayOf(sheet.date);
-  const isOffDay =
-    sheet.lessonDays.length > 0 &&
-    !sheet.lessonDays.includes(weekday) &&
-    !sheet.records.some((record) => record.attendanceId !== null);
-  const canSave = isOwner && !sheet.holiday && !isOffDay;
+  const hasMarks = sheet.records.some((record) => record.attendanceId !== null);
+  const isOffDay = sheet.lessonDays.length > 0 && !sheet.lessonDays.includes(weekday) && !hasMarks;
+  const isClosedDay = Boolean(sheet.holiday) && !hasMarks;
+  const canSave = isOwner && !isClosedDay && !isOffDay;
   const [saved, setSaved] = useState(sheet);
   const [draft, setDraft] = useState(() => toDraft(sheet.records));
   const [saveError, setSaveError] = useState(null);
@@ -113,10 +115,11 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
       {
         classSubjectId: saved.classSubjectId,
         date: saved.date,
-        records: records.map(({ studentId }) => ({
+        records: records.map(({ studentId, status, remarks }) => ({
           studentId,
           status: draft[studentId].status,
           remarks: draft[studentId].remarks.trim() || null,
+          previous: { status, remarks },
         })),
       },
       { onSuccess: adopt, onError: setSaveError },
@@ -136,7 +139,8 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
   }
 
   const { className, subjectName } = saved.classSubject;
-  const showRootError = saveError?.code === ERROR_CODES.VALIDATION_ERROR;
+  const isStale = saveError?.details?.reason === 'sheet_changed';
+  const showRootError = saveError?.code === ERROR_CODES.VALIDATION_ERROR || isStale;
 
   return (
     <Card
@@ -157,7 +161,7 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
           <span
             title={
               isOwner
-                ? sheet.holiday || isOffDay
+                ? isClosedDay || isOffDay
                   ? `No ${sheet.classSubject.subjectName} period on this day`
                   : undefined
                 : SAVE_BLOCKED_HINT
@@ -177,7 +181,13 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
         </p>
         <p className="text-xs text-gray-500">Unmarked students are saved as Present.</p>
         {sheet.holiday && (
-          <Alert tone="warning">{`No classes on ${formatDate(saved.date)}: ${sheet.holiday.title}. Attendance can't be marked on a day with no classes.`}</Alert>
+          <Alert tone="warning">
+            {`No classes on ${formatDate(saved.date)}: ${sheet.holiday.title}. ${
+              isClosedDay
+                ? "Attendance can't be marked on a day with no classes."
+                : 'These marks were taken before the day was declared a holiday; they can still be corrected.'
+            }`}
+          </Alert>
         )}
         {isOffDay && !sheet.holiday && (
           <Alert tone="warning">
@@ -197,8 +207,12 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
         )}
         {showRootError && (
           <Alert tone="error" role="alert">
-            <p>{saveError.message}</p>
-            {saveError.details?.invalidStudentIds && (
+            <p>
+              {isStale
+                ? 'Someone saved this sheet after you opened it. Reload it to see their marks; your unsaved changes are dropped.'
+                : saveError.message}
+            </p>
+            {(isStale || saveError.details?.invalidStudentIds) && (
               <Button variant="secondary" size="sm" icon={RefreshCw} onClick={reload} className="mt-2">
                 Reload sheet
               </Button>

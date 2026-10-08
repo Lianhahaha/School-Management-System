@@ -1350,8 +1350,14 @@ paths:
         `details.invalidStudentIds`). The date may not be in the future (400, `details.reason = future_date`)
         and must fall within the class's academic year (400, `details.reason = outside_academic_year`, with
         `details.academicYear`). Once the lesson is on the timetable, a date with no marks yet must fall on
-        one of its weekdays (400, `details.reason = no_lesson_on_day`, with `details.lessonDays`); dates that
-        already have marks can always be corrected. The caller becomes `markedBy`.
+        one of its weekdays (400, `details.reason = no_lesson_on_day`, with `details.lessonDays`) and must not
+        be a school holiday (400, `details.reason = school_holiday`); dates that already have marks can always
+        be corrected. The caller becomes `markedBy` of the rows whose status or remarks change; unchanged rows
+        keep their marker.
+
+        Saves of one lesson run one after the other. A record may carry `previous`, the mark the client last
+        saw (status null = not marked). If any stored mark differs from it, someone saved meanwhile: 409 with
+        `details.reason = sheet_changed` and `details.changedStudentIds`, and nothing is written.
         Returns the refreshed sheet. A teacher who is not assigned to the lesson gets
         `403` with `details.reason = not_class_subject_owner`.
       requestBody:
@@ -1377,6 +1383,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /attendance/{id}:
     patch:
       tags: [attendance]
@@ -1655,7 +1662,11 @@ paths:
         out keep their scores. The whole batch is rejected, and nothing is written, when a score exceeds the
         assessment's `maxScore` (400, `details.reason = score_above_max` with `studentId`, `score` and
         `maxScore`) or a student is not on the assessment's roster (400, `details.reason = not_enrolled`,
-        `details.invalidStudentIds`). The caller becomes `gradedBy`. Returns the refreshed roster.
+        `details.invalidStudentIds`). The caller becomes `gradedBy` of the rows whose score or remarks change;
+        unchanged rows keep their grader. Saves of one assessment run one after the other; a row may carry
+        `previous`, the grade the client last saw, and a stored grade that differs answers 409 with
+        `details.reason = sheet_changed` and `details.changedStudentIds` (nothing is written).
+        Returns the refreshed roster.
       parameters:
         - $ref: '#/components/parameters/IdPath'
       requestBody:
@@ -1679,6 +1690,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /announcements:
     get:
       tags: [announcements]
@@ -4464,6 +4476,21 @@ components:
           type: string
           maxLength: 255
           nullable: true
+        previous:
+          type: object
+          additionalProperties: false
+          required: [status, remarks]
+          description: The mark the client last saw; a stored mark that differs answers 409 sheet_changed.
+          properties:
+            status:
+              allOf:
+                - $ref: '#/components/schemas/AttendanceStatus'
+              nullable: true
+              description: null when the student was not marked yet.
+            remarks:
+              type: string
+              maxLength: 255
+              nullable: true
     SaveAttendanceSheetRequest:
       type: object
       additionalProperties: false
@@ -4547,6 +4574,21 @@ components:
           type: string
           maxLength: 255
           nullable: true
+        previous:
+          type: object
+          additionalProperties: false
+          required: [score, remarks]
+          description: The grade the client last saw; a stored grade that differs answers 409 sheet_changed.
+          properties:
+            score:
+              allOf:
+                - $ref: '#/components/schemas/Score'
+              nullable: true
+              description: null when the student was not graded yet.
+            remarks:
+              type: string
+              maxLength: 255
+              nullable: true
     SaveGradesRequest:
       type: object
       additionalProperties: false

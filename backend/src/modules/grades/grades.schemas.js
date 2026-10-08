@@ -25,10 +25,21 @@ export const gradeSummaryQuery = z.strictObject({
   groupBy: z.enum(['classSubject', 'student']).default('classSubject'),
 });
 
-/** `score <= maxScore` depends on the assessment row, so the service checks the upper bound. */
+const remarks = shortText(255);
+
+/**
+ * `score <= maxScore` depends on the assessment row, so the service checks the upper bound. `previous` is
+ * the grade the client last saw for that student (score null = not graded yet); when the stored grade
+ * differs, someone else saved meanwhile and the whole save is refused (409 sheet_changed).
+ */
 export const saveGradesBody = z.strictObject({
   grades: bulkArray(
-    z.strictObject({ studentId: id, score, remarks: shortText(255).nullable().optional() }),
+    z.strictObject({
+      studentId: id,
+      score,
+      remarks: remarks.nullable().optional(),
+      previous: z.strictObject({ score: score.nullable(), remarks: remarks.nullable() }).optional(),
+    }),
     'studentId',
   ),
 });

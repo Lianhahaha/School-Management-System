@@ -154,19 +154,35 @@ async function assertLessonDay(classSubjectId, date, subjectName) {
   );
 }
 
+/** Blank remarks are no remarks: '' and null compare and store the same. */
+const remarksOf = (value) => value || null;
+
+/** True when the stored mark (or its absence) is what the client saw (`previous.status` null = unmarked). */
+const isAsSeen = (previous, stored) =>
+  previous.status === null
+    ? stored === undefined
+    : stored !== undefined &&
+      stored.status === previous.status &&
+      remarksOf(stored.remarks) === remarksOf(previous.remarks);
+
 /**
  * Idempotent upsert of the listed students only; students left out of `records` keep their marks.
- * Not on a future date, outside the class's academic year, on a school holiday or on a weekday the lesson
- * does not meet (400).
+ * Not on a future date, outside the class's academic year, or (unless the date already has marks to correct)
+ * on a school holiday or a weekday the lesson does not meet (400). When the records carry `previous` and a
+ * stored mark no longer matches it, someone saved meanwhile: 409 sheet_changed and nothing is written.
  */
-export async function saveSheet(user, { classSubjectId, date, records }) {
+export async function saveSheet(user, { classSubjectId, date, records: input }) {
   await access.assertCanManageClassSubject(user, classSubjectId);
+  const records = input.map((r) => ({ ...r, remarks: remarksOf(r.remarks) }));
   let previous;
   const classSubject = await getClassSubjectRefUnscoped(classSubjectId); // 404 for an unknown class-subject (admins)
   assertMarkableDate(date, classSubject.academicYear);
-  await assertSchoolDay(date);
+  // Marks taken before a holiday was declared on that day stay correctable, as on a day the lesson left.
+  if (!(await hasMarksOn(classSubjectId, date))) await assertSchoolDay(date);
   await assertLessonDay(classSubjectId, date, classSubject.subjectName);
   await withTransaction(async (conn) => {
+    // First: every read below sees what a save that finished just before this one wrote.
+    await repo.lockClassSubject(classSubjectId, conn);
     const roster = new Set(await repo.findRosterStudentIds(classSubjectId, date, conn));
     const invalidStudentIds = records.map((r) => r.studentId).filter((id) => !roster.has(id));
     if (invalidStudentIds.length) {
@@ -181,6 +197,15 @@ export async function saveSheet(user, { classSubjectId, date, records }) {
       records.map((r) => r.studentId),
       conn,
     );
+    const changedStudentIds = records
+      .filter((r) => r.previous && !isAsSeen(r.previous, previous.get(r.studentId)))
+      .map((r) => r.studentId);
+    if (changedStudentIds.length) {
+      throw ApiError.conflict('someone saved this sheet after you opened it; reload it to see their marks', {
+        reason: 'sheet_changed',
+        changedStudentIds,
+      });
+    }
     await repo.upsertAttendance(classSubjectId, date, records, user.id, conn);
   });
   const sheet = await buildSheet(classSubjectId, date);
@@ -188,20 +213,31 @@ export async function saveSheet(user, { classSubjectId, date, records }) {
   return sheet;
 }
 
+const hasMarksOn = async (classSubjectId, date) =>
+  (await repo.findMarkedClassSubjectIds([classSubjectId], date)).length > 0;
+
 /**
- * Logs a sheet save: how many marks are new or changed, and per student every changed mark and every new
- * mark that is not "present" (who was absent, late or excused is what a later question is about).
+ * Logs a sheet save: how many marks are new or changed (status or remarks), and per student every changed
+ * mark and every new mark that is not "present" (who was absent, late or excused is what a later question is
+ * about). Students hear about new or changed absent and late marks, not about remark edits.
  */
 async function recordSheetChanges(sheet, records, previous) {
   const nameOfStudent = new Map(sheet.records.map((row) => [row.studentId, nameOf(row)]));
   const added = records.filter((r) => !previous.has(r.studentId));
-  const changed = records.filter((r) => previous.has(r.studentId) && previous.get(r.studentId) !== r.status);
+  const changed = records.filter((r) => {
+    const before = previous.get(r.studentId);
+    return before && (before.status !== r.status || remarksOf(before.remarks) !== r.remarks);
+  });
   if (!added.length && !changed.length) return;
   const marks = [...changed, ...added.filter((r) => r.status !== 'present')].map((r) => ({
     studentId: r.studentId,
     student: nameOfStudent.get(r.studentId),
-    from: previous.get(r.studentId) ?? null,
+    from: previous.get(r.studentId)?.status ?? null,
     to: r.status,
+    ...(previous.has(r.studentId) &&
+      remarksOf(previous.get(r.studentId).remarks) !== r.remarks && {
+        remarks: { from: remarksOf(previous.get(r.studentId).remarks), to: r.remarks },
+      }),
   }));
   const { subjectName, className } = sheet.classSubject;
   const parts = [added.length && `${added.length} new`, changed.length && `${changed.length} changed`];
@@ -211,33 +247,43 @@ async function recordSheetChanges(sheet, records, previous) {
     summary: `Marked attendance for ${subjectName} · ${className} on ${formatDayLabel(sheet.date)}: ${parts.filter(Boolean).join(', ')}`,
     details: { date: sheet.date, marks },
   });
-  await notifyAbsences(sheet, marks);
+  await notifyAbsences(
+    sheet,
+    marks.filter((mark) => mark.from !== mark.to),
+  );
 }
 
 export async function updateAttendance(user, id, patch) {
   const existing = ApiError.assertFound(await repo.findAttendanceById(id), 'attendance record', id);
   await access.assertCanManageClassSubject(user, existing.classSubjectId);
-  await repo.updateAttendance(id, { ...patch, markedBy: user.id });
+  const fields = 'remarks' in patch ? { ...patch, remarks: remarksOf(patch.remarks) } : patch;
+  const statusChanged = 'status' in fields && fields.status !== existing.status;
+  const remarksChanged = 'remarks' in fields && fields.remarks !== remarksOf(existing.remarks);
+  // An edit that changes nothing leaves the record (and who marked it) as it is.
+  if (!statusChanged && !remarksChanged) return toAttendanceShape(existing);
+  await repo.updateAttendance(id, { ...fields, markedBy: user.id });
   const updated = toAttendanceShape(await repo.findAttendanceById(id));
-  if (updated.status !== existing.status || updated.remarks !== existing.remarks) {
-    await record({
-      action: 'attendance.update',
-      entityId: updated.classSubjectId,
-      summary: `Changed ${nameOf(updated.student)}'s mark in ${updated.classSubject.subjectName} · ${updated.classSubject.className} on ${formatDayLabel(updated.attendanceDate)} from ${existing.status} to ${updated.status}`,
-      details: {
-        date: updated.attendanceDate,
-        marks: [
-          {
-            studentId: updated.studentId,
-            student: nameOf(updated.student),
-            from: existing.status,
-            to: updated.status,
-          },
-        ],
-      },
-    });
-    await notifyAbsences(updated, [{ studentId: updated.studentId, to: updated.status }]);
-  }
+  const where = `in ${updated.classSubject.subjectName} · ${updated.classSubject.className} on ${formatDayLabel(updated.attendanceDate)}`;
+  await record({
+    action: 'attendance.update',
+    entityId: updated.classSubjectId,
+    summary: statusChanged
+      ? `Changed ${nameOf(updated.student)}'s mark ${where} from ${existing.status} to ${updated.status}`
+      : `Changed the remarks on ${nameOf(updated.student)}'s ${updated.status} mark ${where}`,
+    details: {
+      date: updated.attendanceDate,
+      marks: [
+        {
+          studentId: updated.studentId,
+          student: nameOf(updated.student),
+          from: existing.status,
+          to: updated.status,
+          ...(remarksChanged && { remarks: { from: remarksOf(existing.remarks), to: updated.remarks } }),
+        },
+      ],
+    },
+  });
+  if (statusChanged) await notifyAbsences(updated, [{ studentId: updated.studentId, to: updated.status }]);
   return updated;
 }
 
@@ -257,7 +303,7 @@ function notifyAbsences({ classSubject, date, attendanceDate }, marks) {
 }
 
 export async function deleteAttendance(id) {
-  const existing = await repo.findAttendanceById(id);
+  const existing = ApiError.assertFound(await repo.findAttendanceById(id), 'attendance record', id);
   if (!(await repo.deleteAttendance(id))) throw ApiError.notFound('attendance record', id);
   const mark = toAttendanceShape(existing);
   await record({

@@ -506,3 +506,122 @@ describe('assessments and grades', () => {
     assert.equal(foreign.status, 403);
   });
 });
+
+describe('two people editing one sheet', () => {
+  let school;
+  let quiz;
+  const putSheet = (who, records, classSubjectId = school.csA.id) =>
+    api.put('/api/v1/attendance/sheet').set(as(who)).send({ classSubjectId, date: today, records });
+  const getSheet = async () =>
+    (
+      await api
+        .get(`/api/v1/attendance/sheet?classSubjectId=${school.csA.id}&date=${today}`)
+        .set(as(school.admin))
+    ).body.data;
+  const rowOf = (sheet, student) => sheet.records.find((r) => r.studentId === student.studentId);
+  const putGrades = (who, grades) =>
+    api.put(`/api/v1/assessments/${quiz.id}/grades`).set(as(who)).send({ grades });
+  const lastLog = async (action) =>
+    (
+      await query('SELECT summary, details FROM activity_log WHERE action = ? ORDER BY id DESC LIMIT 1', [
+        action,
+      ])
+    )[0];
+
+  before(async () => {
+    await resetWorld();
+    school = await buildSchool();
+    quiz = (
+      await api
+        .post('/api/v1/assessments')
+        .set(as(school.owner))
+        .send({
+          classSubjectId: school.csA.id,
+          title: 'Shared quiz',
+          type: 'quiz',
+          term: 'term1',
+          maxScore: 20,
+        })
+    ).body.data;
+  });
+
+  it('refuses an attendance save made from an outdated copy, and keeps the other marks', async () => {
+    const unmarked = { status: null, remarks: null };
+    const first = await putSheet(school.admin, [
+      { studentId: school.s1.studentId, status: 'absent', previous: unmarked },
+    ]);
+    assert.equal(first.status, 200);
+    const stale = await putSheet(school.owner, [
+      { studentId: school.s1.studentId, status: 'present', previous: unmarked },
+      { studentId: school.s2.studentId, status: 'present', previous: unmarked },
+    ]);
+    assert.equal(stale.status, 409);
+    assert.equal(stale.body.error.details.reason, 'sheet_changed');
+    assert.deepEqual(stale.body.error.details.changedStudentIds, [school.s1.studentId]);
+    const sheet = await getSheet();
+    assert.equal(rowOf(sheet, school.s1).status, 'absent');
+    assert.equal(rowOf(sheet, school.s2).status, null, 'nothing of the refused save was written');
+  });
+
+  it('keeps who marked the rows a later save of the whole sheet did not change', async () => {
+    const res = await putSheet(school.owner, [
+      { studentId: school.s1.studentId, status: 'absent', previous: { status: 'absent', remarks: null } },
+      { studentId: school.s2.studentId, status: 'late', previous: { status: null, remarks: null } },
+    ]);
+    assert.equal(res.status, 200);
+    assert.equal(rowOf(res.body.data, school.s1).markedBy.id, school.admin.id);
+    assert.equal(rowOf(res.body.data, school.s2).markedBy.id, school.owner.id);
+  });
+
+  it('logs a change of remarks alone, without notifying the student again', async () => {
+    const notesBefore = (await query('SELECT COUNT(*) AS n FROM notifications'))[0].n;
+    const res = await putSheet(school.owner, [
+      {
+        studentId: school.s2.studentId,
+        status: 'late',
+        remarks: 'bus',
+        previous: { status: 'late', remarks: '' },
+      },
+    ]);
+    assert.equal(res.status, 200);
+    const log = await lastLog('attendance.save');
+    assert.match(log.summary, /1 changed/);
+    assert.deepEqual(log.details.marks[0].remarks, { from: null, to: 'bus' });
+    assert.equal((await query('SELECT COUNT(*) AS n FROM notifications'))[0].n, notesBefore);
+  });
+
+  it('refuses a grade save made from an outdated copy', async () => {
+    const first = await putGrades(school.admin, [
+      { studentId: school.s1.studentId, score: 12, previous: { score: null, remarks: null } },
+    ]);
+    assert.equal(first.status, 200);
+    const stale = await putGrades(school.owner, [
+      { studentId: school.s1.studentId, score: 19, previous: { score: null, remarks: null } },
+    ]);
+    assert.equal(stale.status, 409);
+    assert.equal(stale.body.error.details.reason, 'sheet_changed');
+    const fresh = await putGrades(school.owner, [
+      { studentId: school.s1.studentId, score: 19, previous: { score: 12, remarks: null } },
+    ]);
+    assert.equal(fresh.status, 200);
+  });
+
+  it('keeps marks taken before a holiday was declared correctable, but opens no new sheet that day', async () => {
+    const holiday = await api
+      .post('/api/v1/calendar-events')
+      .set(as(school.admin))
+      .send({ title: 'Typhoon', type: 'holiday', startsOn: today });
+    assert.equal(holiday.status, 201);
+    const correction = await putSheet(school.owner, [
+      { studentId: school.s1.studentId, status: 'excused', previous: { status: 'absent', remarks: null } },
+    ]);
+    assert.equal(correction.status, 200);
+    const fresh = await putSheet(
+      school.other,
+      [{ studentId: school.s1.studentId, status: 'present' }],
+      school.csB.id,
+    );
+    assert.equal(fresh.status, 400);
+    assert.equal(fresh.body.error.details.reason, 'school_holiday');
+  });
+});

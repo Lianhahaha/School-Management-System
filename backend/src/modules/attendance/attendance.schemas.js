@@ -42,11 +42,21 @@ export const summaryQuery = z
 
 export const sheetQuery = z.strictObject({ classSubjectId: id, date: dateStr });
 
+/**
+ * `previous` is the mark the client last saw for that student (status null = not marked yet). When it is
+ * sent and the stored mark differs, someone else saved meanwhile and the whole save is refused (409
+ * sheet_changed) instead of silently overwriting their marks.
+ */
 export const saveSheetBody = z.strictObject({
   classSubjectId: id,
   date: dateStr,
   records: bulkArray(
-    z.strictObject({ studentId: id, status, remarks: remarks.nullable().optional() }),
+    z.strictObject({
+      studentId: id,
+      status,
+      remarks: remarks.nullable().optional(),
+      previous: z.strictObject({ status: status.nullable(), remarks: remarks.nullable() }).optional(),
+    }),
     'studentId',
   ),
 });

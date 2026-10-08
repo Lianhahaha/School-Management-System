@@ -133,27 +133,44 @@ export async function findRosterStudentIds(classSubjectId, date, conn) {
   return (await query(roster.sql, roster.params, conn)).map((row) => row.studentId);
 }
 
-/** Idempotent bulk upsert on UNIQUE(student, class-subject, date). Needs MySQL >= 8.0.19 (row alias). */
+/**
+ * Locks the lesson's row until `conn`'s transaction ends, so saves of its sheets run one after the other:
+ * each one reads the marks the previous one committed. Take it before any other read of the transaction.
+ */
+export async function lockClassSubject(classSubjectId, conn) {
+  await query('SELECT id FROM class_subjects WHERE id = ? FOR UPDATE', [classSubjectId], conn);
+}
+
+/**
+ * Idempotent bulk upsert on UNIQUE(student, class-subject, date). A row whose status and remarks are
+ * unchanged keeps its marker, so re-saving the whole sheet to fix one mark does not make the saver "marked
+ * by" for everyone. `marked_by` is assigned first on purpose: MySQL applies the assignments left to right,
+ * so it still compares the old values. Needs MySQL >= 8.0.19 (row alias).
+ */
 export async function upsertAttendance(classSubjectId, date, records, markedBy, conn) {
   const rows = records.map((r) => [r.studentId, classSubjectId, date, r.status, markedBy, r.remarks ?? null]);
   await run(
     `INSERT INTO attendance (student_id, class_subject_id, attendance_date, status, marked_by, remarks)
      VALUES ? AS new
-     ON DUPLICATE KEY UPDATE status = new.status, marked_by = new.marked_by, remarks = new.remarks`,
+     ON DUPLICATE KEY UPDATE
+       marked_by = IF(attendance.status <=> new.status AND attendance.remarks <=> new.remarks,
+                      attendance.marked_by, new.marked_by),
+       status = new.status,
+       remarks = new.remarks`,
     [rows],
     conn,
   );
 }
 
-/** Map studentId -> status of these students' marks for one lesson and date (before a save). */
+/** Map studentId -> `{ status, remarks }` of these students' marks for one lesson and date (before a save). */
 export async function findMarksOf(classSubjectId, date, studentIds, conn) {
   const rows = await query(
-    `SELECT student_id, status FROM attendance
+    `SELECT student_id, status, remarks FROM attendance
       WHERE class_subject_id = ? AND attendance_date = ? AND student_id IN (?)`,
     [classSubjectId, date, studentIds],
     conn,
   );
-  return new Map(rows.map((row) => [row.studentId, row.status]));
+  return new Map(rows.map((row) => [row.studentId, { status: row.status, remarks: row.remarks }]));
 }
 
 const PATCH_COLUMNS = { status: 'status', remarks: 'remarks', markedBy: 'marked_by' };

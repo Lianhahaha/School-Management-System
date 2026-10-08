@@ -35,7 +35,9 @@ export function isInlineFormError(error) {
   return (
     error.code === ERROR_CODES.VALIDATION_ERROR ||
     error.code === ERROR_CODES.SCHEDULE_CONFLICT ||
-    isMappedUniqueKey(error)
+    isMappedUniqueKey(error) ||
+    // An attendance or grade sheet that someone else saved meanwhile: the sheet offers a reload.
+    error.details?.reason === 'sheet_changed'
   );
 }
 

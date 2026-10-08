@@ -105,16 +105,13 @@ export async function updateAssessment(id, fields, conn) {
 }
 
 /**
- * Inside `conn`'s transaction: the assessment's max score, read with a lock. `share` (saving grades) lets
- * several grade saves run together; `update` (changing the max score) waits for them and blocks new ones,
- * so a score is never checked against a maximum that is being lowered at the same time.
- * Returns null when the assessment does not exist.
- *
- * @param {'share'|'update'} mode
+ * Inside `conn`'s transaction: the assessment's max score, read with an exclusive lock held until the
+ * transaction ends. Grade saves of one assessment and changes of its max score therefore run one after
+ * the other: a score is never checked against a maximum that is being lowered at the same time, and each
+ * save reads the grades the previous one committed. Returns null when the assessment does not exist.
  */
-export async function lockMaxScore(id, mode, conn) {
-  const lock = mode === 'update' ? 'FOR UPDATE' : 'FOR SHARE';
-  const rows = await query(`SELECT max_score FROM assessments WHERE id = ? ${lock}`, [id], conn);
+export async function lockMaxScore(id, conn) {
+  const rows = await query('SELECT max_score FROM assessments WHERE id = ? FOR UPDATE', [id], conn);
   return rows[0]?.maxScore ?? null;
 }
 
@@ -128,8 +125,13 @@ export async function findHighestScore(id, conn) {
   return rows[0].highest;
 }
 
-/** Deletes the assessment together with its grades (the grades FK is RESTRICT, so they go first). */
+/**
+ * Deletes the assessment together with its grades (the grades FK is RESTRICT, so they go first). The
+ * assessment row is locked before the grades, in the same order as a grade save, so the two wait for
+ * each other instead of deadlocking.
+ */
 export async function deleteAssessmentWithGrades(id, conn) {
+  await lockMaxScore(id, conn);
   await run('DELETE FROM grades WHERE assessment_id = ?', [id], conn);
   return (await run('DELETE FROM assessments WHERE id = ?', [id], conn)).affectedRows;
 }
