@@ -39,6 +39,14 @@ export async function classHasDependents(id) {
   return rows.length > 0;
 }
 
+/** Every class (section) of one grade level in one academic year, by name. */
+export function findClassesOfGrade(academicYear, gradeLevel) {
+  return query(`SELECT ${COLUMNS} ${FROM} WHERE c.academic_year = ? AND c.grade_level = ? ORDER BY c.name`, [
+    academicYear,
+    gradeLevel,
+  ]);
+}
+
 /** @param {{ sql: string, params: unknown[] } | null} scope class scope on c.id (null = every class) */
 export function listClasses(listQuery, scope = null) {
   const where = new WhereBuilder()

@@ -1116,6 +1116,55 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /enrollments/next-class:
+    get:
+      tags: [enrollments]
+      operationId: getMyNextClass
+      summary: Where the signed-in student stands for next year
+      description: |
+        Roles: student.
+
+        Judged on the school year of the student's last `completed` enrollment, with DepEd promotion rules:
+        every subject 75 or above is `promoted` (next grade level), 1 or 2 subjects below 75 is `remedial` (an
+        admin places the student after remedial classes), 3 or more is `retained` (same grade level again).
+        `enrolled` when the student has a class; `needs_placement` when there is no completed year, no grades in
+        it, or the next year has already passed; `finished` after passing the highest grade level. For
+        `promoted` and `retained`, `classes` lists the sections of `gradeLevel` in `academicYear` (the year after
+        the completed one) the student may pick; it is empty until the school creates them.
+      responses:
+        '200': { $ref: '#/components/responses/NextClassStandingResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [enrollments]
+      operationId: enrollMyself
+      summary: Enroll the signed-in student in an offered section
+      description: |
+        Roles: student.
+
+        The standing of `GET /enrollments/next-class` is worked out again: 409 with `details.reason =
+        not_eligible` (and `details.standing`) unless it is `promoted` or `retained`; 400 `class_not_offered`
+        when `classId` is not one of its `classes`. Otherwise this is `POST /enrollments` for the caller (same
+        checks, notifications and activity entry). Returns the new enrollment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [classId]
+              properties:
+                classId:
+                  $ref: '#/components/schemas/Id'
+            example:
+              classId: 7
+      responses:
+        '201': { $ref: '#/components/responses/EnrollmentResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /enrollments/{id}:
     get:
       tags: [enrollments]
@@ -2826,6 +2875,49 @@ components:
               $ref: '#/components/schemas/Timestamp'
             updatedAt:
               $ref: '#/components/schemas/Timestamp'
+    NextClassStanding:
+      type: object
+      required: [status, lastClass, generalAverage, failedSubjects, gradeLevel, academicYear, classes]
+      properties:
+        status:
+          type: string
+          enum: [enrolled, needs_placement, promoted, remedial, retained, finished]
+        lastClass:
+          description: The current class (`enrolled`) or the last completed one; null when there is none.
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/ClassRef'
+        generalAverage:
+          type: number
+          nullable: true
+          example: 86.5
+        failedSubjects:
+          description: Subjects of the completed year below 75.
+          type: array
+          items:
+            type: object
+            required: [subjectId, subjectName, percentage]
+            properties:
+              subjectId:
+                $ref: '#/components/schemas/Id'
+              subjectName:
+                type: string
+              percentage:
+                type: number
+        gradeLevel:
+          description: The grade level the student may enroll in (`promoted`, `retained`), else null.
+          type: integer
+          nullable: true
+          example: 5
+        academicYear:
+          description: The school year of that enrollment, else null.
+          type: string
+          nullable: true
+          example: '2026-2027'
+        classes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Class'
     Enrollment:
       type: object
       required: [id, studentId, student, classId, class, status, enrolledOn, leftOn, createdAt, updatedAt]
@@ -3289,7 +3381,7 @@ components:
         academicYear:
           type: string
           description: Present with `groupBy=classSubject`; rows are ordered newest year first.
-          example: 2026-2027
+          example: '2026-2027'
         label:
           type: string
           description: Student name, or class and subject name.
@@ -5242,6 +5334,16 @@ components:
             allOf:
               - $ref: '#/components/schemas/Envelope'
               - { type: object, properties: { data: { $ref: '#/components/schemas/Enrollment' } } }
+    NextClassStandingResponse:
+      description: Where the student stands for next year.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/NextClassStanding' } } }
     EnrollmentListResponse:
       description: A page of enrollment records.
       headers:

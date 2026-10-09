@@ -18,6 +18,9 @@ export const enrollBody = z.strictObject({ studentId: id, classId: id });
 
 export const enrollManyBody = z.strictObject({ classId: id, studentIds: idList });
 
+/** A student enrolling themselves picks only the section; the student is the caller. */
+export const nextClassBody = z.strictObject({ classId: id });
+
 export const transferBody = z.strictObject({ studentId: id, classId: id });
 
 /** End of a school year: close these students' enrollments in `classId`, optionally enroll them in `nextClassId`. */

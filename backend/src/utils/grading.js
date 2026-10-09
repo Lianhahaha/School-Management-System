@@ -122,10 +122,27 @@ export function averageOf(percentages) {
  * @param {Array<{ subjectId: number, academicYear: string, percentage: number | null }>} results
  */
 export function generalAverageOf(results) {
+  return averageOf(subjectYearResults(results).map((result) => result.percentage));
+}
+
+/**
+ * One result per subject and academic year: the class-subject results of a subject in several classes of a
+ * year (a student who changed class) averaged. The general average and the promotion check both use it.
+ * @param {Array<{ subjectId: number, subjectName?: string, academicYear: string, percentage: number | null }>} results
+ * @returns {Array<{ subjectId: number, subjectName?: string, academicYear: string, percentage: number | null }>}
+ */
+export function subjectYearResults(results) {
   const bySubject = new Map();
   for (const result of results) {
     const key = `${result.subjectId}:${result.academicYear}`;
-    bySubject.set(key, [...(bySubject.get(key) ?? []), result.percentage]);
+    const entry = bySubject.get(key) ?? { ...result, percentages: [] };
+    entry.percentages.push(result.percentage);
+    bySubject.set(key, entry);
   }
-  return averageOf([...bySubject.values()].map(averageOf));
+  return [...bySubject.values()].map(({ subjectId, subjectName, academicYear, percentages }) => ({
+    subjectId,
+    subjectName,
+    academicYear,
+    percentage: averageOf(percentages),
+  }));
 }

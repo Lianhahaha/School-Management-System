@@ -50,6 +50,27 @@ export const COMPONENT_OF_TYPE = Object.freeze({
 /** The lowest passing grade (the transmuted 60-100 scale; also the at-risk line). */
 export const PASSING_GRADE = 75;
 
+/**
+ * Where a student without a class stands for next year (DepEd promotion rules, GET /enrollments/next-class):
+ * enrolled (has a class), needs_placement (no finished year to judge: an admin places them), promoted (every
+ * subject passed: next grade level), remedial (1 or 2 subjects failed: an admin places them after remedial
+ * classes), retained (3 or more failed: same grade level again), finished (passed the highest grade level).
+ */
+export const NEXT_CLASS_STANDINGS = Object.freeze([
+  'enrolled',
+  'needs_placement',
+  'promoted',
+  'remedial',
+  'retained',
+  'finished',
+]);
+
+/** Failed subjects up to this many mean remedial classes; more mean repeating the grade level. */
+export const REMEDIAL_MAX_FAILED = 2;
+
+/** The highest grade level (classes run from 1 to 12). */
+export const HIGHEST_GRADE_LEVEL = 12;
+
 export const TERMS = Object.freeze(['term1', 'term2', 'term3']);
 
 export const ANNOUNCEMENT_AUDIENCES = Object.freeze(['all', 'students', 'teachers']);

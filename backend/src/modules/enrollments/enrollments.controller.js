@@ -25,6 +25,14 @@ export async function completeYear(req, res) {
   ok(res, await service.completeYear(req.validated.body));
 }
 
+export async function myNextClass(req, res) {
+  ok(res, await service.myNextClass(req.user));
+}
+
+export async function enrollMyself(req, res) {
+  ok(res, await service.enrollMyself(req.user, req.validated.body), { status: 201 });
+}
+
 export async function setStatus(req, res) {
   ok(res, await service.setStatus(req.validated.params.id, req.validated.body.status));
 }

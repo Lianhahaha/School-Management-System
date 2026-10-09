@@ -38,6 +38,17 @@ export async function findEnrollmentsByIds(ids, conn) {
 export const findActiveByStudent = (studentId, conn) =>
   findOne(`e.student_id = ? AND e.status = 'active'`, [studentId], conn);
 
+/** The student's most recently closed enrollment (completed, transferred or withdrawn), or null. */
+export async function findLastClosedByStudent(studentId, conn) {
+  const rows = await query(
+    `SELECT ${COLUMNS} ${FROM} WHERE e.student_id = ? AND e.status <> 'active'
+     ORDER BY e.left_on DESC, e.id DESC LIMIT 1`,
+    [studentId],
+    conn,
+  );
+  return rows[0] ?? null;
+}
+
 export function listEnrollments(listQuery, scope) {
   const where = new WhereBuilder()
     .addIf(listQuery.studentId, 'e.student_id = ?')

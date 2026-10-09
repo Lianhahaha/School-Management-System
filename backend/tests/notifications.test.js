@@ -119,7 +119,9 @@ describe('notifications', () => {
     assert.equal(res.status, 201, JSON.stringify(res.body));
     assert.equal((await noteOf(school.admin)).isRead, true);
     assert.equal((await noteOf(otherAdmin)).isRead, true, 'an admin who did not enroll them is done too');
-    const firstSignUp = (await mine(school.admin)).find((note) => note.title === 'New student sign-up: Sign Up');
+    const firstSignUp = (await mine(school.admin)).find(
+      (note) => note.title === 'New student sign-up: Sign Up',
+    );
     assert.equal(firstSignUp.isRead, false, 'other sign-ups stay unread');
   });
 

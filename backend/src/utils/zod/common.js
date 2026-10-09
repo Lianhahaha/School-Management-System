@@ -8,6 +8,7 @@ import {
   BULK_MAX_ROWS,
   DATE_REGEX,
   EMPLOYEE_NUMBER_REGEX,
+  HIGHEST_GRADE_LEVEL,
   PAGINATION,
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
@@ -113,7 +114,7 @@ export const subjectCode = z.string().trim().toUpperCase().regex(SUBJECT_CODE_RE
   error: 'expected 2-20 characters: letters, digits or dashes',
 });
 
-export const gradeLevel = z.coerce.number().int().min(1).max(12);
+export const gradeLevel = z.coerce.number().int().min(1).max(HIGHEST_GRADE_LEVEL);
 
 export const dayOfWeek = z.coerce.number().int().min(1).max(7);
 

@@ -66,6 +66,12 @@ export function currentAcademicYear(now = new Date()) {
   return academicYearOf(todayYmd(now));
 }
 
+/** The academic year after the given label: '2025-2026' -> '2026-2027'. */
+export function nextAcademicYear(label) {
+  const start = Number(label.slice(0, 4)) + 1;
+  return `${start}-${start + 1}`;
+}
+
 /** First day ('YYYY-MM-DD') of the given academic year label, e.g. '2026-2027' -> '2026-08-01'. */
 export function academicYearStart(label) {
   const start = Number(label.slice(0, 4));
