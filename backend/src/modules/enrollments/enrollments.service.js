@@ -12,7 +12,7 @@ import { currentAcademicYear, todayYmd } from '../../utils/dates.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import * as access from '../access/access.service.js';
 import { nameOf, record } from '../activity/activity.service.js';
-import { notifyStudents } from '../notifications/notifications.service.js';
+import { notifyStudents, resolveSignups } from '../notifications/notifications.service.js';
 import { assertEnrollableClass, findReferencedClass } from '../classes/classes.service.js';
 import * as repo from './enrollments.repository.js';
 
@@ -155,6 +155,7 @@ async function announceEnrollments(enrollments) {
       enrollmentNote(enrollment, `You are enrolled in ${className}`, academicYear),
     ),
   );
+  await resolveSignups(enrollments.map((enrollment) => enrollment.student.id));
 }
 
 export async function enroll({ studentId, classId }) {

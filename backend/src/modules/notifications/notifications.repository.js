@@ -47,6 +47,14 @@ export async function markRead(userId, ids) {
     .affectedRows;
 }
 
+/** Marks every recipient's unread notifications of `type` that open one of `links` read. */
+export async function markReadByLink(type, links) {
+  await run(
+    'UPDATE notifications SET read_at = UTC_TIMESTAMP() WHERE type = ? AND link IN (?) AND read_at IS NULL',
+    [type, links],
+  );
+}
+
 export async function deleteForUser(userId, conn) {
   await run('DELETE FROM notifications WHERE user_id = ?', [userId], conn);
 }

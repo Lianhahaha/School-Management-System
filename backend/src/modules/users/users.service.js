@@ -187,7 +187,7 @@ export async function createUserAccount(input, { trusted, firebaseUid }) {
       type: 'signup',
       title: `New student sign-up: ${nameOf(account)}`,
       body: `${email} · needs a class`,
-      link: `/admin/students/${account.studentId}`,
+      link: notifications.signupLink(account.studentId),
     });
   }
   return account;

@@ -5,7 +5,8 @@
  *
  *   student   a grade recorded or changed, an absence or late mark, a new class
  *   teacher   a lesson to teach, a homeroom class
- *   admin     a student signed up on their own and needs a class
+ *   admin     a student signed up on their own and needs a class (marked read for every admin once the
+ *             student is enrolled, since nothing is left to do)
  */
 import { logger } from '../../utils/logger.js';
 import { currentUser } from '../../utils/requestContext.js';
@@ -59,6 +60,18 @@ export async function notifyAdmins(note) {
     await notify((await repo.findActiveAdminIds()).map((userId) => ({ ...note, userId })));
   } catch (error) {
     logger.error('could not write notifications', { error: String(error) });
+  }
+}
+
+/** The page a sign-up notification opens: the new student's record. */
+export const signupLink = (studentId) => `/admin/students/${studentId}`;
+
+/** The students now have a class: their "needs a class" sign-up notes are done for every admin. Never throws. */
+export async function resolveSignups(studentIds) {
+  try {
+    await repo.markReadByLink('signup', studentIds.map(signupLink));
+  } catch (error) {
+    logger.error('could not mark sign-up notifications read', { error: String(error) });
   }
 }
 

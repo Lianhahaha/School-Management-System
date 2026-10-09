@@ -97,6 +97,30 @@ describe('notifications', () => {
     const [note] = await mine(school.admin);
     assert.equal(note.type, 'signup');
     assert.equal(note.link, `/admin/students/${signUp.body.data.studentId}`);
+    assert.equal(note.isRead, false);
+  });
+
+  it('marks a sign-up note read for every admin once the student has a class', async () => {
+    const otherAdmin = await makeUser('admin');
+    const signUp = await api.post('/api/v1/auth/register').send({
+      email: 'needs.class@school.test',
+      password: 'Password123!',
+      firstName: 'Needs',
+      lastName: 'Class',
+    });
+    const link = `/admin/students/${signUp.body.data.studentId}`;
+    const noteOf = async (who) => (await mine(who)).find((note) => note.link === link);
+    assert.equal((await noteOf(otherAdmin)).isRead, false);
+
+    const res = await api
+      .post('/api/v1/enrollments')
+      .set(as(school.admin))
+      .send({ studentId: signUp.body.data.studentId, classId: school.classB.id });
+    assert.equal(res.status, 201, JSON.stringify(res.body));
+    assert.equal((await noteOf(school.admin)).isRead, true);
+    assert.equal((await noteOf(otherAdmin)).isRead, true, 'an admin who did not enroll them is done too');
+    const firstSignUp = (await mine(school.admin)).find((note) => note.title === 'New student sign-up: Sign Up');
+    assert.equal(firstSignUp.isRead, false, 'other sign-ups stay unread');
   });
 
   it('counts unread ones and marks them read, only the caller own', async () => {
