@@ -189,6 +189,8 @@ export const ACTIVITY_AREA_OPTIONS = optionsOf(ACTIVITY_AREAS, ACTIVITY_AREA_LAB
 /** Holidays mean no classes (attendance cannot be marked); events are informational. */
 export const CALENDAR_EVENT_TYPE_LABELS = Object.freeze({ holiday: 'No classes', event: 'School event' });
 export const CALENDAR_EVENT_TYPE_TONES = Object.freeze({ holiday: 'amber', event: 'blue' });
+/** The small solid square that marks an entry's kind on calendar and timetable chips (the text stays ink). */
+export const CALENDAR_EVENT_TYPE_MARKS = Object.freeze({ holiday: 'bg-solid-amber', event: 'bg-gray-900' });
 export const CALENDAR_EVENT_TYPE_OPTIONS = optionsOf(CALENDAR_EVENT_TYPES, CALENDAR_EVENT_TYPE_LABELS);
 
 /** ISO weekdays, Monday = 1. */

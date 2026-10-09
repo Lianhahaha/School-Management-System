@@ -1,9 +1,8 @@
 import { Plus } from 'lucide-react';
 import {
   CALENDAR_EVENT_TYPE_LABELS,
-  CALENDAR_EVENT_TYPE_TONES,
+  CALENDAR_EVENT_TYPE_MARKS,
   DAY_SHORT_LABELS,
-  TONE_SOFT_CLASSES,
 } from '../../../constants/ui';
 import { cx } from '../../../utils/cx';
 import { formatDate, todayYmd } from '../../../utils/date';
@@ -12,32 +11,42 @@ import { coversDay, monthGridDays } from '../dates';
 /** Entries shown inside one day; the rest are counted ("+2 more"). */
 const MAX_PER_DAY = 2;
 
-/** One entry inside a day: a tinted chip; a button for admins (opens the entry), plain text otherwise. */
+/**
+ * One entry inside a day: a light box with the title in bold ink and a small solid square for its kind; a
+ * button for admins (opens the entry), plain text otherwise.
+ */
 function EventChip({ event, onSelect }) {
-  const classes = cx(
-    'block w-full truncate rounded-md px-1.5 py-0.5 text-left text-xs font-medium',
-    TONE_SOFT_CLASSES[CALENDAR_EVENT_TYPE_TONES[event.type]],
-  );
+  const classes =
+    'flex w-full items-center gap-1.5 rounded-md bg-surface px-1.5 py-0.5 text-left text-xs font-semibold text-gray-900 ring-1 ring-gray-300 ring-inset';
   const name = `${event.title}, ${CALENDAR_EVENT_TYPE_LABELS[event.type]}`;
+  const content = (
+    <>
+      <span
+        aria-hidden="true"
+        className={cx('size-2 shrink-0 rounded-[2px]', CALENDAR_EVENT_TYPE_MARKS[event.type])}
+      />
+      <span className="truncate">{event.title}</span>
+    </>
+  );
   return onSelect ? (
     <button
       type="button"
       onClick={() => onSelect(event)}
-      className={cx(classes, 'hover:opacity-80')}
+      className={cx(classes, 'hover:bg-gray-50')}
       aria-label={`Edit ${name}`}
     >
-      {event.title}
+      {content}
     </button>
   ) : (
     <span className={classes} title={name}>
-      {event.title}
+      {content}
     </span>
   );
 }
 
 /**
- * The month as a table of weeks (Monday first) with each day's entries as tinted chips: amber for no
- * classes, blue for events. Days outside the month are faded; today is ringed. Admins get a button per day
+ * The month as a table of weeks (Monday first) with each day's entries as chips in bold ink, marked by a
+ * small square: amber for no classes, ink for events. Days outside the month are faded; today is ringed. Admins get a button per day
  * that adds an entry on it, and every chip opens its entry.
  *
  * @param {object} props

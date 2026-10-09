@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import {
   CALENDAR_EVENT_TYPE_LABELS,
-  CALENDAR_EVENT_TYPE_TONES,
+  CALENDAR_EVENT_TYPE_MARKS,
   SUBJECT_TAG_CLASSES,
-  TONE_SOFT_CLASSES,
 } from '../../../constants/ui';
 import { cx } from '../../../utils/cx';
 import { formatTimeRange, todayIsoWeekday } from '../../../utils/date';
@@ -144,11 +143,12 @@ export function WeeklyTimetable({
               {notes.map((note) => (
                 <p
                   key={note.id}
-                  className={cx(
-                    'mb-2 rounded-xl px-2.5 py-1.5 text-xs font-medium',
-                    TONE_SOFT_CLASSES[CALENDAR_EVENT_TYPE_TONES[note.type]],
-                  )}
+                  className="mb-2 flex items-center gap-2 rounded-tile bg-gray-100 px-2.5 py-1.5 text-xs font-semibold text-gray-900"
                 >
+                  <span
+                    aria-hidden="true"
+                    className={cx('size-2 shrink-0 rounded-[2px]', CALENDAR_EVENT_TYPE_MARKS[note.type])}
+                  />
                   {note.type === 'holiday'
                     ? `${CALENDAR_EVENT_TYPE_LABELS.holiday} · ${note.title}`
                     : note.title}
