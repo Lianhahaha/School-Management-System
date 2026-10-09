@@ -31,5 +31,17 @@ export const transferStudent = ({ studentId, classId }) =>
 export const completeSchoolYear = ({ classId, studentIds, nextClassId }) =>
   api.post('/enrollments/complete', { classId, studentIds, nextClassId }).then(toData);
 
+/**
+ * Student only. Where the signed-in student stands for next year (DepEd promotion rules): { status, lastClass,
+ * generalAverage, failedSubjects, gradeLevel, academicYear, classes }; status is one of NEXT_CLASS_STANDINGS.
+ */
+export const getNextClass = () => api.get('/enrollments/next-class').then(toData);
+
+/**
+ * Student only. Enrolls the signed-in student in one of the offered sections. 409 `not_eligible` when the
+ * standing does not allow it, 400 `class_not_offered` for another class.
+ */
+export const enrollMyself = (classId) => api.post('/enrollments/next-class', { classId }).then(toData);
+
 /** Admin only. Closes an active enrollment: status is 'completed' or 'withdrawn'. */
 export const setEnrollmentStatus = (id, status) => api.patch(`/enrollments/${id}`, { status }).then(toData);

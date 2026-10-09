@@ -25,7 +25,7 @@ Skole can be installed like an app: on Android, Chrome or Edge use the browser's
 | Firebase Authentication | Sign in / sign up / forgot password; the API verifies the Firebase ID token on every request |
 | MySQL database | 17 tables with foreign keys, unique keys and checks: [backend/database/schema.sql](backend/database/schema.sql) |
 | Backend REST API | 74 endpoints under `/api/v1`, one JSON envelope, one error catalogue |
-| Student enrollment and profiles | Admin → Students (enroll, transfer, profile, history); students edit their own contact details; at the end of a school year, Admin → Classes → a class → Students → **End of school year** closes the year for all or some students and enrolls them in next year's class in one step |
+| Student enrollment and profiles | Admin → Students (enroll, transfer, profile, history); students edit their own contact details; at the end of a school year, Admin → Classes → a class → Students → **End of school year** closes the year for all or some students and enrolls them in next year's class in one step; after that a student enrolls themselves from their dashboard in a section of the next grade level if they passed every subject, of the same grade level if they failed three or more, and waits for the school office after remedial classes if they failed one or two (DepEd promotion rules) |
 | Subjects and class management | Admin → Subjects, Classes |
 | Teacher assignment | Class detail → Subjects & Teachers |
 | Attendance tracking | Teachers mark the students of each lesson, day by day; students see their own percentage, one school year at a time (earlier years too); a week-by-week rate chart for each class, lesson and student |
@@ -126,7 +126,7 @@ Password for every account: `Password123!` (change it with `SEED_PASSWORD` in `b
 | `student4@school.test` | Grace Kim | Student in Grade 10 - A who was transferred in from 10 - B (enrollment history) |
 | `student5@school.test` | Hiro Tanaka | Student in Grade 10 - B |
 
-`student1` to `student8` and `teacher1` to `teacher3` all exist; the full list is in [backend/scripts/seed.js](backend/scripts/seed.js). A new student can also register at `/register`; the account is a student and starts without a class until an admin enrolls it.
+`student1` to `student8` and `teacher1` to `teacher3` all exist; the full list is in [backend/scripts/seed.js](backend/scripts/seed.js). A new student can also register at `/register`; the account is a student and starts without a class until an admin enrolls it (self-enrollment starts from their second school year, once there is a finished year to judge).
 
 ## Trying the API
 
@@ -187,6 +187,7 @@ These are deliberate choices, not oversights. The reasons are in [docs/PROJECT_P
 - **Grading rules belong to a subject, not to a year.** Changing the method, the group or a weight recalculates the subject's results in every year, past ones too, and the subject form says so. An assessment type with nothing graded yet is left out and the other weights are scaled up, so an ungraded exam neither helps nor hurts a result in the middle of a term.
 - **Past academic years stay editable** by the lesson's teacher and by admins, for late corrections. Every change is in the activity log with the previous value. A date must fall inside the class's academic year.
 - **Semesters are names, not new data.** The API and the database keep the terms `term1`, `term2` and `term3`; the app shows them as 1st Semester, 2nd Semester and Summer.
+- **Students only enroll themselves into what their last finished year allows.** The server works out the standing again on every self-enrollment, so a student cannot pick another grade level or a section that was not offered. A student with no finished year, no grades in it, or 1–2 failed subjects is placed by the school office.
 - **End of school year closes enrollments on the day it runs.** Run it after the last school day: from that day the students leave the class's attendance and grade sheets (earlier days stay editable) and appear in next year's class. A completed enrollment cannot be reopened, so the action is refused for a year that has not started.
 - **Two people editing one sheet do not overwrite each other.** When an attendance or grade sheet changed since it was loaded, the second save is refused (409 `sheet_changed`) and the page offers a reload.
 - **Imported students get a random temporary password each**, shown once in a file to download; nothing in the request sets a shared password.

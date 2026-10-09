@@ -13,6 +13,7 @@ import { formatDate } from '../../../utils/date';
 import { fullName } from '../../../utils/names';
 import { useAuth } from '../../auth/hooks';
 import { useClassSubjects } from '../../classSubjects/hooks';
+import { NextClassStep } from '../../enrollments/components/NextClassCard';
 import { NotEnrolledState } from '../../enrollments/components/NotEnrolledState';
 import { useSchedules } from '../../schedules/hooks';
 import { useClass } from '../hooks';
@@ -138,9 +139,13 @@ export default function MyClassPage() {
           <SubjectsCard />
         </div>
       ) : (
-        <div className="sheet">
-          <NotEnrolledState />
-        </div>
+        <NextClassStep
+          fallback={
+            <div className="sheet">
+              <NotEnrolledState />
+            </div>
+          }
+        />
       )}
     </>
   );

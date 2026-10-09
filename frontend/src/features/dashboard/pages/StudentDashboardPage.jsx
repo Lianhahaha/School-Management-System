@@ -1,3 +1,4 @@
+import { NextClassStep } from '../../enrollments/components/NextClassCard';
 import { DashboardView } from '../components/DashboardView';
 import { RecentAnnouncementsCard } from '../components/RecentAnnouncementsCard';
 import { RecentGradesCard } from '../components/RecentGradesCard';
@@ -10,8 +11,9 @@ import { UpcomingAssessmentsCard } from '../components/UpcomingAssessmentsCard';
 import { UpcomingEventsCard } from '../components/UpcomingEventsCard';
 
 /**
- * /student: "How am I doing?" Read-only. Without an active enrollment the identity hero, what to do
- * while waiting for a class, and the announcements are shown, because every other block is class based.
+ * /student: "How am I doing?" Without an active enrollment the identity hero, the next step (enroll for
+ * next year, or wait for the school to place them) and the announcements are shown, because every other
+ * block is class based.
  */
 export default function StudentDashboardPage() {
   return (
@@ -23,7 +25,7 @@ export default function StudentDashboardPage() {
       {(data) => (
         <div className="space-y-6">
           <StudentHero student={data.student} enrollment={data.currentEnrollment} />
-          {!data.currentEnrollment && <StudentWaitingCard />}
+          {!data.currentEnrollment && <NextClassStep fallback={<StudentWaitingCard />} />}
           {!data.currentEnrollment && (
             <UpcomingEventsCard events={data.upcomingEvents} to="/student/calendar" />
           )}

@@ -10,9 +10,12 @@
  *   useTransferStudent() [form]          mutate({ studentId, classId }) one request, no half-done state
  *   useSetEnrollmentStatus()             mutate({ id, status }) status 'completed' | 'withdrawn'
  *   useCompleteSchoolYear() [form]       mutate({ classId, studentIds, nextClassId? }) all or nothing
+ *   useNextClass({ enabled })            the signed-in student's standing for next year
+ *   useEnrollMyself()                    mutate(classId) the student enrolls in an offered section
  *
  * Every write refreshes enrollments, students, classes (student counts), the attendance sheets and
- * grade rosters (they list the enrolled students) and the dashboard.
+ * grade rosters (they list the enrolled students) and the dashboard; a student's own enrollment also
+ * refreshes their account (`currentEnrollment`).
  *
  * Mutations tagged [form] are silent (meta.silent): the form that sends them shows every error itself
  * (applyServerErrors + FormRootError). Every other mutation raises an error toast.
@@ -24,19 +27,22 @@ import { useToast } from '../../hooks/useToast';
 import { countOf } from '../../utils/format';
 import { fullName } from '../../utils/names';
 import { attendanceKeys } from '../attendance/keys';
+import { authKeys } from '../auth/keys';
 import { classKeys } from '../classes/keys';
 import { dashboardKeys } from '../dashboard/keys';
 import { gradeKeys } from '../grades/keys';
 import { studentKeys } from '../students/keys';
 import {
   completeSchoolYear,
+  enrollMyself,
   enrollStudent,
   enrollStudents,
+  getNextClass,
   listEnrollments,
   setEnrollmentStatus,
   transferStudent,
 } from './api';
-import { enrollmentKeys } from './keys';
+import { enrollmentKeys, nextClassKey } from './keys';
 import { defaultSchoolYear, schoolYearsOf, yearChoices } from './schoolYears';
 
 export function useEnrollments(params, { enabled = true } = {}) {
@@ -142,6 +148,24 @@ export function useCompleteSchoolYear() {
       invalidateEnrollments();
       const moved = enrollments.length > 0 ? ` and moved to ${enrollments[0].class.name}` : '';
       toast.success(`School year completed for ${countOf(completed, 'student')}${moved}`);
+    },
+  });
+}
+
+export function useNextClass({ enabled = true } = {}) {
+  return useQuery({ queryKey: nextClassKey, queryFn: getNextClass, enabled });
+}
+
+export function useEnrollMyself() {
+  const invalidateEnrollments = useInvalidateEnrollments();
+  const invalidate = useInvalidate();
+  const toast = useToast();
+  return useMutation({
+    mutationFn: enrollMyself,
+    onSuccess: (enrollment) => {
+      invalidateEnrollments();
+      invalidate(authKeys.me());
+      toast.success(`You are enrolled in ${enrollment.class.name}, ${enrollment.class.academicYear}`);
     },
   });
 }
