@@ -48,12 +48,21 @@ export function camelizeRow(row) {
   return out;
 }
 
+/**
+ * Queries waiting for a free connection before the pool turns new ones away (answered as 503 "busy").
+ * One dashboard load runs about fifteen queries side by side, so a limit of 100 shed load at only seven or
+ * eight sign-ins at the same moment. Each query holds a connection for milliseconds and a SELECT is cut off
+ * at MAX_SELECT_MS, so a deeper queue costs a short wait, not a stuck request: 1000 holds about seventy
+ * simultaneous dashboard loads and still sheds a real overload.
+ */
+const QUEUE_LIMIT = 1000;
+
 export const pool = mysql.createPool({
   ...dbConnectionOptions(),
   database: env.DB_NAME,
   connectionLimit: env.DB_CONNECTION_LIMIT,
   waitForConnections: true,
-  queueLimit: 100,
+  queueLimit: QUEUE_LIMIT,
   connectTimeout: 10_000,
   // TCP keep-alive on idle connections, so a hosted database (or a NAT on the way) does not silently drop
   // them between requests, and a dead one is noticed instead of hanging the next query.
