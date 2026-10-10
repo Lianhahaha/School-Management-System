@@ -9,11 +9,13 @@ Authentication. Architecture overview: `../docs/ARCHITECTURE.md`.
 | Concern      | Choice                                                                                                           |
 | ------------ | ---------------------------------------------------------------------------------------------------------------- |
 | Build        | Vite 8, `@vitejs/plugin-react`, JavaScript + JSX only                                                            |
-| UI           | React 19, Tailwind CSS v4 (`@tailwindcss/vite`, tokens in `src/index.css`), lucide-react icons |
+| UI           | React 19, Tailwind CSS v4 (`@tailwindcss/vite`, tokens in `src/index.css`), lucide-react (the only icon set) |
 | Routing      | `react-router` 8 in data mode (`RouterProvider` comes from `react-router/dom`; never install `react-router-dom`) |
 | Server state | TanStack Query v5                                                                                                |
 | Forms        | react-hook-form + zod 4 (`@hookform/resolvers`)                                                                  |
 | Auth         | Firebase v12 modular SDK, email and password                                                                     |
+| Types        | JSDoc in the `.js` logic files, checked by TypeScript (`jsconfig.json`; the `.jsx` components are not checked yet) |
+| Tests        | Vitest, unit tests of the pure modules in `tests/`, run in plain Node (`vitest.config.js`)                        |
 
 ## Scripts
 
@@ -22,10 +24,17 @@ npm install
 cp .env.example .env     # then fill in the Firebase web app values
 npm run dev              # http://localhost:5173 (strict port; /api is proxied to 127.0.0.1:API_PORT, default 3000)
 npm run lint             # ESLint (react-hooks rules included)
+npm run typecheck        # TypeScript over the JSDoc types of src/**/*.js (jsconfig.json)
+npm test                 # Vitest unit tests (no browser, database or Firebase values needed)
 npm run build            # production build into dist/
 npm run format           # Prettier (with the Tailwind class sorter)
-npm run check            # lint + build
+npm run check            # lint + typecheck + test + build
 ```
+
+The tests cover grade arithmetic, form schemas, CSV import and export, dates and school years.
+`tests/grading-agreement.test.js` runs one table of scores through `../backend/src/utils/grading.js` and
+`src/utils/grades.js` and expects the same numbers, so the frontend and the API compute grades alike. GitHub
+runs lint, typecheck, test and build on every push and pull request (`.github/workflows/frontend-checks.yml`).
 
 ## Environment
 
@@ -36,9 +45,15 @@ full-page message instead of a blank screen.
 | -------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------ |
 | `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` | yes      | none                                                               |
 | `VITE_API_BASE_URL`                                                                                      | no       | `/api/v1` (goes through the Vite proxy, so no CORS in development) |
+| `VITE_DEMO_ACCOUNTS`                                                                                     | no       | none (the sign-in page lists no demo accounts)                     |
 
 The Firebase project must be the same one the backend's service account belongs to. In development a
 red banner appears when `GET /health` reports a different project id.
+
+`VITE_DEMO_ACCOUNTS` is for a public demo: one line of JSON with the accounts and the password they share
+(format in `.env.example`). `features/auth/components/DemoAccounts.jsx` lists them, folded under the sign-in
+form, as "Demo accounts for reviewers". A malformed value is logged in the console and ignored. The live site
+gets it from a GitHub repository variable read by `deploy-frontend.yml`; never commit a value.
 
 `src/constants/shared.js` is a byte-identical copy of `../backend/src/constants/shared.js` and must not be
 edited here; `npm run check:constants` in the backend verifies it. Labels, tones and option lists for its
@@ -55,20 +70,25 @@ Features may import another feature's `api.js`, `keys.js` (to refresh its cache 
 ```
 src/
   app/          App, router (every route), providers, route guards, pages/ (403, 404, route error)
-  config/       env validation, Firebase client
+  config/       env validation (Firebase values, API base, demo accounts), Firebase client
   constants/    shared.js (backend copy), ui.js (labels, tones, options, error tables)
-  lib/          apiClient, envelope, queryClient, queryKeys, liveRefresh, formErrors, validators, csv, toastBus
-  utils/        date, schedule, roles, names, format, grades, listParams, cx
+  lib/          apiClient, envelope, queryClient, queryKeys, liveRefresh, formErrors, validators, csv,
+                toastBus, theme, installPrompt, serverWake
+  utils/        date, schedule, roles, names, format, grades, forms, listParams, cx
   hooks/        useListParams, useDebounce, useDisclosure, useConfirm, useDiscardConfirm, useToast,
-                useUnsavedChangesBlocker, ...
+                useUnsavedChangesBlocker, useSheetEditing (what the attendance and grade sheets share
+                around a save), ...
   components/
-    ui/         domain-free building blocks (Button, DataTable, Modal, FormField, ...)
+    ui/         domain-free building blocks (Button, DataTable, Modal, FormField, SheetAlerts, ...)
     layout/     AppShell, Sidebar, Topbar, PageHeader, PageSkeleton, DetailLoadError, guards' splash
                 screens, DevProjectBanner, navConfig.js
   features/<feature>/
     keys.js     query keys            api.js     one function per endpoint (the only place with URLs)
     hooks.js    useQuery / useMutation  schemas.js zod schemas and form defaults
     components/ feature UI            pages/     one default export per page
+    *.js        a feature's own rules, e.g. classSubjects/access.js (who may write to a lesson, the
+                API's assertCanManageClassSubject), enrollments/schoolYears.js
+tests/          Vitest unit tests (npm test)
 ```
 
 Conventions: components, hooks and helpers are named exports; only pages are default exports (they are

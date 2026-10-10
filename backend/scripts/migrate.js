@@ -7,8 +7,9 @@
  *                                 Refused for a database that is not on this machine, or with
  *                                 NODE_ENV=production, unless --allow-remote-drop is also given.
  *
- * The API runs the same migration at every start-up, so a deploy needs no manual step; this script is for
- * a new database and for --fresh. No mysql command-line client is needed.
+ * With MIGRATE_ON_START=true the API runs the same migration at every start-up, so a deploy needs no manual
+ * step; without it, run this against the hosted database before the code that needs the change. It also
+ * creates a new database and runs --fresh. No mysql command-line client is needed.
  */
 import mysql from 'mysql2/promise';
 import { dbConnectionOptions, dbErrorHint } from '../src/config/dbConnection.js';

@@ -1,7 +1,7 @@
 /**
  * Brings the database named by DB_NAME up to date with database/schema.sql and database/upgrades.js.
- * The API runs it at every start-up (src/server.js), so a deploy migrates the hosted database before it
- * serves a request; `npm run db:migrate` runs the same code by hand.
+ * `npm run db:migrate` runs it by hand. With MIGRATE_ON_START=true the API also runs it at every start-up
+ * (src/server.js), so a deploy migrates the hosted database before it serves a request.
  *
  * What has run is recorded in schema_migrations: one row per upgrade id, plus a "schema.sql" row holding the
  * SHA-256 of the schema file last applied. A start-up with nothing new costs one lock and one SELECT. When
