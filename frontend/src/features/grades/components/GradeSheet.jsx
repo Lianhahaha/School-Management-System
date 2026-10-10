@@ -1,22 +1,22 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { RefreshCw, Save, Trash2 } from 'lucide-react';
+import { Save, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
-import { Alert } from '../../../components/ui/Alert';
 import { BarChart } from '../../../components/ui/BarChart';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { FormRootError } from '../../../components/ui/FormField';
 import { Input } from '../../../components/ui/Input';
+import { SheetReadOnlyNote, SheetSaveAlert } from '../../../components/ui/SheetAlerts';
 import { TBody, THead, Table, Td, Th, Tr } from '../../../components/ui/Table';
 import { ERROR_CODES } from '../../../constants/shared';
+import { useSheetEditing } from '../../../hooks/useSheetEditing';
 import { useToast } from '../../../hooks/useToast';
 import { applyServerErrors } from '../../../lib/formErrors';
 import { formatDate } from '../../../utils/date';
 import { formatPercent, formatScore } from '../../../utils/format';
 import { fullName } from '../../../utils/names';
-import { useUnsavedChangesBlocker } from '../../../hooks/useUnsavedChangesBlocker';
 import { useDeleteGrade, useRestoreGrade, useSaveGrades } from '../hooks';
 import { gradeSheetDefaults, gradeSheetSchema, toSaveGradesPayload } from '../schemas';
 
@@ -96,13 +96,18 @@ export function GradeSheet({ roster, canSave, onReload }) {
 
   const rows = useWatch({ control, name: 'rows' });
   const hasScores = rows.some((row) => String(row.score ?? '').trim() !== '');
-  useUnsavedChangesBlocker(canSave && isDirty);
 
   const adopt = (nextRoster) => {
     save.reset();
     setRecords(nextRoster.records);
     reset(gradeSheetDefaults(nextRoster.records));
   };
+  const { isStale, canReload, reload } = useSheetEditing({
+    isDirty: canSave && isDirty,
+    saveError: save.error,
+    onReload,
+    adopt,
+  });
 
   const onSubmit = (values) =>
     save
@@ -122,8 +127,6 @@ export function GradeSheet({ roster, canSave, onReload }) {
         if (error.code === ERROR_CODES.VALIDATION_ERROR)
           applyServerErrors(error, setError, { knownFields: [] });
       });
-
-  const reload = () => onReload().then(({ data }) => data && adopt(data));
 
   /** Replaces one student's row with `next` and resets that row's inputs to it; other rows keep their edits. */
   const replaceRow = (index, next) => {
@@ -178,8 +181,6 @@ export function GradeSheet({ roster, canSave, onReload }) {
   }
 
   const stats = summarize(records);
-  const isStale = save.error?.details?.reason === 'sheet_changed';
-  const showReload = isStale || save.error?.details?.invalidStudentIds;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
@@ -200,21 +201,19 @@ export function GradeSheet({ roster, canSave, onReload }) {
           </span>
         }
       >
-        {(!canSave || errors.root?.server || showReload) && (
+        {(!canSave || errors.root?.server || canReload) && (
           <div className="space-y-3 border-b border-gray-100 px-5 py-3">
-            {!canSave && <Alert tone="info">{`You can view this sheet. ${SAVE_BLOCKED_HINT}.`}</Alert>}
-            {!showReload && <FormRootError error={errors.root?.server} />}
-            {showReload && (
-              <Alert tone="error" role="alert">
-                <p>
-                  {isStale
+            {!canSave && <SheetReadOnlyNote reason={SAVE_BLOCKED_HINT} />}
+            {!canReload && <FormRootError error={errors.root?.server} />}
+            {canReload && (
+              <SheetSaveAlert
+                message={
+                  isStale
                     ? 'Someone saved these grades after you opened the sheet. Reload it to see their changes; your unsaved edits are dropped.'
-                    : 'Some students on this sheet have left the class since you opened it. Reload the sheet.'}
-                </p>
-                <Button variant="secondary" size="sm" icon={RefreshCw} onClick={reload} className="mt-2">
-                  Reload sheet
-                </Button>
-              </Alert>
+                    : 'Some students on this sheet have left the class since you opened it. Reload the sheet.'
+                }
+                onReload={reload}
+              />
             )}
           </div>
         )}

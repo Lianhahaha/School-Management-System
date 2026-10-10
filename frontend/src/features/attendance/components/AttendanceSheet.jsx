@@ -1,4 +1,4 @@
-import { CheckCheck, RefreshCw, Save } from 'lucide-react';
+import { CheckCheck, Save } from 'lucide-react';
 import { useState } from 'react';
 import { Alert } from '../../../components/ui/Alert';
 import { Button } from '../../../components/ui/Button';
@@ -6,10 +6,11 @@ import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { Input } from '../../../components/ui/Input';
 import { RadioGroup } from '../../../components/ui/RadioGroup';
+import { SheetReadOnlyNote, SheetSaveAlert } from '../../../components/ui/SheetAlerts';
 import { TBody, THead, Table, Td, Th, Tr } from '../../../components/ui/Table';
 import { ERROR_CODES } from '../../../constants/shared';
 import { ATTENDANCE_STATUS_LABELS, ATTENDANCE_STATUS_TONES, DAY_LABELS } from '../../../constants/ui';
-import { useUnsavedChangesBlocker } from '../../../hooks/useUnsavedChangesBlocker';
+import { useSheetEditing } from '../../../hooks/useSheetEditing';
 import { useAuth } from '../../auth/hooks';
 import { formatDate, formatTimeOfDay, isoWeekdayOf } from '../../../utils/date';
 import { fullName, initials } from '../../../utils/names';
@@ -86,8 +87,6 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
   );
   const hasUnmarked = records.some((record) => record.attendanceId === null);
   const canSubmit = canSave && (hasEdits || hasUnmarked);
-  // The lesson and date live in the query string: changing them would drop the marks.
-  useUnsavedChangesBlocker(canSave && hasEdits, { includeSearch: true });
 
   const counts = Object.fromEntries(Object.keys(LETTERS).map((status) => [status, 0]));
   for (const { status } of Object.values(draft)) counts[status] += 1;
@@ -101,6 +100,13 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
     setDraft(toDraft(nextSheet.records));
     setSaveError(null);
   };
+  const { isStale, canReload, reload } = useSheetEditing({
+    isDirty: canSave && hasEdits,
+    saveError,
+    onReload,
+    adopt,
+    includeSearch: true, // the lesson and date live in the query string: changing them would drop the marks
+  });
 
   const setMark = (studentId, patch) =>
     setDraft((current) => ({ ...current, [studentId]: { ...current[studentId], ...patch } }));
@@ -125,8 +131,6 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
       { onSuccess: adopt, onError: setSaveError },
     );
 
-  const reload = () => onReload().then(({ data }) => data && adopt(data));
-
   if (records.length === 0) {
     return (
       <Card>
@@ -139,7 +143,6 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
   }
 
   const { className, subjectName } = saved.classSubject;
-  const isStale = saveError?.details?.reason === 'sheet_changed';
   const showRootError = saveError?.code === ERROR_CODES.VALIDATION_ERROR || isStale;
 
   return (
@@ -196,7 +199,7 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
             )}: pick one of those days to mark attendance.`}
           </Alert>
         )}
-        {!isOwner && <Alert tone="info">{`You can view this sheet. ${SAVE_BLOCKED_HINT}.`}</Alert>}
+        {!isOwner && <SheetReadOnlyNote reason={SAVE_BLOCKED_HINT} />}
         {editor && editedByMe && (
           <p className="text-xs text-gray-600">{`Saved by you at ${formatTimeOfDay(editor.updatedAt)}.`}</p>
         )}
@@ -206,18 +209,14 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
           </Alert>
         )}
         {showRootError && (
-          <Alert tone="error" role="alert">
-            <p>
-              {isStale
+          <SheetSaveAlert
+            message={
+              isStale
                 ? 'Someone saved this sheet after you opened it. Reload it to see their marks; your unsaved changes are dropped.'
-                : saveError.message}
-            </p>
-            {(isStale || saveError.details?.invalidStudentIds) && (
-              <Button variant="secondary" size="sm" icon={RefreshCw} onClick={reload} className="mt-2">
-                Reload sheet
-              </Button>
-            )}
-          </Alert>
+                : saveError.message
+            }
+            onReload={canReload ? reload : undefined}
+          />
         )}
       </div>
 

@@ -10,6 +10,7 @@ import { fullName } from '../../../utils/names';
 import { AttendanceTrendCard } from '../../attendance/components/AttendanceTrendCard';
 import { useAuth } from '../../auth/hooks';
 import { AssessmentFormModal } from '../../grades/components/AssessmentFormModal';
+import { isClassSubjectOwner } from '../access';
 import { ClassSubjectRoster } from '../components/ClassSubjectRoster';
 import { SubjectSlotsCard } from '../components/SubjectSlotsCard';
 import { useClassSubject } from '../hooks';
@@ -34,7 +35,7 @@ export default function ClassSubjectPage() {
   if (!classSubject) return <PageSkeleton />;
 
   // Teachers can see their homeroom classes' subjects, but only the subject's own teacher writes.
-  const isOwner = classSubject.teacherId === me.teacherId;
+  const isOwner = isClassSubjectOwner(me, classSubject);
   const lessonLabel = `${classSubject.className} · ${classSubject.subjectName}`;
 
   return (

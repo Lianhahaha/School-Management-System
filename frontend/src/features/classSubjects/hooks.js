@@ -7,7 +7,8 @@
  *                                          page, limit, search, sortBy, sortOrder
  *   useClassSubject(id)                    one class-subject
  *   useCreateClassSubject() [form]         mutate({ classId, subjectId, teacherId })
- *   useReassignClassSubject() [form]       mutate({ id, teacherId }) change the teacher
+ *   useReassignClassSubject() [form]       mutate({ id, teacherId }) change the teacher; also refreshes the
+ *                                          grade sheets, which take the teacher (who may save) from the assessment
  *   useDeleteClassSubject()                mutate(id); 409 when history exists
  *   useClassSubjectOptions(filters)        select options: [{ value, label: 'Class · Subject', item }];
  *                                          filters e.g. { classId } or { teacherId: 'me' }
@@ -27,8 +28,10 @@ import { todayYmd } from '../../utils/date';
 import { fullName } from '../../utils/names';
 import { useAuth } from '../auth/hooks';
 import { dashboardKeys } from '../dashboard/keys';
+import { gradeKeys } from '../grades/keys';
 import { scheduleKeys } from '../schedules/keys';
 import { teacherKeys } from '../teachers/keys';
+import { isClassSubjectOwner } from './access';
 import {
   createClassSubject,
   deleteClassSubject,
@@ -56,10 +59,14 @@ export function useClassSubject(id) {
   });
 }
 
-/** An assignment change touches the class-subject lists, the timetables, the teachers and the dashboards. */
+/**
+ * An assignment change touches the class-subject lists, the timetables, the teachers and the dashboards; a
+ * mutation passes any further scope it changes.
+ */
 function useInvalidateAssignments() {
   const invalidate = useInvalidate();
-  return () => invalidate(classSubjectKeys.all, scheduleKeys.all, teacherKeys.all, dashboardKeys.all);
+  return (...scopes) =>
+    invalidate(classSubjectKeys.all, scheduleKeys.all, teacherKeys.all, dashboardKeys.all, ...scopes);
 }
 
 export function useCreateClassSubject() {
@@ -82,7 +89,8 @@ export function useReassignClassSubject() {
     mutationFn: ({ id, teacherId }) => reassignClassSubject(id, teacherId),
     meta: { silent: true },
     onSuccess: (classSubject) => {
-      invalidateAssignments();
+      // A grade sheet decides who may save from its assessment's teacher, and the live refresh skips it.
+      invalidateAssignments(gradeKeys.all);
       toast.success(`${classSubject.subjectName} is now taught by ${fullName(classSubject.teacher)}`);
     },
   });
@@ -120,7 +128,7 @@ export const useClassSubjectOptions = createOptionsHook({
  *
  * `selected` is the class-subject query (one lesson: class, subject, teacherId). `isOwner` is true for
  * an admin and for the teacher the class-subject is assigned to; a teacher who only sees the class as
- * its homeroom teacher gets read-only access.
+ * its homeroom teacher gets read-only access (see isClassSubjectOwner).
  *
  * @param {{ withDate?: boolean }} [options]
  */
@@ -156,7 +164,7 @@ export function useClassSubjectSelection({ withDate = false } = {}) {
     classSubjectId,
     date,
     selected,
-    isOwner: role === 'admin' || (Boolean(selected.data) && selected.data.teacherId === me.teacherId),
+    isOwner: isClassSubjectOwner(me, selected.data),
     setClassId: (value) => update({ classId: value, classSubjectId: '' }),
     setClassSubjectId: (value) => update({ classSubjectId: value }),
     setDate: (value) => update({ date: value }),

@@ -9,6 +9,7 @@ import { formatDate } from '../../../utils/date';
 import { formatScore } from '../../../utils/format';
 import { roleHome } from '../../../utils/roles';
 import { useAuth } from '../../auth/hooks';
+import { isClassSubjectOwner } from '../../classSubjects/access';
 import { GradeSheet } from '../components/GradeSheet';
 import { GRADE_SHEET_CSV_COLUMNS } from '../csv';
 import { useAssessment, useGradeRoster } from '../hooks';
@@ -37,7 +38,7 @@ export default function GradeSheetPage() {
 
   const { title, type, term, assessedOn, maxScore, className, subjectName, classSubjectId } =
     roster.data.assessment;
-  const canSave = role === 'admin' || assessment.data.classSubject.teacherId === me.teacherId;
+  const canSave = isClassSubjectOwner(me, assessment.data.classSubject);
 
   return (
     <>
