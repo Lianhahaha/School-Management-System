@@ -181,10 +181,11 @@ export async function seed() {
 async function main() {
   assertFirebaseReady();
   console.log(`Seeding ${env.DB_NAME} (Firebase project ${firebase.projectId})`);
+  // The default password is in the source code, so on a hosted database it would let anyone sign in as an admin.
   if (!process.env.SEED_PASSWORD && !['127.0.0.1', 'localhost', '::1'].includes(env.DB_HOST)) {
-    console.warn(
-      `! ${env.DB_HOST} is not this machine and SEED_PASSWORD is not set: every demo account, admins included,\n` +
-        `  gets the password published in the README. Set SEED_PASSWORD for a site that is not a public demo.`,
+    throw new Error(
+      `${env.DB_HOST} is not this machine and SEED_PASSWORD is not set. Every demo account, admins included, ` +
+        'would get the default password from the source code. Set SEED_PASSWORD in the env file you pass.',
     );
   }
   await seed();

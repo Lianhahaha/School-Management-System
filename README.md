@@ -111,9 +111,7 @@ Open <http://localhost:5173> and sign in with a demo account.
 
 ## Demo accounts
 
-These come from `npm run db:seed` on a local database. The live site no longer has the demo students (`student1` to `student8`); students there register themselves at `/register`. A new administrator for an empty database comes from `npm run db:create-admin -- <email> <password>`.
-
-Password for every account: `Password123!` (change it with `SEED_PASSWORD` in `backend/.env` before seeding).
+These come from `npm run db:seed` on a local database. Every one gets the password in `SEED_PASSWORD` (`backend/.env`; [.env.example](backend/.env.example) has a starting value), so set your own before seeding. The live site no longer has the demo students (`student1` to `student8`); students there register themselves at `/register`. A new administrator for an empty database comes from `npm run db:create-admin -- <email> <password>`.
 
 | Account | Name | Role and what to look at |
 |---|---|---|
@@ -221,7 +219,7 @@ Not required to run or review the project: everything above works on one machine
 | API | [Render](https://render.com/docs/free) web service from `render.yaml` | sleeps after 15 idle minutes (the next request takes about a minute), 750 free hours a month |
 | Frontend | Firebase Hosting (Spark plan) from `firebase.json` | static files only |
 
-1. **Database.** Create the Aiven MySQL service on the Free plan, download its CA certificate to `backend/database-ca.pem`, and put its connection details in a git-ignored `backend/.env.cloud` (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_SSL=true`, `DB_SSL_CA_PATH=./database-ca.pem`). Then:
+1. **Database.** Create the Aiven MySQL service on the Free plan, download its CA certificate to `backend/database-ca.pem`, and put its connection details in a git-ignored `backend/.env.cloud` (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_SSL=true`, `DB_SSL_CA_PATH=./database-ca.pem`, and a `SEED_PASSWORD` of your own: the seed refuses a hosted database without one). Then:
    ```powershell
    cd backend
    node --env-file=.env.cloud scripts/migrate.js
@@ -245,6 +243,6 @@ Not required to run or review the project: everything above works on one machine
 - **Resetting the demo data.** The demo is shared, and some actions cannot be undone (a completed school year, a deleted account). To start over: `node --env-file=.env.cloud scripts/migrate.js --fresh --allow-remote-drop`, then `node --env-file=.env.cloud scripts/seed.js`. **This deletes every row in the hosted database.**
 - **Local work and live sign-ins.** While local development shares the Firebase project with the live site, seeding a local database resets the demo accounts' passwords and signs them out everywhere, the live site included. A second free Firebase project for local work (step 2 of the quick start, with its own `.env` values) keeps the two apart.
 - **Secrets.** `.env.cloud`, the service-account key and the CA certificate are git-ignored. Keep them out of synced folders (OneDrive, Dropbox) too.
-- **Mock school for manual testing.** `node --env-file=.env.cloud scripts/mock-data.js add` (from `backend/`) fills the database with a tagged mock school: 39 sign-ins (`admin@mock.skole.test`, teachers such as `dizon@mock.skole.test`, students such as `juan.delacruz@mock.skole.test`; password `MockPass123!`), classes for last, this and next school year, timetables, attendance since August, grades in every period, announcements, calendar entries and notifications. `status` lists it, and `remove` deletes every mock row and sign-in, plus anything done to mock records while testing. Use `--env-file=.env` for the local database.
+- **Mock school for manual testing.** `node --env-file=.env.cloud scripts/mock-data.js add` (from `backend/`) fills the database with a tagged mock school: 39 sign-ins under `@mock.skole.test` (one admin, six teachers, students; the script prints the main ones and their password, which `MOCK_PASSWORD` can set), classes for last, this and next school year, timetables, attendance since August, grades in every period, announcements, calendar entries and notifications. `status` lists it, and `remove` deletes every mock row and sign-in, plus anything done to mock records while testing. Use `--env-file=.env` for the local database.
 - **Before a demo.** Open the API's `/api/v1/health` a minute ahead so the free server is awake, and check in the Aiven console that the database is powered on.
 
