@@ -14,6 +14,7 @@ import { isApplicant } from '../../admissions/status';
 import { AttendanceSummaryPanel } from '../../attendance/components/AttendanceSummaryPanel';
 import { listEnrollments } from '../../enrollments/api';
 import { EnrollmentHistoryTable } from '../../enrollments/components/EnrollmentHistoryTable';
+import { StudentFeesTab } from '../../fees/components/StudentFeesTab';
 import { getGradeSummary } from '../../grades/api';
 import { GradeSummaryPanel } from '../../grades/components/GradeSummaryPanel';
 import { GradeTrendCard } from '../../grades/components/GradeTrendCard';
@@ -144,6 +145,7 @@ export default function StudentDetailPage() {
               </div>
             ),
           },
+          { id: 'fees', label: 'Fees', content: <StudentFeesTab studentId={student.id} /> },
         ]}
       />
 

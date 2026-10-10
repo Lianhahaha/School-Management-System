@@ -105,6 +105,8 @@ tags:
     description: Quizzes, tests and exams of a class-subject.
   - name: grades
     description: Scores per assessment, bulk entry, gradebook and summaries.
+  - name: fees
+    description: Fees of each school year, payments with their official receipt number, and a student's statement.
   - name: announcements
     description: Announcements by audience and class with a publication window.
   - name: activity
@@ -2273,6 +2275,193 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /fees:
+    get:
+      tags: [fees]
+      operationId: listFees
+      summary: List fees
+      description: |
+        Roles: admin.
+
+        The fees the school charges, each for one grade level or for every grade (`gradeLevel` null).
+        `gradeLevel` lists what a student of that grade pays: that grade's fees and the every-grade ones.
+        Default order: newest school year first, then the every-grade fees, then by grade and name. Free-text
+        search is not supported: a `search` parameter is rejected with 400.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: sortBy
+          in: query
+          description: Sort field (`gradeLevel` puts the every-grade fees first).
+          schema:
+            type: string
+            enum: [name, amount, gradeLevel]
+        - $ref: '#/components/parameters/SortOrder'
+        - $ref: '#/components/parameters/AcademicYearFilter'
+        - name: gradeLevel
+          in: query
+          description: Only the fees a student of this grade pays (that grade's and the every-grade ones).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+      responses:
+        '200': { $ref: '#/components/responses/FeeListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [fees]
+      operationId: createFee
+      summary: Add a fee
+      description: |
+        Roles: admin.
+
+        A fee name exists once per school year and grade level, with every grade counting as one more
+        "grade": a second fee with the same name for the same year and grade (or a second every-grade one) is
+        a 409 with `details.key = fees.uq_fees_year_grade_name`. Names compare without regard to case.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFeeRequest'
+            example:
+              academicYear: '2026-2027'
+              gradeLevel: 7
+              name: Tuition
+              amount: 18000
+      responses:
+        '201': { $ref: '#/components/responses/FeeResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /fees/statement:
+    get:
+      tags: [fees]
+      operationId: getFeeStatement
+      summary: Get a student's fee statement for a school year
+      description: |
+        Roles: admin, student (their own statement only).
+
+        The fees the student owes for `academicYear`, their payments towards that year (latest first) and
+        the totals. The grade level comes from the class the student was in last during that year, whatever
+        the enrollment's status; without a class that year, only the every-grade fees apply (`class` is
+        null). `balance` is `totalFees - totalPaid`, summed exactly; it is negative when the student paid more
+        than the fees. A student passes `studentId=me` (another student's id is a 403); `me` from an admin is
+        a 400. Teachers get a 403.
+      parameters:
+        - name: studentId
+          in: query
+          required: true
+          description: The student, or `me` for a student's own statement.
+          schema:
+            $ref: '#/components/schemas/IdOrMe'
+        - name: academicYear
+          in: query
+          required: true
+          description: The school year of the statement.
+          schema:
+            $ref: '#/components/schemas/AcademicYear'
+      responses:
+        '200': { $ref: '#/components/responses/FeeStatementResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /fees/{id}:
+    patch:
+      tags: [fees]
+      operationId: updateFee
+      summary: Update a fee
+      description: |
+        Roles: admin.
+
+        `gradeLevel: null` makes the fee apply to every grade. The uniqueness rule of the create applies to
+        the merged values (409 `fees.uq_fees_year_grade_name`).
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFeeRequest'
+            example:
+              amount: 18500
+      responses:
+        '200': { $ref: '#/components/responses/FeeResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [fees]
+      operationId: deleteFee
+      summary: Delete a fee
+      description: |
+        Roles: admin.
+
+        Nothing refers to a fee (payments count towards a school year, not a fee), so a fee can always be
+        deleted; the statements of that year change with it.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /payments:
+    post:
+      tags: [fees]
+      operationId: recordPayment
+      summary: Record a payment
+      description: |
+        Roles: admin.
+
+        Money a student paid towards one school year's fees, with the official receipt (OR) number. `paidOn`
+        must not be after today (school time zone). A receipt number already used is a 409 with
+        `details.key = payments.uq_payments_receipt`; an unknown student is a 400 with
+        `details.field = studentId`. A payment cannot be edited: remove it and record it again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentRequest'
+            example:
+              studentId: 12
+              academicYear: '2026-2027'
+              amount: 5000
+              paidOn: '2026-10-05'
+              method: cash
+              receiptNumber: '0012345'
+      responses:
+        '201': { $ref: '#/components/responses/PaymentResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /payments/{id}:
+    delete:
+      tags: [fees]
+      operationId: deletePayment
+      summary: Remove a payment recorded by mistake
+      description: |
+        Roles: admin.
+
+        Deletes the payment for good; the activity log keeps its amount and receipt number.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /dashboard:
     get:
       tags: [dashboard]
@@ -2564,8 +2753,27 @@ components:
       description: What a notification is about.
     ActivityArea:
       type: string
-      enum: [accounts, enrollments, classes, subjects, timetable, attendance, grades, announcements, calendar]
+      enum:
+        - accounts
+        - enrollments
+        - classes
+        - subjects
+        - timetable
+        - attendance
+        - grades
+        - announcements
+        - calendar
+        - fees
       description: The part of the school an activity entry belongs to.
+    PaymentMethod:
+      type: string
+      enum: [cash, bank, other]
+      description: cash = at the school office; bank = a deposit or transfer; other = see the payment's note.
+    Peso:
+      type: number
+      multipleOf: 0.01
+      description: An amount in pesos with centavos (at most two decimals).
+      example: 18000
     CalendarEventType:
       type: string
       enum: [holiday, event]
@@ -3777,6 +3985,110 @@ components:
           $ref: '#/components/schemas/DateYmd'
         endsOn:
           $ref: '#/components/schemas/DateYmd'
+    # --- Fees ---
+    Fee:
+      type: object
+      required: [id, academicYear, gradeLevel, name, amount, createdAt, updatedAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        academicYear:
+          $ref: '#/components/schemas/AcademicYear'
+        gradeLevel:
+          type: integer
+          minimum: 1
+          maximum: 12
+          nullable: true
+          description: null = every grade.
+          example: 7
+        name:
+          type: string
+          example: Tuition
+        amount:
+          $ref: '#/components/schemas/Peso'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+    Payment:
+      type: object
+      required: [id, studentId, academicYear, amount, paidOn, method, receiptNumber, note, createdAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        studentId:
+          $ref: '#/components/schemas/Id'
+        academicYear:
+          description: The school year whose fees the payment counts towards.
+          allOf:
+            - $ref: '#/components/schemas/AcademicYear'
+        amount:
+          $ref: '#/components/schemas/Peso'
+        paidOn:
+          $ref: '#/components/schemas/DateYmd'
+        method:
+          $ref: '#/components/schemas/PaymentMethod'
+        receiptNumber:
+          type: string
+          description: Official receipt (OR) number; unique.
+          example: '0012345'
+        note:
+          type: string
+          nullable: true
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+    FeeStatement:
+      type: object
+      required: [studentId, academicYear, class, fees, payments, totalFees, totalPaid, balance]
+      properties:
+        studentId:
+          $ref: '#/components/schemas/Id'
+        academicYear:
+          $ref: '#/components/schemas/AcademicYear'
+        class:
+          type: object
+          nullable: true
+          description: The class the student was in last during the year; null when they had none.
+          required: [id, name, gradeLevel]
+          properties:
+            id:
+              $ref: '#/components/schemas/Id'
+            name:
+              type: string
+              example: Grade 7 - A
+            gradeLevel:
+              type: integer
+              example: 7
+        fees:
+          type: array
+          description: The fees of the class's grade and the every-grade ones, by name.
+          items:
+            type: object
+            required: [id, name, gradeLevel, amount]
+            properties:
+              id:
+                $ref: '#/components/schemas/Id'
+              name:
+                type: string
+              gradeLevel:
+                type: integer
+                nullable: true
+                description: null = every grade.
+              amount:
+                $ref: '#/components/schemas/Peso'
+        payments:
+          type: array
+          description: Payments towards the year, latest first.
+          items:
+            $ref: '#/components/schemas/Payment'
+        totalFees:
+          $ref: '#/components/schemas/Peso'
+        totalPaid:
+          $ref: '#/components/schemas/Peso'
+        balance:
+          description: totalFees - totalPaid; negative when the student overpaid.
+          allOf:
+            - $ref: '#/components/schemas/Peso'
     # --- Dashboards ---
     UpcomingAssessment:
       type: object
@@ -4713,6 +5025,71 @@ components:
           $ref: '#/components/schemas/DateYmd'
         endsOn:
           $ref: '#/components/schemas/DateYmd'
+    CreateFeeRequest:
+      type: object
+      additionalProperties: false
+      required: [academicYear, name, amount]
+      properties:
+        academicYear:
+          $ref: '#/components/schemas/AcademicYear'
+        gradeLevel:
+          type: integer
+          minimum: 1
+          maximum: 12
+          nullable: true
+          description: null or left out = every grade.
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        amount:
+          type: number
+          minimum: 0.01
+          maximum: 99999999.99
+          multipleOf: 0.01
+          description: Pesos, above zero, at most two decimals.
+    UpdateFeeRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        academicYear:
+          $ref: '#/components/schemas/AcademicYear'
+        gradeLevel:
+          $ref: '#/components/schemas/CreateFeeRequest/properties/gradeLevel'
+        name:
+          $ref: '#/components/schemas/CreateFeeRequest/properties/name'
+        amount:
+          $ref: '#/components/schemas/CreateFeeRequest/properties/amount'
+    CreatePaymentRequest:
+      type: object
+      additionalProperties: false
+      required: [studentId, academicYear, amount, paidOn, method, receiptNumber]
+      properties:
+        studentId:
+          $ref: '#/components/schemas/Id'
+        academicYear:
+          description: The school year whose fees the payment counts towards.
+          allOf:
+            - $ref: '#/components/schemas/AcademicYear'
+        amount:
+          $ref: '#/components/schemas/CreateFeeRequest/properties/amount'
+        paidOn:
+          description: Not after today.
+          allOf:
+            - $ref: '#/components/schemas/DateYmd'
+        method:
+          $ref: '#/components/schemas/PaymentMethod'
+        receiptNumber:
+          type: string
+          minLength: 1
+          maxLength: 30
+          description: Official receipt (OR) number, trimmed; unique (compared without regard to case).
+        note:
+          type: string
+          maxLength: 255
+          nullable: true
+          description: Blank is stored as null.
     CreateClassRequest:
       type: object
       additionalProperties: false
@@ -5726,6 +6103,51 @@ components:
             allOf:
               - $ref: '#/components/schemas/Envelope'
               - { type: object, properties: { data: { $ref: '#/components/schemas/ImportReport' } } }
+    FeeResponse:
+      description: The fee.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/Fee' } } }
+    FeeListResponse:
+      description: A page of fees.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/PagedEnvelope'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Fee'
+    FeeStatementResponse:
+      description: The student's fees, payments and balance for the school year.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/FeeStatement' } } }
+    PaymentResponse:
+      description: The payment.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/Payment' } } }
     CalendarEventResponse:
       description: The calendar entry.
       headers:

@@ -1,7 +1,10 @@
+import { LOCALE } from './date';
+
 const EMPTY = '—';
 
 const percentFormatter = new Intl.NumberFormat(undefined, { style: 'percent', maximumFractionDigits: 1 });
 const numberFormatter = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
+const pesoFormatter = new Intl.NumberFormat(LOCALE, { style: 'currency', currency: 'PHP' });
 
 /**
  * Ratio between 0 and 1 -> '92.5%'. `null` (nothing recorded yet) renders as an em dash.
@@ -21,4 +24,9 @@ export function formatScore(score, maxScore) {
   if (score === null || score === undefined) return EMPTY;
   const formatted = numberFormatter.format(score);
   return maxScore === undefined ? formatted : `${formatted} / ${numberFormatter.format(maxScore)}`;
+}
+
+/** Pesos with centavos, the same on every screen: 18000 -> '₱18,000.00'. */
+export function formatPeso(amount) {
+  return pesoFormatter.format(amount);
 }

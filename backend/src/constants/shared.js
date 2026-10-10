@@ -101,7 +101,11 @@ export const ACTIVITY_AREAS = Object.freeze([
   'grades',
   'announcements',
   'calendar',
+  'fees',
 ]);
+
+/** How a student paid a fee: cash at the school office, a bank deposit or transfer, or another way (see the note). */
+export const PAYMENT_METHODS = Object.freeze(['cash', 'bank', 'other']);
 
 /** ISO 8601 weekday numbers: 1 = Monday … 7 = Sunday. */
 export const DAYS_OF_WEEK = Object.freeze([1, 2, 3, 4, 5, 6, 7]);

@@ -51,6 +51,7 @@ const adminRoutes = [
   { path: 'attendance', element: attendanceMarkPage },
   { path: 'grades', element: assessmentsPage },
   { path: 'grades/assessments/:assessmentId', element: gradeSheetPage },
+  { path: 'fees', element: page(() => import('../features/fees/pages/FeesPage')) },
   { path: 'announcements', element: announcementsPage },
   { path: 'calendar', element: calendarPage },
   { path: 'activity', element: page(() => import('../features/activity/pages/ActivityPage')) },
@@ -77,6 +78,7 @@ const studentRoutes = [
   { path: 'schedule', element: page(() => import('../features/schedules/pages/StudentSchedulePage')) },
   { path: 'attendance', element: page(() => import('../features/attendance/pages/StudentAttendancePage')) },
   { path: 'grades', element: page(() => import('../features/grades/pages/StudentGradesPage')) },
+  { path: 'fees', element: page(() => import('../features/fees/pages/MyFeesPage')) },
   {
     path: 'announcements',
     element: page(() => import('../features/announcements/pages/StudentAnnouncementsPage')),

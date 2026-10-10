@@ -67,6 +67,7 @@ const ENUM_COLUMNS = {
   'notifications.type': constants.NOTIFICATION_TYPES,
   'announcements.audience': constants.ANNOUNCEMENT_AUDIENCES,
   'admissions.status': constants.ADMISSION_STATUSES,
+  'payments.method': constants.PAYMENT_METHODS,
 };
 
 let schema;

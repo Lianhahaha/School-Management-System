@@ -473,3 +473,64 @@ CREATE TABLE IF NOT EXISTS admissions (
   CONSTRAINT chk_admissions_declined CHECK ((status = 'declined') = (decline_reason IS NOT NULL))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='Applications sent with a self-registration, and their outcome';
+
+-- -----------------------------------------------------------------------------
+-- 19. fees — what the school charges in one school year ("Tuition", 18000.00)
+--     for one grade level, or for every grade (grade_level NULL). A student owes
+--     the fees of their class's grade plus the every-grade ones.
+--     A fee name exists once per year and grade. NULLs never collide in a UNIQUE
+--     index, so grade_key (generated: 0 for every grade) stands in for
+--     grade_level in the key: the enrollments.active_flag trick.
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS fees (
+  id             INT UNSIGNED     NOT NULL AUTO_INCREMENT,
+  academic_year  VARCHAR(9)       NOT NULL COMMENT 'YYYY-YYYY, e.g. 2026-2027',
+  grade_level    TINYINT UNSIGNED NULL     COMMENT 'NULL = every grade',
+  grade_key      TINYINT UNSIGNED GENERATED ALWAYS AS (IFNULL(grade_level, 0)) STORED
+                 COMMENT '0 for every grade, else grade_level. Exists only to drive uq_fees_year_grade_name',
+  name           VARCHAR(100)     NOT NULL,
+  amount         DECIMAL(10,2)    NOT NULL COMMENT 'Pesos. Exact decimal, never FLOAT',
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_fees_year_grade_name (academic_year, grade_key, name), -- one fee per name, year and grade; also a year's list
+  CONSTRAINT chk_fees_academic_year CHECK (
+    academic_year REGEXP '^[0-9]{4}-[0-9]{4}$'
+    AND CAST(SUBSTRING(academic_year, 6, 4) AS UNSIGNED) = CAST(SUBSTRING(academic_year, 1, 4) AS UNSIGNED) + 1
+  ),
+  CONSTRAINT chk_fees_grade_level CHECK (grade_level IS NULL OR grade_level BETWEEN 1 AND 12),
+  CONSTRAINT chk_fees_amount CHECK (amount > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Fees of a school year, for one grade level or every grade';
+
+-- -----------------------------------------------------------------------------
+-- 20. payments — money a student paid towards one school year's fees, with the
+--     official receipt (OR) number the school office issued. A payment is never
+--     edited: a mistake is deleted (logged in activity_log) and recorded again.
+--     Payments are history, so an account that has them, as the student or as
+--     the admin who recorded them, cannot be deleted.
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS payments (
+  id              INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  student_id      INT UNSIGNED  NOT NULL,
+  academic_year   VARCHAR(9)    NOT NULL COMMENT 'The school year whose fees the payment counts towards',
+  amount          DECIMAL(10,2) NOT NULL COMMENT 'Pesos. Exact decimal, never FLOAT',
+  paid_on         DATE          NOT NULL COMMENT 'Not in the future (checked by the API)',
+  method          ENUM('cash','bank','other') NOT NULL,
+  receipt_number  VARCHAR(30)   NOT NULL COMMENT 'Official receipt (OR) number',
+  note            VARCHAR(255)  NULL,
+  recorded_by     INT UNSIGNED  NOT NULL COMMENT 'users.id of the admin who recorded it (audit)',
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_payments_receipt       (receipt_number),             -- an OR number is issued once
+  KEY        idx_payments_student_year (student_id, academic_year),  -- a student's statement; also serves FK student_id
+  KEY        idx_payments_recorded_by  (recorded_by),                -- FK
+  CONSTRAINT fk_payments_student     FOREIGN KEY (student_id)  REFERENCES students (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_payments_recorded_by FOREIGN KEY (recorded_by) REFERENCES users    (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT chk_payments_academic_year CHECK (
+    academic_year REGEXP '^[0-9]{4}-[0-9]{4}$'
+    AND CAST(SUBSTRING(academic_year, 6, 4) AS UNSIGNED) = CAST(SUBSTRING(academic_year, 1, 4) AS UNSIGNED) + 1
+  ),
+  CONSTRAINT chk_payments_amount CHECK (amount > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Payments by students towards the fees of a school year';

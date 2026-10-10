@@ -112,8 +112,9 @@ export async function lockActiveAdminIds(conn) {
 
 /**
  * True when any record points at the account or its role profile: announcements it wrote, attendance
- * it marked, grades it entered, a student's enrollments, attendance and grades, or a teacher's
- * class-subject assignments (with their timetable and assessments) and homeroom classes.
+ * it marked, grades it entered, payments it recorded, a student's enrollments, attendance, grades and
+ * payments, or a teacher's class-subject assignments (with their timetable and assessments) and homeroom
+ * classes.
  */
 export async function hasHistory(id, conn) {
   const rows = await query(
@@ -121,13 +122,15 @@ export async function hasHistory(id, conn) {
           EXISTS (SELECT 1 FROM announcements an WHERE an.author_id = ?)
        OR EXISTS (SELECT 1 FROM attendance att WHERE att.marked_by = ?)
        OR EXISTS (SELECT 1 FROM grades g WHERE g.graded_by = ?)
+       OR EXISTS (SELECT 1 FROM payments p WHERE p.recorded_by = ?)
        OR EXISTS (SELECT 1 FROM students s JOIN enrollments e ON e.student_id = s.id WHERE s.user_id = ?)
        OR EXISTS (SELECT 1 FROM students s JOIN attendance att ON att.student_id = s.id WHERE s.user_id = ?)
        OR EXISTS (SELECT 1 FROM students s JOIN grades g ON g.student_id = s.id WHERE s.user_id = ?)
+       OR EXISTS (SELECT 1 FROM students s JOIN payments p ON p.student_id = s.id WHERE s.user_id = ?)
        OR EXISTS (SELECT 1 FROM teachers t JOIN class_subjects cs ON cs.teacher_id = t.id WHERE t.user_id = ?)
        OR EXISTS (SELECT 1 FROM teachers t JOIN classes c ON c.homeroom_teacher_id = t.id WHERE t.user_id = ?)
      ) AS has_history`,
-    Array(8).fill(id),
+    Array(10).fill(id),
     conn,
   );
   return Boolean(rows[0].hasHistory);
