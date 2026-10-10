@@ -24,8 +24,8 @@ Skole can be installed like an app: on Android, Chrome or Edge use the browser's
 |---|---|---|
 | Student, teacher and admin accounts | Admin → Users (create any role, deactivate, delete an unused account); students can also self-register on the sign-up page; Admin → Students → Import creates up to 200 students from a CSV file (template included), each checked before anything is created and each given their own temporary password, listed in a file to download | Create a teacher as admin, then sign in as that teacher in a private window |
 | Firebase Authentication | Sign in / sign up / forgot password; the API verifies the Firebase ID token on every request | Register, sign out, sign in and reload: the session survives; a wrong password shows a generic error |
-| MySQL database | 17 tables with 22 foreign keys, 14 unique keys, 13 checks and one generated column: [backend/database/schema.sql](backend/database/schema.sql) | `npm run db:migrate` creates them; the ER diagram is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#5-data-model) |
-| Backend REST API | 76 endpoints under `/api/v1`, one JSON envelope, one error catalogue | Swagger UI "Try it out" with a token ([Trying the API](#trying-the-api)) |
+| MySQL database | 20 tables with 25 foreign keys, 17 unique keys, 21 checks and two generated columns: [backend/database/schema.sql](backend/database/schema.sql) | `npm run db:migrate` creates them; the ER diagram is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#5-data-model) |
+| Backend REST API | 85 endpoints under `/api/v1`, one JSON envelope, one error catalogue | Swagger UI "Try it out" with a token ([Trying the API](#trying-the-api)) |
 | Student enrollment and profiles | Admin → Students (enroll, transfer, profile, history); students edit their own contact details; at the end of a school year, Admin → Classes → a class → Students → **End of school year** closes the year for all or some students and enrolls them in next year's class in one step; after that a student enrolls themselves from their dashboard in a section of the next grade level if they passed every subject, of the same grade level if they failed three or more, and waits for the school office after remedial classes if they failed one or two (DepEd promotion rules) | Enroll a new student, try to enroll them in a second class (409), transfer them |
 | Subjects and class management | Admin → Subjects, Classes | Create a class for `2026-2027`; `2026/2027` is refused (400); deleting a subject in use is refused (409) |
 | Teacher assignment | Class detail → Subjects & Teachers | Assign a subject to Grade 10 - A with `teacher1`; assigning it again is refused (409); `teacher1` sees it under My classes |
@@ -42,13 +42,16 @@ Beyond the brief, kept small and built on the same API:
 
 | Extra | Where to see it |
 |---|---|
-| Notifications | The bell in the top bar, with a red count: students hear about new or changed grades, absences and a new class; teachers about lessons and homeroom classes they get; admins about students who signed up and need a class; new announcements are listed there too |
-| Activity history | Admin → Activity: who changed what and when (grades with the previous score, attendance marks, enrollments, accounts, classes, timetable, announcements, calendar), searchable by name and filterable by area and day |
+| Admissions | Signing up is applying: the form asks for the grade, the previous school and a guardian. Admin → Admissions (with the number of pending applications in the menu) has a two-document checklist per applicant (PSA birth certificate, last report card), **Admit** (the usual enroll dialog) and **Decline** with a reason; the applicant follows each step on their dashboard |
+| Fees | Admin → Fees sets each school year's fees, for one grade or all grades; Admin → Students → a student → Fees shows what they owe, what they paid and the balance, and is where the office records a payment with its OR number or removes one; students read their own statement under Fees |
+| Notifications | The bell in the top bar, with a red count: students hear about new or changed grades, absences, a new class and a declined application; teachers about lessons and homeroom classes they get; admins about new applications; new announcements are listed there too |
+| Activity history | Admin → Activity: who changed what and when (grades with the previous score, attendance marks, enrollments and admissions, accounts, classes, timetable, announcements, calendar, fees and payments), searchable by name and filterable by area and day |
 | School calendar | Admin → Calendar: holidays (no classes, attendance can't be marked) and school events; every role sees the calendar, the next 30 days on its dashboard and this week's entries on its timetable |
 | Live updates | The page you are looking at refreshes itself about every 20 seconds (and when you return to the tab), so other people's changes appear without a reload; the sheets a teacher is editing are left alone |
 | Light and dark themes | Switch in the top bar (and on the sign-in page); the choice is remembered on the device, and the system setting is followed until you pick one |
 | Search everywhere | Admins press Ctrl+K (⌘K on a Mac) to find a student, teacher, class or subject from any page |
-| CSV and printing | Lists of grades and attendance download as CSV; report cards and timetables print cleanly. DepEd school forms download as CSV for Excel: SF1 (class → Students), SF2 for a month (class → Attendance) and SF10 (student → Grades); the report card carries the LRN |
+| CSV and printing | Lists of grades and attendance download as CSV; report cards and timetables print cleanly |
+| LRN and DepEd school forms | A student can have a 12-digit LRN (Learner Reference Number), unique, set at sign-up, by an admin, in the CSV import or on the profile, and found by search. SF1 (class → Students), SF2 for a month (class → Attendance) and SF10 (student → Grades) download as CSV for Excel; the printed report card (SF9) shows the LRN |
 | Install as an app | See above: the browser's install button, or Add to Home Screen on an iPhone |
 
 ## Quick start (Windows, $0)
@@ -85,7 +88,7 @@ Both `.env` files must belong to the **same** Firebase project.
 ```powershell
 cd ..\backend
 npm run doctor        # every line should be a green tick; it tells you what to fix otherwise
-npm run db:migrate    # creates the database and the 17 tables
+npm run db:migrate    # creates the database and the 20 tables
 npm run db:seed       # 13 demo accounts (Firebase + MySQL), subjects, classes, timetable, attendance, grades
 ```
 
@@ -114,16 +117,16 @@ These come from `npm run db:seed` on a local database. Every one gets the passwo
 
 | Account | Name | Role and what to look at |
 |---|---|---|
-| `admin@school.test` | Amara Johnson | Admin: school-wide counts, users, students, classes, subjects, timetable, all announcements |
+| `admin@school.test` | Amara Johnson | Admin: school-wide counts, users, students, admissions, classes, subjects, timetable, fees, all announcements |
 | `admin2@school.test` | Noah Bennett | Second admin, so you can safely deactivate an admin and see the effect |
 | `teacher1@school.test` | Alice Morgan | Teacher: Maths and Computer Science, homeroom of Grade 10 - A; today's lessons, pending grading |
 | `teacher2@school.test` | Brian Chen | Teacher: English and History |
 | `teacher3@school.test` | Carla Diaz | Teacher: Science, homeroom of Grade 10 - B |
-| `student1@school.test` | Daniel Okafor | Student in Grade 10 - A: timetable, attendance, grades, class announcements |
+| `student1@school.test` | Daniel Okafor | Student in Grade 10 - A: timetable, attendance, grades, fees, class announcements |
 | `student4@school.test` | Grace Kim | Student in Grade 10 - A who was transferred in from 10 - B (enrollment history) |
 | `student5@school.test` | Hiro Tanaka | Student in Grade 10 - B |
 
-`student1` to `student8` and `teacher1` to `teacher3` all exist; the full list is in [backend/scripts/seed.js](backend/scripts/seed.js). A new student can also register at `/register`; the account is a student and starts without a class until an admin enrolls it (self-enrollment starts from their second school year, once there is a finished year to judge).
+`student1` to `student8` and `teacher1` to `teacher3` all exist; the full list is in [backend/scripts/seed.js](backend/scripts/seed.js). A new student can also register at `/register`; the account is a student with a pending application, and starts without a class until an admin admits it from Admissions (self-enrollment starts from their second school year, once there is a finished year to judge).
 
 ## Trying the API
 
@@ -158,7 +161,7 @@ GitHub runs both on every push and pull request: the backend checks (lint, secre
 
 ```
 backend/
-  database/    schema.sql (17 tables), upgrades.js (changes to existing tables), seed.sql (demo data)
+  database/    schema.sql (20 tables), upgrades.js (changes to existing tables), seed.sql (demo data)
   docs/        openapi.yaml, the spec behind /api/docs
   scripts/     migrate, seed, create-admin, doctor, get-token, mock-data, check-constants, check-secrets
   src/
@@ -192,6 +195,8 @@ These are deliberate choices, not oversights. The reasons are in [docs/PROJECT_P
 - **End of school year closes enrollments on the day it runs.** Run it after the last school day: from that day the students leave the class's attendance and grade sheets (earlier days stay editable) and appear in next year's class. A completed enrollment cannot be reopened, so the action is refused for a year that has not started. Keeping students in this year's class while already placed in next year's would need a "planned" enrollment status, which is a schema change.
 - **Two people editing one sheet do not overwrite each other.** When an attendance or grade sheet changed since it was loaded, the second save is refused (409 `sheet_changed`) and the page offers a reload.
 - **Imported students get a random temporary password each**, shown once in a file to download; nothing in the request sets a shared password.
+- **Fees are a ledger, not a payment system.** The school office records what it receives (cash, bank or other, with the OR number); there is no online payment, invoice or discount. A payment is never edited: a wrong one is removed, which the activity log keeps, and recorded again.
+- **Admission documents are a checklist, not uploads.** The office ticks off the papers it has seen. Storing the files would need Firebase Cloud Storage, which needs the paid Blaze plan.
 - **Local development shares the Firebase project with the live site.** Outside production the API never deletes a Firebase user it does not know, because it may be a live user.
 - **Schema changes are versioned and only move forward.** `npm run db:migrate` creates missing tables from `schema.sql`, then runs each upgrade in [database/upgrades.js](backend/database/upgrades.js) that the `schema_migrations` table has not recorded yet ([src/config/migrations.js](backend/src/config/migrations.js)). With `MIGRATE_ON_START=true` the API does the same at every start, so a deploy migrates before it serves. Undoing an upgrade is a new upgrade. `--fresh` drops the database first and is refused for a database that is not on this machine unless `--allow-remote-drop` is added.
 
@@ -205,6 +210,7 @@ Known limits, accepted for this project:
 - **Some 403s show that an id exists.** On a few endpoints a 403 comes where a 404 would hide the record; ids are sequential and reveal no data.
 - **Past years' classes still take subjects and timetable periods.** Only enrollment refuses a past year.
 - **The Firebase display name is set once,** when the account is created. The app shows names from MySQL only.
+- **Students who registered before admissions existed have no application.** Like students an admin created or imported, one who has no class yet is listed among the students without a class and is placed from Admin → Students.
 
 ## Troubleshooting
 

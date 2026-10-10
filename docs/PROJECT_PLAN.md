@@ -166,7 +166,7 @@ MySQL 8.0, InnoDB, `utf8mb4_unicode_ci`, snake_case, `id INT UNSIGNED AUTO_INCRE
 | `grades` | one score per student per assessment; `remarks`, `graded_by` | `UNIQUE(assessment_id, student_id)`; CHECK `score >= 0`; `score <= max_score` checked by the service in the same transaction |
 | `announcements` | `author_id`, `title`, `body`, `audience`, optional `class_id`, `published_at`, `expires_at` | CHECK `expires_at > published_at`; visibility = audience matches role AND (no class OR my class) |
 
-Added after the plan (section 14): `subject_grade_weights`, `calendar_events`, `activity_log`, `notifications`, `announcement_reads`.
+Added after the plan (section 14): `subject_grade_weights`, `calendar_events`, `activity_log`, `notifications`, `announcement_reads`, `admissions`, `fees`, `payments`.
 
 Shared enum values (section 11) are the only values these ENUM columns accept.
 
@@ -185,7 +185,7 @@ Shared enum values (section 11) are the only values these ENUM columns accept.
 - Scoping: omitted filter = caller's own scope; explicit filter outside the caller's scope = 403 (never silently narrowed); admin unscoped. The literal `me` is accepted wherever a `studentId`, `teacherId` or `authorId` appears.
 - Teacher *visible* set = class-subjects they teach or any class-subject of a class they are homeroom teacher of; teacher *owns* = `class_subjects.teacher_id = me`. Reads use visible, writes use owns.
 
-### 7.2 Endpoints as planned (64; 76 today, see section 14 and the OpenAPI spec)
+### 7.2 Endpoints as planned (64; 85 today, see section 14 and the OpenAPI spec)
 
 | Module | Endpoints | Roles |
 |---|---|---|
@@ -247,7 +247,7 @@ school-management-system/
 │   ├── .env.example
 │   ├── firebase-service-account.json   # git-ignored; downloaded from the Firebase console
 │   ├── database/
-│   │   ├── schema.sql              # CREATE DATABASE + 17 tables (idempotent)
+│   │   ├── schema.sql              # the 20 tables (idempotent; scripts/migrate.js creates the database)
 │   │   ├── upgrades.js             # changes to existing tables, each run once by src/config/migrations.js
 │   │   └── seed.sql                # non-user demo data, ids resolved by natural keys, dates relative to today
 │   ├── docs/
@@ -277,6 +277,8 @@ school-management-system/
 │           ├── students/ teachers/ subjects/ classes/ classSubjects/
 │           ├── enrollments/        # routes/controller/service/repository/schemas + promotion.service.js (DepEd promotion rules, self-enrollment)
 │           ├── attendance/ assessments/ grades/ schedules/ announcements/ imports/ calendar/ activity/ notifications/
+│           ├── admissions/         # document checklist and decline; enrolling admits (called by enrollments.service)
+│           ├── fees/               # fees and a student's statement (/fees), payments (/payments)
 │           ├── dashboard/          # routes/controller/service/repository (aggregates only; no schemas) + atRisk.service.js (the "needs attention" list)
 │           └── health/             # routes/controller (pings the database)
 └── frontend/
@@ -297,7 +299,7 @@ school-management-system/
         ├── hooks/                  # useDebounce, useListParams, useDisclosure, useConfirm, useDiscardConfirm, useUnsavedChangesBlocker, useTheme, ...
         ├── components/ui/          # one primitive per file: Button, Input, Select, OptionSelect, Textarea, Checkbox, RadioGroup, FormField, Table, DataTable, Pagination, SearchInput, FilterBar, Modal, ConfirmDialog, Alert, Badge, Spinner, Skeleton, EmptyState, ErrorState, Tabs, Card, StatTile, Dropdown, Toast, TrendChart, BarChart, ...
         ├── components/layout/      # AppShell, Sidebar, Topbar, NavItem, UserMenu, PageHeader, PageSkeleton, SplashScreen, DevProjectBanner, AuthLayout, navConfig.js
-        └── features/               # one folder per resource: auth, dashboard, users, students, teachers, subjects, classes, enrollments, attendance, grades, schedules, announcements, calendar, activity, notifications, ...
+        └── features/               # one folder per resource: auth, dashboard, users, students, admissions, teachers, subjects, classes, enrollments, attendance, grades, fees, schedules, announcements, calendar, activity, notifications, ...
             └── <feature>/          # keys.js, api.js, hooks.js, schemas.js, components/, pages/  (a feature has only the parts it needs)
 ```
 
@@ -435,6 +437,12 @@ The code is the source of truth; `backend/docs/openapi.yaml` is checked against 
 **Self-enrollment (2026-10-09)**
 - A student without a class sees their standing on the dashboard and on My class: the general average of their last finished year with its descriptor, and the sections they may pick (homeroom teacher and head count) with one confirmation before enrolling. Remedial and retained students see the failed subjects; a student who cannot be judged keeps the "wait for your class" card.
 - Self-enrollment opens once an admin has closed the student's year (End of school year); it stays possible as long as the next year has not passed.
+
+**School extras (2026-10-10)**
+- LRN: `students.lrn`, DepEd's 12-digit Learner Reference Number, optional and unique; set at sign-up, by an admin, in the CSV import or on the profile. Existing databases get the column from upgrade `2026-10-10-students-lrn`.
+- DepEd school forms as CSV: SF1 (a class's register), SF2 (a class's daily attendance for a month, from `GET /attendance/summary?groupBy=studentDay`) and SF10 (a student's permanent record); the printed report card (SF9) shows the LRN.
+- Admissions: a self-registration is an application (table `admissions`: grade applied for, previous school, two received documents, pending / admitted / declined). Admins tick the documents off and decline with a reason (`/admissions`); enrolling the applicant admits them. Pending and declined applicants are left out of the "without a class" counts.
+- Fees: tables `fees` (per school year, for one grade or every grade) and `payments` (with the OR number); `/fees`, `GET /fees/statement` and `/payments`, admins only except a student's own statement. Changes are in the activity log under Fees.
 
 **Known limits (accepted for this project)** are listed with the design decisions in the [README](../README.md#design-decisions-and-known-limits).
 

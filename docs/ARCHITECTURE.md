@@ -30,7 +30,7 @@ MySQL 8  ── users, profiles, classes, attendance, grades, …  (all data and
 
 Per request, `authenticate` does: verify the ID token → find the `users` row by `firebase_uid` → reject unknown users (`USER_NOT_REGISTERED`) and inactive users (`ACCOUNT_DISABLED`) → attach `{ id, role, studentId, teacherId, activeClassId }` to the request. Role gates (`authorize('admin', 'teacher')`) sit next to each route; row-level rules (a teacher only grades their own class-subjects, a student only reads their own records) are in `modules/access`.
 
-Accounts have exactly one creation path, `createUserAccount`: it creates (or, for trusted callers, adopts) the Firebase user, writes the `users` + profile rows in one transaction, and deletes the Firebase user again if MySQL fails, so the two systems never drift. Public self-registration only ever creates students.
+Accounts have exactly one creation path, `createUserAccount`: it creates (or, for trusted callers, adopts) the Firebase user, writes the `users` + profile rows in one transaction, and deletes the Firebase user again if MySQL fails, so the two systems never drift. Public self-registration only ever creates students, each with a pending application (an `admissions` row) written in the same transaction.
 
 ## 3. Backend layers
 
@@ -49,6 +49,8 @@ Every feature module under `backend/src/modules/<name>/` has the same five files
 - `dashboard/atRisk.service.js` – the "needs attention" list of the admin and teacher dashboards.
 
 The other exceptions only drop a layer they do not need: `auth` has no repository (it uses the users module), `dashboard` has no schemas, `health` is a route and a controller, and `access` is a service and a repository that hold the ownership and scoping rules every other service calls (the `assert*` checks, `classScope`, and `scopeRecordFilters`: one scoping rule for the attendance and grade lists and summaries). A bug is found by following one path: the URL names the route file, the route names the controller, and so on down. Cross-module data goes through the other module's **service**, never its SQL.
+
+Two modules answer on two paths: `grades` (`/grades` and `/assessments/:id/grades`) and `fees` (`/fees`, with a student's statement, and `/payments`). `admissions` has the document checklist and the decline; it has no admit route, because enrolling an applicant admits them: `enrollments.service.js` calls `admissions.service.js` inside the enrollment's transaction. Applications are read with the students (`admission` on a student and on `/auth/me`, the `admissionStatus` filter of `GET /students`).
 
 Cross-cutting pieces are written once:
 
@@ -96,10 +98,21 @@ erDiagram
     users ||--o{ announcement_reads : "marks read"
     announcements ||--o{ announcement_reads : "read by"
     users ||--o{ notifications : "receives"
+    students ||--o| admissions : "applied with"
+    students ||--o{ payments : "pays"
+    users ||--o{ payments : "recorded by"
     calendar_events {
         enum type "holiday | event"
         date starts_on
         date ends_on
+    }
+    fees {
+        int id PK
+        varchar academic_year "2026-2027"
+        tinyint grade_level "1-12, null = every grade"
+        tinyint grade_key "generated; unique(academic_year, grade_key, name)"
+        varchar name
+        decimal amount "pesos, above 0"
     }
     activity_log {
         bigint id PK
@@ -218,16 +231,38 @@ erDiagram
         varchar link "in-app path"
         datetime read_at "null = unread"
     }
+    admissions {
+        int student_id PK,FK "self-registered students only"
+        tinyint grade_level "grade applied for, 1-12"
+        varchar previous_school
+        enum status "pending | admitted | declined"
+        tinyint birth_certificate_received "PSA birth certificate, 0 or 1"
+        tinyint report_card_received "SF9 of the last year, 0 or 1"
+        varchar decline_reason "set exactly when declined"
+        datetime created_at "when the application was sent"
+    }
+    payments {
+        int id PK
+        int student_id FK
+        varchar academic_year "the year whose fees it counts towards"
+        decimal amount "pesos, above 0"
+        date paid_on "not in the future"
+        enum method "cash | bank | other"
+        varchar receipt_number UK "OR number"
+        varchar note
+        int recorded_by FK
+    }
 ```
 
-`activity_log` has no foreign keys on purpose: it copies the actor's name and role, so an entry outlives the rows it mentions. Besides these 17 tables there is one bookkeeping table outside `schema.sql`, `schema_migrations`, created by `config/migrations.js` (see schema changes below).
+`activity_log` has no foreign keys on purpose: it copies the actor's name and role, so an entry outlives the rows it mentions. `fees` has none either: a student owes the fees of their class's grade level in that school year plus the every-grade ones, matched on `academic_year` and `grade_level`, and a payment counts towards a school year, not a fee. Students created by an admin or an import have no `admissions` row. Besides these 20 tables there is one bookkeeping table outside `schema.sql`, `schema_migrations`, created by `config/migrations.js` (see schema changes below).
 
 Rules the database itself enforces (not just the API):
 
 - One account per e-mail and per Firebase user; a profile row belongs to exactly one user.
 - **One active enrollment per student**, via a generated `active_flag` column plus a unique key; closed enrollments stay as history, and every enrollment is its own row (re-joining a class adds a row). Attendance and grade rosters are dated: the students who were in the class on that day.
 - One teacher per subject per class; one attendance mark per student per lesson per day; one grade per student per assessment.
-- Foreign keys are `RESTRICT` everywhere: history is never silently deleted. An account or a subject with history is retired (`is_active = 0`) instead. One that nothing refers to yet, such as an account created by mistake, can be deleted (`DELETE /users/:id`, `DELETE /subjects/:id`, 409 otherwise); the service first deletes what belongs only to it (an account's profile row, notifications and read marks, a subject's grade weights) in the same transaction.
+- One application per student, with a decline reason exactly when it is declined; one fee per name, school year and grade level (a generated `grade_key` stands in for "every grade", the `active_flag` trick again); each OR number on one payment only.
+- Foreign keys are `RESTRICT` everywhere: history is never silently deleted. An account or a subject with history is retired (`is_active = 0`) instead. One that nothing refers to yet, such as an account created by mistake, can be deleted (`DELETE /users/:id`, `DELETE /subjects/:id`, 409 otherwise); the service first deletes what belongs only to it (an account's profile row, application, notifications and read marks, a subject's grade weights) in the same transaction. Payments count as history, for the student and for the admin who recorded them.
 
 Rules the service layer enforces because SQL cannot express them: schedule overlaps (class, teacher or room, per academic year, serialised with a named lock), `score <= max_score`, no attendance for future dates, only enrolled students on a sheet or grade batch, a subject's grade weights adding up to 100.
 
@@ -253,11 +288,14 @@ Results: a subject with a grading group is graded on the DepEd K-12 components (
 | Subjects, classes, school calendar: read | Y | Y | Y |
 | Subjects, classes, teacher assignment, enrollments, timetable, school calendar: write | Y | N | N (except self-enrollment, next row) |
 | Enroll themselves in next year's class (`/enrollments/next-class`, when the promotion rules allow) | N | N | own (self) |
+| Admissions: tick off documents, decline an application (`/admissions`); admitting is enrolling | Y | N | N |
 | Class-subjects, enrollments, timetable: read | Y | own (visible) | own (active class, self) |
 | Attendance: mark and correct (through the sheet) | Y | own (owns the lesson) | N |
 | Attendance: read records and summary | Y | own (visible) | own (self) |
 | Assessments: create, edit, delete; grades: enter, delete | Y | own (owns the lesson) | N |
 | Assessments, grades: read | Y | own (visible) | own (active class, own grades) |
+| Fees: list, create, edit, delete; payments: record, delete | Y | N | N |
+| Fee statement of a school year (`/fees/statement`) | Y | N | own (self) |
 | Announcements: create | Y (any audience, optional class) | own (a visible class is required) | N |
 | Announcements: edit, delete | Y | own (authored) | N |
 | Announcements: read | Y (all statuses) | targeted and authored | targeted, active only |
@@ -272,6 +310,8 @@ Enforcement: the role column is `authorize(...)` on the route; every `own` cell 
 A single-page React app with one route tree and three role areas (`/admin`, `/teacher`, `/student`) behind a role guard. Server state lives in TanStack Query (one query-key factory, one API client that attaches the Firebase ID token and unwraps the envelope); forms use react-hook-form with zod schemas that reuse the shared constants; list filters live in the URL so a filtered view can be bookmarked and the back button works. Details: [PROJECT_PLAN.md, section 9](PROJECT_PLAN.md#9-frontend-summary) and [frontend/README.md](../frontend/README.md).
 
 Behaviour that two pages share is written once. The attendance and grade sheets share `hooks/useSheetEditing.js` (the unsaved-changes guard, reading a refused save, reloading the sheet) and `components/ui/SheetAlerts.jsx` (the read-only note and the save alert with its Reload button). `features/classSubjects/access.js` decides who may write to a lesson, the same rule as the API's `assertCanManageClassSubject`, so a page only offers what the API will accept. Every icon comes from one set, lucide-react.
+
+Fees and admissions follow the same rule. `features/fees` has one statement component (`components/FeeStatement.jsx`): the Fees tab of a student's page shows it with the payment actions for admins, and the student's Fees page shows it read-only. `features/admissions` has no list of its own: the Admissions page reads the students with the `admissionStatus` filter, and Admit opens the enroll dialog of `features/enrollments`.
 
 The sign-in page can list demo accounts, folded under the form, from the build variable `VITE_DEMO_ACCOUNTS` (read in `config/env.js`, shown by `features/auth/components/DemoAccounts.jsx`). Without the variable the page lists nothing; the live site gets it from a GitHub repository variable, so no password is in the repository.
 
