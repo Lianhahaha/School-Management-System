@@ -1,5 +1,6 @@
 /**
- * SQL for the students table (profile) joined with users and the active enrollment.
+ * SQL for the students table (profile) joined with users, the active enrollment and the application
+ * (admissions, self-registered students only).
  */
 import { query, run } from '../../config/db.js';
 import { selectPage } from '../../utils/pagination.js';
@@ -17,12 +18,21 @@ const COLUMNS = `s.id, s.user_id, s.student_number, s.lrn, u.first_name, u.last_
   s.date_of_birth, s.gender, s.address, s.guardian_name, s.guardian_phone, s.admission_date, u.is_active,
   s.created_at, s.updated_at,
   e.id AS enrollment_id, e.class_id, e.status AS enrollment_status, e.enrolled_on,
-  c.name AS class_name, c.grade_level, c.academic_year`;
+  c.name AS class_name, c.grade_level, c.academic_year,
+  ad.status AS admission_status, ad.grade_level AS applied_grade_level, ad.previous_school,
+  ad.birth_certificate_received, ad.report_card_received, ad.decline_reason, ad.created_at AS applied_at`;
 
 const FROM = `FROM students s
   JOIN users u ON u.id = s.user_id
   LEFT JOIN enrollments e ON e.student_id = s.id AND e.status = 'active'
-  LEFT JOIN classes c ON c.id = e.class_id`;
+  LEFT JOIN classes c ON c.id = e.class_id
+  LEFT JOIN admissions ad ON ad.student_id = s.id`;
+
+/**
+ * Students without a class whom an admin still has to place: an applicant who is pending or declined belongs
+ * to the Admissions page instead. The dashboard's unenrolled count uses the same rule (aliases e and ad).
+ */
+export const WITHOUT_A_CLASS = "e.id IS NULL AND (ad.status IS NULL OR ad.status = 'admitted')";
 
 export async function findStudentById(id) {
   return (await query(`SELECT ${COLUMNS} ${FROM} WHERE s.id = ?`, [id]))[0] ?? null;
@@ -47,9 +57,10 @@ export function listStudents(listQuery, scope) {
     .addIf(listQuery.gradeLevel, 'c.grade_level = ?')
     .addIf(listQuery.gender, 's.gender = ?')
     .addIf(listQuery.isActive, 'u.is_active = ?')
+    .addIf(listQuery.admissionStatus, 'ad.status = ?')
     .addScope(scope);
   if (listQuery.hasActiveEnrollment !== undefined) {
-    where.add(listQuery.hasActiveEnrollment ? 'e.id IS NOT NULL' : 'e.id IS NULL');
+    where.add(listQuery.hasActiveEnrollment ? 'e.id IS NOT NULL' : WITHOUT_A_CLASS);
   }
   return selectPage({
     select: COLUMNS,

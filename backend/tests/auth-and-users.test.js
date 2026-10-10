@@ -8,6 +8,7 @@ import { logger } from '../src/utils/logger.js';
 import { FAKE_PROJECT_ID, bearer, firebaseUsers } from './helpers/fakeFirebase.js';
 import { currentAcademicYear } from '../src/utils/dates.js';
 import {
+  APPLICATION_FIELDS,
   api,
   as,
   assignTeacher,
@@ -164,6 +165,7 @@ describe('registration', () => {
     password: 'Password123!',
     firstName: 'Nia',
     lastName: 'Okoye',
+    ...APPLICATION_FIELDS,
   };
 
   it('creates a student account, lower-cases the email and generates a student number', async () => {

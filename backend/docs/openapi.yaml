@@ -85,6 +85,8 @@ tags:
     description: Bulk creation of student accounts from spreadsheet rows.
   - name: students
     description: Student directory and profiles.
+  - name: admissions
+    description: Applications sent with a self-registration, their document checklist and declining them.
   - name: teachers
     description: Teacher directory and profiles.
   - name: subjects
@@ -126,10 +128,12 @@ paths:
       description: |
         Roles: public (no token).
 
-        Self-registration. Creates the Firebase user, the account and the student profile in one step and
-        always assigns the role `student`; there is no `role` field. The student number is generated
-        (`STU-<admission year>-NNNN`) and `admissionDate` is today. No token is returned: sign in with the
-        Firebase client SDK afterwards.
+        Self-registration, which is also an application. Creates the Firebase user, the account, the student
+        profile and a `pending` application (`profile.admission`: the grade applied for and the previous
+        school) in one step, and always assigns the role `student`; there is no `role` field. `gradeLevel`,
+        `guardianName` and `guardianPhone` are required here. The student number is generated
+        (`STU-<admission year>-NNNN`) and `admissionDate` is today. Every active admin gets a `signup`
+        notification. No token is returned: sign in with the Firebase client SDK afterwards.
 
         Disabled with `ALLOW_PUBLIC_REGISTRATION=false`: 404 with `details.reason = registration_disabled`.
         Limited per IP address and 15 minutes to 30 successful registrations, and separately to 150 rejected
@@ -153,6 +157,8 @@ paths:
               gender: male
               guardianName: Maria Cruz
               guardianPhone: +63 917 765 4321
+              gradeLevel: 7
+              previousSchool: Bagong Silang Elementary School
       responses:
         '201': { $ref: '#/components/responses/AccountResponse' }
         '400': { $ref: '#/components/responses/BadRequest' }
@@ -444,8 +450,9 @@ paths:
 
         Directory, class roster and enrollment picker. Search matches first name, last name, full name
         (`Liam Cruz`), student number, LRN and email. Default order: last name, then first name.
-        `hasActiveEnrollment=false` lists students without a class (admin). A `classId` the teacher cannot
-        see is a 403.
+        `hasActiveEnrollment=false` lists students without a class whom an admin still has to place (admin):
+        pending and declined applicants are left out, `admissionStatus` lists those. A `classId` the teacher
+        cannot see is a 403.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Limit'
@@ -467,9 +474,16 @@ paths:
         - $ref: '#/components/parameters/IsActiveFilter'
         - name: hasActiveEnrollment
           in: query
-          description: Use true for students in a class, false for students without one.
+          description: |
+            Use true for students in a class, false for students without one (pending and declined applicants
+            are left out).
           schema:
             type: boolean
+        - name: admissionStatus
+          in: query
+          description: Only self-registered students whose application has this status.
+          schema:
+            $ref: '#/components/schemas/AdmissionStatus'
       responses:
         '200': { $ref: '#/components/responses/StudentListResponse' }
         '400': { $ref: '#/components/responses/BadRequest' }
@@ -514,6 +528,65 @@ paths:
             example:
               guardianPhone: +63 917 765 0000
               address: null
+      responses:
+        '200': { $ref: '#/components/responses/StudentResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admissions/{studentId}:
+    patch:
+      tags: [admissions]
+      operationId: updateAdmission
+      summary: Tick off an applicant's documents
+      description: |
+        Roles: admin.
+
+        The document checklist of a self-registered student's application: the PSA birth certificate and
+        the report card (SF9) the school office has received. Accepted whatever the status, since papers may
+        arrive after admission. There is no admit route: enrolling the student in a class (`POST
+        /enrollments`, `/enrollments/bulk`) admits them. 404 when the student has no application (created by
+        an admin or an import).
+      parameters:
+        - $ref: '#/components/parameters/StudentIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAdmissionRequest'
+            example:
+              birthCertificateReceived: true
+      responses:
+        '200': { $ref: '#/components/responses/StudentResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admissions/{studentId}/decline:
+    post:
+      tags: [admissions]
+      operationId: declineAdmission
+      summary: Decline an application
+      description: |
+        Roles: admin.
+
+        Declines a pending application with a reason the applicant reads on their dashboard. The account
+        stays active, so they can still sign in. The admins' sign-up notifications of the student are marked
+        read and the student gets an `enrollment` notification. Enrolling the student later still admits
+        them. 404 when the student has no application; 409 `details.reason = not_pending` once it is admitted
+        or declined.
+      parameters:
+        - $ref: '#/components/parameters/StudentIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeclineAdmissionRequest'
+            example:
+              reason: Grade 7 is full for this school year. Please apply again in May.
       responses:
         '200': { $ref: '#/components/responses/StudentResponse' }
         '400': { $ref: '#/components/responses/BadRequest' }
@@ -2297,6 +2370,13 @@ components:
       description: Record id, or `me` for the caller's own record.
       schema:
         $ref: '#/components/schemas/IdOrMe'
+    StudentIdPath:
+      name: studentId
+      in: path
+      required: true
+      description: Id of the student (an application is keyed by its student).
+      schema:
+        $ref: '#/components/schemas/Id'
     IsActiveFilter:
       name: isActive
       in: query
@@ -2449,6 +2529,10 @@ components:
     EnrollmentStatus:
       type: string
       enum: [active, completed, transferred, withdrawn]
+    AdmissionStatus:
+      type: string
+      enum: [pending, admitted, declined]
+      description: pending = the school office checks the documents; admitted = enrolled in a class; declined = with a reason.
     AttendanceStatus:
       type: string
       enum: [present, absent, late, excused]
@@ -2648,11 +2732,60 @@ components:
           $ref: '#/components/schemas/EnrollmentStatus'
         enrolledOn:
           $ref: '#/components/schemas/DateYmd'
+    Admission:
+      type: object
+      description: The application sent with a self-registration.
+      required:
+        [
+          status,
+          gradeLevel,
+          previousSchool,
+          birthCertificateReceived,
+          reportCardReceived,
+          declineReason,
+          appliedAt,
+        ]
+      properties:
+        status:
+          $ref: '#/components/schemas/AdmissionStatus'
+        gradeLevel:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: The grade applied for.
+          example: 7
+        previousSchool:
+          type: string
+          nullable: true
+          example: Bagong Silang Elementary School
+        birthCertificateReceived:
+          type: boolean
+          description: The PSA birth certificate reached the school office.
+        reportCardReceived:
+          type: boolean
+          description: The report card (SF9) of the last school year reached the school office.
+        declineReason:
+          type: string
+          nullable: true
+          description: Set when `status` is `declined`, `null` otherwise.
+        appliedAt:
+          $ref: '#/components/schemas/Timestamp'
     # --- Accounts and people ---
     StudentProfile:
       type: object
       required:
-        [id, studentNumber, lrn, dateOfBirth, gender, address, guardianName, guardianPhone, admissionDate]
+        [
+          id,
+          studentNumber,
+          lrn,
+          dateOfBirth,
+          gender,
+          address,
+          guardianName,
+          guardianPhone,
+          admissionDate,
+          admission,
+        ]
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -2682,6 +2815,11 @@ components:
           nullable: true
         admissionDate:
           $ref: '#/components/schemas/DateYmd'
+        admission:
+          nullable: true
+          description: The application of a self-registered student; `null` for one created by an admin or an import.
+          allOf:
+            - $ref: '#/components/schemas/Admission'
     TeacherProfile:
       type: object
       required: [id, employeeNumber, hireDate, department, qualification]
@@ -3812,7 +3950,9 @@ components:
               type: integer
             unenrolledStudents:
               type: integer
-              description: Active students without an active enrollment.
+              description: |
+                Active students without an active enrollment, leaving out pending and declined applicants (as
+                `GET /students?hasActiveEnrollment=false&isActive=true`).
         attendanceToday:
           description: >-
             Attendance counts of today across the whole school, and today's lessons as sheets to mark: one per
@@ -4229,10 +4369,24 @@ components:
         guardianPhone:
           $ref: '#/components/schemas/Phone'
     RegisterRequest:
-      description: Account fields plus the optional student details. There is no `role`; it is always `student`.
+      description: |
+        Account fields, the student details and the application. The guardian and the grade applied for are
+        required here (not when an admin creates a student). There is no `role`; it is always `student`.
       allOf:
         - $ref: '#/components/schemas/AccountFields'
         - $ref: '#/components/schemas/StudentDetails'
+        - type: object
+          required: [guardianName, guardianPhone, gradeLevel]
+          properties:
+            gradeLevel:
+              type: integer
+              minimum: 1
+              maximum: 12
+              description: The grade applied for.
+            previousSchool:
+              type: string
+              maxLength: 150
+              description: Optional; blank is stored as no value.
     StudentProfileInput:
       description: Every field is optional; a missing number is generated and a missing `admissionDate` is today.
       allOf:
@@ -4657,6 +4811,25 @@ components:
         status:
           type: string
           enum: [completed, withdrawn]
+    UpdateAdmissionRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        birthCertificateReceived:
+          type: boolean
+        reportCardReceived:
+          type: boolean
+    DeclineAdmissionRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Shown to the applicant on their dashboard.
     CreateScheduleRequest:
       type: object
       additionalProperties: false

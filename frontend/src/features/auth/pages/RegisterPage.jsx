@@ -9,7 +9,10 @@ export default function RegisterPage() {
 
   return (
     <>
-      <AuthHeading title="Create your account" description="Student self-registration." />
+      <AuthHeading
+        title="Create your account"
+        description="Apply as a student. Sign in any time to see where your application stands."
+      />
       {isRegistrationClosed ? <RegistrationClosed /> : <RegisterForm />}
       <p className="mt-6 text-center text-sm text-gray-600">
         Already have an account? <TextLink to="/login">Sign in</TextLink>

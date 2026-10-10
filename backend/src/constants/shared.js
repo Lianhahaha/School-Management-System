@@ -19,6 +19,12 @@ export const GENDERS = Object.freeze(['male', 'female', 'other']);
 
 export const ENROLLMENT_STATUSES = Object.freeze(['active', 'completed', 'transferred', 'withdrawn']);
 
+/**
+ * Where a self-registered applicant stands: pending (the school office checks the documents), admitted
+ * (enrolled in a class) or declined (with a reason the applicant reads on their dashboard).
+ */
+export const ADMISSION_STATUSES = Object.freeze(['pending', 'admitted', 'declined']);
+
 export const ATTENDANCE_STATUSES = Object.freeze(['present', 'absent', 'late', 'excused']);
 
 export const ASSESSMENT_TYPES = Object.freeze(['quiz', 'test', 'exam', 'assignment', 'project', 'other']);

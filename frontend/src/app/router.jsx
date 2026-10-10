@@ -39,6 +39,7 @@ const adminRoutes = [
     path: 'students/:studentId',
     element: page(() => import('../features/students/pages/StudentDetailPage')),
   },
+  { path: 'admissions', element: page(() => import('../features/admissions/pages/AdmissionsPage')) },
   { path: 'teachers', element: page(() => import('../features/teachers/pages/TeachersListPage')) },
   {
     path: 'teachers/:teacherId',

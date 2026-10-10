@@ -4,7 +4,9 @@
  */
 import { query } from '../../config/db.js';
 import { WhereBuilder } from '../../utils/sql.js';
+import { WITHOUT_A_CLASS } from '../students/students.repository.js';
 
+/** `unenrolled_students` counts like GET /students?hasActiveEnrollment=false&isActive=true (no applicants). */
 export async function findAdminCounts(academicYear) {
   const rows = await query(
     `SELECT
@@ -22,7 +24,8 @@ export async function findAdminCounts(academicYear) {
        (SELECT COUNT(*) FROM students s
           JOIN users u ON u.id = s.user_id
           LEFT JOIN enrollments e ON e.student_id = s.id AND e.status = 'active'
-         WHERE u.is_active = 1 AND e.id IS NULL) AS unenrolled_students`,
+          LEFT JOIN admissions ad ON ad.student_id = s.id
+         WHERE u.is_active = 1 AND ${WITHOUT_A_CLASS}) AS unenrolled_students`,
     [academicYear, academicYear, academicYear],
   );
   return rows[0];

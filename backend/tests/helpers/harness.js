@@ -40,6 +40,13 @@ export async function makeUser(role, overrides = {}) {
   return { ...account, auth: bearer(account.firebaseUid) };
 }
 
+/** The fields POST /auth/register requires besides the account ones: the guardian and the grade applied for. */
+export const APPLICATION_FIELDS = Object.freeze({
+  gradeLevel: 7,
+  guardianName: 'Maria Cruz',
+  guardianPhone: '+63 917 765 4321',
+});
+
 export const as = (user) => ({ Authorization: user.auth });
 
 /** Creates a class through the API as `admin` and returns its body data. */

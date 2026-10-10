@@ -12,15 +12,25 @@ const isEmailTaken = (error) =>
   (error?.code === 'ER_DUP_ENTRY' && /uq_users_email/.test(error.sqlMessage ?? ''));
 
 /**
- * Public registration always creates a student; the Firebase account is never adopted. Every "this email
- * is taken" case (a school account, a sign-in without one, a parallel sign-up) gets the same answer, so
- * the form does not tell strangers which kind of account an address has.
+ * Public registration always creates a student with a pending application (the grade applied for and the
+ * previous school); the Firebase account is never adopted. Every "this email is taken" case (a school
+ * account, a sign-in without one, a parallel sign-up) gets the same answer, so the form does not tell
+ * strangers which kind of account an address has.
  */
 export async function register(body) {
-  const { email, password, firstName, lastName, phone, ...profile } = body;
+  const { email, password, firstName, lastName, phone, gradeLevel, previousSchool, ...profile } = body;
   try {
     return await usersService.createUserAccount(
-      { email, password, firstName, lastName, phone, role: 'student', profile },
+      {
+        email,
+        password,
+        firstName,
+        lastName,
+        phone,
+        role: 'student',
+        profile,
+        application: { gradeLevel, previousSchool },
+      },
       { trusted: false },
     );
   } catch (error) {

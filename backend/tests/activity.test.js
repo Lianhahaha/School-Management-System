@@ -3,7 +3,15 @@ import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import { query, run } from '../src/config/db.js';
 import { todayYmd } from '../src/utils/dates.js';
-import { api, as, buildSchool, closeWorld, makeUser, resetWorld } from './helpers/harness.js';
+import {
+  APPLICATION_FIELDS,
+  api,
+  as,
+  buildSchool,
+  closeWorld,
+  makeUser,
+  resetWorld,
+} from './helpers/harness.js';
 
 after(closeWorld);
 
@@ -129,6 +137,7 @@ describe('activity log', () => {
       password: 'Password123!',
       firstName: 'New',
       lastName: 'Student',
+      ...APPLICATION_FIELDS,
     });
     assert.equal(signUp.status, 201);
     const registered = await latest('user.register');

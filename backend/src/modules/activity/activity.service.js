@@ -19,6 +19,7 @@ const AREA_OF = {
   student: 'accounts',
   teacher: 'accounts',
   enrollment: 'enrollments',
+  admission: 'enrollments',
   class: 'classes',
   assignment: 'classes',
   subject: 'subjects',

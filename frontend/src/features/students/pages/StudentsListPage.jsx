@@ -17,6 +17,8 @@ import { useListParams } from '../../../hooks/useListParams';
 import { isWithinDays, relativeTime } from '../../../utils/date';
 import { countOf } from '../../../utils/format';
 import { fullName } from '../../../utils/names';
+import { AdmissionStatusBadge } from '../../admissions/components/AdmissionStatusBadge';
+import { isApplicant } from '../../admissions/status';
 import { ClassSelect } from '../../classes/components/ClassSelect';
 import { EnrollStudentsModal } from '../../enrollments/components/EnrollStudentsModal';
 import { UserFormModal } from '../../users/components/UserFormModal';
@@ -71,6 +73,8 @@ export default function StudentsListPage() {
       cell: (student) =>
         student.currentEnrollment ? (
           <Badge tone="blue">{student.currentEnrollment.className}</Badge>
+        ) : isApplicant(student) ? (
+          <AdmissionStatusBadge student={student} />
         ) : (
           <Badge tone="gray">Not enrolled</Badge>
         ),

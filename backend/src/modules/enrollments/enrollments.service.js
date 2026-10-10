@@ -7,6 +7,7 @@
  * The end of a school year closes a class's rows as `completed` and can move the students on in one step.
  * After that a student may enroll themselves in a section of the grade level their results allow; those
  * DepEd promotion rules live in promotion.service.js.
+ * Enrolling a self-registered applicant admits them (admissions), in the same transaction.
  */
 import { withTransaction } from '../../config/db.js';
 import { ApiError } from '../../utils/ApiError.js';
@@ -14,6 +15,7 @@ import { currentAcademicYear, todayYmd } from '../../utils/dates.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import * as access from '../access/access.service.js';
 import { nameOf, record } from '../activity/activity.service.js';
+import { admit } from '../admissions/admissions.service.js';
 import { notifyStudents, resolveSignups } from '../notifications/notifications.service.js';
 import { assertEnrollableClass, findReferencedClass } from '../classes/classes.service.js';
 import * as repo from './enrollments.repository.js';
@@ -117,7 +119,7 @@ async function enrollingTransaction(studentIds, work) {
 /**
  * Opens an active enrollment in `classId` for each student, all or nothing, and returns the new ids in order.
  * Nothing is written when the class or any student is invalid or already in a class; `refusal(activeRows)`
- * builds that 409 (one student or a list).
+ * builds that 409 (one student or a list). The applicants among them (pending or declined) are admitted.
  */
 function enrollInClass(classId, studentIds, refusal) {
   return enrollingTransaction(studentIds, async (conn) => {
@@ -130,6 +132,7 @@ function enrollInClass(classId, studentIds, refusal) {
     for (const studentId of studentIds) {
       created.push(await repo.insertEnrollment(studentId, classId, today, conn));
     }
+    await admit(studentIds, conn);
     return created;
   });
 }

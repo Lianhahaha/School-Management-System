@@ -262,6 +262,7 @@ describe('OpenAPI specification', () => {
       Role: shared.ROLES,
       Gender: shared.GENDERS,
       EnrollmentStatus: shared.ENROLLMENT_STATUSES,
+      AdmissionStatus: shared.ADMISSION_STATUSES,
       AttendanceStatus: shared.ATTENDANCE_STATUSES,
       AssessmentType: shared.ASSESSMENT_TYPES,
       Term: shared.TERMS,

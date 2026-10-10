@@ -10,6 +10,20 @@ import * as access from '../access/access.service.js';
 import { changedList, changesOf, nameOf, record } from '../activity/activity.service.js';
 import * as repo from './students.repository.js';
 
+/** The application a self-registered student sent (admissions), or null for one created by an admin or an import. */
+const toAdmission = (row) =>
+  row.admissionStatus
+    ? {
+        status: row.admissionStatus,
+        gradeLevel: row.appliedGradeLevel,
+        previousSchool: row.previousSchool,
+        birthCertificateReceived: row.birthCertificateReceived,
+        reportCardReceived: row.reportCardReceived,
+        declineReason: row.declineReason,
+        appliedAt: row.appliedAt,
+      }
+    : null;
+
 /** The student-specific columns, as exposed in `profile` and inside the student shape. */
 export const toStudentProfile = (row) => ({
   id: row.id,
@@ -21,6 +35,7 @@ export const toStudentProfile = (row) => ({
   guardianName: row.guardianName,
   guardianPhone: row.guardianPhone,
   admissionDate: row.admissionDate,
+  admission: toAdmission(row),
 });
 
 export const toCurrentEnrollment = (row) =>

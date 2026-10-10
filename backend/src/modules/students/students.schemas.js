@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { GENDERS } from '../../constants/shared.js';
+import { ADMISSION_STATUSES, GENDERS } from '../../constants/shared.js';
 import {
   boolQuery,
   dateStr,
@@ -23,7 +23,9 @@ export const listStudentsQuery = listQuery(Object.keys(STUDENT_SORT_MAP), {
   gradeLevel: gradeLevel.optional(),
   gender: z.enum(GENDERS).optional(),
   isActive: boolQuery.optional(),
+  // false: students without a class an admin still has to place (pending and declined applicants are left out).
   hasActiveEnrollment: boolQuery.optional(),
+  admissionStatus: z.enum(ADMISSION_STATUSES).optional(),
 });
 
 export const updateStudentBody = patchOf({

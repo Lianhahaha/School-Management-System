@@ -9,6 +9,7 @@
 import { Router } from 'express';
 import { authenticate } from './middleware/authenticate.js';
 import { activityRoutes } from './modules/activity/activity.routes.js';
+import { admissionsRoutes } from './modules/admissions/admissions.routes.js';
 import { announcementsRoutes } from './modules/announcements/announcements.routes.js';
 import { assessmentsRoutes } from './modules/assessments/assessments.routes.js';
 import { attendanceRoutes } from './modules/attendance/attendance.routes.js';
@@ -36,6 +37,7 @@ apiRouter.use('/auth', authRoutes);
 apiRouter.use('/users', authenticate, usersRoutes);
 apiRouter.use('/imports', authenticate, importsRoutes);
 apiRouter.use('/students', authenticate, studentsRoutes);
+apiRouter.use('/admissions', authenticate, admissionsRoutes);
 apiRouter.use('/teachers', authenticate, teachersRoutes);
 apiRouter.use('/subjects', authenticate, subjectsRoutes);
 apiRouter.use('/classes', authenticate, classesRoutes);

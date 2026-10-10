@@ -3,9 +3,10 @@
  * is features/enrollments.
  *
  *   useStudents(params, { enabled })  paginated list; params: page, limit, search, sortBy, sortOrder,
- *                                     classId, gradeLevel, gender, isActive, hasActiveEnrollment
+ *                                     classId, gradeLevel, gender, isActive, hasActiveEnrollment, admissionStatus
  *   useClassRoster(classId)           every student currently in the class, as an array (all pages)
  *   useStudent(id)                    one student ('me' for the signed-in student); includes currentEnrollment
+ *                                     and `admission` (the application of a self-registered student, or null)
  *   useUpdateStudent() [form]         mutate({ id, body }) admin only; body from changedFields(values, dirtyFields)
  *   useImportStudents() [form]        mutateAsync(body) checks (dryRun) or creates imported students; the
  *                                     import dialog shows every outcome itself. Imported students can be put in
@@ -30,7 +31,8 @@ import { studentKeys } from './keys';
 
 /**
  * Active students without a class: the filter of the dashboard's "Unenrolled students" tile, the nav badge
- * and the Students page note. `limit: 1` because only `meta.total` is read.
+ * and the Students page note. Pending and declined applicants are left out (the Admissions page has them).
+ * `limit: 1` because only `meta.total` is read.
  */
 export const UNENROLLED_STUDENTS_PARAMS = Object.freeze({
   hasActiveEnrollment: 'false',

@@ -9,6 +9,8 @@ import { ExportCsvButton } from '../../../components/ui/ExportCsvButton';
 import { Tabs } from '../../../components/ui/Tabs';
 import { PAGINATION } from '../../../constants/shared';
 import { fullName } from '../../../utils/names';
+import { AdmissionStatusBadge } from '../../admissions/components/AdmissionStatusBadge';
+import { isApplicant } from '../../admissions/status';
 import { AttendanceSummaryPanel } from '../../attendance/components/AttendanceSummaryPanel';
 import { listEnrollments } from '../../enrollments/api';
 import { EnrollmentHistoryTable } from '../../enrollments/components/EnrollmentHistoryTable';
@@ -59,6 +61,8 @@ export default function StudentDetailPage() {
       <div className="-mt-3 mb-6 flex flex-wrap items-center gap-2">
         {hasClass ? (
           <Badge tone="blue">{student.currentEnrollment.className}</Badge>
+        ) : isApplicant(student) ? (
+          <AdmissionStatusBadge student={student} />
         ) : (
           <Badge tone="gray">Not enrolled</Badge>
         )}

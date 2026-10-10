@@ -834,6 +834,8 @@ async function remove() {
     );
     await del('DELETE FROM classes WHERE id IN (?)', [ids(m.classIds)]);
     await del('DELETE FROM subjects WHERE id IN (?)', [ids(m.subjectIds)]);
+    // An application row exists only for a mock student who signed up through /register while testing.
+    await del('DELETE FROM admissions WHERE student_id IN (?)', [ids(m.studentIds)]);
     await del('DELETE FROM students WHERE id IN (?)', [ids(m.studentIds)]);
     await del('DELETE FROM teachers WHERE id IN (?)', [ids(m.teacherIds)]);
     await del('DELETE FROM users WHERE id IN (?)', [ids(m.userIds)]);

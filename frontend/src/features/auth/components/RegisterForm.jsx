@@ -6,15 +6,19 @@ import { Input } from '../../../components/ui/Input';
 import { PasswordInput } from '../../../components/ui/PasswordInput';
 import { Select } from '../../../components/ui/Select';
 import { Textarea } from '../../../components/ui/Textarea';
-import { GENDER_OPTIONS } from '../../../constants/ui';
+import { GENDER_OPTIONS, GRADE_LEVEL_OPTIONS } from '../../../constants/ui';
 import { applyServerErrors } from '../../../lib/formErrors';
 import { useRegister } from '../hooks';
 import { registerDefaults, registerSchema } from '../schemas';
 
 const KNOWN_FIELDS = Object.keys(registerSchema.shape);
-const DETAIL_FIELDS = ['phone', 'lrn', 'dateOfBirth', 'gender', 'address', 'guardianName', 'guardianPhone'];
+const DETAIL_FIELDS = ['phone', 'dateOfBirth', 'gender', 'address'];
 
-/** Student self-registration: account fields plus an optional, collapsible "Student details" section. */
+/**
+ * Student self-registration, which is also the application to the school: the account fields, an
+ * "Application" section (grade applied for, previous school, LRN and guardian) and an optional, collapsible
+ * "More about you" section.
+ */
 export function RegisterForm() {
   const registration = useRegister();
   const {
@@ -56,20 +60,45 @@ export function RegisterForm() {
           <PasswordInput {...register('confirmPassword')} autoComplete="new-password" />
         </FormField>
 
+        <section aria-labelledby="register-application" className="space-y-4 border-t border-gray-200 pt-5">
+          <div>
+            <h2 id="register-application" className="text-base font-semibold text-gray-900">
+              Application
+            </h2>
+            <p className="text-sm text-gray-600">The school office checks it and places you in a class.</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label="Grade applying for" error={errors.gradeLevel?.message} required>
+              <Select
+                {...register('gradeLevel')}
+                options={GRADE_LEVEL_OPTIONS}
+                placeholder="Choose a grade"
+              />
+            </FormField>
+            <FormField label="LRN" hint="12 digits, if you have one." error={errors.lrn?.message}>
+              <Input {...register('lrn')} inputMode="numeric" autoComplete="off" />
+            </FormField>
+          </div>
+          <FormField label="Previous school" hint="Optional." error={errors.previousSchool?.message}>
+            <Input {...register('previousSchool')} maxLength={150} autoComplete="off" />
+          </FormField>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label="Guardian name" error={errors.guardianName?.message} required>
+              <Input {...register('guardianName')} autoComplete="off" />
+            </FormField>
+            <FormField label="Guardian phone" error={errors.guardianPhone?.message} required>
+              <Input {...register('guardianPhone')} type="tel" autoComplete="off" />
+            </FormField>
+          </div>
+        </section>
+
         <details open={hasDetailErrors} className="rounded-[1.25rem] bg-gray-50 px-4 py-3">
           <summary className="cursor-pointer text-sm font-medium text-gray-700">
-            Student details (optional)
+            More about you (optional)
           </summary>
           <div className="mt-4 space-y-4">
             <FormField label="Phone" error={errors.phone?.message}>
               <Input {...register('phone')} type="tel" autoComplete="tel" />
-            </FormField>
-            <FormField
-              label="LRN"
-              hint="12 digits; leave blank until DepEd issues one"
-              error={errors.lrn?.message}
-            >
-              <Input {...register('lrn')} inputMode="numeric" autoComplete="off" />
             </FormField>
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField label="Date of birth" error={errors.dateOfBirth?.message}>
@@ -82,19 +111,11 @@ export function RegisterForm() {
             <FormField label="Address" error={errors.address?.message}>
               <Textarea {...register('address')} rows={2} autoComplete="street-address" />
             </FormField>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Guardian name" error={errors.guardianName?.message}>
-                <Input {...register('guardianName')} />
-              </FormField>
-              <FormField label="Guardian phone" error={errors.guardianPhone?.message}>
-                <Input {...register('guardianPhone')} type="tel" />
-              </FormField>
-            </div>
           </div>
         </details>
 
         <Button type="submit" isLoading={registration.isPending} className="w-full">
-          Create account
+          Create account and apply
         </Button>
       </fieldset>
     </form>

@@ -446,3 +446,30 @@ CREATE TABLE IF NOT EXISTS announcement_reads (
     ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='Announcements each user marked as read';
+
+-- -----------------------------------------------------------------------------
+-- 18. admissions — the application sent with a self-registration: the grade
+--     applied for, the documents the school office has received, and the
+--     outcome. One row per applicant (1:1 with students); students created by
+--     an admin or an import have none. Enrolling the student in a class admits
+--     them (same transaction); a declined applicant keeps the account and reads
+--     the reason. Deleting an (unused) account deletes this row first.
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS admissions (
+  student_id                  INT UNSIGNED     NOT NULL COMMENT '1:1 -> students.id',
+  grade_level                 TINYINT UNSIGNED NOT NULL COMMENT 'Grade applied for',
+  previous_school             VARCHAR(150)     NULL,
+  status                      ENUM('pending','admitted','declined') NOT NULL DEFAULT 'pending',
+  birth_certificate_received  TINYINT(1)       NOT NULL DEFAULT 0 COMMENT 'PSA birth certificate seen by the school office',
+  report_card_received        TINYINT(1)       NOT NULL DEFAULT 0 COMMENT 'Report card (SF9) of the last school year',
+  decline_reason              VARCHAR(255)     NULL COMMENT 'Set exactly when status = declined (see CHECK)',
+  created_at                  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'When the application was sent',
+  updated_at                  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (student_id),                          -- one application per student; also serves the FK
+  KEY idx_admissions_status (status, created_at),    -- the Admissions page: one status, oldest first
+  CONSTRAINT fk_admissions_student FOREIGN KEY (student_id) REFERENCES students (id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,           -- the application row goes first; a stray delete fails loudly
+  CONSTRAINT chk_admissions_grade_level CHECK (grade_level BETWEEN 1 AND 12),
+  CONSTRAINT chk_admissions_declined CHECK ((status = 'declined') = (decline_reason IS NOT NULL))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Applications sent with a self-registration, and their outcome';

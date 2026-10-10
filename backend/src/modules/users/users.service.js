@@ -10,6 +10,7 @@ import { currentAcademicYear } from '../../utils/dates.js';
 import { logger } from '../../utils/logger.js';
 import { changedList, changesOf, nameOf, record } from '../activity/activity.service.js';
 import * as notifications from '../notifications/notifications.service.js';
+import * as admissions from '../admissions/admissions.service.js';
 import * as announcements from '../announcements/announcements.service.js';
 import { teacherHasAssignments } from '../classSubjects/classSubjects.service.js';
 import { closeActiveForStudent } from '../enrollments/enrollments.service.js';
@@ -126,13 +127,15 @@ const isGeneratedNumberCollision = (error, profile) =>
  *
  *   1. email already in MySQL        -> 409 CONFLICT (key users.uq_users_email)
  *   2. Firebase account for the email -> see createFirebaseUser
- *   3. users + profile rows in ONE transaction (a generated business number that collides with a parallel
- *      sign-up is regenerated, up to 5 attempts)
+ *   3. users + profile rows, and the application of a self-registration, in ONE transaction (a generated
+ *      business number that collides with a parallel sign-up is regenerated, up to 5 attempts)
  *   4. MySQL write failed -> delete the Firebase user this call created (no orphans); a failure after the
  *      commit leaves both in place
  *
  * @param {{ email: string, password: string, role: 'admin'|'teacher'|'student', firstName: string,
- *           lastName: string, phone?: string, profile?: object }} input
+ *           lastName: string, phone?: string, profile?: object,
+ *           application?: { gradeLevel: number, previousSchool?: string|null } }} input
+ *   `application` is sent by public registration only: admin-created and imported students have none
  * @param {{ trusted: boolean, firebaseUid?: string }} options trusted = admin, import or seed;
  *   firebaseUid links an existing Firebase user instead of creating one (the seed's demo accounts only)
  */
@@ -150,7 +153,10 @@ export async function createUserAccount(input, { trusted, firebaseUid }) {
   const insertAll = () =>
     withTransaction(async (conn) => {
       const userId = await repo.insertUser({ ...input, email, firebaseUid: uid }, conn);
-      if (input.role === 'student') await studentsService.createProfile(userId, input.profile, conn);
+      if (input.role === 'student') {
+        const studentId = await studentsService.createProfile(userId, input.profile, conn);
+        if (input.application) await admissions.createApplication(studentId, input.application, conn);
+      }
       if (input.role === 'teacher') await teachersService.createProfile(userId, input.profile, conn);
       return userId;
     });
@@ -183,10 +189,11 @@ export async function createUserAccount(input, { trusted, firebaseUid }) {
       details,
       actor: account,
     });
+    const application = account.profile.admission;
     await notifications.notifyAdmins({
       type: 'signup',
-      title: `New student sign-up: ${nameOf(account)}`,
-      body: `${email} · needs a class`,
+      title: `New application: ${nameOf(account)}`,
+      body: application ? `Grade ${application.gradeLevel} · ${email}` : email,
       link: notifications.signupLink(account.studentId),
     });
   }
@@ -300,7 +307,11 @@ export async function deleteUser(actor, id) {
     await withTransaction(async (conn) => {
       if (target.role === 'admin') await assertNotLastActiveAdmin(id, conn);
       if (await repo.hasHistory(id, conn)) throw hasHistoryConflict();
-      if (target.role === 'student') await studentsService.deleteProfile(id, conn);
+      if (target.role === 'student') {
+        // An application is not history: an applicant who was never placed in a class can still go.
+        await admissions.deleteForUser(id, conn);
+        await studentsService.deleteProfile(id, conn);
+      }
       if (target.role === 'teacher') await teachersService.deleteProfile(id, conn);
       await notifications.deleteForUser(id, conn);
       await announcements.deleteReadsOfUser(id, conn);

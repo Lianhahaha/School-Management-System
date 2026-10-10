@@ -2,7 +2,16 @@ import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import { todayYmd } from '../src/utils/dates.js';
-import { api, as, buildSchool, closeWorld, makeSubject, makeUser, resetWorld } from './helpers/harness.js';
+import {
+  APPLICATION_FIELDS,
+  api,
+  as,
+  buildSchool,
+  closeWorld,
+  makeSubject,
+  makeUser,
+  resetWorld,
+} from './helpers/harness.js';
 
 after(closeWorld);
 
@@ -93,9 +102,12 @@ describe('notifications', () => {
       password: 'Password123!',
       firstName: 'Sign',
       lastName: 'Up',
+      ...APPLICATION_FIELDS,
     });
     const [note] = await mine(school.admin);
     assert.equal(note.type, 'signup');
+    assert.equal(note.title, 'New application: Sign Up');
+    assert.equal(note.body, 'Grade 7 · signup@school.test');
     assert.equal(note.link, `/admin/students/${signUp.body.data.studentId}`);
     assert.equal(note.isRead, false);
   });
@@ -107,6 +119,7 @@ describe('notifications', () => {
       password: 'Password123!',
       firstName: 'Needs',
       lastName: 'Class',
+      ...APPLICATION_FIELDS,
     });
     const link = `/admin/students/${signUp.body.data.studentId}`;
     const noteOf = async (who) => (await mine(who)).find((note) => note.link === link);
@@ -119,9 +132,7 @@ describe('notifications', () => {
     assert.equal(res.status, 201, JSON.stringify(res.body));
     assert.equal((await noteOf(school.admin)).isRead, true);
     assert.equal((await noteOf(otherAdmin)).isRead, true, 'an admin who did not enroll them is done too');
-    const firstSignUp = (await mine(school.admin)).find(
-      (note) => note.title === 'New student sign-up: Sign Up',
-    );
+    const firstSignUp = (await mine(school.admin)).find((note) => note.title === 'New application: Sign Up');
     assert.equal(firstSignUp.isRead, false, 'other sign-ups stay unread');
   });
 
@@ -151,6 +162,7 @@ describe('notifications', () => {
       password: 'Password123!',
       firstName: 'Second',
       lastName: 'Signup',
+      ...APPLICATION_FIELDS,
     });
     assert.ok((await mine(spareAdmin)).length > 0);
     const res = await api.delete(`/api/v1/users/${spareAdmin.id}`).set(as(school.admin));

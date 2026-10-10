@@ -5,6 +5,8 @@ import { StatTile } from '../../../components/ui/StatTile';
 import { academicYearStart, currentAcademicYear, todayYmd } from '../../../utils/date';
 import { countOf, formatPercent } from '../../../utils/format';
 import { formatResult, generalAverage } from '../../../utils/grades';
+import { ApplicationCard } from '../../admissions/components/ApplicationCard';
+import { isApplicant } from '../../admissions/status';
 import { useAttendanceSummary } from '../../attendance/hooks';
 import { useGradeSummary } from '../../grades/hooks';
 
@@ -18,7 +20,8 @@ const waitingHint = (query, what) => (query.isError ? `Couldn't load the ${what}
 
 /**
  * The first tab of a student's page: what an admin usually opens it for. Class, attendance and average of the
- * current school year as figure rows (each opening the tab with the detail), then how to reach the student.
+ * current school year as figure rows (each opening the tab with the detail), then how to reach the student,
+ * and the application of a self-registered student (first while it waits).
  * The year is the student's class year, or the current one while they have no class.
  *
  * @param {object} props
@@ -40,9 +43,13 @@ export function StudentOverview({ student, onOpenTab }) {
   const subjectsThisYear = (grades.data ?? []).filter((subject) => subject.academicYear === academicYear);
   const average = generalAverage(subjectsThisYear);
   const marks = attendance.data?.total ?? 0;
+  // A self-registered student's application: on top while it is open or declined, below once admitted.
+  const application = student.admission && <ApplicationCard student={student} />;
+  const applicationFirst = isApplicant(student);
 
   return (
     <div className="space-y-6">
+      {applicationFirst && application}
       <div className="grid gap-2 sm:grid-cols-3 sm:gap-4">
         <StatTile
           label="Class"
@@ -93,6 +100,7 @@ export function StudentOverview({ student, onOpenTab }) {
           ]}
         />
       </Card>
+      {!applicationFirst && application}
     </div>
   );
 }

@@ -9,6 +9,7 @@
 import { currentAcademicYear } from '../utils/date';
 import {
   ACTIVITY_AREAS,
+  ADMISSION_STATUSES,
   ANNOUNCEMENT_AUDIENCES,
   ANNOUNCEMENT_STATUSES,
   ASSESSMENT_TYPES,
@@ -97,6 +98,14 @@ export const ENROLLMENT_STATUS_TONES = Object.freeze({
   transferred: 'gray',
   withdrawn: 'amber',
 });
+
+/** The status filter of the Admissions page (it opens on `pending`). */
+export const ADMISSION_STATUS_LABELS = Object.freeze({
+  pending: 'Pending',
+  admitted: 'Admitted',
+  declined: 'Declined',
+});
+export const ADMISSION_STATUS_OPTIONS = optionsOf(ADMISSION_STATUSES, ADMISSION_STATUS_LABELS);
 
 export const ATTENDANCE_STATUS_LABELS = Object.freeze({
   present: 'Present',

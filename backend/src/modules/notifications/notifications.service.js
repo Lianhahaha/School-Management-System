@@ -3,10 +3,10 @@
  * notify* helpers after a change succeeded; like the activity log they are best effort, so a failed write is
  * reported in the server log and never fails the request. Nobody is notified of their own action.
  *
- *   student   a grade recorded or changed, an absence or late mark, a new class
+ *   student   a grade recorded or changed, an absence or late mark, a new class, a declined application
  *   teacher   a lesson to teach, a homeroom class
- *   admin     a student signed up on their own and needs a class (marked read for every admin once the
- *             student is enrolled, since nothing is left to do)
+ *   admin     a student signed up on their own and sent an application (marked read for every admin once
+ *             the student is enrolled or the application declined, since nothing is left to do)
  */
 import { logger } from '../../utils/logger.js';
 import { currentUser } from '../../utils/requestContext.js';
@@ -66,7 +66,10 @@ export async function notifyAdmins(note) {
 /** The page a sign-up notification opens: the new student's record. */
 export const signupLink = (studentId) => `/admin/students/${studentId}`;
 
-/** The students now have a class: their "needs a class" sign-up notes are done for every admin. Never throws. */
+/**
+ * The students now have a class, or their application was declined: their sign-up notes are done for every
+ * admin. Never throws.
+ */
 export async function resolveSignups(studentIds) {
   try {
     await repo.markReadByLink('signup', studentIds.map(signupLink));

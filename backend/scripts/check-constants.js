@@ -66,6 +66,7 @@ const ENUM_COLUMNS = {
   'activity_log.actor_role': constants.ROLES,
   'notifications.type': constants.NOTIFICATION_TYPES,
   'announcements.audience': constants.ANNOUNCEMENT_AUDIENCES,
+  'admissions.status': constants.ADMISSION_STATUSES,
 };
 
 let schema;
