@@ -9,7 +9,7 @@ Authentication. Architecture overview: `../docs/ARCHITECTURE.md`.
 | Concern      | Choice                                                                                                           |
 | ------------ | ---------------------------------------------------------------------------------------------------------------- |
 | Build        | Vite 8, `@vitejs/plugin-react`, JavaScript + JSX only                                                            |
-| UI           | React 19, Tailwind CSS v4 (`@tailwindcss/vite`, tokens in `src/index.css`), lucide-react icons, Phosphor duotone icons on dashboard cards |
+| UI           | React 19, Tailwind CSS v4 (`@tailwindcss/vite`, tokens in `src/index.css`), lucide-react icons |
 | Routing      | `react-router` 8 in data mode (`RouterProvider` comes from `react-router/dom`; never install `react-router-dom`) |
 | Server state | TanStack Query v5                                                                                                |
 | Forms        | react-hook-form + zod 4 (`@hookform/resolvers`)                                                                  |

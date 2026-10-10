@@ -1,4 +1,4 @@
-import { ListChecksIcon } from '@phosphor-icons/react';
+import { ListChecks } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { StepList } from '../../../components/ui/StepList';
 
@@ -66,7 +66,7 @@ export function SetupChecklistCard({ counts }) {
 
   return (
     <Card
-      icon={ListChecksIcon}
+      icon={ListChecks}
       mark="maroon"
       title="Set up your school"
       total={`${doneCount} of ${steps.length} done`}

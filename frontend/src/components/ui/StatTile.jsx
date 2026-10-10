@@ -11,7 +11,7 @@ import { cx } from '../../utils/cx';
  * @param {string} props.label
  * @param {import('react').ReactNode} props.value
  * @param {string} [props.hint] small text under the label
- * @param {import('react').ElementType} [props.icon] lucide icon, or a Phosphor icon (drawn two-tone) with `mark`
+ * @param {import('react').ElementType} [props.icon] lucide icon
  * @param {'gray'|'green'|'amber'|'red'|'blue'|'violet'} [props.tone] only when the figure carries a state
  *   (e.g. amber while students need a class): it tints the icon chip
  * @param {keyof typeof MARK_CLASSES} [props.mark] a solid area colour for the icon chip (dashboards);
@@ -32,11 +32,7 @@ export function StatTile({ label, value, hint, icon: Icon, tone, mark, to, onCli
             mark ? MARK_CLASSES[mark] : tone ? TONE_SOFT_CLASSES[tone] : 'bg-gray-100 text-gray-700',
           )}
         >
-          <Icon
-            className={mark ? 'size-5' : 'size-[1.125rem]'}
-            weight={mark ? 'duotone' : undefined}
-            aria-hidden="true"
-          />
+          <Icon className={mark ? 'size-5' : 'size-[1.125rem]'} aria-hidden="true" />
         </span>
       )}
       <span className={cx('min-w-0 flex-1', !Icon && 'pl-2')}>

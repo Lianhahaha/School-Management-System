@@ -1,9 +1,4 @@
-import {
-  ArrowFatLinesUpIcon,
-  ArrowCounterClockwiseIcon,
-  ConfettiIcon,
-  WarningIcon,
-} from '@phosphor-icons/react';
+import { ArrowBigUpDash, PartyPopper, RotateCcw, TriangleAlert } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { ErrorState } from '../../../components/ui/ErrorState';
 import { Skeleton } from '../../../components/ui/Skeleton';
@@ -25,21 +20,21 @@ function copyOf(standing) {
   switch (standing.status) {
     case 'promoted':
       return {
-        icon: ArrowFatLinesUpIcon,
+        icon: ArrowBigUpDash,
         mark: 'sage',
         title: `You passed Grade ${lastClass.gradeLevel}`,
         description: `You passed every subject in ${lastClass.academicYear}. ${pick}`,
       };
     case 'retained':
       return {
-        icon: ArrowCounterClockwiseIcon,
+        icon: RotateCcw,
         mark: 'oxblood',
         title: `You'll take Grade ${lastClass.gradeLevel} again`,
         description: `You didn't pass ${listSubjects(failedSubjects)} in ${lastClass.academicYear}. ${pick}`,
       };
     case 'remedial':
       return {
-        icon: WarningIcon,
+        icon: TriangleAlert,
         mark: 'oxblood',
         title: 'Remedial classes first',
         description: `You need to pass remedial classes in ${listSubjects(failedSubjects)} before Grade ${
@@ -48,7 +43,7 @@ function copyOf(standing) {
       };
     case 'finished':
       return {
-        icon: ConfettiIcon,
+        icon: PartyPopper,
         mark: 'sage',
         title: `You finished Grade ${lastClass.gradeLevel}`,
         description: 'Congratulations. There is no higher grade level to enroll in.',

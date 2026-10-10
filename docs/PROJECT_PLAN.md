@@ -69,7 +69,7 @@ Hard constraints:
 | Frontend | tailwindcss, @tailwindcss/vite | ^4.3 | no `tailwind.config.js`, no PostCSS; `@import "tailwindcss"` + `@theme` |
 | Frontend | firebase | ^12.19 | modular SDK; never `firebase@next` |
 | Frontend | react-hook-form, @hookform/resolvers, zod | ^7.89, ^5, ^4.6 | same zod major as the backend |
-| Frontend | lucide-react, @phosphor-icons/react | latest | lucide for interface icons; Phosphor's duotone set for the dashboard cards (DESIGN.md) |
+| Frontend | lucide-react | latest | every icon in the app, dashboard card marks included (DESIGN.md) |
 | Tooling | eslint ^10 (flat config), prettier ^3, prettier-plugin-tailwindcss | | |
 | Local services | MySQL Server 8.0 (service `MySQL80`, installed), Firebase project on the Spark plan | | MySQL 8.0 is out of Oracle support since 2026-04-30; fine for local use |
 

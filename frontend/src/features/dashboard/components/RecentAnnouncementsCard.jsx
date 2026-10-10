@@ -1,4 +1,3 @@
-import { MegaphoneIcon } from '@phosphor-icons/react';
 import { Megaphone } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
@@ -16,7 +15,7 @@ import { AnnouncementCard } from '../../announcements/components/AnnouncementCar
 export function RecentAnnouncementsCard({ announcements, to }) {
   return (
     <Card
-      icon={MegaphoneIcon}
+      icon={Megaphone}
       mark="maroon"
       title="Recent announcements"
       total={announcements.length > 0 ? announcements.length : undefined}

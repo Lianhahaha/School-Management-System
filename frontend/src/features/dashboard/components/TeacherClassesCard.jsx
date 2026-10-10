@@ -1,4 +1,3 @@
-import { ChalkboardIcon } from '@phosphor-icons/react';
 import { School } from 'lucide-react';
 import { Link } from 'react-router';
 import { Card } from '../../../components/ui/Card';
@@ -14,7 +13,7 @@ export function TeacherClassesCard({ classSubjects, homeroomClasses }) {
 
   return (
     <Card
-      icon={ChalkboardIcon}
+      icon={School}
       mark="cream"
       title="My classes"
       actions={<TextLink to="/teacher/classes">View all</TextLink>}

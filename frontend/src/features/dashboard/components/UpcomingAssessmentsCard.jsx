@@ -1,5 +1,4 @@
-import { ExamIcon } from '@phosphor-icons/react';
-import { CalendarClock } from 'lucide-react';
+import { CalendarClock, ClipboardCheck } from 'lucide-react';
 import { Badge } from '../../../components/ui/Badge';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
@@ -13,7 +12,7 @@ import { formatDate } from '../../../utils/date';
 export function UpcomingAssessmentsCard({ assessments }) {
   return (
     <Card
-      icon={ExamIcon}
+      icon={ClipboardCheck}
       mark="cream"
       title="Upcoming assessments"
       total={assessments.length > 0 ? assessments.length : undefined}

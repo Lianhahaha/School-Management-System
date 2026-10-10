@@ -1,4 +1,4 @@
-import { HourglassMediumIcon } from '@phosphor-icons/react';
+import { Hourglass } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { StepList } from '../../../components/ui/StepList';
 import { useAuth } from '../../auth/hooks';
@@ -45,7 +45,7 @@ export function StudentWaitingCard() {
 
   return (
     <Card
-      icon={HourglassMediumIcon}
+      icon={Hourglass}
       mark="maroon"
       title="You're not in a class right now"
       description="Your schedule appears here once an administrator enrolls you. Grades and attendance from earlier classes are on My grades and My attendance."

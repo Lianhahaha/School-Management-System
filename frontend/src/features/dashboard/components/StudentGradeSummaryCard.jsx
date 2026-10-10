@@ -1,4 +1,3 @@
-import { CertificateIcon } from '@phosphor-icons/react';
 import { Award } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
@@ -20,7 +19,7 @@ export function StudentGradeSummaryCard({ subjects }) {
       : subject.subjectName;
   return (
     <Card
-      icon={CertificateIcon}
+      icon={Award}
       mark="cream"
       title="Grades by subject"
       actions={<TextLink to="/student/grades">All grades</TextLink>}

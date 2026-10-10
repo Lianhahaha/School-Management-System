@@ -1,5 +1,4 @@
-import { ClockIcon } from '@phosphor-icons/react';
-import { CalendarOff, Check } from 'lucide-react';
+import { CalendarOff, Check, Clock } from 'lucide-react';
 import { Link } from 'react-router';
 import { Badge } from '../../../components/ui/Badge';
 import { LiveTag } from '../../../components/ui/LiveTag';
@@ -25,7 +24,7 @@ export function TodayTimeline({ periods, holiday }) {
   const date = todayYmd();
 
   return (
-    <Card icon={ClockIcon} mark="cream" title="Today's periods">
+    <Card icon={Clock} mark="cream" title="Today's periods">
       {holiday ? (
         <EmptyState
           icon={CalendarOff}
