@@ -8,7 +8,8 @@
  *   useStudent(id)                    one student ('me' for the signed-in student); includes currentEnrollment
  *   useUpdateStudent() [form]         mutate({ id, body }) admin only; body from changedFields(values, dirtyFields)
  *   useImportStudents() [form]        mutateAsync(body) checks (dryRun) or creates imported students; the
- *                                     import dialog shows every outcome itself
+ *                                     import dialog shows every outcome itself. Imported students can be put in
+ *                                     a class, so it also refreshes the attendance sheets and grade rosters
  *
  * Mutations tagged [form] are silent (meta.silent): the form that sends them shows every error itself
  * (applyServerErrors + FormRootError). Every other mutation raises an error toast.
@@ -90,7 +91,16 @@ export function useImportStudents() {
     meta: { silent: true },
     onSuccess: (report) => {
       if (report.dryRun) return;
-      invalidate(studentKeys.all, userKeys.all, enrollmentKeys.all, classKeys.all, dashboardKeys.all);
+      // A row with a class enrolls the student: the sheets and rosters of that class list them.
+      invalidate(
+        studentKeys.all,
+        userKeys.all,
+        enrollmentKeys.all,
+        classKeys.all,
+        attendanceKeys.all,
+        gradeKeys.all,
+        dashboardKeys.all,
+      );
     },
   });
 }

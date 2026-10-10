@@ -2,6 +2,7 @@ import { Award, Bell, BookOpen, ClipboardCheck, Megaphone, School, UserPlus } fr
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { Button } from '../../../components/ui/Button';
+import { ErrorState } from '../../../components/ui/ErrorState';
 import { ROLE_HOME } from '../../../constants/ui';
 import { cx } from '../../../utils/cx';
 import { relativeTime } from '../../../utils/date';
@@ -167,6 +168,14 @@ export function NotificationBell() {
           )}
           {list.isPending ? (
             <p className="px-3 py-4 text-sm text-gray-600">Loading…</p>
+          ) : list.error && !list.data ? (
+            // Not "all caught up": the list did not load.
+            <ErrorState
+              title="Couldn't load notifications"
+              message={list.error.message}
+              onRetry={list.refetch}
+              compact
+            />
           ) : items.length === 0 ? (
             newAnnouncements === 0 && (
               <p className="px-3 py-6 text-center text-sm text-gray-600">You&apos;re all caught up.</p>

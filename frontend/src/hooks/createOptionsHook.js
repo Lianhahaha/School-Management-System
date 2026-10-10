@@ -14,7 +14,8 @@ const OPTIONS_STALE_TIME = 5 * 60_000;
  *     keys: teacherKeys, fetchList: listTeachers, baseParams: { isActive: 'true' },
  *     toOption: (teacher) => ({ value: String(teacher.id), label: fullName(teacher), item: teacher }),
  *   });
- *   const { data: options = [], isPending } = useTeacherOptions({ search });
+ *   const { data: options, isPending, isError } = useTeacherOptions({ search });
+ *   <OptionSelect options={options} isPending={isPending} isError={isError} />  // says so when the load failed
  *
  * @param {object} config
  * @param {{ list: (params: object) => unknown[] }} config.keys the feature's query keys

@@ -38,6 +38,12 @@ export function ClassSelect({
   const options = classes.data?.filter(isOffered);
 
   return (
-    <OptionSelect options={options} isPending={classes.isPending} placeholder={placeholder} {...props} />
+    <OptionSelect
+      options={options}
+      isPending={classes.isPending}
+      isError={classes.isError}
+      placeholder={placeholder}
+      {...props}
+    />
   );
 }

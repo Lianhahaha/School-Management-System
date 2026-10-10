@@ -12,6 +12,14 @@ import { useTeacherOptions } from '../hooks';
  * Every other prop goes to the native <select>.
  */
 export function TeacherSelect({ placeholder = 'Choose a teacher', ...props }) {
-  const { data, isPending } = useTeacherOptions();
-  return <OptionSelect options={data} isPending={isPending} placeholder={placeholder} {...props} />;
+  const { data, isPending, isError } = useTeacherOptions();
+  return (
+    <OptionSelect
+      options={data}
+      isPending={isPending}
+      isError={isError}
+      placeholder={placeholder}
+      {...props}
+    />
+  );
 }

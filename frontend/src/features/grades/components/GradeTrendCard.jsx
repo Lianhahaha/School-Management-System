@@ -34,12 +34,18 @@ export function GradeTrendCard({ studentId, academicYear, term }) {
     sortBy: 'assessedOn',
     sortOrder: 'desc',
   });
-  // The same request as GradeSummaryPanel's beside it; only the grading method of each subject is used.
-  const { data: summary = [] } = useGradeSummary({ studentId, academicYear, term, groupBy: 'classSubject' });
-  const methodOf = (classSubjectId) => summary.find((row) => row.classSubjectId === classSubjectId)?.method;
+  // The same request as GradeSummaryPanel's beside it; only the grading method of each subject is used. The card
+  // waits for it too: without the method a K-12 subject's dashed line would sit at 75% instead of 60%.
+  const summary = useGradeSummary({ studentId, academicYear, term, groupBy: 'classSubject' });
+  const methodOf = (classSubjectId) =>
+    summary.data.find((row) => row.classSubjectId === classSubjectId)?.method;
 
-  if (error) return <ErrorState title="Couldn't load results" message={error.message} onRetry={refetch} />;
-  if (isPending) return <Skeleton className="h-40 w-full" />;
+  const failed = error ?? summary.error;
+  if (failed) {
+    const retry = () => Promise.all([refetch(), summary.refetch()]);
+    return <ErrorState title="Couldn't load results" message={failed.message} onRetry={retry} />;
+  }
+  if (isPending || summary.isPending) return <Skeleton className="h-40 w-full" />;
   if (data.length === 0) return null;
 
   // Oldest first, one group per subject (class-subject), subjects in the order of their first result.

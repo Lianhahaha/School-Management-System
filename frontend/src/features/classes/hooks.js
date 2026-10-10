@@ -6,8 +6,8 @@
  *   useClass(id)                     one class, with homeroomTeacher and studentCount
  *   useCreateClass() [form]          mutate(body) with the createClassSchema output
  *   useUpdateClass() [form]          mutate({ id, body }) with the updateClassSchema output; also refreshes
- *                                    the class-subject, student, enrollment and timetable rows that
- *                                    show the class name
+ *                                    the class-subject, student, enrollment, timetable, attendance, grade
+ *                                    and announcement rows that show the class name
  *   useDeleteClass()                 mutate(id); 409 when referenced
  *   useClassOptions(filters)         select options: [{ value, label: 'Name · 2026-2027 · 30 students', item }];
  *                                    filters e.g. { academicYear, search }
@@ -20,9 +20,12 @@ import { createOptionsHook } from '../../hooks/createOptionsHook';
 import { useInvalidate } from '../../hooks/useInvalidate';
 import { useToast } from '../../hooks/useToast';
 import { countOf } from '../../utils/format';
+import { announcementKeys } from '../announcements/keys';
+import { attendanceKeys } from '../attendance/keys';
 import { classSubjectKeys } from '../classSubjects/keys';
 import { dashboardKeys } from '../dashboard/keys';
 import { enrollmentKeys } from '../enrollments/keys';
+import { gradeKeys } from '../grades/keys';
 import { scheduleKeys } from '../schedules/keys';
 import { studentKeys } from '../students/keys';
 import { createClass, deleteClass, getClass, listClasses, updateClass } from './api';
@@ -61,12 +64,16 @@ export function useUpdateClass() {
     mutationFn: ({ id, body }) => updateClass(id, body),
     meta: { silent: true },
     onSuccess: (updatedClass) => {
+      // The attendance sheets and grade rosters show the class name too, and the live refresh skips them.
       invalidate(
         classKeys.all,
         classSubjectKeys.all,
         studentKeys.all,
         enrollmentKeys.all,
         scheduleKeys.all,
+        attendanceKeys.all,
+        gradeKeys.all,
+        announcementKeys.all,
         dashboardKeys.all,
       );
       toast.success(`${updatedClass.name} updated`);

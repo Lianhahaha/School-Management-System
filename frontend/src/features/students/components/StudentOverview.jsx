@@ -9,6 +9,14 @@ import { useAttendanceSummary } from '../../attendance/hooks';
 import { useGradeSummary } from '../../grades/hooks';
 
 /**
+ * The hint under a figure whose data has not arrived: loading, or a failed load said plainly, so a failure never
+ * reads as "nothing this school year". The tile opens the tab, where the panel offers Retry.
+ * @param {{ isError: boolean }} query
+ * @param {string} what for example 'grades'
+ */
+const waitingHint = (query, what) => (query.isError ? `Couldn't load the ${what}` : 'Loading…');
+
+/**
  * The first tab of a student's page: what an admin usually opens it for. Class, attendance and average of the
  * current school year as figure rows (each opening the tab with the detail), then how to reach the student.
  * The year is the student's class year, or the current one while they have no class.
@@ -47,7 +55,13 @@ export function StudentOverview({ student, onOpenTab }) {
         <StatTile
           label="Attendance"
           value={attendance.isPending ? '…' : formatPercent(attendance.data?.rate ?? null)}
-          hint={marks ? `${countOf(marks, 'mark')} this school year` : 'Nothing marked this school year'}
+          hint={
+            attendance.data === undefined
+              ? waitingHint(attendance, 'attendance')
+              : marks
+                ? `${countOf(marks, 'mark')} this school year`
+                : 'Nothing marked this school year'
+          }
           icon={ClipboardTextIcon}
           mark="sage"
           onClick={() => onOpenTab('attendance')}
@@ -56,9 +70,11 @@ export function StudentOverview({ student, onOpenTab }) {
           label="Average"
           value={grades.isPending ? '…' : formatResult(average)}
           hint={
-            subjectsThisYear.length
-              ? `${countOf(subjectsThisYear.length, 'subject')} this school year`
-              : 'No grades this school year'
+            grades.data === undefined
+              ? waitingHint(grades, 'grades')
+              : subjectsThisYear.length
+                ? `${countOf(subjectsThisYear.length, 'subject')} this school year`
+                : 'No grades this school year'
           }
           icon={CertificateIcon}
           mark="cream"

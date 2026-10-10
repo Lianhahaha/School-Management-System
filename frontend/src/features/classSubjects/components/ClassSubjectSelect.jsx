@@ -1,4 +1,4 @@
-import { OptionSelect } from '../../../components/ui/OptionSelect';
+import { OPTIONS_FAILED_PLACEHOLDER, OptionSelect } from '../../../components/ui/OptionSelect';
 import { Select } from '../../../components/ui/Select';
 import { fullName } from '../../../utils/names';
 import { useAuth } from '../../auth/hooks';
@@ -6,20 +6,33 @@ import { useClassSubjectOptions } from '../hooks';
 
 /** Admin: the subjects of one class, "Biology · Ana Reyes". */
 function ClassSubjectsOfClass({ classId, ...props }) {
-  const { data, isPending } = useClassSubjectOptions({ classId });
+  const { data, isPending, isError } = useClassSubjectOptions({ classId });
   const options = data?.map(({ value, item }) => ({
     value,
     label: `${item.subjectName} · ${fullName(item.teacher)}`,
   }));
-  return <OptionSelect options={options} isPending={isPending} placeholder="Choose a subject" {...props} />;
+  return (
+    <OptionSelect
+      options={options}
+      isPending={isPending}
+      isError={isError}
+      placeholder="Choose a subject"
+      {...props}
+    />
+  );
 }
 
-/** Teacher: every class-subject the teacher can see, grouped "Teaching" (own) and "Homeroom" (read-only). */
+/**
+ * Teacher: every class-subject the teacher can see, grouped "Teaching" (own) and "Homeroom" (read-only). Like
+ * OptionSelect, it is disabled while loading and says so when the first load failed.
+ */
 function VisibleClassSubjects({ teacherId, disabled, ...props }) {
-  const { data = [], isPending } = useClassSubjectOptions();
+  const { data, isPending, isError } = useClassSubjectOptions();
+  const isUnavailable = isError && data === undefined;
+  const options = data ?? [];
   const label = ({ item }) => `${item.className} · ${item.subjectName}`;
-  const teaching = data.filter(({ item }) => item.teacherId === teacherId);
-  const homeroom = data.filter(({ item }) => item.teacherId !== teacherId);
+  const teaching = options.filter(({ item }) => item.teacherId === teacherId);
+  const homeroom = options.filter(({ item }) => item.teacherId !== teacherId);
   const renderOptions = (options) =>
     options.map((option) => (
       <option key={option.value} value={option.value}>
@@ -30,12 +43,12 @@ function VisibleClassSubjects({ teacherId, disabled, ...props }) {
   return (
     <select
       {...props}
-      key={isPending ? 'loading' : 'ready'}
+      key={isPending ? 'loading' : isUnavailable ? 'unavailable' : 'ready'}
       className="form-control"
-      disabled={isPending || disabled}
+      disabled={isPending || isUnavailable || disabled}
       aria-busy={isPending || undefined}
     >
-      <option value="">Choose a class and subject</option>
+      <option value="">{isUnavailable ? OPTIONS_FAILED_PLACEHOLDER : 'Choose a class and subject'}</option>
       {teaching.length > 0 && <optgroup label="Teaching">{renderOptions(teaching)}</optgroup>}
       {homeroom.length > 0 && <optgroup label="Homeroom">{renderOptions(homeroom)}</optgroup>}
     </select>

@@ -53,7 +53,9 @@ export default function StudentGradesPage() {
                 })
               }
             />
-            {className && <PrintReportCardButton />}
+            {className && (
+              <PrintReportCardButton studentId="me" academicYear={academicYear} term={term || undefined} />
+            )}
           </>
         }
       />

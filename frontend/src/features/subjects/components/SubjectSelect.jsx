@@ -11,7 +11,15 @@ import { useSubjectOptions } from '../hooks';
  * Every other prop goes to the native <select>.
  */
 export function SubjectSelect({ excludeIds = [], placeholder = 'Choose a subject', ...props }) {
-  const { data, isPending } = useSubjectOptions();
+  const { data, isPending, isError } = useSubjectOptions();
   const options = data?.filter((option) => !excludeIds.includes(option.item.id));
-  return <OptionSelect options={options} isPending={isPending} placeholder={placeholder} {...props} />;
+  return (
+    <OptionSelect
+      options={options}
+      isPending={isPending}
+      isError={isError}
+      placeholder={placeholder}
+      {...props}
+    />
+  );
 }

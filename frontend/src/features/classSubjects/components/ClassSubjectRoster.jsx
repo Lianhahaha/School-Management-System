@@ -14,7 +14,9 @@ import { StudentInSubjectModal } from './StudentInSubjectModal';
 /**
  * Roster of the class a class-subject belongs to, with each student's attendance rate and result in this
  * subject ("—" while nothing is marked or graded). Each name opens the student's attendance and grades in
- * this subject. Read-only; fetches its own data.
+ * this subject. Read-only; fetches its own data: the students, their rates and their results. The table waits
+ * for all three, and a first load that failed shows the table's error state with Retry, because a "—" in every
+ * row would read as "nothing marked or graded yet".
  *
  * @param {object} props
  * @param {{ id: number, classId: number, className: string, subjectName: string }} props.classSubject
@@ -24,6 +26,10 @@ export function ClassSubjectRoster({ classSubject }) {
   const rates = useAttendanceSummary({ classSubjectId: classSubject.id, groupBy: 'student' });
   const results = useGradeSummary({ classSubjectId: classSubject.id, groupBy: 'student' });
   const [openStudent, setOpenStudent] = useState(null);
+
+  const queries = [students, rates, results];
+  const failed = queries.find((query) => query.error && query.data === undefined)?.error ?? null;
+  const retry = () => queries.filter((query) => query.isError).forEach((query) => query.refetch());
 
   const rateByStudent = useMemo(
     () => new Map((Array.isArray(rates.data) ? rates.data : []).map((row) => [row.studentId, row.rate])),
@@ -58,23 +64,13 @@ export function ClassSubjectRoster({ classSubject }) {
       key: 'rate',
       header: 'Attendance rate',
       align: 'right',
-      cell: (student) =>
-        rates.isSuccess ? (
-          formatPercent(rateByStudent.get(student.id) ?? null)
-        ) : (
-          <span aria-hidden="true">—</span>
-        ),
+      cell: (student) => formatPercent(rateByStudent.get(student.id) ?? null),
     },
     {
       key: 'result',
       header: 'Average',
       align: 'right',
-      cell: (student) =>
-        results.isSuccess ? (
-          formatResult(resultByStudent.get(student.id) ?? null)
-        ) : (
-          <span aria-hidden="true">—</span>
-        ),
+      cell: (student) => formatResult(resultByStudent.get(student.id) ?? null),
     },
   ];
 
@@ -83,11 +79,11 @@ export function ClassSubjectRoster({ classSubject }) {
       <DataTable
         label={`Students of ${classSubject.className}`}
         columns={columns}
-        rows={students.data?.items ?? []}
-        isLoading={students.isPending}
+        rows={failed ? [] : (students.data?.items ?? [])}
+        isLoading={queries.some((query) => query.isPending)}
         isFetching={students.isFetching}
-        error={students.error}
-        onRetry={students.refetch}
+        error={failed}
+        onRetry={retry}
         skeletonRows={6}
         emptyState={
           <EmptyState

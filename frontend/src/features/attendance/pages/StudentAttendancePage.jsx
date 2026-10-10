@@ -124,6 +124,7 @@ function StudentAttendanceContent({ list, academicYear, notEnrolled = false }) {
             aria-label="Subject"
             options={subjectOptions}
             isPending={lessons.isPending}
+            isError={lessons.isError}
             placeholder="All subjects"
             value={list.params.classSubjectId}
             onChange={(event) => list.setFilter('classSubjectId', event.target.value)}

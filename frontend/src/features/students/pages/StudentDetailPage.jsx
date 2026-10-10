@@ -103,7 +103,10 @@ export default function StudentDetailPage() {
                 {/* The report card is for the student's current class and its school year. */}
                 {student.currentEnrollment && (
                   <div className="flex justify-end">
-                    <PrintReportCardButton />
+                    <PrintReportCardButton
+                      studentId={student.id}
+                      academicYear={student.currentEnrollment.academicYear}
+                    />
                   </div>
                 )}
                 <GradeSummaryPanel studentId={student.id} />

@@ -69,7 +69,8 @@ export default function MyClassesPage() {
     />
   );
 
-  const failure = classSubjects.error ?? homeroomClasses.error;
+  // The timetable gives each card its next period: without it every card would say "No periods scheduled".
+  const failure = classSubjects.error ?? homeroomClasses.error ?? schedules.error;
   if (failure) {
     return (
       <>
@@ -80,12 +81,13 @@ export default function MyClassesPage() {
           onRetry={() => {
             classSubjects.refetch();
             homeroomClasses.refetch();
+            schedules.refetch();
           }}
         />
       </>
     );
   }
-  if (classSubjects.isPending || homeroomClasses.isPending) {
+  if (classSubjects.isPending || homeroomClasses.isPending || schedules.isPending) {
     return (
       <>
         {header}

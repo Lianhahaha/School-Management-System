@@ -14,12 +14,36 @@ import {
 import { fullName } from '../../../utils/names';
 import { useGradeSummary } from '../hooks';
 
-/** Opens the browser's print dialog; the report card below replaces the page on paper. */
-export function PrintReportCardButton() {
+/** The grades on a report card. The card and its Print button share this request (one cache entry). */
+const useReportCardSubjects = ({ studentId, academicYear, term }) =>
+  useGradeSummary({ studentId, academicYear, term, groupBy: 'classSubject' });
+
+/**
+ * Opens the browser's print dialog; the report card below replaces the page on paper. Until the card's grades
+ * have arrived the button is disabled and says why on hover, so a half-loaded card is never printed as if the
+ * student had no grades. Pass the same `studentId`, `academicYear` and `term` as the ReportCard.
+ *
+ * @param {object} props
+ * @param {number|string} props.studentId a student id, or 'me'
+ * @param {string} props.academicYear
+ * @param {string} [props.term]
+ */
+export function PrintReportCardButton({ studentId, academicYear, term }) {
+  const { data, isError } = useReportCardSubjects({ studentId, academicYear, term });
+  const isReady = data !== undefined;
+  const blockedReason = isError ? "The grades couldn't be loaded" : 'The grades are still loading';
   return (
-    <Button variant="secondary" icon={Printer} onClick={() => window.print()} className="print:hidden">
-      Print report card
-    </Button>
+    <span title={isReady ? undefined : blockedReason}>
+      <Button
+        variant="secondary"
+        icon={Printer}
+        onClick={() => window.print()}
+        disabled={!isReady}
+        className="print:hidden"
+      >
+        Print report card
+      </Button>
+    </span>
   );
 }
 
@@ -31,7 +55,8 @@ const remarksOf = (result) => (result === null ? '—' : isPassing(result) ? 'Pa
  * grade, its grade and Passed / Failed, and the general average (the mean of the subject grades) with its
  * DepEd descriptor, for one school year. Notes explain the K-12 grading and list any weighted subjects. It is mounted at the end of <body> (a portal) and
  * shown only when printing, in plain black on white whatever the screen theme; the app itself is hidden then
- * (see `.print-only` in index.css).
+ * (see `.print-only` in index.css). Printed (Ctrl+P) before its grades have arrived, it says so in place of the
+ * table instead of "No grades recorded".
  *
  * @param {object} props
  * @param {{ firstName: string, lastName: string, studentNumber: string }} props.student
@@ -41,7 +66,8 @@ const remarksOf = (result) => (result === null ? '—' : isPassing(result) ? 'Pa
  * @param {string} [props.term] 'term1' | 'term2' | 'term3'; omit for the whole year
  */
 export function ReportCard({ student, studentId, academicYear, className, term }) {
-  const { data: subjects = [] } = useGradeSummary({ studentId, academicYear, term, groupBy: 'classSubject' });
+  const summary = useReportCardSubjects({ studentId, academicYear, term });
+  const subjects = summary.data ?? [];
   const average = generalAverage(subjects);
   const weighted = subjects.filter((subject) => subject.method === 'weighted');
   const hasK12 = subjects.some((subject) => subject.method === 'k12');
@@ -92,7 +118,11 @@ export function ReportCard({ student, studentId, academicYear, className, term }
           {subjects.length === 0 && (
             <tr>
               <td colSpan={6} className="py-3">
-                No grades recorded.
+                {summary.data !== undefined
+                  ? 'No grades recorded.'
+                  : summary.isError
+                    ? "The grades couldn't be loaded, so this report card is incomplete. Reload the page and print it again."
+                    : 'The grades are still loading. Close this and print again in a moment.'}
               </td>
             </tr>
           )}
