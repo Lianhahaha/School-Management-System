@@ -65,6 +65,9 @@ const schema = z.object({
   DB_SSL: boolString.default(false),
   DB_SSL_CA_PATH: z.string().min(1).optional(),
   DB_SSL_CA: z.string().min(1).optional(),
+  // true: the API migrates the database at start-up (src/config/migrations.js), so a deploy needs no manual
+  // `db:migrate`. Off unless set, because it changes the database the API points at.
+  MIGRATE_ON_START: boolString.default(false),
 
   FIREBASE_SERVICE_ACCOUNT_PATH: z.string().min(1).default('./firebase-service-account.json'),
   // For a host without a file system for secrets: the same JSON, base64-encoded (takes precedence over the file).

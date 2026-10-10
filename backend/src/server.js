@@ -1,11 +1,13 @@
 /**
- * Entry point: validate the environment, check MySQL and Firebase, then listen.
+ * Entry point: validate the environment, check MySQL (and migrate it with MIGRATE_ON_START), check Firebase,
+ * then listen.
  * A broken setup fails here in under a second with the cause, not on the first request.
  */
 import { closePool, ping } from './config/db.js';
 import { dbErrorHint } from './config/dbConnection.js';
 import { env } from './config/env.js';
 import { assertFirebaseReady, firebase } from './config/firebase.js';
+import { migrateDatabase } from './config/migrations.js';
 import { createApp } from './app.js';
 import { logger } from './utils/logger.js';
 
@@ -36,6 +38,22 @@ async function start() {
     const hint = dbErrorHint(error);
     if (hint) logger.error(hint);
     process.exit(1);
+  }
+
+  // With MIGRATE_ON_START a deploy brings the database up to date before the new code serves a request. If
+  // that fails the process stops here, and the host keeps the previous version running.
+  if (env.MIGRATE_ON_START) {
+    try {
+      const changed = await migrateDatabase({ log: (message) => logger.info(message) });
+      logger.info(changed.length === 0 ? 'Database schema up to date' : 'Database schema migrated', {
+        changed,
+      });
+    } catch (error) {
+      logger.error(`Database migration failed (${error.code ?? error.message})`);
+      const hint = dbErrorHint(error);
+      if (hint) logger.error(hint);
+      process.exit(1);
+    }
   }
 
   try {

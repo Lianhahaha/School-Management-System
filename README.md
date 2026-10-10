@@ -192,7 +192,7 @@ These are deliberate choices, not oversights. The reasons are in [docs/PROJECT_P
 - **Two people editing one sheet do not overwrite each other.** When an attendance or grade sheet changed since it was loaded, the second save is refused (409 `sheet_changed`) and the page offers a reload.
 - **Imported students get a random temporary password each**, shown once in a file to download; nothing in the request sets a shared password.
 - **Local development shares the Firebase project with the live site.** Outside production the API never deletes a Firebase user it does not know, because it may be a live user.
-- **`npm run db:migrate` creates missing tables and applies the upgrades listed in [scripts/migrate.js](backend/scripts/migrate.js)**; it does not change existing columns. `--fresh` drops the database first and is refused for a database that is not on this machine unless `--allow-remote-drop` is added.
+- **Schema changes are versioned and only move forward.** `npm run db:migrate` creates missing tables from `schema.sql`, then runs each upgrade in [database/upgrades.js](backend/database/upgrades.js) that the `schema_migrations` table has not recorded yet ([src/config/migrations.js](backend/src/config/migrations.js)). With `MIGRATE_ON_START=true` the API does the same at every start, so a deploy migrates before it serves. Undoing an upgrade is a new upgrade. `--fresh` drops the database first and is refused for a database that is not on this machine unless `--allow-remote-drop` is added.
 
 ## Troubleshooting
 
@@ -241,7 +241,7 @@ Not required to run or review the project: everything above works on one machine
 ### Keeping the live site healthy
 
 - **Releases.** The frontend is released by GitHub Actions only after the backend tests pass for that commit ([deploy-frontend.yml](.github/workflows/deploy-frontend.yml)). Set Render to do the same: service → Settings → Build & Deploy → Auto-Deploy → **After CI Checks Pass**.
-- **Schema changes.** `migrate.js` creates missing tables and runs the upgrades listed in it; it never alters an existing table on its own. A change to an existing table gets an entry in its `UPGRADES` list, and runs on the hosted database before the code that needs it: `node --env-file=.env.cloud scripts/migrate.js`.
+- **Schema changes.** A change to an existing table goes into `schema.sql` (for new databases) and into [database/upgrades.js](backend/database/upgrades.js) under a new id (for existing ones). Each upgrade runs once and is recorded in `schema_migrations`. It must reach the hosted database before the code that needs it: set `MIGRATE_ON_START=true` on Render so every deploy migrates first, or run `node --env-file=<hosted env file> scripts/migrate.js` by hand.
 - **Resetting the demo data.** The demo is shared, and some actions cannot be undone (a completed school year, a deleted account). To start over: `node --env-file=.env.cloud scripts/migrate.js --fresh --allow-remote-drop`, then `node --env-file=.env.cloud scripts/seed.js`. **This deletes every row in the hosted database.**
 - **Local work and live sign-ins.** While local development shares the Firebase project with the live site, seeding a local database resets the demo accounts' passwords and signs them out everywhere, the live site included. A second free Firebase project for local work (step 2 of the quick start, with its own `.env` values) keeps the two apart.
 - **Secrets.** `.env.cloud`, the service-account key and the CA certificate are git-ignored. Keep them out of synced folders (OneDrive, Dropbox) too.
