@@ -8,8 +8,8 @@
 import { withTransaction } from '../../config/db.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { generalAverageOf, percentOf, subjectResult, sumPoints } from '../../utils/grading.js';
-import { resolveMe } from '../../utils/resolveMe.js';
 import { personRef } from '../../utils/shapes.js';
+import { assertAsSeen, assertOnRoster, changeOf, isEdited, remarksOf } from '../../utils/sheets.js';
 import * as access from '../access/access.service.js';
 import { nameOf, record } from '../activity/activity.service.js';
 import { notifyStudents } from '../notifications/notifications.service.js';
@@ -137,16 +137,8 @@ async function summarize(filters, scope) {
   return foldSummary(rows, filters.groupBy, rules);
 }
 
-/** Applies the scoping rule shared by list and summary: own grades for students, visible classes for teachers. */
-async function scopeFilters(user, filters) {
-  await access.assertFiltersInScope(user, filters);
-  const studentId = access.scopedStudentId(user, resolveMe(user, filters.studentId, 'student'));
-  const scope = access.isStudent(user) ? null : access.classScope(user, 'cs.class_id');
-  return { filters: { ...filters, studentId }, scope };
-}
-
 export async function listGrades(user, listQuery) {
-  const { filters, scope } = await scopeFilters(user, listQuery);
+  const { filters, scope } = await access.scopeRecordFilters(user, listQuery);
   const { rows, meta } = await repo.listGrades(filters, scope);
   return { data: rows.map(toGradeShape), meta };
 }
@@ -155,7 +147,7 @@ export async function getSummary(user, query) {
   if (query.groupBy === 'student' && access.isStudent(user)) {
     throw ApiError.forbidden('group_by_student_not_allowed', 'students cannot group grades by student');
   }
-  const { filters, scope } = await scopeFilters(user, query);
+  const { filters, scope } = await access.scopeRecordFilters(user, query);
   return summarize(filters, scope);
 }
 
@@ -210,17 +202,6 @@ export async function getRoster(user, assessmentId) {
   return buildRoster(await getAssessment(user, assessmentId));
 }
 
-/** Blank remarks are no remarks: '' and null compare and store the same. */
-const remarksOf = (value) => value || null;
-
-/** True when the stored grade (or its absence) is what the client saw (`previous.score` null = ungraded). */
-const isAsSeen = (previous, stored) =>
-  previous.score === null
-    ? stored === undefined
-    : stored !== undefined &&
-      stored.score === previous.score &&
-      remarksOf(stored.remarks) === remarksOf(previous.remarks);
-
 /**
  * Idempotent bulk upsert of the listed students only; the whole batch is rejected when any row is invalid.
  * When the rows carry `previous` and a stored grade no longer matches it, someone saved meanwhile: 409
@@ -243,31 +224,19 @@ export async function saveGrades(user, assessmentId, { grades: input }) {
         maxScore,
       });
     }
-    const roster = new Set(await repo.findRosterStudentIds(assessmentId, conn));
-    const invalidStudentIds = grades.map((g) => g.studentId).filter((id) => !roster.has(id));
-    if (invalidStudentIds.length) {
-      throw ApiError.validation('students were not in this class on the assessment date', undefined, {
-        reason: 'not_enrolled',
-        invalidStudentIds,
-      });
-    }
+    const roster = await repo.findRosterStudentIds(assessmentId, conn);
+    assertOnRoster(grades, roster, 'students were not in this class on the assessment date');
     previous = await repo.findGradesOf(
       assessmentId,
       grades.map((grade) => grade.studentId),
       conn,
     );
-    const changedStudentIds = grades
-      .filter((grade) => grade.previous && !isAsSeen(grade.previous, previous.get(grade.studentId)))
-      .map((grade) => grade.studentId);
-    if (changedStudentIds.length) {
-      throw ApiError.conflict(
-        'someone saved these grades after you opened them; reload to see their changes',
-        {
-          reason: 'sheet_changed',
-          changedStudentIds,
-        },
-      );
-    }
+    assertAsSeen(
+      grades,
+      previous,
+      'score',
+      'someone saved these grades after you opened them; reload to see their changes',
+    );
     await repo.upsertGrades(assessmentId, grades, user.id, conn);
   });
   // The max score may have changed since `assessment` was read: build the roster from the current row.
@@ -285,20 +254,8 @@ async function recordGradeChanges(assessment, roster, grades, previous) {
   const nameOfStudent = new Map(roster.records.map((record) => [record.studentId, nameOf(record)]));
   const changes = grades
     .map((grade) => ({ grade, before: previous.get(grade.studentId) }))
-    .filter(
-      ({ grade, before }) =>
-        !before || before.score !== grade.score || remarksOf(before.remarks) !== grade.remarks,
-    )
-    .map(({ grade, before }) => ({
-      studentId: grade.studentId,
-      student: nameOfStudent.get(grade.studentId),
-      from: before ? before.score : null,
-      to: grade.score,
-      ...(before &&
-        remarksOf(before.remarks) !== grade.remarks && {
-          remarks: { from: remarksOf(before.remarks), to: grade.remarks },
-        }),
-    }));
+    .filter(({ grade, before }) => !before || isEdited(before, grade, 'score'))
+    .map(({ grade, before }) => changeOf(grade, before, 'score', nameOfStudent.get(grade.studentId)));
   if (!changes.length) return;
   const added = changes.filter((change) => change.from === null).length;
   const parts = [added && `${added} new`, changes.length - added && `${changes.length - added} changed`];

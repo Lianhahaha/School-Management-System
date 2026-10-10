@@ -1,8 +1,8 @@
 import { withTransaction } from '../../config/db.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { academicYearOf, formatDayLabel, isAfterToday, isoWeekdayOf } from '../../utils/dates.js';
-import { resolveMe } from '../../utils/resolveMe.js';
 import { classSubjectRef, personRef, ratio } from '../../utils/shapes.js';
+import { assertAsSeen, assertOnRoster, changeOf, isEdited, remarksOf } from '../../utils/sheets.js';
 import * as access from '../access/access.service.js';
 import { nameOf, record } from '../activity/activity.service.js';
 import { notifyStudents } from '../notifications/notifications.service.js';
@@ -32,16 +32,8 @@ const toAttendanceShape = (row) => ({
   updatedAt: row.updatedAt,
 });
 
-/** Applies the scoping rule shared by list and summary: own records for students, visible classes for teachers. */
-async function scopeFilters(user, filters) {
-  await access.assertFiltersInScope(user, filters);
-  const studentId = access.scopedStudentId(user, resolveMe(user, filters.studentId, 'student'));
-  const scope = access.isStudent(user) ? null : access.classScope(user, 'cs.class_id');
-  return { filters: { ...filters, studentId }, scope };
-}
-
 export async function listAttendance(user, listQuery) {
-  const { filters, scope } = await scopeFilters(user, listQuery);
+  const { filters, scope } = await access.scopeRecordFilters(user, listQuery);
   const { rows, meta } = await repo.listAttendance(filters, scope);
   return { data: rows.map(toAttendanceShape), meta };
 }
@@ -69,7 +61,7 @@ export async function summarizeAttendanceUnscoped(filters, scope = null) {
 }
 
 export async function getSummary(user, query) {
-  const { filters, scope } = await scopeFilters(user, query);
+  const { filters, scope } = await access.scopeRecordFilters(user, query);
   const rows = (await repo.summarizeAttendance(filters, scope)).map(toSummaryRow);
   return query.groupBy === 'none' ? rows[0] : rows;
 }
@@ -89,14 +81,15 @@ async function lessonDaysOf(classSubjectId) {
 
 /**
  * The sheet of one lesson and date. `holiday` names the school holiday on that date (no marking), or is null;
- * `lessonDays` are the weekdays the lesson meets (empty until it is on the timetable).
+ * `lessonDays` are the weekdays the lesson meets (empty until it is on the timetable). A caller that has just
+ * read the lesson days (a save checks them) passes them as `knownLessonDays` so they are not read twice.
  */
-async function buildSheet(classSubjectId, date) {
+async function buildSheet(classSubjectId, date, knownLessonDays) {
   const [classSubject, rows, holiday, lessonDays] = await Promise.all([
     getClassSubjectRefUnscoped(classSubjectId),
     repo.findSheetRows(classSubjectId, date),
     holidayOn(date),
-    lessonDaysOf(classSubjectId),
+    knownLessonDays ?? lessonDaysOf(classSubjectId),
   ]);
   return {
     classSubjectId,
@@ -139,14 +132,12 @@ function assertMarkableDate(date, academicYear) {
 }
 
 /**
- * 400 when the lesson is on the timetable but not on `date`'s weekday, so no lesson took place: a mark there
- * would be a session that never happened and would skew every attendance rate. A lesson without any slot yet
- * is not checked, and a date that already has marks (the timetable changed since) can still be corrected.
+ * 400 when the lesson is on the timetable (`lessonDays`) but not on `date`'s weekday, so no lesson took place:
+ * a mark there would be a session that never happened and would skew every attendance rate. A lesson without
+ * any slot yet is not checked.
  */
-async function assertLessonDay(classSubjectId, date, subjectName) {
-  const lessonDays = await lessonDaysOf(classSubjectId);
+function assertLessonDay(lessonDays, date, subjectName) {
   if (lessonDays.length === 0 || lessonDays.includes(isoWeekdayOf(date))) return;
-  if ((await repo.findMarkedClassSubjectIds([classSubjectId], date)).length > 0) return;
   throw ApiError.validation(
     `${subjectName} has no periods on ${WEEKDAY_NAMES[isoWeekdayOf(date)]}s`,
     undefined,
@@ -154,16 +145,8 @@ async function assertLessonDay(classSubjectId, date, subjectName) {
   );
 }
 
-/** Blank remarks are no remarks: '' and null compare and store the same. */
-const remarksOf = (value) => value || null;
-
-/** True when the stored mark (or its absence) is what the client saw (`previous.status` null = unmarked). */
-const isAsSeen = (previous, stored) =>
-  previous.status === null
-    ? stored === undefined
-    : stored !== undefined &&
-      stored.status === previous.status &&
-      remarksOf(stored.remarks) === remarksOf(previous.remarks);
+const hasMarksOn = async (classSubjectId, date) =>
+  (await repo.findMarkedClassSubjectIds([classSubjectId], date)).length > 0;
 
 /**
  * Idempotent upsert of the listed students only; students left out of `records` keep their marks.
@@ -177,44 +160,35 @@ export async function saveSheet(user, { classSubjectId, date, records: input }) 
   let previous;
   const classSubject = await getClassSubjectRefUnscoped(classSubjectId); // 404 for an unknown class-subject (admins)
   assertMarkableDate(date, classSubject.academicYear);
-  // Marks taken before a holiday was declared on that day stay correctable, as on a day the lesson left.
-  if (!(await hasMarksOn(classSubjectId, date))) await assertSchoolDay(date);
-  await assertLessonDay(classSubjectId, date, classSubject.subjectName);
+  // Marks taken before a holiday was declared on that day stay correctable, as do marks on a weekday the
+  // lesson has since left the timetable: both checks guard only a date's first marks.
+  const hasMarks = await hasMarksOn(classSubjectId, date);
+  if (!hasMarks) await assertSchoolDay(date);
+  const lessonDays = await lessonDaysOf(classSubjectId); // also the saved sheet's
+  if (!hasMarks) assertLessonDay(lessonDays, date, classSubject.subjectName);
   await withTransaction(async (conn) => {
     // First: every read below sees what a save that finished just before this one wrote.
     await repo.lockClassSubject(classSubjectId, conn);
-    const roster = new Set(await repo.findRosterStudentIds(classSubjectId, date, conn));
-    const invalidStudentIds = records.map((r) => r.studentId).filter((id) => !roster.has(id));
-    if (invalidStudentIds.length) {
-      throw ApiError.validation('students were not enrolled in this class on this date', undefined, {
-        reason: 'not_enrolled',
-        invalidStudentIds,
-      });
-    }
+    const roster = await repo.findRosterStudentIds(classSubjectId, date, conn);
+    assertOnRoster(records, roster, 'students were not enrolled in this class on this date');
     previous = await repo.findMarksOf(
       classSubjectId,
       date,
       records.map((r) => r.studentId),
       conn,
     );
-    const changedStudentIds = records
-      .filter((r) => r.previous && !isAsSeen(r.previous, previous.get(r.studentId)))
-      .map((r) => r.studentId);
-    if (changedStudentIds.length) {
-      throw ApiError.conflict('someone saved this sheet after you opened it; reload it to see their marks', {
-        reason: 'sheet_changed',
-        changedStudentIds,
-      });
-    }
+    assertAsSeen(
+      records,
+      previous,
+      'status',
+      'someone saved this sheet after you opened it; reload it to see their marks',
+    );
     await repo.upsertAttendance(classSubjectId, date, records, user.id, conn);
   });
-  const sheet = await buildSheet(classSubjectId, date);
+  const sheet = await buildSheet(classSubjectId, date, lessonDays);
   await recordSheetChanges(sheet, records, previous);
   return sheet;
 }
-
-const hasMarksOn = async (classSubjectId, date) =>
-  (await repo.findMarkedClassSubjectIds([classSubjectId], date)).length > 0;
 
 /**
  * Logs a sheet save: how many marks are new or changed (status or remarks), and per student every changed
@@ -224,21 +198,13 @@ const hasMarksOn = async (classSubjectId, date) =>
 async function recordSheetChanges(sheet, records, previous) {
   const nameOfStudent = new Map(sheet.records.map((row) => [row.studentId, nameOf(row)]));
   const added = records.filter((r) => !previous.has(r.studentId));
-  const changed = records.filter((r) => {
-    const before = previous.get(r.studentId);
-    return before && (before.status !== r.status || remarksOf(before.remarks) !== r.remarks);
-  });
+  const changed = records.filter(
+    (r) => previous.has(r.studentId) && isEdited(previous.get(r.studentId), r, 'status'),
+  );
   if (!added.length && !changed.length) return;
-  const marks = [...changed, ...added.filter((r) => r.status !== 'present')].map((r) => ({
-    studentId: r.studentId,
-    student: nameOfStudent.get(r.studentId),
-    from: previous.get(r.studentId)?.status ?? null,
-    to: r.status,
-    ...(previous.has(r.studentId) &&
-      remarksOf(previous.get(r.studentId).remarks) !== r.remarks && {
-        remarks: { from: remarksOf(previous.get(r.studentId).remarks), to: r.remarks },
-      }),
-  }));
+  const marks = [...changed, ...added.filter((r) => r.status !== 'present')].map((r) =>
+    changeOf(r, previous.get(r.studentId), 'status', nameOfStudent.get(r.studentId)),
+  );
   const { subjectName, className } = sheet.classSubject;
   const parts = [added.length && `${added.length} new`, changed.length && `${changed.length} changed`];
   await record({

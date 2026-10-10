@@ -15,6 +15,7 @@
  * simply matches nothing.
  */
 import { ApiError } from '../../utils/ApiError.js';
+import { resolveMe } from '../../utils/resolveMe.js';
 import * as repo from './access.repository.js';
 
 export const isAdmin = (user) => user.role === 'admin';
@@ -101,4 +102,17 @@ export function classScope(user, classColumn) {
 export async function assertFiltersInScope(user, { classId, classSubjectId }) {
   if (classId !== undefined) await assertCanViewClass(user, classId);
   if (classSubjectId !== undefined) await assertCanViewClassSubject(user, classSubjectId);
+}
+
+/**
+ * The scoping rule of the student records kept per class-subject (attendance marks, grades), shared by their
+ * lists and summaries: own records for students, visible classes for teachers. Returns the `filters` with
+ * the effective `studentId` (`me` resolved) and the class `scope` on `cs.class_id` (null for students and
+ * admins).
+ */
+export async function scopeRecordFilters(user, filters) {
+  await assertFiltersInScope(user, filters);
+  const studentId = scopedStudentId(user, resolveMe(user, filters.studentId, 'student'));
+  const scope = isStudent(user) ? null : classScope(user, 'cs.class_id');
+  return { filters: { ...filters, studentId }, scope };
 }
