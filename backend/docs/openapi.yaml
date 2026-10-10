@@ -1383,8 +1383,11 @@ paths:
 
         Counts per status and the attendance rate, `(present + late) / total` with 4 decimals, or `null` when
         nothing is marked. With `groupBy=none` (default) `data` is one object; with `student`,
-        `classSubject` or `week` it is an array with one row per group, each with a `label`. Weeks start on
-        Monday (`weekStart`, also the label) and come oldest first; weeks without marks are left out.
+        `classSubject`, `week` or `studentDay` it is an array with one row per group, each with a `label`.
+        Weeks start on Monday (`weekStart`, also the label) and come oldest first; weeks without marks are left
+        out. `studentDay` gives one row per student and `date` with marks, counting every lesson of that day
+        (the daily attendance form, SF2); it needs `dateFrom` and `dateTo`, at most 31 days in all (400
+        otherwise).
       parameters:
         - $ref: '#/components/parameters/StudentIdFilter'
         - $ref: '#/components/parameters/ClassSubjectIdFilter'
@@ -1396,7 +1399,7 @@ paths:
           description: Grouping of the summary.
           schema:
             type: string
-            enum: [none, student, classSubject, week]
+            enum: [none, student, classSubject, week, studentDay]
             default: none
       responses:
         '200': { $ref: '#/components/responses/AttendanceSummaryResponse' }
@@ -3192,9 +3195,13 @@ components:
               $ref: '#/components/schemas/Id'
             weekStart:
               $ref: '#/components/schemas/DateYmd'
+            date:
+              description: Present with `groupBy=studentDay`; the day the counts cover.
+              allOf:
+                - $ref: '#/components/schemas/DateYmd'
             label:
               type: string
-              description: Student name, class and subject name, or the week's Monday.
+              description: Student name (also with `studentDay`), class and subject name, or the week's Monday.
               example: Grade 7 - A - Biology
     # --- Assessments and grades ---
     Assessment:
@@ -5621,7 +5628,8 @@ components:
               totalPages: 1
     AttendanceSummaryResponse:
       description: >-
-        One summary object, or an array of summary rows when `groupBy` is `student` or `classSubject`.
+        One summary object, or an array of summary rows when `groupBy` is `student`, `classSubject`, `week` or
+        `studentDay`.
       headers:
         X-Request-Id: { $ref: '#/components/headers/XRequestId' }
       content:

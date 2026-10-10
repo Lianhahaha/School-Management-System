@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ATTENDANCE_STATUSES } from '../../constants/shared.js';
+import { addDaysYmd } from '../../utils/dates.js';
 import {
   bulkArray,
   dateRangeRefinement,
@@ -27,6 +28,9 @@ export const listAttendanceQuery = listQuery(
   { searchable: false },
 ).refine(...dateRangeRefinement);
 
+/** Most days one `groupBy=studentDay` summary covers: a month (one row per student and day). */
+const STUDENT_DAY_MAX_DAYS = 31;
+
 export const summaryQuery = z
   .strictObject({
     studentId: idOrMe.optional(),
@@ -34,9 +38,20 @@ export const summaryQuery = z
     classId: id.optional(),
     dateFrom: dateStr.optional(),
     dateTo: dateStr.optional(),
-    groupBy: z.enum(['none', 'student', 'classSubject', 'week']).default('none'),
+    groupBy: z.enum(['none', 'student', 'classSubject', 'week', 'studentDay']).default('none'),
   })
-  .refine(...dateRangeRefinement);
+  .refine(...dateRangeRefinement)
+  .refine(
+    (value) =>
+      value.groupBy !== 'studentDay' ||
+      (value.dateFrom !== undefined &&
+        value.dateTo !== undefined &&
+        value.dateTo <= addDaysYmd(value.dateFrom, STUDENT_DAY_MAX_DAYS - 1)),
+    {
+      error: `groupBy=studentDay needs dateFrom and dateTo, at most ${STUDENT_DAY_MAX_DAYS} days in all`,
+      path: ['dateTo'],
+    },
+  );
 
 export const sheetQuery = z.strictObject({ classSubjectId: id, date: dateStr });
 

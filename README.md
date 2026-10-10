@@ -48,7 +48,7 @@ Beyond the brief, kept small and built on the same API:
 | Live updates | The page you are looking at refreshes itself about every 20 seconds (and when you return to the tab), so other people's changes appear without a reload; the sheets a teacher is editing are left alone |
 | Light and dark themes | Switch in the top bar (and on the sign-in page); the choice is remembered on the device, and the system setting is followed until you pick one |
 | Search everywhere | Admins press Ctrl+K (⌘K on a Mac) to find a student, teacher, class or subject from any page |
-| CSV and printing | Lists of grades and attendance download as CSV; report cards and timetables print cleanly |
+| CSV and printing | Lists of grades and attendance download as CSV; report cards and timetables print cleanly. DepEd school forms download as CSV for Excel: SF1 (class → Students), SF2 for a month (class → Attendance) and SF10 (student → Grades); the report card carries the LRN |
 | Install as an app | See above: the browser's install button, or Add to Home Screen on an iPhone |
 
 ## Quick start (Windows, $0)

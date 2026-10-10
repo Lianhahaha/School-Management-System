@@ -11,6 +11,7 @@ import { useDisclosure } from '../../../hooks/useDisclosure';
 import { countOf } from '../../../utils/format';
 import { fullName } from '../../../utils/names';
 import { AttendanceTrendCard } from '../../attendance/components/AttendanceTrendCard';
+import { Sf2Download } from '../../attendance/components/Sf2Download';
 import { ClassFormModal } from '../components/ClassFormModal';
 import { ClassScheduleTab } from '../components/ClassScheduleTab';
 import { ClassStudentsTab } from '../components/ClassStudentsTab';
@@ -89,10 +90,13 @@ export default function ClassDetailPage() {
             id: 'attendance',
             label: 'Attendance',
             content: (
-              <AttendanceTrendCard
-                filters={{ classId: schoolClass.id }}
-                description={`Every period of ${schoolClass.name}, ${schoolClass.academicYear}`}
-              />
+              <div className="space-y-4">
+                <Sf2Download schoolClass={schoolClass} />
+                <AttendanceTrendCard
+                  filters={{ classId: schoolClass.id }}
+                  description={`Every period of ${schoolClass.name}, ${schoolClass.academicYear}`}
+                />
+              </div>
             ),
           },
         ]}

@@ -3,7 +3,16 @@ import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import { query, run } from '../src/config/db.js';
 import { academicYearOf, addDaysYmd, isoWeekdayOf, todayYmd } from '../src/utils/dates.js';
-import { api, as, buildSchool, closeWorld, resetWorld } from './helpers/harness.js';
+import {
+  api,
+  as,
+  assignTeacher,
+  buildSchool,
+  closeWorld,
+  makeSubject,
+  makeUser,
+  resetWorld,
+} from './helpers/harness.js';
 import { openSession, waitForLockWaits } from './helpers/locks.js';
 
 after(closeWorld);
@@ -226,6 +235,97 @@ describe('attendance', () => {
     const url = `/api/v1/attendance/${list.body.data[0].id}`;
     assert.equal((await api.patch(url).set(as(school.admin)).send({ status: 'excused' })).status, 404);
     assert.equal((await api.delete(url).set(as(school.admin))).status, 404);
+  });
+});
+
+describe('attendance per student and day (the daily attendance form)', () => {
+  let school;
+  let secondLesson;
+  const putSheet = (who, classSubjectId, date, records) =>
+    api.put('/api/v1/attendance/sheet').set(as(who)).send({ classSubjectId, date, records });
+  const studentDays = (who, query) =>
+    api.get(`/api/v1/attendance/summary?groupBy=studentDay&${new URLSearchParams(query)}`).set(as(who));
+
+  before(async () => {
+    await resetWorld();
+    school = await buildSchool();
+    // A second lesson in class A, taught by someone else: the homeroom teacher still sees its marks.
+    secondLesson = await assignTeacher(school.admin, {
+      classId: school.classA.id,
+      subjectId: (await makeSubject(school.admin)).id,
+      teacherId: (await makeUser('teacher')).teacherId,
+    });
+    await run('UPDATE enrollments SET enrolled_on = ?', [addDaysYmd(today, -7)]);
+  });
+
+  it(
+    'counts every lesson of a day per student, and keeps the class scope of the summary',
+    { skip: firstDayOfYear },
+    async () => {
+      const { admin, owner, other, s1, s2, csA, classA } = school;
+      await putSheet(owner, csA.id, yesterday, [
+        { studentId: s1.studentId, status: 'absent' },
+        { studentId: s2.studentId, status: 'excused' },
+      ]);
+      await putSheet(admin, secondLesson.id, yesterday, [
+        { studentId: s1.studentId, status: 'excused' },
+        { studentId: s2.studentId, status: 'excused' },
+      ]);
+      await putSheet(owner, csA.id, today, [
+        { studentId: s1.studentId, status: 'late' },
+        { studentId: s2.studentId, status: 'present' },
+      ]);
+      await putSheet(admin, secondLesson.id, today, [{ studentId: s1.studentId, status: 'absent' }]);
+
+      // The homeroom teacher of class A also sees the lesson they do not teach.
+      const res = await studentDays(owner, { classId: classA.id, dateFrom: yesterday, dateTo: today });
+      assert.equal(res.status, 200, JSON.stringify(res.body));
+      // "student date total present absent late excused"
+      const counts = res.body.data.map((day) =>
+        [day.studentId, day.date, day.total, day.present, day.absent, day.late, day.excused].join(' '),
+      );
+      assert.deepEqual(
+        counts.sort(),
+        [
+          `${s1.studentId} ${yesterday} 2 0 1 0 1`,
+          `${s1.studentId} ${today} 2 0 1 1 0`,
+          `${s2.studentId} ${yesterday} 2 0 0 0 2`,
+          `${s2.studentId} ${today} 1 1 0 0 0`,
+        ].sort(),
+      );
+      const s1Day = res.body.data.find((day) => day.studentId === s1.studentId);
+      assert.equal(s1Day.label, `${s1.firstName} ${s1.lastName}`);
+
+      const outsider = await studentDays(other, { classId: classA.id, dateFrom: yesterday, dateTo: today });
+      assert.equal(outsider.status, 403);
+      const own = await studentDays(s1, { dateFrom: yesterday, dateTo: today });
+      assert.deepEqual(
+        own.body.data.map((day) => day.studentId),
+        [s1.studentId, s1.studentId],
+      );
+    },
+  );
+
+  it('needs dateFrom and dateTo at most 31 days apart in all', async () => {
+    const { admin, classA } = school;
+    assert.equal((await studentDays(admin, { classId: classA.id })).status, 400);
+    assert.equal((await studentDays(admin, { classId: classA.id, dateFrom: today })).status, 400);
+    const tooLong = await studentDays(admin, {
+      classId: classA.id,
+      dateFrom: addDaysYmd(today, -31),
+      dateTo: today,
+    });
+    assert.equal(tooLong.status, 400);
+    assert.deepEqual(
+      tooLong.body.error.details.issues.map((issue) => issue.path),
+      ['query.dateTo'],
+    );
+    const month = await studentDays(admin, {
+      classId: classA.id,
+      dateFrom: addDaysYmd(today, -30),
+      dateTo: today,
+    });
+    assert.equal(month.status, 200);
   });
 });
 

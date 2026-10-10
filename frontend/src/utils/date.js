@@ -15,6 +15,7 @@ export const LOCALE = 'en-PH';
 
 const dateFormatter = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
 const shortDateFormatter = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short' });
+const monthFormatter = new Intl.DateTimeFormat(LOCALE, { month: 'long', year: 'numeric' });
 const dateTimeFormatter = new Intl.DateTimeFormat(LOCALE, {
   day: 'numeric',
   month: 'short',
@@ -144,6 +145,37 @@ export function academicYearEnd(label) {
 /** First day of an academic year label: '2026-2027' -> '2026-08-01' (ACADEMIC_YEAR_START_MONTH). */
 export function academicYearStart(label) {
   return `${label.slice(0, 4)}-${pad(ACADEMIC_YEAR_START_MONTH)}-01`;
+}
+
+/**
+ * The twelve months of an academic year label, first month first, each with its first and last day; `value`
+ * and `label` make them Select options: '2026-2027' -> [{ value: '2026-08', label: 'August 2026',
+ * dateFrom: '2026-08-01', dateTo: '2026-08-31' }, ..., { value: '2027-07', ... }].
+ */
+export function academicYearMonths(label) {
+  const startYear = Number(label.slice(0, 4));
+  return Array.from({ length: 12 }, (_, index) => {
+    const first = new Date(startYear, ACADEMIC_YEAR_START_MONTH - 1 + index, 1);
+    const last = new Date(first.getFullYear(), first.getMonth() + 1, 0);
+    return {
+      value: toYmd(first).slice(0, 7),
+      label: monthFormatter.format(first),
+      dateFrom: toYmd(first),
+      dateTo: toYmd(last),
+    };
+  });
+}
+
+/**
+ * Age in whole years on the day `ymd`, counting a birthday on that day: ('2012-08-01', '2026-08-01') -> 14,
+ * ('2012-08-02', '2026-08-01') -> 13. Null without a date of birth.
+ */
+export function ageOn(birthYmd, ymd) {
+  if (!birthYmd) return null;
+  const [birthYear, birthMonth, birthDay] = birthYmd.split('-').map(Number);
+  const [year, month, day] = ymd.split('-').map(Number);
+  const hadBirthday = month > birthMonth || (month === birthMonth && day >= birthDay);
+  return year - birthYear - (hadBirthday ? 0 : 1);
 }
 
 /** True when the ISO timestamp lies within the last `days` days. */

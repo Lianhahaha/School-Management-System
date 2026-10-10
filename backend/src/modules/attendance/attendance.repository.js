@@ -53,7 +53,10 @@ const COUNTS = `COUNT(*) AS total,
 /** Monday of the attendance date's week, as 'YYYY-MM-DD' (WEEKDAY: 0 = Monday). */
 const WEEK_START_SQL = `DATE_FORMAT(DATE_SUB(a.attendance_date, INTERVAL WEEKDAY(a.attendance_date) DAY), '%Y-%m-%d')`;
 
-/** Status counts, optionally grouped per student, per class-subject or per week (Monday first, oldest first). */
+/**
+ * Status counts, optionally grouped per student, per student and day (every lesson of that day, for the
+ * daily attendance form), per class-subject or per week (Monday first, oldest first).
+ */
 export function summarizeAttendance({ groupBy = 'none', ...filters }, scope) {
   const where = filtersToWhere(filters, scope);
   const base = `FROM attendance a
@@ -65,6 +68,15 @@ export function summarizeAttendance({ groupBy = 'none', ...filters }, scope) {
     return query(
       `SELECT s.id AS student_id, CONCAT(u.first_name, ' ', u.last_name) AS label, ${COUNTS} ${base}
         GROUP BY s.id, u.first_name, u.last_name ORDER BY u.last_name, u.first_name`,
+      where.params,
+    );
+  }
+  if (groupBy === 'studentDay') {
+    return query(
+      `SELECT s.id AS student_id, CONCAT(u.first_name, ' ', u.last_name) AS label, a.attendance_date,
+              ${COUNTS} ${base}
+        GROUP BY s.id, u.first_name, u.last_name, a.attendance_date
+        ORDER BY u.last_name, u.first_name, s.id, a.attendance_date`,
       where.params,
     );
   }

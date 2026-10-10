@@ -1,8 +1,8 @@
 import { Printer } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { Button } from '../../../components/ui/Button';
-import { APP_NAME, TERM_LABELS } from '../../../constants/ui';
-import { formatDate, todayYmd } from '../../../utils/date';
+import { APP_NAME, GENDER_LABELS, TERM_LABELS } from '../../../constants/ui';
+import { academicYearStart, ageOn, formatDate, todayYmd } from '../../../utils/date';
 import { PASSING_GRADE } from '../../../constants/shared';
 import {
   describeWeights,
@@ -51,7 +51,8 @@ export function PrintReportCardButton({ studentId, academicYear, term }) {
 const remarksOf = (result) => (result === null ? '—' : isPassing(result) ? 'Passed' : 'Failed');
 
 /**
- * A student's report card for paper: who, which class, school year and semester, per subject its initial
+ * A student's report card for paper (DepEd SF9): who (with LRN, sex and the age on the first day of the school
+ * year, as on the SF1), which class, school year and semester, per subject its initial
  * grade, its grade and Passed / Failed, and the general average (the mean of the subject grades) with its
  * DepEd descriptor, for one school year. Notes explain the K-12 grading and list any weighted subjects. It is mounted at the end of <body> (a portal) and
  * shown only when printing, in plain black on white whatever the screen theme; the app itself is hidden then
@@ -59,7 +60,8 @@ const remarksOf = (result) => (result === null ? '—' : isPassing(result) ? 'Pa
  * table instead of "No grades recorded".
  *
  * @param {object} props
- * @param {{ firstName: string, lastName: string, studentNumber: string }} props.student
+ * @param {{ firstName: string, lastName: string, studentNumber: string, lrn?: string | null,
+ *   gender?: string | null, dateOfBirth?: string | null }} props.student
  * @param {number|string} props.studentId a student id, or 'me'
  * @param {string} props.academicYear the school year on the card
  * @param {string} props.className the student's class in that year
@@ -71,6 +73,7 @@ export function ReportCard({ student, studentId, academicYear, className, term }
   const average = generalAverage(subjects);
   const weighted = subjects.filter((subject) => subject.method === 'weighted');
   const hasK12 = subjects.some((subject) => subject.method === 'k12');
+  const age = ageOn(student.dateOfBirth, academicYearStart(academicYear));
 
   return createPortal(
     <article className="print-only bg-white font-sans text-[11pt] text-black">
@@ -87,6 +90,12 @@ export function ReportCard({ student, studentId, academicYear, className, term }
         <dd>{fullName(student)}</dd>
         <dt className="font-semibold">Student no</dt>
         <dd>{student.studentNumber}</dd>
+        <dt className="font-semibold">LRN</dt>
+        <dd>{student.lrn ?? '—'}</dd>
+        <dt className="font-semibold">Sex</dt>
+        <dd>{GENDER_LABELS[student.gender] ?? '—'}</dd>
+        <dt className="font-semibold">Age</dt>
+        <dd>{age ?? '—'}</dd>
         <dt className="font-semibold">Class</dt>
         <dd>{`${className}, ${academicYear}`}</dd>
         <dt className="font-semibold">Semester</dt>

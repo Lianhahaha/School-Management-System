@@ -5,26 +5,30 @@ import { Button } from '../../../components/ui/Button';
 import { DataTable } from '../../../components/ui/DataTable';
 import { Dropdown } from '../../../components/ui/Dropdown';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { ExportCsvButton } from '../../../components/ui/ExportCsvButton';
 import { FilterBar } from '../../../components/ui/FilterBar';
 import { Pagination } from '../../../components/ui/Pagination';
 import { SearchInput } from '../../../components/ui/SearchInput';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { useDisclosure } from '../../../hooks/useDisclosure';
 import { useListParams } from '../../../hooks/useListParams';
+import { fetchAllPages } from '../../../lib/csv';
 import { currentAcademicYear } from '../../../utils/date';
 import { fullName } from '../../../utils/names';
 import { EndSchoolYearModal } from '../../enrollments/components/EndSchoolYearModal';
 import { EnrollStudentsModal } from '../../enrollments/components/EnrollStudentsModal';
 import { TransferStudentModal } from '../../enrollments/components/TransferStudentModal';
 import { useSetEnrollmentStatus } from '../../enrollments/hooks';
+import { listStudents } from '../../students/api';
+import { inSchoolFormOrder, sf1Columns } from '../../students/csv';
 import { useStudents } from '../../students/hooks';
 import { UserStatusBadge } from '../../users/components/UserStatusBadge';
 
 /**
- * "Students" tab of a class (admin): the roster with search, "Enroll students" (many at once; only
- * for a class of the current or a later academic year), "End of school year" (for a class of the current or a
- * past year that has students), Transfer and Withdraw. A student's `currentEnrollment.id` is the active
- * enrollment of this class.
+ * "Students" tab of a class (admin): the roster with search, "Download SF1" (the DepEd school register of
+ * the students enrolled now), "Enroll students" (many at once; only for a class of the current or a later
+ * academic year), "End of school year" (for a class of the current or a past year that has students),
+ * Transfer and Withdraw. A student's `currentEnrollment.id` is the active enrollment of this class.
  *
  * @param {object} props
  * @param {{ id: number, name: string, academicYear: string, studentCount: number }} props.schoolClass
@@ -101,6 +105,14 @@ export function ClassStudentsTab({ schoolClass }) {
           <SearchInput value={list.params.search} onChange={list.setSearch} placeholder="Search students" />
         </FilterBar>
         <div className="flex flex-wrap gap-2">
+          <ExportCsvButton
+            label="Download SF1"
+            fileName={`SF1 ${schoolClass.name} ${schoolClass.academicYear}`}
+            columns={sf1Columns(schoolClass.academicYear)}
+            getRows={async () =>
+              inSchoolFormOrder(await fetchAllPages(listStudents, { classId: schoolClass.id }))
+            }
+          />
           {canEndYear && (
             <Button variant="secondary" icon={CalendarCheck} onClick={endYearModal.open}>
               End of school year

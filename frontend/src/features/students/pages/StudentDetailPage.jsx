@@ -5,13 +5,18 @@ import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageSkeleton } from '../../../components/layout/PageSkeleton';
 import { Badge } from '../../../components/ui/Badge';
 import { Card } from '../../../components/ui/Card';
+import { ExportCsvButton } from '../../../components/ui/ExportCsvButton';
 import { Tabs } from '../../../components/ui/Tabs';
+import { PAGINATION } from '../../../constants/shared';
 import { fullName } from '../../../utils/names';
 import { AttendanceSummaryPanel } from '../../attendance/components/AttendanceSummaryPanel';
+import { listEnrollments } from '../../enrollments/api';
 import { EnrollmentHistoryTable } from '../../enrollments/components/EnrollmentHistoryTable';
+import { getGradeSummary } from '../../grades/api';
 import { GradeSummaryPanel } from '../../grades/components/GradeSummaryPanel';
 import { GradeTrendCard } from '../../grades/components/GradeTrendCard';
 import { PrintReportCardButton, ReportCard } from '../../grades/components/ReportCard';
+import { SF10_CSV_COLUMNS, sf10Rows } from '../../grades/csv';
 import { UserStatusBadge } from '../../users/components/UserStatusBadge';
 import { StudentClassButton, StudentClassModals } from '../components/StudentClassModals';
 import { StudentOverview } from '../components/StudentOverview';
@@ -100,15 +105,28 @@ export default function StudentDetailPage() {
             label: 'Grades',
             content: (
               <div className="space-y-4">
-                {/* The report card is for the student's current class and its school year. */}
-                {student.currentEnrollment && (
-                  <div className="flex justify-end">
+                <div className="flex flex-wrap justify-end gap-2">
+                  {/* SF10: every school year of the student, with the year's remarks. */}
+                  <ExportCsvButton
+                    label="Download SF10"
+                    fileName={`SF10 ${name}`}
+                    columns={SF10_CSV_COLUMNS}
+                    getRows={async () => {
+                      const [enrollments, subjects] = await Promise.all([
+                        listEnrollments({ studentId: student.id, limit: PAGINATION.MAX_LIMIT }),
+                        getGradeSummary({ studentId: student.id, groupBy: 'classSubject' }),
+                      ]);
+                      return sf10Rows(enrollments.items, subjects);
+                    }}
+                  />
+                  {/* The report card is for the student's current class and its school year. */}
+                  {student.currentEnrollment && (
                     <PrintReportCardButton
                       studentId={student.id}
                       academicYear={student.currentEnrollment.academicYear}
                     />
-                  </div>
-                )}
+                  )}
+                </div>
                 <GradeSummaryPanel studentId={student.id} />
                 <GradeTrendCard studentId={student.id} />
                 {student.currentEnrollment && (

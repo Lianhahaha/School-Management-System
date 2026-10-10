@@ -78,7 +78,7 @@ export default function StudentGradesPage() {
       )}
       {className && (
         <ReportCard
-          student={{ ...me, studentNumber: me.profile?.studentNumber }}
+          student={{ ...me.profile, firstName: me.firstName, lastName: me.lastName }}
           studentId="me"
           academicYear={academicYear}
           className={className}
