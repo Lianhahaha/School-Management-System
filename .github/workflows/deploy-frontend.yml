@@ -38,6 +38,11 @@ jobs:
         run: npm run lint
         working-directory: frontend
 
+      # This workflow follows the backend tests, not the frontend checks, so it runs the frontend tests itself.
+      - name: Test
+        run: npm test
+        working-directory: frontend
+
       # The VITE_* values are public (they end up in the built JavaScript), so they are repository
       # variables, not secrets. Only the Firebase deploy key is a secret.
       # Without the API address the site would call /api/v1 on Firebase Hosting, which answers every path

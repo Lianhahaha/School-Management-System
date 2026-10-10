@@ -112,11 +112,13 @@ export async function readTextFile(file) {
   }
 }
 
-/** "Algebra Quiz 1 / Grade 10" -> "algebra-quiz-1-grade-10", for file names. */
+/** "Algebra Quiz 1 / Grade 10" -> "algebra-quiz-1-grade-10", for file names. Accents drop: "Niño" -> "nino". */
 export function slugify(text) {
   return text
     .toLowerCase()
     .normalize('NFKD')
+    // NFKD splits "ñ" into "n" and a combining tilde; the mark goes, so it does not become a dash.
+    .replace(/\p{M}/gu, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 }

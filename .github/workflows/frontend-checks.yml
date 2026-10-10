@@ -1,0 +1,49 @@
+name: Frontend checks
+
+# Every push and pull request lints, unit-tests and builds the frontend. The tests run in plain Node, with
+# no browser, database or Firebase project. One of them also reads backend/src/utils/grading.js to check that
+# both sides compute grades alike, so this runs on backend-only changes too. Releasing stays in
+# deploy-frontend.yml, which runs the same tests again before it builds.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: frontend-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      # The build only inlines the VITE_* values; config/env.js checks them when the page loads, not here.
+      # The repository variables are passed so this builds what a deploy would, and an unset one still builds.
+      - name: Build
+        run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
