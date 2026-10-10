@@ -1,5 +1,6 @@
 import { ok, okPage } from '../../utils/respond.js';
 import * as service from './enrollments.service.js';
+import * as promotion from './promotion.service.js';
 
 export async function list(req, res) {
   okPage(res, await service.listEnrollments(req.user, req.validated.query));
@@ -26,11 +27,11 @@ export async function completeYear(req, res) {
 }
 
 export async function myNextClass(req, res) {
-  ok(res, await service.myNextClass(req.user));
+  ok(res, await promotion.myNextClass(req.user));
 }
 
 export async function enrollMyself(req, res) {
-  ok(res, await service.enrollMyself(req.user, req.validated.body), { status: 201 });
+  ok(res, await promotion.enrollMyself(req.user, req.validated.body), { status: 201 });
 }
 
 export async function setStatus(req, res) {

@@ -5,20 +5,17 @@
  * student left, so each period in a class stays on record for dated rosters.
  * Only classes of the current or a future academic year accept students.
  * The end of a school year closes a class's rows as `completed` and can move the students on in one step.
- * After that a student may enroll themselves in a section of the grade level their results allow
- * (nextClassStanding); students the rules cannot judge are placed by an admin.
+ * After that a student may enroll themselves in a section of the grade level their results allow; those
+ * DepEd promotion rules live in promotion.service.js.
  */
 import { withTransaction } from '../../config/db.js';
-import { HIGHEST_GRADE_LEVEL, PASSING_GRADE, REMEDIAL_MAX_FAILED } from '../../constants/shared.js';
 import { ApiError } from '../../utils/ApiError.js';
-import { currentAcademicYear, nextAcademicYear, todayYmd } from '../../utils/dates.js';
-import { averageOf, subjectYearResults } from '../../utils/grading.js';
+import { currentAcademicYear, todayYmd } from '../../utils/dates.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import * as access from '../access/access.service.js';
 import { nameOf, record } from '../activity/activity.service.js';
-import { summarizeStudentGradesUnscoped } from '../grades/grades.service.js';
 import { notifyStudents, resolveSignups } from '../notifications/notifications.service.js';
-import { assertEnrollableClass, classesOfGrade, findReferencedClass } from '../classes/classes.service.js';
+import { assertEnrollableClass, findReferencedClass } from '../classes/classes.service.js';
 import * as repo from './enrollments.repository.js';
 
 const toEnrollmentShape = (row) => ({
@@ -300,93 +297,6 @@ export async function completeYear({ classId, studentIds, nextClassId }) {
     ),
   );
   return { classId, nextClassId: next?.id ?? null, completed: closed.length, enrollments };
-}
-
-/* ------------------------------------------------- self-enrollment (DepEd promotion rules) */
-
-const classRef = (row) => ({
-  id: row.classId,
-  name: row.className,
-  gradeLevel: row.gradeLevel,
-  academicYear: row.academicYear,
-});
-
-/**
- * Where a student stands for next year, judged on the school year of their last completed class (see
- * NEXT_CLASS_STANDINGS): every subject passed moves them up one grade level, 1-2 failed subjects need
- * remedial classes (an admin places them afterwards), 3 or more mean the same grade level again. A student
- * with no completed year, no grades in it, or whose next year has already passed is placed by an admin.
- * `classes` are the sections the student may pick: the grade level in the year after the completed one.
- */
-export async function nextClassStanding(studentId) {
-  const standing = (status, extra = {}) => ({
-    status,
-    lastClass: null,
-    generalAverage: null,
-    failedSubjects: [],
-    gradeLevel: null,
-    academicYear: null,
-    classes: [],
-    ...extra,
-  });
-  const active = await repo.findActiveByStudent(studentId);
-  if (active) return standing('enrolled', { lastClass: classRef(active) });
-
-  const last = await repo.findLastClosedByStudent(studentId);
-  if (!last || last.status !== 'completed') return standing('needs_placement');
-  const lastClass = classRef(last);
-  const subjects = subjectYearResults(await summarizeStudentGradesUnscoped(studentId, last.academicYear))
-    .filter((subject) => subject.percentage !== null)
-    .map(({ subjectId, subjectName, percentage }) => ({ subjectId, subjectName, percentage }));
-  if (!subjects.length) return standing('needs_placement', { lastClass });
-
-  const generalAverage = averageOf(subjects.map((subject) => subject.percentage));
-  const failedSubjects = subjects.filter((subject) => subject.percentage < PASSING_GRADE);
-  const judged = { lastClass, generalAverage, failedSubjects };
-  if (failedSubjects.length > 0 && failedSubjects.length <= REMEDIAL_MAX_FAILED) {
-    return standing('remedial', judged);
-  }
-  const promoted = failedSubjects.length === 0;
-  if (promoted && last.gradeLevel >= HIGHEST_GRADE_LEVEL) return standing('finished', judged);
-
-  const academicYear = nextAcademicYear(last.academicYear);
-  // A year that has already gone by (the student was away) cannot take students any more.
-  if (academicYear < currentAcademicYear()) return standing('needs_placement', judged);
-  const gradeLevel = promoted ? last.gradeLevel + 1 : last.gradeLevel;
-  return standing(promoted ? 'promoted' : 'retained', {
-    ...judged,
-    gradeLevel,
-    academicYear,
-    classes: await classesOfGrade(academicYear, gradeLevel),
-  });
-}
-
-/** The signed-in student's standing (GET /enrollments/next-class). */
-export function myNextClass(user) {
-  return nextClassStanding(user.studentId);
-}
-
-/**
- * The signed-in student enrolls in one of the sections their standing offers (POST /enrollments/next-class).
- * The standing is worked out again here, so only a promoted or retained student, and only into an offered
- * section, gets in; the enrollment itself is the admin's (same checks, same notifications and activity entry).
- */
-export async function enrollMyself(user, { classId }) {
-  const standing = await nextClassStanding(user.studentId);
-  if (standing.status !== 'promoted' && standing.status !== 'retained') {
-    throw ApiError.conflict('you cannot enroll yourself; the school will place you', {
-      reason: 'not_eligible',
-      standing: standing.status,
-    });
-  }
-  if (!standing.classes.some((klass) => klass.id === classId)) {
-    throw ApiError.validation(
-      `class is not a Grade ${standing.gradeLevel} section of ${standing.academicYear}`,
-      undefined,
-      { reason: 'class_not_offered', field: 'classId' },
-    );
-  }
-  return enroll({ studentId: user.studentId, classId });
 }
 
 /** Close an active enrollment as `completed` or `withdrawn`. Closed rows cannot be changed. */
