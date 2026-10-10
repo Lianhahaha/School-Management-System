@@ -32,6 +32,32 @@ if (missing.length > 0) {
   );
 }
 
+/**
+ * Demo sign-ins listed on the sign-in page (features/auth/components/DemoAccounts), from VITE_DEMO_ACCOUNTS:
+ * `{"password":"…","accounts":[{"role":"Admin","email":"…"},…]}`. Optional: unset, the page lists nothing. They
+ * come from the build, not the code, so no password sits in the repository and a release without the variable
+ * removes the list. A malformed value is reported in the console and ignored, so it never takes the site down.
+ * @returns {Readonly<{ password: string, accounts: ReadonlyArray<{ role: string, email: string }> }> | null}
+ */
+function readDemoAccounts() {
+  const raw = read('VITE_DEMO_ACCOUNTS');
+  if (raw === '') return null;
+  try {
+    const { password, accounts } = JSON.parse(raw);
+    const isAccount = (account) => typeof account?.role === 'string' && typeof account?.email === 'string';
+    if (typeof password !== 'string' || !Array.isArray(accounts) || !accounts.every(isAccount)) {
+      throw new Error('expected {"password": string, "accounts": [{"role": string, "email": string}]}');
+    }
+    return Object.freeze({
+      password,
+      accounts: Object.freeze(accounts.map((account) => Object.freeze({ ...account }))),
+    });
+  } catch (error) {
+    console.error(`VITE_DEMO_ACCOUNTS is ignored: ${error.message}`);
+    return null;
+  }
+}
+
 export const env = Object.freeze({
   firebase: Object.freeze({
     apiKey: read('VITE_FIREBASE_API_KEY'),
@@ -40,4 +66,5 @@ export const env = Object.freeze({
     appId: read('VITE_FIREBASE_APP_ID'),
   }),
   apiBaseUrl: read('VITE_API_BASE_URL') || API_BASE_PATH,
+  demoAccounts: readDemoAccounts(),
 });

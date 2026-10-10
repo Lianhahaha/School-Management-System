@@ -58,6 +58,9 @@ jobs:
           VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
           VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          # Optional: the demo sign-ins folded under the sign-in form (frontend/.env.example). Delete the
+          # variable and re-run this workflow to take them off the site.
+          VITE_DEMO_ACCOUNTS: ${{ vars.VITE_DEMO_ACCOUNTS }}
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
