@@ -1,8 +1,9 @@
 /**
  * Bulk import of student accounts from spreadsheet rows. Two steps, both through the same endpoint:
  *
- *   dry run   every row is checked (formats, duplicates within the file, emails and student numbers already
- *             in use, the class name) and the problems are listed per spreadsheet line; nothing is written.
+ *   dry run   every row is checked (formats, duplicates within the file, emails, student numbers and LRNs
+ *             already in use, the class name) and the problems are listed per spreadsheet line; nothing is
+ *             written.
  *   create    the same checks; if any row fails nothing is written (400). Otherwise each row becomes an account
  *             (Firebase + MySQL, through the one account-creation path) with its own random temporary
  *             password, returned once in that row's result, enrolled in its class when one is named.
@@ -47,18 +48,20 @@ async function checkRows(rawRows) {
   });
 
   const valid = parsed.filter((row) => row.data);
-  const [takenEmails, takenNumbers, classes] = await Promise.all([
+  const [takenEmails, takenNumbers, takenLrns, classes] = await Promise.all([
     repo.findTakenEmails(valid.map((row) => row.data.email)),
     repo.findTakenStudentNumbers(valid.map((row) => row.data.studentNumber).filter(Boolean)),
+    repo.findTakenLrns(valid.map((row) => row.data.lrn).filter(Boolean)),
     repo.findClassesByName(year),
   ]);
 
-  const firstLineOf = { email: new Map(), studentNumber: new Map() };
+  const firstLineOf = { email: new Map(), studentNumber: new Map(), lrn: new Map() };
   for (const row of valid) {
-    const { email, studentNumber, className } = row.data;
+    const { email, studentNumber, lrn, className } = row.data;
     for (const [field, value] of [
       ['email', email],
       ['studentNumber', studentNumber],
+      ['lrn', lrn],
     ]) {
       if (!value) continue;
       const earlier = firstLineOf[field].get(value);
@@ -69,6 +72,7 @@ async function checkRows(rawRows) {
     if (studentNumber && takenNumbers.has(studentNumber)) {
       row.errors.push({ field: 'studentNumber', message: 'already belongs to a student' });
     }
+    if (lrn && takenLrns.has(lrn)) row.errors.push({ field: 'lrn', message: 'already belongs to a student' });
     if (className) {
       // Matched in any case; the answer reports the class's own spelling.
       const klass = classes.get(className.toLowerCase());

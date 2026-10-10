@@ -116,6 +116,8 @@ export const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
 export const ACADEMIC_YEAR_REGEX = /^\d{4}-\d{4}$/;
 export const STUDENT_NUMBER_REGEX = /^STU-\d{4}-\d{4,}$/;
 export const EMPLOYEE_NUMBER_REGEX = /^EMP-\d{4}-\d{4,}$/;
+/** DepEd Learner Reference Number: 12 digits, issued once per learner. */
+export const LRN_REGEX = /^\d{12}$/;
 export const SUBJECT_CODE_REGEX = /^[A-Z0-9-]{2,20}$/;
 export const PHONE_REGEX = /^\+?[0-9()\-\s]{7,20}$/;
 

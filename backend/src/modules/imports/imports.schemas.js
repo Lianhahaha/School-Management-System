@@ -21,6 +21,7 @@ export const importStudentsBody = z.strictObject({
         lastName: cell,
         phone: cell,
         studentNumber: cell,
+        lrn: cell,
         admissionDate: cell,
         dateOfBirth: cell,
         gender: cell,

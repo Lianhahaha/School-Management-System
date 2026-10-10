@@ -367,12 +367,12 @@ paths:
         Roles: admin.
 
         Each row is one new student: `email`, `firstName`, `lastName` and optionally `phone`, `studentNumber`,
-        `admissionDate`, `dateOfBirth`, `gender` (any case), `address`, `guardianName`, `guardianPhone` and
-        `className`, the name of a class of the current academic year to enroll the student in. Cells are sent
-        as text; blank cells may be empty strings. `line` is the spreadsheet line, used in the answer.
+        `lrn`, `admissionDate`, `dateOfBirth`, `gender` (any case), `address`, `guardianName`, `guardianPhone`
+        and `className`, the name of a class of the current academic year to enroll the student in. Cells are
+        sent as text; blank cells may be empty strings. `line` is the spreadsheet line, used in the answer.
 
-        With `dryRun: true` every row is checked (formats, duplicates within the batch, emails and student
-        numbers already in use, the class name) and nothing is written: `problems` lists each failing line
+        With `dryRun: true` every row is checked (formats, duplicates within the batch, emails, student
+        numbers and LRNs already in use, the class name) and nothing is written: `problems` lists each failing line
         with its fields. Without it the same checks run first; if any row fails nothing is written (400,
         `details.reason = import_invalid`, `details.problems`). Otherwise every row becomes an account with its
         own random temporary password, returned once as `temporaryPassword` in that row's result (students can
@@ -443,7 +443,7 @@ paths:
         Roles: admin, teacher (only students with an active enrollment in a class they can see).
 
         Directory, class roster and enrollment picker. Search matches first name, last name, full name
-        (`Liam Cruz`), student number and email. Default order: last name, then first name.
+        (`Liam Cruz`), student number, LRN and email. Default order: last name, then first name.
         `hasActiveEnrollment=false` lists students without a class (admin). A `classId` the teacher cannot
         see is a 403.
       parameters:
@@ -500,7 +500,9 @@ paths:
         Roles: admin.
 
         Edits account and profile fields in one call. `dateOfBirth` must be in the past, as at registration.
-        A student number that is already taken is a 409 (`details.key = students.uq_students_number`).
+        A student number that is already taken is a 409 (`details.key = students.uq_students_number`), and so
+        is an LRN that already belongs to another student (`details.key = students.uq_students_lrn`).
+        `lrn: null` clears the LRN.
       parameters:
         - $ref: '#/components/parameters/IdPath'
       requestBody:
@@ -2416,6 +2418,11 @@ components:
       type: string
       pattern: '^STU-\d{4}-\d{4,}$'
       example: STU-2026-0040
+    Lrn:
+      type: string
+      pattern: '^\d{12}$'
+      description: DepEd Learner Reference Number, 12 digits; unique across students.
+      example: '136512140001'
     EmployeeNumber:
       type: string
       pattern: '^EMP-\d{4}-\d{4,}$'
@@ -2641,12 +2648,18 @@ components:
     # --- Accounts and people ---
     StudentProfile:
       type: object
-      required: [id, studentNumber, dateOfBirth, gender, address, guardianName, guardianPhone, admissionDate]
+      required:
+        [id, studentNumber, lrn, dateOfBirth, gender, address, guardianName, guardianPhone, admissionDate]
       properties:
         id:
           $ref: '#/components/schemas/Id'
         studentNumber:
           $ref: '#/components/schemas/StudentNumber'
+        lrn:
+          nullable: true
+          description: Null until DepEd issues one.
+          allOf:
+            - $ref: '#/components/schemas/Lrn'
         dateOfBirth:
           type: string
           format: date
@@ -4190,6 +4203,11 @@ components:
     StudentDetails:
       type: object
       properties:
+        lrn:
+          nullable: true
+          description: Leave out (or null) until DepEd issues one; an LRN already in use is a 409.
+          allOf:
+            - $ref: '#/components/schemas/Lrn'
         dateOfBirth:
           allOf:
             - $ref: '#/components/schemas/DateYmd'
@@ -4326,6 +4344,7 @@ components:
         phone: { nullable: true, allOf: [{ $ref: '#/components/schemas/Phone' }] }
         studentNumber:
           $ref: '#/components/schemas/StudentNumber'
+        lrn: { nullable: true, allOf: [{ $ref: '#/components/schemas/Lrn' }] }
         dateOfBirth: { nullable: true, allOf: [{ $ref: '#/components/schemas/DateYmd' }] }
         gender: { nullable: true, allOf: [{ $ref: '#/components/schemas/Gender' }] }
         address:
@@ -4426,6 +4445,7 @@ components:
               lastName: { type: string, maxLength: 500 }
               phone: { type: string, maxLength: 500 }
               studentNumber: { type: string, maxLength: 500 }
+              lrn: { type: string, maxLength: 500 }
               admissionDate: { type: string, maxLength: 500 }
               dateOfBirth: { type: string, maxLength: 500 }
               gender: { type: string, maxLength: 500 }
@@ -5156,6 +5176,7 @@ components:
                   profile:
                     id: 12
                     studentNumber: STU-2026-0040
+                    lrn: '136512140001'
                     dateOfBirth: '2013-04-21'
                     gender: male
                     address: null
@@ -5190,6 +5211,7 @@ components:
                   profile:
                     id: 13
                     studentNumber: STU-2026-0041
+                    lrn: null
                     dateOfBirth: null
                     gender: null
                     address: null
@@ -5570,6 +5592,7 @@ components:
               - id: 12
                 userId: 40
                 studentNumber: STU-2026-0040
+                lrn: '136512140001'
                 firstName: Liam
                 lastName: Cruz
                 email: liam.cruz@example.com

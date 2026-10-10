@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS students (
   user_id         INT UNSIGNED NOT NULL COMMENT '1:1 -> users.id (role = student)',
   student_number  VARCHAR(20)  NOT NULL
                   COMMENT 'STU-YYYY-NNNN; YYYY = admission year, NNNN = per-year sequence (resets yearly)',
+  lrn             CHAR(12)     NULL COMMENT 'DepEd LRN; NULL until issued',
   date_of_birth   DATE         NULL,
   gender          ENUM('male','female','other') NULL,
   address         VARCHAR(255) NULL,
@@ -92,9 +93,11 @@ CREATE TABLE IF NOT EXISTS students (
   PRIMARY KEY (id),
   UNIQUE KEY uq_students_user   (user_id),          -- enforces the 1:1 with users
   UNIQUE KEY uq_students_number (student_number),   -- lookup / search by student number
+  UNIQUE KEY uq_students_lrn    (lrn),              -- one learner per LRN; NULLs (not issued yet) may repeat
   CONSTRAINT fk_students_user FOREIGN KEY (user_id) REFERENCES users (id)
     ON DELETE RESTRICT ON UPDATE RESTRICT,          -- the profile row goes first; a stray user delete fails loudly
-  CONSTRAINT chk_students_number CHECK (student_number REGEXP '^STU-[0-9]{4}-[0-9]{4,}$')
+  CONSTRAINT chk_students_number CHECK (student_number REGEXP '^STU-[0-9]{4}-[0-9]{4,}$'),
+  CONSTRAINT chk_students_lrn CHECK (lrn IS NULL OR lrn REGEXP '^[0-9]{12}$')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='Student profile (1:1 with users); current class lives in enrollments';
 

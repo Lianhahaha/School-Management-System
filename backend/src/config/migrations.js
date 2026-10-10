@@ -54,7 +54,8 @@ export async function migrateDatabase({ log = () => {}, upgrades = UPGRADES } = 
   });
   try {
     const [[{ locked }]] = await conn.query('SELECT GET_LOCK(?, ?) AS locked', [lockName, LOCK_WAIT_S]);
-    if (locked !== 1) throw new Error(`another process has been migrating ${env.DB_NAME} for over ${LOCK_WAIT_S} s`);
+    if (locked !== 1)
+      throw new Error(`another process has been migrating ${env.DB_NAME} for over ${LOCK_WAIT_S} s`);
     try {
       await conn.query(CREATE_SCHEMA_MIGRATIONS);
       const [rows] = await conn.query('SELECT id, checksum FROM schema_migrations');

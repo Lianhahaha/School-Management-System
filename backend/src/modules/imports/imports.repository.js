@@ -17,6 +17,13 @@ export async function findTakenStudentNumbers(numbers) {
   return new Set(rows.map((row) => row.studentNumber));
 }
 
+/** The ones among `lrns` already recorded for a student. */
+export async function findTakenLrns(lrns) {
+  if (!lrns.length) return new Set();
+  const rows = await query('SELECT lrn FROM students WHERE lrn IN (?)', [lrns]);
+  return new Set(rows.map((row) => row.lrn));
+}
+
 /** Map lower-cased class name -> `{ id, name }`, for the classes of one academic year. */
 export async function findClassesByName(academicYear) {
   const rows = await query('SELECT id, name FROM classes WHERE academic_year = ?', [academicYear]);

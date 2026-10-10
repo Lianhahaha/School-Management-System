@@ -45,4 +45,35 @@ describe('student and teacher directories', () => {
     assert.equal(past.status, 200);
     assert.equal(past.body.data.dateOfBirth, '2012-05-04');
   });
+
+  it('records a 12-digit LRN once per student, finds the student by it, and clears it with null', async () => {
+    const [ana, ben] = [await makeUser('student'), await makeUser('student')];
+    const patch = (student, body) =>
+      api.patch(`/api/v1/students/${student.studentId}`).set(as(admin)).send(body);
+
+    const set = await patch(ana, { lrn: ' 136512140001 ' });
+    assert.equal(set.status, 200);
+    assert.equal(set.body.data.lrn, '136512140001');
+
+    const short = await patch(ben, { lrn: '13651214000' });
+    assert.equal(short.status, 400);
+    assert.deepEqual(
+      short.body.error.details.issues.map((issue) => issue.path),
+      ['body.lrn'],
+    );
+    const taken = await patch(ben, { lrn: '136512140001' });
+    assert.equal(taken.status, 409);
+    assert.equal(taken.body.error.details.key, 'students.uq_students_lrn');
+
+    const found = await api.get('/api/v1/students?search=136512140001').set(as(admin));
+    assert.deepEqual(
+      found.body.data.map((row) => row.id),
+      [ana.studentId],
+    );
+
+    const cleared = await patch(ana, { lrn: null });
+    assert.equal(cleared.status, 200);
+    assert.equal(cleared.body.data.lrn, null);
+    assert.equal((await patch(ben, { lrn: '136512140001' })).status, 200, 'a cleared LRN is free again');
+  });
 });

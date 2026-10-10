@@ -13,7 +13,7 @@ export const STUDENT_SORT_MAP = {
   createdAt: 's.created_at',
 };
 
-const COLUMNS = `s.id, s.user_id, s.student_number, u.first_name, u.last_name, u.email, u.phone,
+const COLUMNS = `s.id, s.user_id, s.student_number, s.lrn, u.first_name, u.last_name, u.email, u.phone,
   s.date_of_birth, s.gender, s.address, s.guardian_name, s.guardian_phone, s.admission_date, u.is_active,
   s.created_at, s.updated_at,
   e.id AS enrollment_id, e.class_id, e.status AS enrollment_status, e.enrolled_on,
@@ -40,6 +40,7 @@ export function listStudents(listQuery, scope) {
       'u.last_name',
       "CONCAT(u.first_name, ' ', u.last_name)",
       's.student_number',
+      's.lrn',
       'u.email',
     ])
     .addIf(listQuery.classId, 'e.class_id = ?')
@@ -63,11 +64,12 @@ export function listStudents(listQuery, scope) {
 
 export async function insertStudent(userId, profile, conn) {
   const result = await run(
-    `INSERT INTO students (user_id, student_number, date_of_birth, gender, address, guardian_name, guardian_phone, admission_date)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO students (user_id, student_number, lrn, date_of_birth, gender, address, guardian_name, guardian_phone, admission_date)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       userId,
       profile.studentNumber,
+      profile.lrn ?? null,
       profile.dateOfBirth ?? null,
       profile.gender ?? null,
       profile.address ?? null,
@@ -86,6 +88,7 @@ const PATCH_COLUMNS = {
   lastName: 'u.last_name',
   phone: 'u.phone',
   studentNumber: 's.student_number',
+  lrn: 's.lrn',
   dateOfBirth: 's.date_of_birth',
   gender: 's.gender',
   address: 's.address',

@@ -276,6 +276,7 @@ export const UNIQUE_KEY_FIELDS = Object.freeze({
     message: 'This subject is already in the class',
   },
   'students.uq_students_number': { field: 'studentNumber', message: 'This student number is already in use' },
+  'students.uq_students_lrn': { field: 'lrn', message: 'This LRN already belongs to another student' },
   'teachers.uq_teachers_number': {
     field: 'employeeNumber',
     message: 'This employee number is already in use',

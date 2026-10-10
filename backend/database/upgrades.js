@@ -29,4 +29,15 @@ export const UPGRADES = Object.freeze([
     apply: `ALTER TABLE subjects ADD COLUMN grading_group ENUM('languages','math_science','mapeh') NULL
               COMMENT 'K-12 components group; NULL = points or custom weights' AFTER is_active`,
   },
+  {
+    // DepEd's 12-digit Learner Reference Number, unique once issued (school forms SF1, SF2, SF9 and SF10).
+    id: '2026-10-10-students-lrn',
+    description: 'add students.lrn',
+    needed: `SELECT 1 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'students' AND COLUMN_NAME = 'lrn')`,
+    apply: `ALTER TABLE students
+              ADD COLUMN lrn CHAR(12) NULL COMMENT 'DepEd LRN; NULL until issued' AFTER student_number,
+              ADD UNIQUE KEY uq_students_lrn (lrn),
+              ADD CONSTRAINT chk_students_lrn CHECK (lrn IS NULL OR lrn REGEXP '^[0-9]{12}$')`,
+  },
 ]);

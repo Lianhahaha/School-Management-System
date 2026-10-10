@@ -23,6 +23,13 @@ function StudentProfileFields({ register, errors }) {
         >
           <Input {...register('profile.studentNumber')} autoComplete="off" />
         </FormField>
+        <FormField
+          label="LRN"
+          hint="12 digits; leave blank until DepEd issues one"
+          error={profileErrors.lrn?.message}
+        >
+          <Input {...register('profile.lrn')} inputMode="numeric" autoComplete="off" />
+        </FormField>
         <FormField label="Admission date" error={profileErrors.admissionDate?.message}>
           <Input {...register('profile.admissionDate')} type="date" />
         </FormField>

@@ -13,6 +13,7 @@ import {
   ACADEMIC_YEAR_REGEX,
   DATE_REGEX,
   EMPLOYEE_NUMBER_REGEX,
+  LRN_REGEX,
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
   PHONE_REGEX,
@@ -77,6 +78,9 @@ export const studentNumber = z
   .toUpperCase()
   .max(20, 'Use 20 characters or fewer')
   .regex(STUDENT_NUMBER_REGEX, 'Use the format STU-2026-0001');
+
+/** DepEd Learner Reference Number. */
+export const lrn = z.string().trim().regex(LRN_REGEX, 'Use the 12 digits of the LRN');
 
 export const employeeNumber = z
   .string()

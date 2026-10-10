@@ -47,7 +47,7 @@ export default function StudentDetailPage() {
     <>
       <PageHeader
         title={name}
-        description={student.studentNumber}
+        description={student.lrn ? `${student.studentNumber} · LRN ${student.lrn}` : student.studentNumber}
         breadcrumbs={[{ label: 'Students', to: STUDENTS_PATH }, { label: name }]}
         actions={<StudentClassButton student={student} onSelect={setClassTarget} variant="primary" />}
       />

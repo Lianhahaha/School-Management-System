@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { GENDERS } from '../../constants/shared';
 import {
   dateYMD,
+  lrn,
   name,
   nullableField,
   pastDateYMD,
@@ -18,6 +19,7 @@ export const updateStudentSchema = z.object({
   lastName: name,
   phone: nullableField(phone),
   studentNumber: studentNumberField,
+  lrn: nullableField(lrn),
   dateOfBirth: nullableField(pastDateYMD), // the API refuses a date of birth that is not in the past
   gender: nullableField(z.enum(GENDERS)),
   address: nullableField(z.string().max(255, 'Use 255 characters or fewer')),
@@ -32,6 +34,7 @@ export const studentDefaults = (student) => ({
   lastName: student.lastName,
   phone: student.phone ?? '',
   studentNumber: student.studentNumber,
+  lrn: student.lrn ?? '',
   dateOfBirth: student.dateOfBirth ?? '',
   gender: student.gender ?? '',
   address: student.address ?? '',

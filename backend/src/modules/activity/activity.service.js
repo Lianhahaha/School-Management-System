@@ -46,10 +46,13 @@ export function changesOf(before, patch) {
   return Object.keys(changes).length ? changes : null;
 }
 
+/** Field names a summary spells out rather than splitting at capitals. */
+const FIELD_WORDS = { lrn: 'LRN' };
+
 /** "phone and guardian phone" from changes keyed by camelCase field names, for summaries. */
 export function changedList(changes) {
-  const words = Object.keys(changes).map((field) =>
-    field.replace(/[A-Z]/g, (letter) => ` ${letter.toLowerCase()}`),
+  const words = Object.keys(changes).map(
+    (field) => FIELD_WORDS[field] ?? field.replace(/[A-Z]/g, (letter) => ` ${letter.toLowerCase()}`),
   );
   return words.length > 1 ? `${words.slice(0, -1).join(', ')} and ${words.at(-1)}` : words[0];
 }

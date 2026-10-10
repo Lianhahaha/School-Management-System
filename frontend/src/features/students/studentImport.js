@@ -13,6 +13,7 @@ export const IMPORT_COLUMNS = [
   { field: 'lastName', header: 'Last name', aliases: ['surname', 'familyname', 'last'], required: true },
   { field: 'phone', header: 'Phone', aliases: ['phonenumber', 'mobile', 'contactnumber'] },
   { field: 'studentNumber', header: 'Student number', aliases: ['studentno'] },
+  { field: 'lrn', header: 'LRN', aliases: ['learnerreferencenumber', 'lrnno'] },
   { field: 'admissionDate', header: 'Admission date', aliases: [] },
   { field: 'dateOfBirth', header: 'Date of birth', aliases: ['birthdate', 'birthday', 'dob'] },
   { field: 'gender', header: 'Gender', aliases: ['sex'] },

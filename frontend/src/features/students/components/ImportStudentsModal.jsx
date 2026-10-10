@@ -31,7 +31,7 @@ function PickStep({ onRead, error, isChecking }) {
       <p className="text-sm text-gray-700">
         Upload a CSV file with one student per row. Email, First name and Last name are required; Class (a
         class of this school year) enrolls the student. Excel and Google Sheets save CSV with File → Save as /
-        Download.
+        Download. Format the LRN column as Text in Excel, or its 12 digits are saved as 1.23457E+11.
       </p>
       <Button
         variant="secondary"

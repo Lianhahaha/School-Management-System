@@ -9,6 +9,7 @@ import {
   DATE_REGEX,
   EMPLOYEE_NUMBER_REGEX,
   HIGHEST_GRADE_LEVEL,
+  LRN_REGEX,
   PAGINATION,
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
@@ -105,6 +106,9 @@ export const academicYear = z
 export const studentNumber = z.string().trim().toUpperCase().max(20).regex(STUDENT_NUMBER_REGEX, {
   error: 'expected STU-YYYY-NNNN',
 });
+
+/** DepEd Learner Reference Number: exactly 12 digits (the column is CHAR(12)). */
+export const lrn = z.string().trim().regex(LRN_REGEX, { error: 'expected the 12 digits of the LRN' });
 
 export const employeeNumber = z.string().trim().toUpperCase().max(20).regex(EMPLOYEE_NUMBER_REGEX, {
   error: 'expected EMP-YYYY-NNNN',

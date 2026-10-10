@@ -130,6 +130,7 @@ erDiagram
         int id PK
         int user_id FK,UK
         varchar student_number UK
+        char lrn UK "DepEd LRN, null until issued"
     }
     subjects {
         int id PK

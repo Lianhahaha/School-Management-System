@@ -14,6 +14,7 @@ import * as repo from './students.repository.js';
 export const toStudentProfile = (row) => ({
   id: row.id,
   studentNumber: row.studentNumber,
+  lrn: row.lrn,
   dateOfBirth: row.dateOfBirth,
   gender: row.gender,
   address: row.address,

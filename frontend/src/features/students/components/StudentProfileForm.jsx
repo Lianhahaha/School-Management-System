@@ -51,8 +51,12 @@ export function StudentProfileForm({ student }) {
         <FormField label="Student number" error={errors.studentNumber?.message} required>
           <Input {...register('studentNumber')} autoComplete="off" />
         </FormField>
-        <FormField label="Admission date" error={errors.admissionDate?.message} required>
-          <Input {...register('admissionDate')} type="date" />
+        <FormField
+          label="LRN"
+          hint="12 digits; leave blank until DepEd issues one"
+          error={errors.lrn?.message}
+        >
+          <Input {...register('lrn')} inputMode="numeric" autoComplete="off" />
         </FormField>
         <FormField label="Date of birth" error={errors.dateOfBirth?.message}>
           <Input {...register('dateOfBirth')} type="date" />
@@ -65,6 +69,9 @@ export function StudentProfileForm({ student }) {
         </FormField>
         <FormField label="Guardian phone" error={errors.guardianPhone?.message}>
           <Input {...register('guardianPhone')} type="tel" autoComplete="off" />
+        </FormField>
+        <FormField label="Admission date" error={errors.admissionDate?.message} required>
+          <Input {...register('admissionDate')} type="date" />
         </FormField>
       </div>
       <FormField label="Address" error={errors.address?.message}>

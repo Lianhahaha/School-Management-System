@@ -8,6 +8,7 @@ import {
   dateStr,
   email,
   employeeNumber,
+  lrn,
   name,
   password,
   pastDate,
@@ -25,8 +26,12 @@ export const accountFields = {
   phone: phone.optional(),
 };
 
-/** Optional personal details of a student (public registration and admin-created students). */
+/**
+ * Optional personal details of a student (public registration, admin-created and imported students). The LRN
+ * may be null: DepEd issues it later for a learner who has none yet.
+ */
 export const studentDetailFields = {
+  lrn: lrn.nullable().optional(),
   dateOfBirth: pastDate.optional(),
   gender: z.enum(GENDERS).optional(),
   address: optionalText(255).optional(),

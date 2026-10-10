@@ -31,9 +31,10 @@ describe('database migrations', () => {
     ).length > 0;
   const hasTable = async (table) =>
     (
-      await rows(`SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?`, [
-        table,
-      ])
+      await rows(
+        `SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?`,
+        [table],
+      )
     ).length > 0;
   const migrate = async () => {
     const messages = [];
@@ -76,10 +77,13 @@ describe('database migrations', () => {
 
   it('upgrades a database created by an older schema.sql', async () => {
     await migrate();
-    // Put back what the two upgrades removed or added, and forget that they ran.
+    // Put back what the upgrades removed or added, and forget that they ran.
     await session.query('ALTER TABLE subjects DROP COLUMN grading_group');
     await session.query(
       'ALTER TABLE enrollments ADD UNIQUE KEY uq_enrollments_student_class (student_id, class_id)',
+    );
+    await session.query(
+      'ALTER TABLE students DROP CHECK chk_students_lrn, DROP INDEX uq_students_lrn, DROP COLUMN lrn',
     );
     await session.query('DELETE FROM schema_migrations WHERE id <> ?', ['schema.sql']);
 
@@ -89,6 +93,8 @@ describe('database migrations', () => {
     assert.equal(messages.filter((message) => message.startsWith('Upgraded')).length, UPGRADE_IDS.length);
     assert.equal(await hasColumn('subjects', 'grading_group'), true);
     assert.equal(await hasIndex('enrollments', 'uq_enrollments_student_class'), false);
+    assert.equal(await hasColumn('students', 'lrn'), true);
+    assert.equal(await hasIndex('students', 'uq_students_lrn'), true);
   });
 
   it('applies a changed schema.sql again, creating a table that is missing', async () => {
@@ -121,7 +127,10 @@ describe('database migrations', () => {
     ];
     const changed = await migrateDatabase({ upgrades: [...UPGRADES, ...extra], log: (m) => ran.push(m) });
 
-    assert.deepEqual(changed, extra.map((upgrade) => upgrade.id));
+    assert.deepEqual(
+      changed,
+      extra.map((upgrade) => upgrade.id),
+    );
     assert.deepEqual(ran, ['Upgraded: test upgrade that is needed (9999-01-01-test-needed)']);
   });
 });

@@ -283,6 +283,7 @@ describe('OpenAPI specification', () => {
       AcademicYear: shared.ACADEMIC_YEAR_REGEX,
       Phone: shared.PHONE_REGEX,
       StudentNumber: shared.STUDENT_NUMBER_REGEX,
+      Lrn: shared.LRN_REGEX,
       EmployeeNumber: shared.EMPLOYEE_NUMBER_REGEX,
       SubjectCode: shared.SUBJECT_CODE_REGEX,
     };

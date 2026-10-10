@@ -194,6 +194,24 @@ describe('registration', () => {
     assert.equal(res.body.data.lastName, 'dela Cruz');
   });
 
+  it('keeps an LRN given at sign-up, and refuses one that already belongs to a student with 409', async () => {
+    const res = await api
+      .post('/api/v1/auth/register')
+      .send({ ...body, email: 'with.lrn@school.test', lrn: '136512140009' });
+    assert.equal(res.status, 201);
+    assert.equal(res.body.data.profile.lrn, '136512140009');
+    const taken = await api
+      .post('/api/v1/auth/register')
+      .send({ ...body, email: 'same.lrn@school.test', lrn: '136512140009' });
+    assert.equal(taken.status, 409);
+    assert.equal(taken.body.error.details.key, 'students.uq_students_lrn');
+    assert.equal(
+      firebaseUsers().some((user) => user.email === 'same.lrn@school.test'),
+      false,
+      'the refused sign-up leaves no Firebase user behind',
+    );
+  });
+
   it('refuses a `role` field (no privilege escalation) with 400', async () => {
     const res = await api
       .post('/api/v1/auth/register')

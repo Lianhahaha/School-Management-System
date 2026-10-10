@@ -116,7 +116,11 @@ export default function StudentsListPage() {
       )}
 
       <FilterBar onClear={list.hasActiveFilters ? list.clearFilters : undefined}>
-        <SearchInput value={list.params.search} onChange={list.setSearch} placeholder="Search students" />
+        <SearchInput
+          value={list.params.search}
+          onChange={list.setSearch}
+          placeholder="Search name, student number, LRN"
+        />
         <ClassSelect
           aria-label="Filter by class"
           value={list.params.classId}

@@ -13,6 +13,7 @@ import {
   nullableField,
   optionalField,
   password,
+  lrn,
   pastDateYMD,
   phone,
   studentNumber,
@@ -22,6 +23,7 @@ const text = (max) => z.string().max(max, `Use ${max} characters or fewer`);
 
 const studentProfile = z.object({
   studentNumber: optionalField(studentNumber),
+  lrn: optionalField(lrn),
   admissionDate: optionalField(dateYMD),
   dateOfBirth: optionalField(pastDateYMD),
   gender: optionalField(z.enum(GENDERS)),
@@ -55,9 +57,10 @@ export const createUserSchema = z.discriminatedUnion('role', [
 /** Top-level form fields, for `applyServerErrors(..., { knownFields })` (a union has no `.shape`). */
 export const CREATE_USER_FIELDS = ['role', 'firstName', 'lastName', 'email', 'password', 'phone', 'profile'];
 
-/** Unique-key conflicts name `studentNumber` / `employeeNumber`; in this form they live under `profile`. */
+/** Unique-key conflicts name `studentNumber` / `lrn` / `employeeNumber`; in this form they live under `profile`. */
 export const CREATE_USER_FIELD_MAP = {
   studentNumber: 'profile.studentNumber',
+  lrn: 'profile.lrn',
   employeeNumber: 'profile.employeeNumber',
 };
 
@@ -71,6 +74,7 @@ export const createUserDefaults = (role = 'student') => ({
   phone: '',
   profile: {
     studentNumber: '',
+    lrn: '',
     admissionDate: '',
     dateOfBirth: '',
     gender: '',

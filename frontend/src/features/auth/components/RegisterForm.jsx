@@ -12,7 +12,7 @@ import { useRegister } from '../hooks';
 import { registerDefaults, registerSchema } from '../schemas';
 
 const KNOWN_FIELDS = Object.keys(registerSchema.shape);
-const DETAIL_FIELDS = ['phone', 'dateOfBirth', 'gender', 'address', 'guardianName', 'guardianPhone'];
+const DETAIL_FIELDS = ['phone', 'lrn', 'dateOfBirth', 'gender', 'address', 'guardianName', 'guardianPhone'];
 
 /** Student self-registration: account fields plus an optional, collapsible "Student details" section. */
 export function RegisterForm() {
@@ -63,6 +63,13 @@ export function RegisterForm() {
           <div className="mt-4 space-y-4">
             <FormField label="Phone" error={errors.phone?.message}>
               <Input {...register('phone')} type="tel" autoComplete="tel" />
+            </FormField>
+            <FormField
+              label="LRN"
+              hint="12 digits; leave blank until DepEd issues one"
+              error={errors.lrn?.message}
+            >
+              <Input {...register('lrn')} inputMode="numeric" autoComplete="off" />
             </FormField>
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField label="Date of birth" error={errors.dateOfBirth?.message}>

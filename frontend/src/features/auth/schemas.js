@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { GENDERS } from '../../constants/shared';
 import {
   email,
+  lrn,
   name,
   nullableField,
   optionalField,
@@ -31,6 +32,7 @@ export const registerSchema = z
     password,
     confirmPassword: z.string(),
     phone: optionalField(phone),
+    lrn: optionalField(lrn),
     dateOfBirth: optionalField(pastDateYMD),
     gender: optionalField(z.enum(GENDERS)),
     address: optionalField(address),
@@ -49,6 +51,7 @@ export const registerDefaults = {
   password: '',
   confirmPassword: '',
   phone: '',
+  lrn: '',
   dateOfBirth: '',
   gender: '',
   address: '',

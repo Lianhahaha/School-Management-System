@@ -155,7 +155,7 @@ MySQL 8.0, InnoDB, `utf8mb4_unicode_ci`, snake_case, `id INT UNSIGNED AUTO_INCRE
 |---|---|---|
 | `users` | one row per person of any role; `firebase_uid` (UNIQUE, binary collation), `email` (UNIQUE), names, phone, `role`, `is_active` | deactivated, not deleted, once anything refers to it; an unused account can be deleted |
 | `teachers` | 1:1 profile: `employee_number` UNIQUE, `hire_date`, `department`, `qualification` | `UNIQUE(user_id)` |
-| `students` | 1:1 profile: `student_number` UNIQUE, `date_of_birth`, `gender`, `address`, guardian fields, `admission_date`; **no class column** | `UNIQUE(user_id)`; current class derived from `enrollments` |
+| `students` | 1:1 profile: `student_number` UNIQUE, `lrn` (DepEd's 12 digits, UNIQUE, NULL until issued), `date_of_birth`, `gender`, `address`, guardian fields, `admission_date`; **no class column** | `UNIQUE(user_id)`; current class derived from `enrollments` |
 | `subjects` | catalogue: `code` UNIQUE, `name`, `description`, `is_active` | |
 | `classes` | section in one academic year: `name`, `grade_level`, `academic_year` (`YYYY-YYYY`, CHECK consecutive), `homeroom_teacher_id` | `UNIQUE(academic_year, name)` |
 | `class_subjects` | **teacher assignment**: `class_id` + `subject_id` → `teacher_id` NOT NULL | `UNIQUE(class_id, subject_id)` |

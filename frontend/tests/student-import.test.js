@@ -21,8 +21,8 @@ describe('readImportFile', () => {
 
   it('recognises headers whatever their case, spacing, punctuation or common alternative name', () => {
     const text =
-      'E-mail Address,first_name,LastName,Mobile,DOB,Sex,Section,Student No.\n' +
-      'ana@x.ph,Ana,Cruz,0917 555 0101,2011-04-15,female,Grade 10 - A,STU-2026-0001';
+      'E-mail Address,first_name,LastName,Mobile,DOB,Sex,Section,Student No.,Learner Reference Number\n' +
+      'ana@x.ph,Ana,Cruz,0917 555 0101,2011-04-15,female,Grade 10 - A,STU-2026-0001,136512140001';
     const { rows, error } = readImportFile(text);
     expect(error).toBeNull();
     expect(rows[0]).toMatchObject({
@@ -34,6 +34,7 @@ describe('readImportFile', () => {
       gender: 'female',
       className: 'Grade 10 - A',
       studentNumber: 'STU-2026-0001',
+      lrn: '136512140001',
     });
   });
 
