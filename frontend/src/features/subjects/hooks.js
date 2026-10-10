@@ -62,7 +62,7 @@ export function useUpdateSubject() {
   const invalidate = useInvalidate();
   const toast = useToast();
   return useMutation({
-    mutationFn: ({ id, body }) => updateSubject(id, body),
+    mutationFn: (/** @type {{ id: number, body: object }} */ { id, body }) => updateSubject(id, body),
     meta: { silent: true },
     onSuccess: (subject) => {
       invalidate(...SUBJECT_VIEWS);
@@ -75,7 +75,8 @@ export function useSetSubjectActive() {
   const invalidate = useInvalidate();
   const toast = useToast();
   return useMutation({
-    mutationFn: ({ id, isActive }) => updateSubject(id, { isActive }),
+    mutationFn: (/** @type {{ id: number, isActive: boolean }} */ { id, isActive }) =>
+      updateSubject(id, { isActive }),
     onSuccess: (subject) => {
       invalidate(...SUBJECT_VIEWS);
       toast.success(`${subject.name} ${subject.isActive ? 'reactivated' : 'retired'}`);

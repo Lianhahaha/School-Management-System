@@ -16,8 +16,8 @@ const NUMBER_LIKE = /^[+-]?[\d\s().-]+$/;
 
 /**
  * Quotes a cell when it holds a comma, quote or line break. A value a spreadsheet would run as a formula
- * (starting with = + - @, tab or carriage return) gets a leading apostrophe, unless it is just a number or
- * a phone number such as "+63 917 555 0101".
+ * (starting with `=` `+` `-` `@`, tab or carriage return) gets a leading apostrophe, unless it is just a
+ * number or a phone number such as "+63 917 555 0101".
  */
 function cell(value) {
   if (value === null || value === undefined) return '';
@@ -114,13 +114,15 @@ export async function readTextFile(file) {
 
 /** "Algebra Quiz 1 / Grade 10" -> "algebra-quiz-1-grade-10", for file names. Accents drop: "Niño" -> "nino". */
 export function slugify(text) {
-  return text
-    .toLowerCase()
-    .normalize('NFKD')
-    // NFKD splits "ñ" into "n" and a combining tilde; the mark goes, so it does not become a dash.
-    .replace(/\p{M}/gu, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
+  return (
+    text
+      .toLowerCase()
+      .normalize('NFKD')
+      // NFKD splits "ñ" into "n" and a combining tilde; the mark goes, so it does not become a dash.
+      .replace(/\p{M}/gu, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+  );
 }
 
 /**

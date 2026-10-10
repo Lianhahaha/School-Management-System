@@ -53,7 +53,7 @@ export function useUpdateAnnouncement() {
   const invalidate = useInvalidate();
   const toast = useToast();
   return useMutation({
-    mutationFn: ({ id, body }) => updateAnnouncement(id, body),
+    mutationFn: (/** @type {{ id: number, body: object }} */ { id, body }) => updateAnnouncement(id, body),
     meta: { silent: true },
     onSuccess: (announcement) => {
       invalidate(announcementKeys.all, dashboardKeys.all);

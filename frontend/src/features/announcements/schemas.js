@@ -21,6 +21,11 @@ const commonFields = {
 const classField = (blank, isClassRequired) =>
   isClassRequired ? requiredId('Choose a class') : blank(positiveInt);
 
+/**
+ * The check and the error, spread into `.refine()`.
+ * @type {[(announcement: { publishedAt?: string | null, expiresAt?: string | null }) => boolean,
+ *   { error: string, path: string[] }]}
+ */
 const expiresAfterPublished = [
   // A blank publish time means "now", so the expiry must still be in the future.
   (announcement) =>

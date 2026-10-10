@@ -86,7 +86,8 @@ export function useReassignClassSubject() {
   const invalidateAssignments = useInvalidateAssignments();
   const toast = useToast();
   return useMutation({
-    mutationFn: ({ id, teacherId }) => reassignClassSubject(id, teacherId),
+    mutationFn: (/** @type {{ id: number, teacherId: number }} */ { id, teacherId }) =>
+      reassignClassSubject(id, teacherId),
     meta: { silent: true },
     onSuccess: (classSubject) => {
       // A grade sheet decides who may save from its assessment's teacher, and the live refresh skips it.

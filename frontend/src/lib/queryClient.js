@@ -32,7 +32,10 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 30_000,
-      retry: (failureCount, error) => Boolean(error?.isTransient) && failureCount < MAX_RETRIES,
+      // Any Error can land here (fetchAllPages throws a plain one); only an ApiError has isTransient.
+      retry: (failureCount, error) =>
+        Boolean(/** @type {Partial<import('./apiClient').ApiError>} */ (error)?.isTransient) &&
+        failureCount < MAX_RETRIES,
       // A background refresh does not retry: the next round, 20 s later, is the retry. This turns `retry` off
       // for the fetches of a round only; a page's own fetch keeps the rule above.
       behavior: liveRefreshBehavior,

@@ -81,7 +81,7 @@ export function useUpdateUser() {
   const { me, refreshMe } = useAuth();
   const toast = useToast();
   return useMutation({
-    mutationFn: ({ id, body }) => updateUser(id, body),
+    mutationFn: (/** @type {{ id: number, body: object }} */ { id, body }) => updateUser(id, body),
     meta: { silent: true },
     onSuccess: (user) => {
       invalidateAccounts(...ROSTER_SCOPES, announcementKeys.all);
@@ -95,7 +95,8 @@ export function useSetUserStatus() {
   const invalidateAccounts = useInvalidateAccounts();
   const toast = useToast();
   return useMutation({
-    mutationFn: ({ id, isActive }) => setUserStatus(id, isActive),
+    mutationFn: (/** @type {{ id: number, isActive: boolean }} */ { id, isActive }) =>
+      setUserStatus(id, isActive),
     onSuccess: (user) => {
       toast.success(`${fullName(user)} ${user.isActive ? 'reactivated' : 'deactivated'}`);
     },
@@ -108,7 +109,8 @@ export function useDeleteUser() {
   const invalidateAccounts = useInvalidateAccounts();
   const toast = useToast();
   return useMutation({
-    mutationFn: (user) => deleteUser(user.id),
+    mutationFn: (/** @type {{ id: number, firstName: string, lastName: string }} */ user) =>
+      deleteUser(user.id),
     meta: { silent: true },
     onSuccess: (_, user) => {
       invalidateAccounts();

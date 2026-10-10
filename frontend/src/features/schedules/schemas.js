@@ -4,12 +4,20 @@ import { nullableField, optionalField, requiredId, timeHM } from '../../lib/vali
 /** Both forms share these fields; only the meaning of a blank room differs (see `blank`). */
 const scheduleShape = (blank) => ({
   classSubjectId: requiredId('Choose a subject'),
-  dayOfWeek: z.string().min(1, 'Choose a day').pipe(z.coerce.number().int().min(1).max(7)),
+  // Typed as reading the string piped in (see requiredId in lib/validators.js).
+  dayOfWeek: z
+    .string()
+    .min(1, 'Choose a day')
+    .pipe(/** @type {z.ZodCoercedNumber<string>} */ (z.coerce.number().int().min(1).max(7))),
   startTime: timeHM,
   endTime: timeHM,
   room: blank(z.string().max(50, 'Use 50 characters or fewer')),
 });
 
+/**
+ * The check and the error, spread into `.refine()`.
+ * @type {[(slot: { startTime: string, endTime: string }) => boolean, { error: string, path: string[] }]}
+ */
 const endsAfterStart = [
   (slot) => slot.endTime > slot.startTime, // zero-padded 'HH:MM' strings compare correctly
   { error: 'End time must be after start time', path: ['endTime'] },

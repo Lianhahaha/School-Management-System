@@ -25,7 +25,10 @@ const dateTimeFormatter = new Intl.DateTimeFormat(LOCALE, {
 const clockFormatter = new Intl.DateTimeFormat(LOCALE, { hour: 'numeric', minute: '2-digit' });
 const relativeFormatter = new Intl.RelativeTimeFormat(LOCALE, { numeric: 'auto' });
 
-/** Largest unit first; the first one that fits is used by relativeTime. */
+/**
+ * Largest unit first; the first one that fits is used by relativeTime.
+ * @type {Array<[Intl.RelativeTimeFormatUnit, number]>} unit and its length in seconds
+ */
 const RELATIVE_UNITS = [
   ['year', 365 * 24 * 3600],
   ['month', 30 * 24 * 3600],

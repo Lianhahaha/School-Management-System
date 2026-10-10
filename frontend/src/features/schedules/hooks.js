@@ -49,7 +49,7 @@ export function useUpdateSchedule() {
   const invalidate = useInvalidate();
   const toast = useToast();
   return useMutation({
-    mutationFn: ({ id, body }) => updateSchedule(id, body),
+    mutationFn: (/** @type {{ id: number, body: object }} */ { id, body }) => updateSchedule(id, body),
     meta: { silent: true },
     onSuccess: () => {
       invalidate(scheduleKeys.all, dashboardKeys.all, attendanceKeys.all);

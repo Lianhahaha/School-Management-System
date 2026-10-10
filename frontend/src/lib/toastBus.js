@@ -19,6 +19,12 @@ function describeError(error) {
   return [`[${error.code}]`, error.requestId && `request ${error.requestId}`].filter(Boolean).join(' · ');
 }
 
+/**
+ * @typedef {object} ToastOptions
+ * @property {{ label: string, onClick: () => void }} [action] one button in the toast, such as "Undo"; the
+ *   toast then stays longer and closes when the button is used
+ */
+
 export const toastBus = {
   /** @returns {() => void} unsubscribe */
   subscribe(listener) {
@@ -27,10 +33,13 @@ export const toastBus = {
   },
   /**
    * @param {string} message
-   * @param {{ action?: { label: string, onClick: () => void } }} [options] one button in the toast,
-   *   such as "Undo"; the toast then stays longer and closes when the button is used
+   * @param {ToastOptions} [options]
    */
   success: (message, { action } = {}) => publish('success', message, undefined, action),
+  /**
+   * @param {string} message
+   * @param {ToastOptions} [options]
+   */
   info: (message, { action } = {}) => publish('info', message, undefined, action),
   /** @param {Error|string} error an ApiError (its message is shown) or a plain message */
   error(error) {

@@ -174,7 +174,8 @@ export function useSetEnrollmentStatus() {
   const invalidateEnrollments = useInvalidateEnrollments();
   const toast = useToast();
   return useMutation({
-    mutationFn: ({ id, status }) => setEnrollmentStatus(id, status),
+    mutationFn: (/** @type {{ id: number, status: 'completed' | 'withdrawn' }} */ { id, status }) =>
+      setEnrollmentStatus(id, status),
     onSuccess: (enrollment) => {
       invalidateEnrollments();
       toast.success(

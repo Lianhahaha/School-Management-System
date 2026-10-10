@@ -22,7 +22,8 @@ export function useAuth() {
  */
 export function useLogin() {
   return useMutation({
-    mutationFn: ({ email, password }) => signInWithEmailAndPassword(auth, email, password),
+    mutationFn: (/** @type {{ email: string, password: string }} */ { email, password }) =>
+      signInWithEmailAndPassword(auth, email, password),
     meta: { silent: true },
   });
 }
@@ -38,7 +39,7 @@ export function useRegister() {
   const { setAuthNotice } = useAuth();
 
   return useMutation({
-    mutationFn: async (body) => {
+    mutationFn: async (/** @type {{ firstName: string, email: string, password: string }} */ body) => {
       await register(body);
       try {
         await signInWithEmailAndPassword(auth, body.email, body.password);
@@ -57,7 +58,9 @@ export function useRegister() {
       navigate('/login', { replace: true });
     },
     onError: (error) => {
-      if (error.details?.reason === REGISTRATION_DISABLED) markRegistrationClosed();
+      // Only register() can reject (a failed sign-in is caught above), and it rejects with an ApiError.
+      const { details } = /** @type {import('../../lib/apiClient').ApiError} */ (error);
+      if (details?.reason === REGISTRATION_DISABLED) markRegistrationClosed();
     },
     meta: { silent: true },
   });
@@ -69,7 +72,7 @@ export function useRegister() {
  */
 export function useForgotPassword() {
   return useMutation({
-    mutationFn: async (email) => {
+    mutationFn: async (/** @type {string} */ email) => {
       try {
         await sendPasswordResetEmail(auth, email);
       } catch (error) {

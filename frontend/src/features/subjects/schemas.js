@@ -8,11 +8,14 @@ const weightInput = z
   .trim()
   .transform((value) => (value === '' ? '0' : value))
   .pipe(
-    z.coerce
-      .number({ error: 'Enter a whole number' })
-      .int('Enter a whole number')
-      .min(0, 'Use 0 to 100')
-      .max(100, 'Use 0 to 100'),
+    // Typed as reading the string piped in (see requiredId in lib/validators.js).
+    /** @type {z.ZodCoercedNumber<string>} */ (
+      z.coerce
+        .number({ error: 'Enter a whole number' })
+        .int('Enter a whole number')
+        .min(0, 'Use 0 to 100')
+        .max(100, 'Use 0 to 100')
+    ),
   );
 
 /** The sum of the weight inputs (blank and invalid inputs count 0), for the live total and the check. */

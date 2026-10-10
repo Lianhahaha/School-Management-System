@@ -1,8 +1,8 @@
 name: Frontend checks
 
-# Every push and pull request lints, unit-tests and builds the frontend. The tests run in plain Node, with
-# no browser, database or Firebase project. One of them also reads backend/src/utils/grading.js to check that
-# both sides compute grades alike, so this runs on backend-only changes too. Releasing stays in
+# Every push and pull request lints, type-checks, unit-tests and builds the frontend. The tests run in plain
+# Node, with no browser, database or Firebase project. One of them also reads backend/src/utils/grading.js to
+# check that both sides compute grades alike, so this runs on backend-only changes too. Releasing stays in
 # deploy-frontend.yml, which runs the same tests again before it builds.
 on:
   push:
@@ -33,6 +33,11 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      # TypeScript checks the JSDoc types of the .js logic files (jsconfig.json); the .jsx components are not
+      # type-checked yet.
+      - name: Type check
+        run: npm run typecheck
 
       - name: Test
         run: npm test

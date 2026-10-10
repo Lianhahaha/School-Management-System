@@ -67,7 +67,7 @@ export function useUpdateStudent() {
   const invalidate = useInvalidate();
   const toast = useToast();
   return useMutation({
-    mutationFn: ({ id, body }) => updateStudent(id, body),
+    mutationFn: (/** @type {{ id: number, body: object }} */ { id, body }) => updateStudent(id, body),
     meta: { silent: true },
     onSuccess: (student) => {
       // The name shows on rosters, enrollments and dashboards too.

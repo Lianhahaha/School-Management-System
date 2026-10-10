@@ -120,7 +120,7 @@ export function useUpdateAssessment() {
   const invalidateGrades = useInvalidateGrades();
   const toast = useToast();
   return useMutation({
-    mutationFn: ({ id, body }) => updateAssessment(id, body),
+    mutationFn: (/** @type {{ id: number, body: object }} */ { id, body }) => updateAssessment(id, body),
     meta: { silent: true },
     onSuccess: (assessment) => {
       invalidateGrades();
@@ -145,7 +145,8 @@ export function useSaveGrades() {
   const invalidateGrades = useInvalidateGrades();
   const toast = useToast();
   return useMutation({
-    mutationFn: ({ assessmentId, grades }) => saveGrades(assessmentId, grades),
+    mutationFn: (/** @type {{ assessmentId: number, grades: object[] }} */ { assessmentId, grades }) =>
+      saveGrades(assessmentId, grades),
     onSuccess: ({ records }) => {
       invalidateGrades();
       const graded = records.filter((record) => record.gradeId !== null).length;
@@ -168,7 +169,8 @@ export function useRestoreGrade() {
   const invalidateGrades = useInvalidateGrades();
   const toast = useToast();
   return useMutation({
-    mutationFn: ({ assessmentId, grade }) => saveGrades(assessmentId, [grade]),
+    mutationFn: (/** @type {{ assessmentId: number, grade: object }} */ { assessmentId, grade }) =>
+      saveGrades(assessmentId, [grade]),
     onSuccess: () => {
       invalidateGrades();
       toast.success('Grade restored');

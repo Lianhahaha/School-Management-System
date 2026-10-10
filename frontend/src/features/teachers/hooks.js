@@ -48,7 +48,7 @@ export function useUpdateTeacher() {
   const invalidate = useInvalidate();
   const toast = useToast();
   return useMutation({
-    mutationFn: ({ id, body }) => updateTeacher(id, body),
+    mutationFn: (/** @type {{ id: number, body: object }} */ { id, body }) => updateTeacher(id, body),
     meta: { silent: true },
     onSuccess: (teacher) => {
       // The sheets name who marked or graded, and the live refresh skips them.

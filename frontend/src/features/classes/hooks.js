@@ -61,7 +61,7 @@ export function useUpdateClass() {
   const invalidate = useInvalidate();
   const toast = useToast();
   return useMutation({
-    mutationFn: ({ id, body }) => updateClass(id, body),
+    mutationFn: (/** @type {{ id: number, body: object }} */ { id, body }) => updateClass(id, body),
     meta: { silent: true },
     onSuccess: (updatedClass) => {
       // The attendance sheets and grade rosters show the class name too, and the live refresh skips them.

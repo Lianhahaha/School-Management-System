@@ -8,7 +8,8 @@ const classShape = (blank) => ({
   gradeLevel: z
     .string()
     .min(1, 'Choose a grade level')
-    .pipe(positiveInt.max(12, 'Choose a grade from 1 to 12')),
+    // Typed as reading the string piped in (see requiredId in lib/validators.js).
+    .pipe(/** @type {z.ZodCoercedNumber<string>} */ (positiveInt.max(12, 'Choose a grade from 1 to 12'))),
   academicYear,
   homeroomTeacherId: blank(positiveInt),
 });

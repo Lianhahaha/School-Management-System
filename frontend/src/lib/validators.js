@@ -97,8 +97,16 @@ export const positiveInt = z.coerce
   .int('Enter a whole number greater than 0')
   .positive('Enter a whole number greater than 0');
 
-/** A required choice from a select of ids: an empty selection reads `message` ("Choose a class"). */
-export const requiredId = (message) => z.string().min(1, message).pipe(positiveInt);
+/**
+ * A required choice from a select of ids: an empty selection reads `message` ("Choose a class").
+ * The cast tells TypeScript that the piped value is the string: Zod types a coerced number's input as
+ * unknown, and .pipe() after a string schema wants a schema that reads a string (z.coerce.number<string>()).
+ */
+export const requiredId = (message) =>
+  z
+    .string()
+    .min(1, message)
+    .pipe(/** @type {z.ZodCoercedNumber<string>} */ (positiveInt));
 
 /**
  * A score with at most two decimals. A blank input coerces to 0, so callers must drop blank

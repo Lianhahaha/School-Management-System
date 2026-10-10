@@ -52,7 +52,7 @@ export function useUpdateCalendarEvent() {
   const invalidateCalendar = useInvalidateCalendar();
   const toast = useToast();
   return useMutation({
-    mutationFn: ({ id, body }) => updateCalendarEvent(id, body),
+    mutationFn: (/** @type {{ id: number, body: object }} */ { id, body }) => updateCalendarEvent(id, body),
     meta: { silent: true },
     onSuccess: (event) => {
       invalidateCalendar();
