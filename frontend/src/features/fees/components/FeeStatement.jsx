@@ -11,6 +11,8 @@ import { useConfirm } from '../../../hooks/useConfirm';
 import { useDisclosure } from '../../../hooks/useDisclosure';
 import { formatDate } from '../../../utils/date';
 import { countOf, formatPeso } from '../../../utils/format';
+import { can } from '../../../utils/roles';
+import { useAuth } from '../../auth/hooks';
 import { useDeletePayment, useFeeStatement } from '../hooks';
 import { RecordPaymentModal } from './RecordPaymentModal';
 
@@ -67,15 +69,17 @@ function describeClass(schoolClass) {
 
 /**
  * A student's fees for one school year: the totals (fees, paid, balance), the fees that apply and the
- * payments, latest first. With `canManage` (admins) a payment can be recorded, and one recorded by mistake
- * removed (payments are never edited).
+ * payments, latest first. The office records a payment, and the admin removes one recorded by mistake
+ * (payments are never edited); a student reads their own.
  *
  * @param {object} props
  * @param {number|'me'} props.studentId
  * @param {string} props.academicYear
- * @param {boolean} [props.canManage]
  */
-export function FeeStatement({ studentId, academicYear, canManage = false }) {
+export function FeeStatement({ studentId, academicYear }) {
+  const { role } = useAuth();
+  const canRecord = can(role, 'payments.record');
+  const canRemove = can(role, 'payments.remove');
   const statement = useFeeStatement({ studentId, academicYear });
   const deletePayment = useDeletePayment();
   const paymentModal = useDisclosure();
@@ -114,7 +118,7 @@ export function FeeStatement({ studentId, academicYear, canManage = false }) {
     if (ok) deletePayment.mutate(payment.id);
   };
 
-  const paymentColumns = canManage
+  const paymentColumns = canRemove
     ? [
         ...PAYMENT_COLUMNS,
         {
@@ -169,7 +173,7 @@ export function FeeStatement({ studentId, academicYear, canManage = false }) {
         total={data.payments.length}
         padded={false}
         actions={
-          canManage && (
+          canRecord && (
             <Button size="sm" variant="secondary" icon={Plus} onClick={paymentModal.open}>
               Record payment
             </Button>
@@ -185,7 +189,7 @@ export function FeeStatement({ studentId, academicYear, canManage = false }) {
         />
       </Card>
 
-      {canManage && (
+      {canRecord && (
         <RecordPaymentModal
           open={paymentModal.isOpen}
           onClose={paymentModal.close}

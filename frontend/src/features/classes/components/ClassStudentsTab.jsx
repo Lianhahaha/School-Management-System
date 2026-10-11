@@ -15,6 +15,8 @@ import { useListParams } from '../../../hooks/useListParams';
 import { fetchAllPages } from '../../../lib/csv';
 import { currentAcademicYear } from '../../../utils/date';
 import { fullName } from '../../../utils/names';
+import { can } from '../../../utils/roles';
+import { useAuth } from '../../auth/hooks';
 import { EndSchoolYearModal } from '../../enrollments/components/EndSchoolYearModal';
 import { EnrollStudentsModal } from '../../enrollments/components/EnrollStudentsModal';
 import { TransferStudentModal } from '../../enrollments/components/TransferStudentModal';
@@ -25,15 +27,17 @@ import { useStudents } from '../../students/hooks';
 import { UserStatusBadge } from '../../users/components/UserStatusBadge';
 
 /**
- * "Students" tab of a class (admin): the roster with search, "Download SF1" (the DepEd school register of
- * the students enrolled now), "Enroll students" (many at once; only for a class of the current or a later
- * academic year), "End of school year" (for a class of the current or a past year that has students),
- * Transfer and Withdraw. A student's `currentEnrollment.id` is the active enrollment of this class.
+ * "Students" tab of a class (the office): the roster with search, "Download SF1" (the DepEd school register
+ * of the students enrolled now), "Enroll students" (many at once; only for a class of the current or a later
+ * academic year), "End of school year" (the admin's, for a class of the current or a past year that has
+ * students), Transfer and Withdraw. A student's `currentEnrollment.id` is the active enrollment of this
+ * class.
  *
  * @param {object} props
  * @param {{ id: number, name: string, academicYear: string, studentCount: number }} props.schoolClass
  */
 export function ClassStudentsTab({ schoolClass }) {
+  const { role } = useAuth();
   const list = useListParams({ defaultSort: ['lastName', 'asc'] });
   const { data, isPending, isFetching, error, refetch } = useStudents({
     ...list.apiParams,
@@ -91,7 +95,10 @@ export function ClassStudentsTab({ schoolClass }) {
 
   // The API refuses enrollments into a past academic year's class, and closing a year that has not started.
   const canEnroll = schoolClass.academicYear >= currentAcademicYear();
-  const canEndYear = schoolClass.academicYear <= currentAcademicYear() && schoolClass.studentCount > 0;
+  const canEndYear =
+    can(role, 'enrollments.complete') &&
+    schoolClass.academicYear <= currentAcademicYear() &&
+    schoolClass.studentCount > 0;
   const enrollButton = canEnroll && (
     <Button icon={UserPlus} onClick={enrollModal.open}>
       Enroll students

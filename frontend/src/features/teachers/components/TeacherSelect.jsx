@@ -4,7 +4,7 @@ import { useTeacherOptions } from '../hooks';
 /**
  * Select of active teachers (the first 100), labelled with the full name. Works with react-hook-form
  * (`{...register('teacherId')}`) and as a controlled filter (`value`, `onChange` with the event).
- * Admin only: the teachers list is an admin endpoint.
+ * The office only: the teachers list is an office endpoint.
  *
  * @param {object} props
  * @param {string} [props.placeholder] label of the empty choice (default "Choose a teacher"); pass

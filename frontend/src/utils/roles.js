@@ -6,5 +6,69 @@ export const roleLabel = (role) => ROLE_LABELS[role] ?? role;
 /** Badge tone of a role. */
 export const roleTone = (role) => ROLE_TONES[role] ?? 'gray';
 
-/** Landing path of a role's area: '/admin', '/teacher' or '/student'. */
+/** Landing path of a role's area: '/admin' (the admin, the student assistant), '/teacher' or '/student'. */
 export const roleHome = (role) => ROLE_HOME[role];
+
+const ADMIN = Object.freeze(['admin']);
+/** The school office: the admin and the student assistant (backend access.isOffice). */
+const OFFICE = Object.freeze(['admin', 'assistant']);
+
+/**
+ * The roles allowed each action the pages offer or hide by role. It mirrors the backend's authorize() lists,
+ * and the service rules where a route admits more roles than one of its uses (a student assistant creates
+ * student accounts only, and closes an enrollment as withdrawn only). Only actions some page checks are
+ * listed: everything else in an area is open to every role that reaches it. This only decides what is shown;
+ * the backend enforces access.
+ */
+export const PERMISSIONS = Object.freeze({
+  /** Every class, student and teacher: the search, the class picker of attendance and grades, nav counts. */
+  'school.readAll': OFFICE,
+  /** The setup checklist of a new school: its first steps (teachers, subjects) are the admin's. */
+  'school.setUp': ADMIN,
+  /** The Users page: every account (GET /users). */
+  'users.list': ADMIN,
+  /** Deactivate or reactivate an account (PATCH /users/:id/status). */
+  'users.setStatus': ADMIN,
+  /** Delete an account created by mistake (DELETE /users/:id). */
+  'users.delete': ADMIN,
+  /** Create a teacher account (POST /users) and edit a teacher's record (PATCH /teachers/:id). */
+  'teachers.manage': ADMIN,
+  /** Close an active enrollment as withdrawn (PATCH /enrollments/:id). */
+  'enrollments.withdraw': OFFICE,
+  /** End of school year (POST /enrollments/complete) and closing an enrollment as completed. */
+  'enrollments.complete': ADMIN,
+  /** Create, edit, retire and delete subjects, with their grading rules (POST, PATCH, DELETE /subjects). */
+  'subjects.manage': ADMIN,
+  /** DELETE /classes/:id. */
+  'classes.delete': ADMIN,
+  /** Remove a subject and its teacher from a class (DELETE /class-subjects/:id). */
+  'classSubjects.delete': ADMIN,
+  /** Attendance, assessments and grades of any class-subject (a teacher: only the ones assigned to them). */
+  'lessons.manageAll': ADMIN,
+  /** Edit or delete anyone's announcement, and see scheduled and expired ones; everyone else, their own. */
+  'announcements.manageAll': OFFICE,
+  /** Add, edit and remove calendar entries (POST, PATCH, DELETE /calendar). */
+  'calendar.manage': OFFICE,
+  /** Add, edit and delete the fees of a school year (POST, PATCH, DELETE /fees). */
+  'fees.manage': ADMIN,
+  /** POST /payments. */
+  'payments.record': OFFICE,
+  /** Remove a payment recorded by mistake (DELETE /payments/:id). */
+  'payments.remove': ADMIN,
+});
+
+/**
+ * Whether `role` may take `action`:
+ *   const { role } = useAuth();
+ *   {can(role, 'classes.delete') && <Button>Delete</Button>}
+ * An action missing from PERMISSIONS is a typo, so it throws instead of quietly hiding a button.
+ *
+ * @param {string | null | undefined} role the signed-in user's role
+ * @param {keyof typeof PERMISSIONS} action
+ * @returns {boolean}
+ */
+export function can(role, action) {
+  const roles = PERMISSIONS[action];
+  if (!roles) throw new Error(`Unknown permission "${action}"`);
+  return role != null && roles.includes(role);
+}

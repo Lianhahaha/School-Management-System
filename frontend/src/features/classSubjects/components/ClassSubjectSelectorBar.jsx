@@ -1,11 +1,12 @@
 import { FormField } from '../../../components/ui/FormField';
 import { Input } from '../../../components/ui/Input';
 import { academicYearStart, formatDate, todayYmd } from '../../../utils/date';
+import { can } from '../../../utils/roles';
 import { ClassSelect } from '../../classes/components/ClassSelect';
 import { ClassSubjectSelect } from './ClassSubjectSelect';
 
 /**
- * The bar above the attendance and grades pages: class (admin only) -> class-subject (-> date).
+ * The bar above the attendance and grades pages: class (the office only) -> class-subject (-> date).
  * Its state lives in the URL; build `selection` with useClassSubjectSelection (same `withDate`).
  *
  * @param {object} props
@@ -18,6 +19,8 @@ export function ClassSubjectSelectorBar({ selection, withDate = false }) {
   // Marks belong to the class's academic year; the picker stops at its first day.
   const firstDay = selected.data ? academicYearStart(selected.data.academicYear) : undefined;
   const isBeforeYear = withDate && Boolean(firstDay) && date < firstDay;
+  // The office picks any class first; a teacher picks from the lessons they see.
+  const picksClass = can(role, 'school.readAll');
 
   return (
     <div
@@ -25,12 +28,12 @@ export function ClassSubjectSelectorBar({ selection, withDate = false }) {
       aria-label="Choose a class and subject"
       className="mb-6 flex flex-wrap items-start gap-4"
     >
-      {role === 'admin' && (
+      {picksClass && (
         <FormField label="Class" className="w-full sm:w-64">
           <ClassSelect value={classId} onChange={(event) => setClassId(event.target.value)} />
         </FormField>
       )}
-      <FormField label={role === 'admin' ? 'Subject' : 'Class and subject'} className="w-full sm:w-72">
+      <FormField label={picksClass ? 'Subject' : 'Class and subject'} className="w-full sm:w-72">
         <ClassSubjectSelect
           classId={classId}
           value={classSubjectId}

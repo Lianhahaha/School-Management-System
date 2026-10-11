@@ -31,9 +31,17 @@ const publicRoutes = [
   { path: 'forgot-password', element: page(() => import('../features/auth/pages/ForgotPasswordPage')) },
 ];
 
+/**
+ * The office's area: the admin and the student assistant share every page except those nested in an
+ * admin-only RequireRole; within a page, `can` (utils/roles) hides the actions an assistant may not take.
+ */
 const adminRoutes = [
   { index: true, element: page(() => import('../features/dashboard/pages/AdminDashboardPage')) },
-  { path: 'users', element: page(() => import('../features/users/pages/UsersListPage')) },
+  {
+    path: 'users',
+    element: <RequireRole roles={['admin']} />,
+    children: [{ index: true, element: page(() => import('../features/users/pages/UsersListPage')) }],
+  },
   { path: 'students', element: page(() => import('../features/students/pages/StudentsListPage')) },
   {
     path: 'students/:studentId',
@@ -89,7 +97,7 @@ const studentRoutes = [
 /**
  * The route tree. Guards are layout routes, so a page cannot be added without one:
  *   PublicOnly > AuthLayout                         sign in, register, forgot password
- *   RequireAuth > AppShell > RequireRole(role)      everything else
+ *   RequireAuth > AppShell > RequireRole(role)      everything else (admin-only pages nest a second one)
  * `*` sits inside the shell, so a signed-out visitor who mistypes a URL is sent to /login first.
  */
 export const router = createBrowserRouter([
@@ -114,7 +122,11 @@ export const router = createBrowserRouter([
                   { index: true, element: <RoleRedirect /> },
                   { path: 'profile', element: page(() => import('../features/profile/pages/ProfilePage')) },
                   { path: '403', element: page(() => import('./pages/ForbiddenPage')) },
-                  { path: 'admin', element: <RequireRole roles={['admin']} />, children: adminRoutes },
+                  {
+                    path: 'admin',
+                    element: <RequireRole roles={['admin', 'assistant']} />,
+                    children: adminRoutes,
+                  },
                   { path: 'teacher', element: <RequireRole roles={['teacher']} />, children: teacherRoutes },
                   { path: 'student', element: <RequireRole roles={['student']} />, children: studentRoutes },
                   { path: '*', element: page(() => import('./pages/NotFoundPage')) },

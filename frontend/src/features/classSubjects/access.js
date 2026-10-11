@@ -1,6 +1,9 @@
+import { can } from '../../utils/roles';
+
 /**
  * Who may write to a lesson (a class-subject: its attendance, assessments and grades): an administrator, or the
- * teacher the class-subject is assigned to. A teacher who sees the class only as its homeroom teacher reads it.
+ * teacher the class-subject is assigned to. A teacher who sees the class only as its homeroom teacher reads
+ * it, and so does a student assistant (the school office reads every lesson but never marks or grades).
  * The API enforces the same rule (assertCanManageClassSubject); this decides what the pages offer.
  *
  *   const { me } = useAuth();
@@ -11,4 +14,4 @@
  * @returns {boolean}
  */
 export const isClassSubjectOwner = (me, classSubject) =>
-  me.role === 'admin' || (Boolean(classSubject) && classSubject.teacherId === me.teacherId);
+  can(me.role, 'lessons.manageAll') || (Boolean(classSubject) && classSubject.teacherId === me.teacherId);

@@ -10,8 +10,10 @@ import { useConfirm } from '../../../hooks/useConfirm';
 import { useDisclosure } from '../../../hooks/useDisclosure';
 import { countOf } from '../../../utils/format';
 import { fullName } from '../../../utils/names';
+import { can } from '../../../utils/roles';
 import { AttendanceTrendCard } from '../../attendance/components/AttendanceTrendCard';
 import { Sf2Download } from '../../attendance/components/Sf2Download';
+import { useAuth } from '../../auth/hooks';
 import { ClassFormModal } from '../components/ClassFormModal';
 import { ClassScheduleTab } from '../components/ClassScheduleTab';
 import { ClassStudentsTab } from '../components/ClassStudentsTab';
@@ -21,6 +23,7 @@ import { useClass, useDeleteClass } from '../hooks';
 const BACK = { backTo: '/admin/classes', backLabel: 'Back to classes' };
 
 export default function ClassDetailPage() {
+  const { role } = useAuth();
   const { classId } = useParams();
   const navigate = useNavigate();
   const confirm = useConfirm();
@@ -69,9 +72,11 @@ export default function ClassDetailPage() {
             <Button variant="secondary" icon={Pencil} onClick={editModal.open}>
               Edit
             </Button>
-            <Button variant="danger" icon={Trash2} onClick={onDelete}>
-              Delete
-            </Button>
+            {can(role, 'classes.delete') && (
+              <Button variant="danger" icon={Trash2} onClick={onDelete}>
+                Delete
+              </Button>
+            )}
           </>
         }
       />

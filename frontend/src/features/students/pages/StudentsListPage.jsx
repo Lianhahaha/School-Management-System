@@ -14,6 +14,7 @@ import { Select } from '../../../components/ui/Select';
 import { GRADE_LEVEL_OPTIONS, NEW_ACCOUNT_DAYS, USER_STATUS_FILTER_OPTIONS } from '../../../constants/ui';
 import { useDisclosure } from '../../../hooks/useDisclosure';
 import { useListParams } from '../../../hooks/useListParams';
+import { useOpenFromLink } from '../../../hooks/useOpenFromLink';
 import { isWithinDays, relativeTime } from '../../../utils/date';
 import { countOf } from '../../../utils/format';
 import { fullName } from '../../../utils/names';
@@ -43,6 +44,8 @@ export default function StudentsListPage() {
   const unenrolledCount = unenrolled.data?.meta?.total ?? 0;
   const showUnenrolledNote = unenrolledCount > 0 && !list.params.hasActiveEnrollment;
   const createModal = useDisclosure();
+  // The student assistant's dashboard shortcut (?new=1): they add students here, not on the Users page.
+  useOpenFromLink(createModal.open);
   const enrollModal = useDisclosure();
   const importModal = useDisclosure();
   const [classTarget, setClassTarget] = useState(null);

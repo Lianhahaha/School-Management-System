@@ -82,7 +82,8 @@ function TeacherProfileFields({ register, errors }) {
 
 /**
  * Create form for an account of any role (POST /users). The role decides the record section: student
- * and teacher fields, none for an administrator (the `profile` key is not sent for them).
+ * and teacher fields, none for an administrator or a student assistant (the `profile` key is not sent for
+ * them).
  * `mutation` is useCreateUser(), owned by the modal so its submit button can show the pending state;
  * `trackDirty(isDirty)` lets the modal ask "Discard changes?" before closing.
  */

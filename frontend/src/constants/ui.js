@@ -77,12 +77,31 @@ export const SUBJECT_TAG_CLASSES = Object.freeze([
 // Labels, tones and options per shared enum
 // ---------------------------------------------------------------------------
 
-export const ROLE_LABELS = Object.freeze({ admin: 'Administrator', teacher: 'Teacher', student: 'Student' });
-export const ROLE_TONES = Object.freeze({ admin: 'violet', teacher: 'blue', student: 'blue' });
+export const ROLE_LABELS = Object.freeze({
+  admin: 'Administrator',
+  teacher: 'Teacher',
+  student: 'Student',
+  assistant: 'Student assistant',
+});
+/** The office (the admin and the student assistant) shares one tone, as it shares the /admin area. */
+export const ROLE_TONES = Object.freeze({
+  admin: 'violet',
+  teacher: 'blue',
+  student: 'blue',
+  assistant: 'violet',
+});
 export const ROLE_OPTIONS = optionsOf(ROLES, ROLE_LABELS);
 
-/** Where each role lands after signing in; also the prefix of that role's route area. */
-export const ROLE_HOME = Object.freeze({ admin: '/admin', teacher: '/teacher', student: '/student' });
+/**
+ * Where each role lands after signing in; also the prefix of that role's route area. A student assistant
+ * works in the admin's area: the same office pages, with the admin-only actions hidden (utils/roles `can`).
+ */
+export const ROLE_HOME = Object.freeze({
+  admin: '/admin',
+  teacher: '/teacher',
+  student: '/student',
+  assistant: '/admin',
+});
 
 export const GENDER_LABELS = Object.freeze({ male: 'Male', female: 'Female', other: 'Other' });
 export const GENDER_OPTIONS = optionsOf(GENDERS, GENDER_LABELS);

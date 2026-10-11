@@ -15,12 +15,17 @@ import { useConfirm } from '../../../hooks/useConfirm';
 import { useDisclosure } from '../../../hooks/useDisclosure';
 import { useListParams } from '../../../hooks/useListParams';
 import { fullName } from '../../../utils/names';
+import { can } from '../../../utils/roles';
+import { useAuth } from '../../auth/hooks';
 import { ClassFormModal } from '../components/ClassFormModal';
 import { useClasses, useDeleteClass } from '../hooks';
 
 const YEAR_OPTIONS = academicYearOptions();
 
+/** The classes of every school year. The office creates and edits them; only the admin deletes one. */
 export default function ClassesListPage() {
+  const { role } = useAuth();
+  const canDelete = can(role, 'classes.delete');
   const list = useListParams({
     filters: ['academicYear', 'gradeLevel'],
     defaultSort: ['academicYear', 'desc'],
@@ -76,7 +81,9 @@ export default function ClassesListPage() {
           items={[
             { label: 'View', icon: Eye, to: `/admin/classes/${schoolClass.id}` },
             { label: 'Edit', icon: Pencil, onClick: () => setEditing(schoolClass) },
-            { label: 'Delete', icon: Trash2, danger: true, onClick: () => onDelete(schoolClass) },
+            ...(canDelete
+              ? [{ label: 'Delete', icon: Trash2, danger: true, onClick: () => onDelete(schoolClass) }]
+              : []),
           ]}
         />
       ),

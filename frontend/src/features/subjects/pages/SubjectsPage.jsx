@@ -12,6 +12,8 @@ import { useConfirm } from '../../../hooks/useConfirm';
 import { useDisclosure } from '../../../hooks/useDisclosure';
 import { useListParams } from '../../../hooks/useListParams';
 import { describeGrading } from '../../../utils/grades';
+import { can } from '../../../utils/roles';
+import { useAuth } from '../../auth/hooks';
 import { SubjectFormModal } from '../components/SubjectFormModal';
 import { useDeleteSubject, useSetSubjectActive, useSubjects } from '../hooks';
 
@@ -20,7 +22,13 @@ const STATUS_OPTIONS = [
   { value: 'false', label: 'Retired' },
 ];
 
+/**
+ * The subject catalogue. The admin creates, edits (grading rules included), retires and deletes subjects; a
+ * student assistant reads it.
+ */
 export default function SubjectsPage() {
+  const { role } = useAuth();
+  const canManage = can(role, 'subjects.manage');
   const list = useListParams({ filters: ['isActive'], defaultSort: ['code', 'asc'] });
   const { data, isPending, isFetching, error, refetch } = useSubjects(list.apiParams);
   const createModal = useDisclosure();
@@ -84,7 +92,9 @@ export default function SubjectsPage() {
         <Badge tone={subject.isActive ? 'green' : 'gray'}>{subject.isActive ? 'Active' : 'Retired'}</Badge>
       ),
     },
-    {
+  ];
+  if (canManage) {
+    columns.push({
       key: 'actions',
       header: <span className="sr-only">Actions</span>,
       align: 'right',
@@ -118,8 +128,10 @@ export default function SubjectsPage() {
           </Button>
         </div>
       ),
-    },
-  ];
+    });
+  }
+
+  const createButton = canManage && <Button onClick={createModal.open}>Create subject</Button>;
 
   return (
     <>
@@ -127,7 +139,7 @@ export default function SubjectsPage() {
         total={data?.meta?.total}
         title="Subjects"
         description="The subject catalogue that classes draw from"
-        actions={<Button onClick={createModal.open}>Create subject</Button>}
+        actions={createButton}
       />
 
       <FilterBar onClear={list.hasActiveFilters ? list.clearFilters : undefined}>
@@ -165,8 +177,8 @@ export default function SubjectsPage() {
           ) : (
             <EmptyState
               title="No subjects yet"
-              description="Create the first subject to get started."
-              action={<Button onClick={createModal.open}>Create subject</Button>}
+              description={canManage ? 'Create the first subject to get started.' : undefined}
+              action={createButton}
             />
           )
         }
@@ -174,12 +186,16 @@ export default function SubjectsPage() {
 
       <Pagination meta={data?.meta} onPageChange={list.setPage} onLimitChange={list.setLimit} />
 
-      <SubjectFormModal open={createModal.isOpen} onClose={createModal.close} />
-      <SubjectFormModal
-        open={editTarget !== null}
-        onClose={() => setEditTarget(null)}
-        subject={editTarget ?? undefined}
-      />
+      {canManage && (
+        <>
+          <SubjectFormModal open={createModal.isOpen} onClose={createModal.close} />
+          <SubjectFormModal
+            open={editTarget !== null}
+            onClose={() => setEditTarget(null)}
+            subject={editTarget ?? undefined}
+          />
+        </>
+      )}
     </>
   );
 }

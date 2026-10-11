@@ -8,18 +8,18 @@ import { toData, toPage } from '../../lib/envelope';
 export const listEnrollments = (params) => api.get('/enrollments', { params }).then(toPage);
 
 /**
- * Admin only. Opens an enrollment. 409 `activeEnrollmentId` when the student is already enrolled.
+ * The office only. Opens an enrollment. 409 `activeEnrollmentId` when the student is already enrolled.
  * Here, in bulk and in a transfer, a class of a past academic year is refused with
  * `details.reason` 'past_academic_year'.
  */
 export const enrollStudent = ({ studentId, classId }) =>
   api.post('/enrollments', { studentId, classId }).then(toData);
 
-/** Admin only, all or nothing. Resolves { classId, created, enrollments }; 409 `alreadyActive[]`. */
+/** The office only, all or nothing. Resolves { classId, created, enrollments }; 409 `alreadyActive[]`. */
 export const enrollStudents = ({ classId, studentIds }) =>
   api.post('/enrollments/bulk', { classId, studentIds }).then(toData);
 
-/** Admin only. Closes the active enrollment as `transferred` and opens the new one, in one transaction. */
+/** The office only. Closes the active enrollment as `transferred` and opens the new one (one transaction). */
 export const transferStudent = ({ studentId, classId }) =>
   api.post('/enrollments/transfer', { studentId, classId }).then(toData);
 
@@ -43,5 +43,5 @@ export const getNextClass = () => api.get('/enrollments/next-class').then(toData
  */
 export const enrollMyself = (classId) => api.post('/enrollments/next-class', { classId }).then(toData);
 
-/** Admin only. Closes an active enrollment: status is 'completed' or 'withdrawn'. */
+/** The office only. Closes an active enrollment: status is 'withdrawn', or 'completed' (the admin's). */
 export const setEnrollmentStatus = (id, status) => api.patch(`/enrollments/${id}`, { status }).then(toData);

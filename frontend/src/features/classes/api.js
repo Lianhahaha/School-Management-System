@@ -10,10 +10,10 @@ export const listClasses = (params) => api.get('/classes', { params }).then(toPa
 
 export const getClass = (id) => api.get(`/classes/${id}`).then(toData);
 
-/** Admin only. Body: { name, gradeLevel, academicYear, homeroomTeacherId? }. */
+/** The office only. Body: { name, gradeLevel, academicYear, homeroomTeacherId? }. */
 export const createClass = (body) => api.post('/classes', body).then(toData);
 
-/** Admin only. Any of name, gradeLevel, academicYear, homeroomTeacherId (null clears it). */
+/** The office only. Any of name, gradeLevel, academicYear, homeroomTeacherId (null clears it). */
 export const updateClass = (id, body) => api.patch(`/classes/${id}`, body).then(toData);
 
 /** Admin only. 409 while other records (enrollments, subjects, ...) still reference the class. */

@@ -6,16 +6,16 @@ Authentication. Architecture overview: `../docs/ARCHITECTURE.md`.
 
 ## Stack
 
-| Concern      | Choice                                                                                                           |
-| ------------ | ---------------------------------------------------------------------------------------------------------------- |
-| Build        | Vite 8, `@vitejs/plugin-react`, JavaScript + JSX only                                                            |
-| UI           | React 19, Tailwind CSS v4 (`@tailwindcss/vite`, tokens in `src/index.css`), lucide-react (the only icon set) |
-| Routing      | `react-router` 8 in data mode (`RouterProvider` comes from `react-router/dom`; never install `react-router-dom`) |
-| Server state | TanStack Query v5                                                                                                |
-| Forms        | react-hook-form + zod 4 (`@hookform/resolvers`)                                                                  |
-| Auth         | Firebase v12 modular SDK, email and password                                                                     |
+| Concern      | Choice                                                                                                             |
+| ------------ | ------------------------------------------------------------------------------------------------------------------ |
+| Build        | Vite 8, `@vitejs/plugin-react`, JavaScript + JSX only                                                              |
+| UI           | React 19, Tailwind CSS v4 (`@tailwindcss/vite`, tokens in `src/index.css`), lucide-react (the only icon set)       |
+| Routing      | `react-router` 8 in data mode (`RouterProvider` comes from `react-router/dom`; never install `react-router-dom`)   |
+| Server state | TanStack Query v5                                                                                                  |
+| Forms        | react-hook-form + zod 4 (`@hookform/resolvers`)                                                                    |
+| Auth         | Firebase v12 modular SDK, email and password                                                                       |
 | Types        | JSDoc in the `.js` logic files, checked by TypeScript (`jsconfig.json`; the `.jsx` components are not checked yet) |
-| Tests        | Vitest, unit tests of the pure modules in `tests/`, run in plain Node (`vitest.config.js`)                        |
+| Tests        | Vitest, unit tests of the pure modules in `tests/`, run in plain Node (`vitest.config.js`)                         |
 
 ## Scripts
 
@@ -128,7 +128,10 @@ the `{ success, data, meta }` envelope, with `toData` and `toPage` from `lib/env
 
 3. Write the page as the default export of a file in `features/<feature>/pages/`, then add its route to
    `src/app/router.jsx`, inside the matching `RequireRole` area, with `page(() => import('...'))`; add a
-   sidebar entry in `components/layout/navConfig.js` if it needs one.
+   sidebar entry in `components/layout/navConfig.js` if it needs one. The admin area is the office's: the
+   student assistant shares it. A page for the admin alone nests `<RequireRole roles={['admin']} />` and
+   its sidebar entry is `adminOnly`; an action for the admin alone is hidden with `can(role, action)` from
+   `utils/roles.js`, whose `PERMISSIONS` mirror the backend's `authorize()` lists.
 
 Error policy (in `lib/queryClient.js`): a first-load query error renders `<ErrorState>` in the page, a
 background refetch error is a toast; a mutation error is a toast except validation errors and mapped

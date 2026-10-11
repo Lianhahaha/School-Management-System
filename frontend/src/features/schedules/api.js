@@ -10,13 +10,13 @@ import { toData, toPage } from '../../lib/envelope';
 export const listSchedules = (params) => api.get('/schedules', { params }).then(toPage);
 
 /**
- * Admin only. Body: { classSubjectId, dayOfWeek (1 = Monday), startTime, endTime ('HH:MM'), room? }.
+ * The office only. Body: { classSubjectId, dayOfWeek (1 = Monday), startTime, endTime ('HH:MM'), room? }.
  * 409 SCHEDULE_CONFLICT with `details.conflicts` when the class, the teacher or the room is busy.
  */
 export const createSchedule = (body) => api.post('/schedules', body).then(toData);
 
-/** Admin only. Any of classSubjectId, dayOfWeek, startTime, endTime, room (null clears it). */
+/** The office only. Any of classSubjectId, dayOfWeek, startTime, endTime, room (null clears it). */
 export const updateSchedule = (id, body) => api.patch(`/schedules/${id}`, body).then(toData);
 
-/** Admin only. */
+/** The office only. */
 export const deleteSchedule = (id) => api.delete(`/schedules/${id}`).then(toData);

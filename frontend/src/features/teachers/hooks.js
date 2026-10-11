@@ -3,7 +3,7 @@
  * A teacher's assignments are `useClassSubjects({ teacherId })` and their homeroom classes
  * `useClasses({ homeroomTeacherId })`; their timetable is `useSchedules({ teacherId })`.
  *
- *   useTeachers(params, { enabled })  paginated list (admin); params: page, limit, search, sortBy,
+ *   useTeachers(params, { enabled })  paginated list (the office); params: page, limit, search, sortBy,
  *                                     sortOrder, department, isActive
  *   useTeacher(id)                    one teacher ('me' allowed)
  *   useUpdateTeacher() [form]         mutate({ id, body }) admin only; body from changedFields(values, dirtyFields);

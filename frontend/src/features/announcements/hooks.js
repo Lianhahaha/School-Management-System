@@ -2,7 +2,7 @@
  * Announcements.
  *
  *   useAnnouncements(params, { enabled })  paginated list; params: page, limit, search, sortBy, sortOrder,
- *                                          audience, classId, authorId ('me'), status (admin only), unread
+ *                                          audience, classId, authorId ('me'), status (the office), unread
  *   useCreateAnnouncement() [form]         mutate(body) with the createAnnouncementSchema output
  *   useUpdateAnnouncement() [form]         mutate({ id, body }) with the updateAnnouncementSchema output
  *   useDeleteAnnouncement()                mutate(id)

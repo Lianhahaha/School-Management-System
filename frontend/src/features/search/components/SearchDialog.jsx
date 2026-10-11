@@ -114,7 +114,7 @@ function SearchPanel({ onNavigate }) {
 }
 
 /**
- * Search the whole school from anywhere (admin). Opened by the top bar's search button or Ctrl+K /
+ * Search the whole school from anywhere (the office). Opened by the top bar's search button or Ctrl+K /
  * Cmd+K; choosing a result navigates there and closes the dialog.
  *
  * @param {object} props

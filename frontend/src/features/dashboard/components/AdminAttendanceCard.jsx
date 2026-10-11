@@ -7,7 +7,9 @@ import { useMinutesNow } from '../../../hooks/useMinutesNow';
 import { formatDate } from '../../../utils/date';
 import { countOf } from '../../../utils/format';
 import { fullName } from '../../../utils/names';
+import { can } from '../../../utils/roles';
 import { timeToMinutes } from '../../../utils/schedule';
+import { useAuth } from '../../auth/hooks';
 import { AttendanceOverview } from './AttendanceOverview';
 import { PeriodTime } from './PeriodTime';
 
@@ -44,9 +46,11 @@ function UnmarkedLesson({ lesson, date }) {
  * School-wide attendance today (payload `attendanceToday`): how many of today's lessons are marked, the ones
  * that started without being marked (each opens its sheet), then the rate ring and status counts once marks
  * exist. On a school holiday (`holiday`, payload `holidayToday`) there is nothing to mark, so the card says
- * so and drops its link.
+ * so and drops its link. A student assistant reads the sheets but does not mark them, so their link says
+ * View.
  */
 export function AdminAttendanceCard({ attendance, holiday }) {
+  const { role } = useAuth();
   const minutesNow = useMinutesNow();
   const { lessonsScheduled, lessonsMarked, unmarkedLessons, date } = attendance;
   const isHoliday = Boolean(holiday) && attendance.total === 0;
@@ -119,7 +123,13 @@ export function AdminAttendanceCard({ attendance, holiday }) {
       mark="sage"
       title="Attendance today"
       description={formatDate(date)}
-      actions={isHoliday ? undefined : <TextLink to="/admin/attendance">Mark attendance</TextLink>}
+      actions={
+        isHoliday ? undefined : (
+          <TextLink to="/admin/attendance">
+            {can(role, 'lessons.manageAll') ? 'Mark attendance' : 'View attendance'}
+          </TextLink>
+        )
+      }
     >
       {body}
     </Card>

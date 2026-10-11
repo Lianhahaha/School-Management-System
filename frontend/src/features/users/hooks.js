@@ -1,5 +1,6 @@
 /**
- * Accounts (admin only). Mutations raise their own success toast; errors follow the global policy.
+ * Accounts (the admin; a student assistant creates and edits student accounts only). Mutations raise their
+ * own success toast; errors follow the global policy.
  *
  *   useUsers(params, { enabled })   paginated list; params from useListParams().apiParams
  *   useCreateUser() [form]          mutate(body) with the createUserSchema output; resolves the new user

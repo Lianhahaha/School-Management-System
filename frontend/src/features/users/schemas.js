@@ -1,7 +1,7 @@
 /**
  * Forms of the users feature. zodResolver hands the *parsed* values to the submit handler, and the
  * parsed values are exactly the request body: blank optional inputs are left out (POST) or sent as
- * null (PATCH), numbers are numbers, and the `profile` of an admin is dropped.
+ * null (PATCH), numbers are numbers, and the `profile` of an admin or a student assistant is dropped.
  */
 import { z } from 'zod';
 import { GENDERS } from '../../constants/shared';
@@ -47,11 +47,12 @@ const account = {
   phone: optionalField(phone),
 };
 
-/** POST /users body. The `profile` section follows the role; an admin has none. */
+/** POST /users body. The `profile` section follows the role; an admin and a student assistant have none. */
 export const createUserSchema = z.discriminatedUnion('role', [
   z.object({ role: z.literal('student'), ...account, profile: studentProfile }),
   z.object({ role: z.literal('teacher'), ...account, profile: teacherProfile }),
   z.object({ role: z.literal('admin'), ...account }),
+  z.object({ role: z.literal('assistant'), ...account }),
 ]);
 
 /** Top-level form fields, for `applyServerErrors(..., { knownFields })` (a union has no `.shape`). */

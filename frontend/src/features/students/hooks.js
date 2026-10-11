@@ -7,7 +7,7 @@
  *   useClassRoster(classId)           every student currently in the class, as an array (all pages)
  *   useStudent(id)                    one student ('me' for the signed-in student); includes currentEnrollment
  *                                     and `admission` (the application of a self-registered student, or null)
- *   useUpdateStudent() [form]         mutate({ id, body }) admin only; body from changedFields(values, dirtyFields)
+ *   useUpdateStudent() [form]         mutate({ id, body }) the office; body from changedFields(values, dirtyFields)
  *   useImportStudents() [form]        mutateAsync(body) checks (dryRun) or creates imported students; the
  *                                     import dialog shows every outcome itself. Imported students can be put in
  *                                     a class, so it also refreshes the attendance sheets and grade rosters

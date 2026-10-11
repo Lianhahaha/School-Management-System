@@ -1,9 +1,10 @@
 /**
- * Search across the school for the admin's search dialog: one small query per list, run in
- * parallel, merged into a flat result list in a fixed group order.
+ * Search across the school for the office's search dialog (the admin and the student assistant): one small
+ * query per list, run in parallel, merged into a flat result list in a fixed group order.
  */
 import { NAV } from '../../components/layout/navConfig';
 import { fullName } from '../../utils/names';
+import { useAuth } from '../auth/hooks';
 import { useClasses } from '../classes/hooks';
 import { useStudents } from '../students/hooks';
 import { useSubjects } from '../subjects/hooks';
@@ -19,13 +20,14 @@ export const MIN_SEARCH_LENGTH = 2;
  */
 
 /**
- * Results for `term` (already debounced): matching pages of the admin menu, then students, teachers,
+ * Results for `term` (already debounced): matching pages of the user's menu, then students, teachers,
  * classes and subjects. A list query only runs while the term is long enough.
  *
  * @param {string} term
  * @returns {{ results: SearchResult[], isSearching: boolean, hasError: boolean }}
  */
 export function useGlobalSearch(term) {
+  const { role } = useAuth();
   const search = term.trim();
   const enabled = search.length >= MIN_SEARCH_LENGTH;
   const params = { search, limit: PER_GROUP };
@@ -38,7 +40,7 @@ export function useGlobalSearch(term) {
 
   const needle = search.toLowerCase();
   const pages = needle
-    ? NAV.admin
+    ? (NAV[role] ?? [])
         .filter((entry) => entry.label.toLowerCase().includes(needle))
         .map((entry) => ({ id: `page-${entry.to}`, group: 'Pages', label: entry.label, to: entry.to }))
     : [];

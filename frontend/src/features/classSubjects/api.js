@@ -11,10 +11,10 @@ export const listClassSubjects = (params) => api.get('/class-subjects', { params
 
 export const getClassSubject = (id) => api.get(`/class-subjects/${id}`).then(toData);
 
-/** Admin only. Body: { classId, subjectId, teacherId }. 409 when the class already has that subject. */
+/** The office only. Body: { classId, subjectId, teacherId }. 409 when the class already has that subject. */
 export const createClassSubject = (body) => api.post('/class-subjects', body).then(toData);
 
-/** Admin only. Only the teacher can change: history stays with the class-subject. */
+/** The office only. Only the teacher can change: history stays with the class-subject. */
 export const reassignClassSubject = (id, teacherId) =>
   api.patch(`/class-subjects/${id}`, { teacherId }).then(toData);
 

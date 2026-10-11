@@ -4,7 +4,7 @@ import { Button } from '../../../components/ui/Button';
 import { Modal } from '../../../components/ui/Modal';
 import { useDiscardConfirm } from '../../../hooks/useDiscardConfirm';
 import { fullName } from '../../../utils/names';
-import { roleLabel } from '../../../utils/roles';
+import { can, roleLabel } from '../../../utils/roles';
 import { useAuth } from '../../auth/hooks';
 import { useCreateUser, useUpdateUser } from '../hooks';
 import { CreateUserForm } from './CreateUserForm';
@@ -16,7 +16,7 @@ const FORM_ID = 'user-form';
 /**
  * Create (any role, with its record fields) or edit (name and phone) an account. Create mode when
  * `user` is not given. The create form asks "Discard changes?" before it closes with unsaved input.
- * Edit mode also offers "Delete account" (not on the signed-in admin's own account); after a delete
+ * Edit mode also offers the admin "Delete account" (not on their own account); after a delete
  * the modal closes. Also used in create mode by the students and teachers pages.
  *
  * @param {object} props
@@ -24,7 +24,7 @@ const FORM_ID = 'user-form';
  * @param {() => void} props.onClose
  * @param {{ id: number, firstName: string, lastName: string, email: string, phone: string|null, role: string }} [props.user]
  *   the account to edit (a User, with the USER id)
- * @param {'admin'|'teacher'|'student'} [props.lockedRole] fixes the role in create mode
+ * @param {'admin'|'teacher'|'student'|'assistant'} [props.lockedRole] fixes the role in create mode
  */
 export function UserFormModal({ open, onClose, user, lockedRole }) {
   const { me } = useAuth();
@@ -34,7 +34,7 @@ export function UserFormModal({ open, onClose, user, lockedRole }) {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const isEdit = Boolean(user);
   const mutation = isEdit ? updateUser : createUser;
-  const canDelete = isEdit && user.id !== me?.id;
+  const canDelete = isEdit && user.id !== me?.id && can(me?.role, 'users.delete');
 
   const title = isEdit
     ? 'Edit user'

@@ -3,8 +3,12 @@ import { DetailLoadError } from '../../../components/layout/DetailLoadError';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageSkeleton } from '../../../components/layout/PageSkeleton';
 import { Card } from '../../../components/ui/Card';
+import { DescriptionList } from '../../../components/ui/DescriptionList';
 import { Tabs } from '../../../components/ui/Tabs';
+import { formatDate } from '../../../utils/date';
 import { fullName } from '../../../utils/names';
+import { can } from '../../../utils/roles';
+import { useAuth } from '../../auth/hooks';
 import { UserStatusBadge } from '../../users/components/UserStatusBadge';
 import { TeacherAssignmentsTable } from '../components/TeacherAssignmentsTable';
 import { TeacherHomeroomTable } from '../components/TeacherHomeroomTable';
@@ -14,7 +18,12 @@ import { useTeacher } from '../hooks';
 
 const TEACHERS_PATH = '/admin/teachers';
 
+/**
+ * One teacher: profile, assignments, homeroom classes and schedule. The admin edits the profile; a student
+ * assistant reads it.
+ */
 export default function TeacherDetailPage() {
+  const { role } = useAuth();
   const { teacherId } = useParams();
   const { data: teacher, isPending, error, refetch } = useTeacher(teacherId);
 
@@ -51,12 +60,26 @@ export default function TeacherDetailPage() {
           {
             id: 'profile',
             label: 'Profile',
-            content: (
+            content: can(role, 'teachers.manage') ? (
               <Card
                 title="Profile"
                 description="Changes are saved to the teacher's account and staff record."
               >
                 <TeacherProfileForm key={teacher.id} teacher={teacher} />
+              </Card>
+            ) : (
+              <Card title="Profile" description="Only the administrator can change these details.">
+                <DescriptionList
+                  items={[
+                    { label: 'Name', value: name },
+                    { label: 'Email', value: teacher.email },
+                    { label: 'Phone', value: teacher.phone },
+                    { label: 'Employee number', value: teacher.employeeNumber },
+                    { label: 'Hire date', value: formatDate(teacher.hireDate) },
+                    { label: 'Department', value: teacher.department },
+                    { label: 'Qualification', value: teacher.qualification },
+                  ]}
+                />
               </Card>
             ),
           },

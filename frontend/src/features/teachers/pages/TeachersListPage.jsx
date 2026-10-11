@@ -12,12 +12,17 @@ import { useDisclosure } from '../../../hooks/useDisclosure';
 import { useListParams } from '../../../hooks/useListParams';
 import { formatDate } from '../../../utils/date';
 import { fullName } from '../../../utils/names';
+import { can } from '../../../utils/roles';
+import { useAuth } from '../../auth/hooks';
 import { UserFormModal } from '../../users/components/UserFormModal';
 import { UserStatusBadge } from '../../users/components/UserStatusBadge';
 import { UserStatusButton } from '../../users/components/UserStatusButton';
 import { useTeachers } from '../hooks';
 
+/** The teaching staff. The admin adds teachers and (de)activates them; a student assistant reads the list. */
 export default function TeachersListPage() {
+  const { role } = useAuth();
+  const canAdd = can(role, 'teachers.manage');
   const list = useListParams({ filters: ['isActive'], defaultSort: ['lastName', 'asc'] });
   const { data, isPending, isFetching, error, refetch } = useTeachers(list.apiParams);
   const createModal = useDisclosure();
@@ -65,13 +70,15 @@ export default function TeachersListPage() {
     },
   ];
 
+  const addButton = canAdd && <Button onClick={createModal.open}>Add teacher</Button>;
+
   return (
     <>
       <PageHeader
         total={data?.meta?.total}
         title="Teachers"
         description="Teaching staff, their assignments and homeroom classes"
-        actions={<Button onClick={createModal.open}>Add teacher</Button>}
+        actions={addButton}
       />
 
       <FilterBar onClear={list.hasActiveFilters ? list.clearFilters : undefined}>
@@ -109,8 +116,8 @@ export default function TeachersListPage() {
           ) : (
             <EmptyState
               title="No teachers yet"
-              description="Add the first teacher to get started."
-              action={<Button onClick={createModal.open}>Add teacher</Button>}
+              description={canAdd ? 'Add the first teacher to get started.' : undefined}
+              action={addButton}
             />
           )
         }
@@ -118,7 +125,7 @@ export default function TeachersListPage() {
 
       <Pagination meta={data?.meta} onPageChange={list.setPage} onLimitChange={list.setLimit} />
 
-      <UserFormModal open={createModal.isOpen} onClose={createModal.close} lockedRole="teacher" />
+      {canAdd && <UserFormModal open={createModal.isOpen} onClose={createModal.close} lockedRole="teacher" />}
     </>
   );
 }

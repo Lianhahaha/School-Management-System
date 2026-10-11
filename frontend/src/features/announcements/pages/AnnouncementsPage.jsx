@@ -15,6 +15,7 @@ import { useConfirm } from '../../../hooks/useConfirm';
 import { useListParams } from '../../../hooks/useListParams';
 import { showsFetching } from '../../../lib/liveRefresh';
 import { cx } from '../../../utils/cx';
+import { can } from '../../../utils/roles';
 import { useAuth } from '../../auth/hooks';
 import { ClassSelect } from '../../classes/components/ClassSelect';
 import { AnnouncementFormModal } from '../components/AnnouncementFormModal';
@@ -28,7 +29,7 @@ import {
 } from '../hooks';
 import { useOpenFromLink } from '../../../hooks/useOpenFromLink';
 
-const ADMIN_FILTERS = ['status', 'audience', 'classId'];
+const OFFICE_FILTERS = ['status', 'audience', 'classId'];
 const TEACHER_FILTERS = ['classId', 'authorId'];
 const DEFAULT_STATUS = 'active';
 
@@ -48,14 +49,14 @@ function ListSkeleton() {
 }
 
 /**
- * /admin/announcements and /teacher/announcements. Admins see every announcement (status filter
- * for scheduled and expired ones) and manage any; teachers see what is visible to them and manage
- * their own, and must pick one of their classes when they create one.
+ * /admin/announcements and /teacher/announcements. The office (admin and student assistant) sees every
+ * announcement (status filter for scheduled and expired ones) and manages any; teachers see what is visible
+ * to them and manage their own, and must pick one of their classes when they create one.
  */
 export default function AnnouncementsPage() {
   const { me, role } = useAuth();
-  const isAdmin = role === 'admin';
-  const list = useListParams({ filters: isAdmin ? ADMIN_FILTERS : TEACHER_FILTERS });
+  const managesAll = can(role, 'announcements.manageAll');
+  const list = useListParams({ filters: managesAll ? OFFICE_FILTERS : TEACHER_FILTERS });
   const { data, error, isPending, isFetching, refetch } = useAnnouncements(list.apiParams);
   const isNew = useIsNewAnnouncement();
   const unreadCount = useNewAnnouncements();
@@ -67,7 +68,7 @@ export default function AnnouncementsPage() {
   const openNew = useCallback(() => setFormTarget(null), []);
   useOpenFromLink(openNew);
 
-  const canManage = (announcement) => isAdmin || announcement.author.id === me.id;
+  const canManage = (announcement) => managesAll || announcement.author.id === me.id;
 
   const onDelete = async (announcement) => {
     const ok = await confirm({
@@ -151,7 +152,7 @@ export default function AnnouncementsPage() {
       <PageHeader
         title="Announcements"
         description={
-          isAdmin
+          managesAll
             ? 'Everything posted at the school, including scheduled and expired announcements.'
             : 'What is visible to you, and what you posted for your classes.'
         }
@@ -164,7 +165,7 @@ export default function AnnouncementsPage() {
           onChange={list.setSearch}
           placeholder="Search title, message"
         />
-        {isAdmin && (
+        {managesAll && (
           <>
             <Select
               aria-label="Status"
@@ -192,7 +193,7 @@ export default function AnnouncementsPage() {
           placeholder="All classes"
           className="sm:w-64"
         />
-        {!isAdmin && (
+        {!managesAll && (
           <Checkbox
             label="Mine"
             checked={list.params.authorId === 'me'}

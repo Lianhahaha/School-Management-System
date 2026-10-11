@@ -8,6 +8,8 @@ import { PAGINATION } from '../../../constants/shared';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { useDisclosure } from '../../../hooks/useDisclosure';
 import { fullName } from '../../../utils/names';
+import { can } from '../../../utils/roles';
+import { useAuth } from '../../auth/hooks';
 import { AddClassSubjectModal } from '../../classSubjects/components/AddClassSubjectModal';
 import { ChangeTeacherModal } from '../../classSubjects/components/ChangeTeacherModal';
 import { useClassSubjects, useDeleteClassSubject } from '../../classSubjects/hooks';
@@ -15,12 +17,15 @@ import { useSchedules } from '../../schedules/hooks';
 
 /**
  * "Subjects & Teachers" tab of a class: the teacher-assignment UI. A class-subject is an assignment,
- * so every subject row has a teacher. Add a subject with its teacher, change the teacher, remove it.
+ * so every subject row has a teacher. Add a subject with its teacher, change the teacher, remove it
+ * (removing is the admin's).
  *
  * @param {object} props
  * @param {{ id: number, name: string }} props.schoolClass
  */
 export function ClassSubjectsTab({ schoolClass }) {
+  const { role } = useAuth();
+  const canRemove = can(role, 'classSubjects.delete');
   const classId = schoolClass.id;
   const { data, isPending, isFetching, error, refetch } = useClassSubjects({
     classId,
@@ -84,7 +89,9 @@ export function ClassSubjectsTab({ schoolClass }) {
           label={`Actions for ${classSubject.subjectName}`}
           items={[
             { label: 'Change teacher', icon: UserRoundCog, onClick: () => setReassigning(classSubject) },
-            { label: 'Remove', icon: Trash2, danger: true, onClick: () => onRemove(classSubject) },
+            ...(canRemove
+              ? [{ label: 'Remove', icon: Trash2, danger: true, onClick: () => onRemove(classSubject) }]
+              : []),
           ]}
         />
       ),

@@ -13,7 +13,7 @@ const MAX_PER_DAY = 2;
 
 /**
  * One entry inside a day: a light box with the title in bold ink and a small solid square for its kind; a
- * button for admins (opens the entry), plain text otherwise.
+ * button for the office (opens the entry), plain text otherwise.
  */
 function EventChip({ event, onSelect }) {
   const classes =
@@ -46,8 +46,8 @@ function EventChip({ event, onSelect }) {
 
 /**
  * The month as a table of weeks (Monday first) with each day's entries as chips in bold ink, marked by a
- * small square: amber for no classes, ink for events. Days outside the month are faded; today is ringed. Admins get a button per day
- * that adds an entry on it, and every chip opens its entry.
+ * small square: amber for no classes, ink for events. Days outside the month are faded; today is ringed.
+ * The office gets a button per day that adds an entry on it, and every chip opens its entry.
  *
  * @param {object} props
  * @param {string} props.month 'YYYY-MM'

@@ -56,12 +56,12 @@ function VisibleClassSubjects({ teacherId, disabled, ...props }) {
 }
 
 /**
- * Select of class-subjects (lessons). An admin picks one of a class (`classId` is required before
+ * Select of class-subjects (lessons). The office picks one of a class (`classId` is required before
  * the select is usable); a teacher picks from everything they can see, grouped Teaching / Homeroom.
  * Controlled (`value`, `onChange` with the event); every other prop goes to the native <select>.
  *
  * @param {object} props
- * @param {string} [props.classId] admin only: the class whose subjects are listed
+ * @param {string} [props.classId] the office only: the class whose subjects are listed
  */
 export function ClassSubjectSelect({ classId, ...props }) {
   const { me, role } = useAuth();

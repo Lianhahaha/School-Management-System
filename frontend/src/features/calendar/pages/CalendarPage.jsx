@@ -10,6 +10,7 @@ import { Skeleton } from '../../../components/ui/Skeleton';
 import { PAGINATION } from '../../../constants/shared';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { todayYmd } from '../../../utils/date';
+import { can } from '../../../utils/roles';
 import { useAuth } from '../../auth/hooks';
 import { EventFormModal } from '../components/EventFormModal';
 import { EventTypeBadge } from '../components/EventTypeBadge';
@@ -22,12 +23,12 @@ const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 /**
  * /admin/calendar, /teacher/calendar and /student/calendar: the school calendar one month at a time
  * (`?month=YYYY-MM`, this month by default) as a grid from `sm` up, and the month's entries as a list
- * (the whole view on phones). Admins add an entry with the button or on a day of the grid, and edit or
- * remove one from the grid or the list.
+ * (the whole view on phones). The office (admin and student assistant) adds an entry with the button or on a
+ * day of the grid, and edits or removes one from the grid or the list.
  */
 export default function CalendarPage() {
   const { role } = useAuth();
-  const isAdmin = role === 'admin';
+  const canManage = can(role, 'calendar.manage');
   const confirm = useConfirm();
   const deleteEvent = useDeleteCalendarEvent();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -85,8 +86,8 @@ export default function CalendarPage() {
               month={month}
               caption={label}
               events={events}
-              onAddOn={isAdmin ? (day) => setForm({ startsOn: day }) : undefined}
-              onSelect={isAdmin ? (event) => setForm({ event }) : undefined}
+              onAddOn={canManage ? (day) => setForm({ startsOn: day }) : undefined}
+              onSelect={canManage ? (event) => setForm({ event }) : undefined}
             />
           </div>
         </Card>
@@ -112,7 +113,7 @@ export default function CalendarPage() {
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     <EventTypeBadge type={event.type} />
-                    {isAdmin && (
+                    {canManage && (
                       <>
                         <Button
                           variant="ghost"
@@ -146,7 +147,7 @@ export default function CalendarPage() {
         title="Calendar"
         description="Days with no classes, and school events."
         actions={
-          isAdmin && (
+          canManage && (
             <Button icon={Plus} onClick={() => setForm({ startsOn: '' })}>
               Add entry
             </Button>
@@ -178,7 +179,7 @@ export default function CalendarPage() {
         )}
       </div>
       {body}
-      {isAdmin && (
+      {canManage && (
         <EventFormModal
           open={form !== undefined}
           onClose={() => setForm(undefined)}

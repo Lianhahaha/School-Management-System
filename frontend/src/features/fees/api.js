@@ -2,8 +2,8 @@ import { api } from '../../lib/apiClient';
 import { toData, toPage } from '../../lib/envelope';
 
 /**
- * Admin only. params: page, limit, sortBy (name, amount, gradeLevel), sortOrder, academicYear, gradeLevel
- * (what a student of that grade pays: its fees and the every-grade ones).
+ * The office only. params: page, limit, sortBy (name, amount, gradeLevel), sortOrder, academicYear,
+ * gradeLevel (what a student of that grade pays: its fees and the every-grade ones).
  */
 export const listFees = (params) => api.get('/fees', { params }).then(toPage);
 
@@ -26,8 +26,8 @@ export const deleteFee = (id) => api.delete(`/fees/${id}`).then(toData);
 export const getFeeStatement = (params) => api.get('/fees/statement', { params }).then(toData);
 
 /**
- * Admin only. Body: { studentId, academicYear, amount, paidOn, method, receiptNumber, note? }. 409 when the OR
- * number is already recorded.
+ * The office only. Body: { studentId, academicYear, amount, paidOn, method, receiptNumber, note? }. 409 when
+ * the OR number is already recorded.
  */
 export const recordPayment = (body) => api.post('/payments', body).then(toData);
 

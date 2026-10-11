@@ -9,6 +9,8 @@ import { PAGINATION } from '../../../constants/shared';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { useDisclosure } from '../../../hooks/useDisclosure';
 import { formatPeso } from '../../../utils/format';
+import { can } from '../../../utils/roles';
+import { useAuth } from '../../auth/hooks';
 import { schoolYearLabel } from '../../enrollments/schoolYears';
 import { FeeFormModal } from '../components/FeeFormModal';
 import { FeeYearSelect } from '../components/FeeYearSelect';
@@ -19,9 +21,11 @@ const appliesTo = (fee) => (fee.gradeLevel === null ? 'All grades' : `Grade ${fe
 /**
  * /admin/fees: what the school charges in one school year (see useFeeYear), each fee for one grade or for
  * every grade, with the sum of the list below the table. One page of 100 holds any real school year's fees,
- * so the list is not paginated.
+ * so the list is not paginated. Setting the fees is the admin's; a student assistant reads them.
  */
 export default function FeesPage() {
+  const { role } = useAuth();
+  const canManage = can(role, 'fees.manage');
   const [academicYear, setAcademicYear] = useFeeYear();
   const { data, isPending, isFetching, error, refetch } = useFees({
     academicYear,
@@ -51,7 +55,9 @@ export default function FeesPage() {
       align: 'right',
       cell: (fee) => <span className="tabular">{formatPeso(fee.amount)}</span>,
     },
-    {
+  ];
+  if (canManage) {
+    columns.push({
       key: 'actions',
       header: <span className="sr-only">Actions</span>,
       align: 'right',
@@ -76,10 +82,10 @@ export default function FeesPage() {
           </Button>
         </div>
       ),
-    },
-  ];
+    });
+  }
 
-  const addButton = (
+  const addButton = canManage && (
     <Button icon={Plus} onClick={createModal.open}>
       Add fee
     </Button>
@@ -110,19 +116,27 @@ export default function FeesPage() {
           <EmptyState
             icon={Wallet}
             title={`No fees set for ${schoolYearLabel(academicYear)} yet`}
-            description="Add what students pay this school year, for one grade or for all grades."
+            description={
+              canManage
+                ? 'Add what students pay this school year, for one grade or for all grades.'
+                : undefined
+            }
             action={addButton}
           />
         }
       />
 
-      <FeeFormModal open={createModal.isOpen} onClose={createModal.close} academicYear={academicYear} />
-      <FeeFormModal
-        open={editing !== null}
-        onClose={() => setEditing(null)}
-        academicYear={academicYear}
-        fee={editing}
-      />
+      {canManage && (
+        <>
+          <FeeFormModal open={createModal.isOpen} onClose={createModal.close} academicYear={academicYear} />
+          <FeeFormModal
+            open={editing !== null}
+            onClose={() => setEditing(null)}
+            academicYear={academicYear}
+            fee={editing}
+          />
+        </>
+      )}
     </>
   );
 }

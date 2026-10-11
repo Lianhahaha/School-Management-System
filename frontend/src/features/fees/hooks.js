@@ -2,7 +2,7 @@
  * Fees (what the school charges each school year, per grade or for every grade), payments, and a student's
  * statement.
  *
- *   useFees(params, { enabled })   paginated list (admin); params: page, limit, sortBy, sortOrder,
+ *   useFees(params, { enabled })   paginated list (the office); params: page, limit, sortBy, sortOrder,
  *                                  academicYear, gradeLevel
  *   useCreateFee() [form]          mutate(body) { academicYear, gradeLevel, name, amount }
  *   useUpdateFee() [form]          mutate({ id, body })

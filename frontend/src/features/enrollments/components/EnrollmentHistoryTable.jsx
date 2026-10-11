@@ -7,18 +7,23 @@ import { ENROLLMENT_STATUS_LABELS, ENROLLMENT_STATUS_TONES } from '../../../cons
 import { useConfirm } from '../../../hooks/useConfirm';
 import { formatDate } from '../../../utils/date';
 import { fullName } from '../../../utils/names';
+import { can } from '../../../utils/roles';
+import { useAuth } from '../../auth/hooks';
 import { useEnrollments, useSetEnrollmentStatus } from '../hooks';
 
+/** `permission`: who may close an enrollment this way (a student assistant withdraws only). */
 const CLOSE_ACTIONS = [
   {
     status: 'withdrawn',
     label: 'Withdraw',
+    permission: 'enrollments.withdraw',
     describe: (name, className) =>
       `${name} leaves ${className} and has no class until you enroll them again. This cannot be undone.`,
   },
   {
     status: 'completed',
     label: 'Mark completed',
+    permission: 'enrollments.complete',
     describe: (name, className) =>
       `${name} finished ${className}. The enrollment is closed and cannot be reopened.`,
   },
@@ -26,15 +31,17 @@ const CLOSE_ACTIONS = [
 
 /**
  * Every enrollment of one student, newest first: class, academic year, status badge, enrolled and
- * left dates. With `canManage`, an active row offers Withdraw and Mark completed behind a
+ * left dates. With `canManage`, an active row offers Withdraw and Mark completed (the admin's) behind a
  * confirmation; closed rows have no actions (transitions are one-way, and `transferred` rows are
  * written only by a transfer).
  *
  * @param {object} props
  * @param {number|string} props.studentId a student id
- * @param {boolean} [props.canManage] show the admin actions (default true)
+ * @param {boolean} [props.canManage] show the office actions the user's role allows (default true)
  */
 export function EnrollmentHistoryTable({ studentId, canManage = true }) {
+  const { role } = useAuth();
+  const closeActions = canManage ? CLOSE_ACTIONS.filter((action) => can(role, action.permission)) : [];
   const { data, isPending, isFetching, error, refetch } = useEnrollments({
     studentId,
     sortBy: 'enrolledOn',
@@ -68,7 +75,7 @@ export function EnrollmentHistoryTable({ studentId, canManage = true }) {
     { key: 'enrolledOn', header: 'Since', cell: (row) => formatDate(row.enrolledOn) },
     { key: 'leftOn', header: 'Left', hideBelow: 'md', cell: (row) => formatDate(row.leftOn) },
   ];
-  if (canManage) {
+  if (closeActions.length > 0) {
     columns.push({
       key: 'actions',
       header: <span className="sr-only">Actions</span>,
@@ -76,7 +83,7 @@ export function EnrollmentHistoryTable({ studentId, canManage = true }) {
       cell: (row) =>
         row.status === 'active' && (
           <div className="flex justify-end gap-1">
-            {CLOSE_ACTIONS.map((action) => (
+            {closeActions.map((action) => (
               <Button
                 key={action.status}
                 size="sm"

@@ -120,7 +120,7 @@ export const useClassSubjectOptions = createOptionsHook({
 });
 
 /**
- * The class (admin only), class-subject and optional date a page works on, kept in the URL
+ * The class (the office only), class-subject and optional date a page works on, kept in the URL
  * (`classId`, `classSubjectId`, `date`) so a link from the dashboard can preselect a lesson.
  * Used by the attendance and grades pages together with <ClassSubjectSelectorBar>.
  *
@@ -129,7 +129,7 @@ export const useClassSubjectOptions = createOptionsHook({
  *
  * `selected` is the class-subject query (one lesson: class, subject, teacherId). `isOwner` is true for
  * an admin and for the teacher the class-subject is assigned to; a teacher who only sees the class as
- * its homeroom teacher gets read-only access (see isClassSubjectOwner).
+ * its homeroom teacher, and a student assistant, get read-only access (see isClassSubjectOwner).
  *
  * @param {{ withDate?: boolean }} [options]
  */

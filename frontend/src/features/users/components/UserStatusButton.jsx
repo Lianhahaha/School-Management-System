@@ -1,6 +1,7 @@
 import { Button } from '../../../components/ui/Button';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { fullName } from '../../../utils/names';
+import { can } from '../../../utils/roles';
 import { useAuth } from '../../auth/hooks';
 import { useSetUserStatus } from '../hooks';
 
@@ -13,7 +14,8 @@ const DEACTIVATE_DESCRIPTIONS = {
 /**
  * Row action that deactivates or reactivates an account behind a confirmation. The server's refusal
  * (a teacher with class assignments, your own account) surfaces as the hook's error toast and the
- * row stays as it was. The signed-in admin's own row is disabled.
+ * row stays as it was. The signed-in admin's own row is disabled. Only the admin changes a status, so for
+ * anyone else (a student assistant) it renders nothing.
  *
  * @param {object} props
  * @param {{ id: number, firstName: string, lastName: string, isActive: boolean, role?: string }} props.user
@@ -24,6 +26,7 @@ export function UserStatusButton({ user }) {
   const { me } = useAuth();
   const confirm = useConfirm();
   const setStatus = useSetUserStatus();
+  if (!can(me?.role, 'users.setStatus')) return null;
   const name = fullName(user);
   const isSelf = me?.id === user.id;
 
