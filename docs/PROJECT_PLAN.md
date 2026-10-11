@@ -186,7 +186,7 @@ Shared enum values (section 11) are the only values these ENUM columns accept.
 - Scoping: omitted filter = caller's own scope; explicit filter outside the caller's scope = 403 (never silently narrowed); admin unscoped. The literal `me` is accepted wherever a `studentId`, `teacherId` or `authorId` appears.
 - Teacher *visible* set = class-subjects they teach or any class-subject of a class they are homeroom teacher of; teacher *owns* = `class_subjects.teacher_id = me`. Reads use visible, writes use owns.
 
-### 7.2 Endpoints as planned (64; 85 today, see section 14 and the OpenAPI spec)
+### 7.2 Endpoints as planned (64; 87 today, see section 14 and the OpenAPI spec)
 
 | Module | Endpoints | Roles |
 |---|---|---|
@@ -278,7 +278,8 @@ school-management-system/
 │           ├── students/ teachers/ subjects/ classes/ classSubjects/
 │           ├── enrollments/        # routes/controller/service/repository/schemas + promotion.service.js (DepEd promotion rules, self-enrollment)
 │           ├── attendance/ assessments/ grades/ schedules/ announcements/ imports/ calendar/ activity/ notifications/
-│           ├── admissions/         # document checklist and decline; enrolling admits (called by enrollments.service)
+│           ├── admissions/         # document checklist; enrolling admits (called by enrollments.service)
+│           ├── assistantRequests/  # student assistant sign-ups: list, approve, decline
 │           ├── fees/               # fees and a student's statement (/fees), payments (/payments)
 │           ├── dashboard/          # routes/controller/service/repository (aggregates only; no schemas) + atRisk.service.js (the "needs attention" list)
 │           └── health/             # routes/controller (pings the database)
@@ -449,6 +450,11 @@ The code is the source of truth; `backend/docs/openapi.yaml` is checked against 
 - The grading periods are DepEd's four quarters (D43): `term1`..`term3` keep their stored values and are now named the 1st to 3rd Quarter; `term4` (4th Quarter) is appended to `assessments.term` by upgrade `2026-10-11-term4`.
 - A subject's final grade is the average of its quarterly grades over the quarters graded so far, in every grading method; `GET /grades/summary` rows carry `quarters`. Results that span several quarters change: a points subject is no longer SUM(score) / SUM(max) over the year, and a K-12 subject is no longer one transmutation of the whole year's components.
 - The report card (SF9) prints Q1–Q4 and the final grade per subject for the whole year (the initial grade and grade for one quarter); the SF10 CSV has Q1–Q4 columns.
+
+**Sign-up (2026-10-11)**
+- New students are no longer approved or declined: right after signing up, `GET /enrollments/next-class` gives them the standing `new` with the sections of the grade applied for in the current school year, and `POST` enrolls them at once (which admits the application). `POST /admissions/:studentId/decline` is gone; the `declined` value stays in `admissions.status` for applications declined before, which nothing sets any more. Pending applicants now count among the students without a class (applications declined before do not).
+- Self-enrollment has seats (`CLASS_SEATS` 35, then `CLASS_EXTRA_SEATS` 10 more in every class of the grade and year once each has 35); the next-class sections carry `enrolled` and `seats`, a full one is a 409 `class_full`. The enrolling transaction locks the grade's classes and counts with a locking read. The office is not limited.
+- Student assistants sign up themselves (`POST /auth/register` with `accountType: assistant`; `POST /users` refuses the role). Table `assistant_requests` (new, so no upgrade entry) holds the request; until the office approves it (`/assistant-requests`), `authenticate` answers 403 `assistant_not_approved` on every route but `GET` and `PATCH /auth/me`.
 
 **Known limits (accepted for this project)** are listed with the design decisions in the [README](../README.md#design-decisions-and-known-limits).
 

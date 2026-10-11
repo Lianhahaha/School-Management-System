@@ -33,16 +33,10 @@ export async function updateChecklist(studentId, fields) {
   await run(`UPDATE admissions SET ${set.sql} WHERE student_id = ?`, [...set.params, studentId]);
 }
 
-/** Declines a pending application; returns false when there is none, or it is no longer pending. */
-export async function declinePending(studentId, reason) {
-  const result = await run(
-    "UPDATE admissions SET status = 'declined', decline_reason = ? WHERE student_id = ? AND status = 'pending'",
-    [reason, studentId],
-  );
-  return result.affectedRows > 0;
-}
-
-/** Marks the applications of these students admitted (students without one are untouched). */
+/**
+ * Marks the applications of these students admitted (students without one are untouched). An application
+ * declined before students picked their class is admitted too, and loses its reason.
+ */
 export async function markAdmitted(studentIds, conn) {
   await run(
     `UPDATE admissions SET status = 'admitted', decline_reason = NULL

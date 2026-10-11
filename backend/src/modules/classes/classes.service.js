@@ -39,6 +39,10 @@ export async function classesOfGrade(academicYear, gradeLevel) {
   return (await repo.findClassesOfGrade(academicYear, gradeLevel)).map(toClassShape);
 }
 
+/** Ids of the sections of one grade level in one academic year, locked until `conn`'s transaction ends. */
+export const lockClassesOfGrade = (academicYear, gradeLevel, conn) =>
+  repo.lockClassIdsOfGrade(academicYear, gradeLevel, conn);
+
 export async function getClass(id) {
   return toClassShape(ApiError.assertFound(await repo.findClassById(id), 'class', id));
 }

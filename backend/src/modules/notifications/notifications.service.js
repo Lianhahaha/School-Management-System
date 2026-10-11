@@ -3,11 +3,12 @@
  * notify* helpers after a change succeeded; like the activity log they are best effort, so a failed write is
  * reported in the server log and never fails the request. Nobody is notified of their own action.
  *
- *   student   a grade recorded or changed, an absence or late mark, a new class, a declined application
+ *   student   a grade recorded or changed, an absence or late mark, a new class
  *   teacher   a lesson to teach, a homeroom class
- *   office    (admins and student assistants) a student signed up on their own and sent an application
- *             (marked read for all of them once the student is enrolled or the application declined, since
- *             nothing is left to do)
+ *   assistant their sign-up approved or declined
+ *   office    (admins and approved student assistants) a student signed up on their own and sent an
+ *             application (marked read for all of them once the student is enrolled, since nothing is left to
+ *             do), a student assistant signed up (marked read once the request is approved or declined)
  */
 import { logger } from '../../utils/logger.js';
 import { currentUser } from '../../utils/requestContext.js';
@@ -55,7 +56,13 @@ export async function notifyTeacher(teacherId, note) {
   }
 }
 
-/** One note to every active admin and student assistant. Never throws. */
+/** One note to one account, by users.id. Never throws. */
+export const notifyUser = (userId, note) => notify([{ ...note, userId }]);
+
+/**
+ * One note to every active admin and approved student assistant (an assistant awaiting approval is not the
+ * office yet). Never throws.
+ */
 export async function notifyOffice(note) {
   try {
     await notify((await repo.findActiveOfficeIds()).map((userId) => ({ ...note, userId })));
@@ -67,17 +74,23 @@ export async function notifyOffice(note) {
 /** The page a sign-up notification opens: the new student's record. */
 export const signupLink = (studentId) => `/admin/students/${studentId}`;
 
-/**
- * The students now have a class, or their application was declined: their sign-up notes are done for every
- * recipient in the office. Never throws.
- */
-export async function resolveSignups(studentIds) {
+/** The page a student assistant's sign-up notification opens: the requests, with this one picked. */
+export const assistantSignupLink = (userId) => `/admin/assistant-requests?user=${userId}`;
+
+/** Marks every office recipient's unread `signup` notes that open one of `links` read. Never throws. */
+async function resolve(links) {
   try {
-    await repo.markReadByLink('signup', studentIds.map(signupLink));
+    await repo.markReadByLink('signup', links);
   } catch (error) {
     logger.error('could not mark sign-up notifications read', { error: String(error) });
   }
 }
+
+/** The students now have a class: their sign-up notes are done for every recipient in the office. Never throws. */
+export const resolveSignups = (studentIds) => resolve(studentIds.map(signupLink));
+
+/** The assistant's request is approved or declined: its sign-up notes are done for the office. Never throws. */
+export const resolveAssistantSignup = (userId) => resolve([assistantSignupLink(userId)]);
 
 const toNotificationShape = (row) => ({
   id: row.id,

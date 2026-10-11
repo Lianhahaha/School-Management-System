@@ -1,6 +1,7 @@
 /**
  * /auth: POST /register is public (rate limited; disabled with ALLOW_PUBLIC_REGISTRATION=false);
- * GET and PATCH /me require a signed-in user.
+ * GET and PATCH /me require a signed-in user. They are the only routes a student assistant whose sign-up is
+ * pending or declined may use (authenticateOwnAccount); every other route refuses them (authenticate).
  *
  * Two limits per IP address, sized for a school lab where a whole class registers from one public IP:
  *   - 30 successful registrations per 15 minutes;
@@ -10,7 +11,7 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { env } from '../../config/env.js';
-import { authenticate } from '../../middleware/authenticate.js';
+import { authenticateOwnAccount } from '../../middleware/authenticate.js';
 import { validate } from '../../middleware/validate.js';
 import { ApiError } from '../../utils/ApiError.js';
 import * as controller from './auth.controller.js';
@@ -62,5 +63,11 @@ authRoutes.post(
   validate({ body: schemas.registerBody }),
   controller.register,
 );
-authRoutes.get('/me', authenticate, controller.me);
-authRoutes.patch('/me', authenticate, validate({ body: schemas.updateMeBody }), controller.updateMe);
+// The caller's own account: also open to a student assistant awaiting approval (or declined).
+authRoutes.get('/me', authenticateOwnAccount, controller.me);
+authRoutes.patch(
+  '/me',
+  authenticateOwnAccount,
+  validate({ body: schemas.updateMeBody }),
+  controller.updateMe,
+);

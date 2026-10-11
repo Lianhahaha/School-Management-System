@@ -9,6 +9,7 @@ import {
   as,
   buildSchool,
   closeWorld,
+  makeAssistant,
   makeSubject,
   makeUser,
   resetWorld,
@@ -53,22 +54,25 @@ describe('student assistant', () => {
   before(async () => {
     await resetWorld();
     school = await buildSchool();
-    assistant = await makeUser('assistant');
+    assistant = await makeAssistant();
   });
 
-  it('is an account without a profile, which an admin creates and self-registration never does', async () => {
+  it('is an account without a profile, which only sign-up creates (never an admin)', async () => {
     const me = await send('get', '/auth/me');
     expectStatus(me, 200);
     assert.equal(me.body.data.role, 'assistant');
     assert.equal(me.body.data.profile, null);
     assert.equal(me.body.data.studentId, null);
+    assert.equal(me.body.data.assistantRequest.status, 'approved');
 
-    const created = await api.post('/api/v1/users').set(as(school.admin)).send(newAccount('assistant'));
-    expectStatus(created, 201);
-    assert.equal(created.body.data.role, 'assistant');
-    const withProfile = newAccount('assistant', { profile: {} });
-    expectStatus(await api.post('/api/v1/users').set(as(school.admin)).send(withProfile), 400);
+    const body = newAccount('assistant');
+    const created = await api.post('/api/v1/users').set(as(school.admin)).send(body);
+    expectStatus(created, 400);
+    assert.match(created.body.error.details.issues[0].message, /sign up themselves/);
+    const [{ n }] = await query('SELECT COUNT(*) AS n FROM users WHERE email = ?', [body.email]);
+    assert.equal(n, 0, 'no assistant account was created');
 
+    // The role comes from accountType, never from a `role` field.
     const signUp = await api
       .post('/api/v1/auth/register')
       .send({ ...newAccount('assistant'), ...APPLICATION_FIELDS });
@@ -81,7 +85,9 @@ describe('student assistant', () => {
     assert.equal(student.body.data.role, 'student');
     assert.equal(student.body.data.profile.gender, 'female');
 
-    for (const role of ['teacher', 'admin', 'assistant']) {
+    const assistantAccount = newAccount('assistant');
+    expectStatus(await send('post', '/users', assistantAccount), 400);
+    for (const role of ['teacher', 'admin']) {
       const body = newAccount(role, role === 'teacher' ? { profile: {} } : {});
       const res = await send('post', '/users', body);
       expectForbidden(res);
@@ -103,7 +109,7 @@ describe('student assistant', () => {
     expectStatus(account, 200);
     assert.equal(account.body.data.phone, '+63 917 000 1111');
 
-    const otherAssistant = await makeUser('assistant');
+    const otherAssistant = await makeAssistant();
     for (const target of [school.owner, school.admin, otherAssistant]) {
       expectForbidden(await send('patch', `/users/${target.id}`, { lastName: 'Changed' }));
     }
@@ -153,7 +159,7 @@ describe('student assistant', () => {
     assert.equal(res.body.data.results[0].status, 'created');
   });
 
-  it('is told about a new application, ticks its documents off and declines it', async () => {
+  it('is told about a new application, ticks its documents off and places the student', async () => {
     const signUp = await api.post('/api/v1/auth/register').send({
       email: 'applicant@school.test',
       password: 'Password123!',
@@ -175,9 +181,9 @@ describe('student assistant', () => {
     const checklist = await send('patch', `/admissions/${studentId}`, { birthCertificateReceived: true });
     expectStatus(checklist, 200);
     assert.equal(checklist.body.data.admission.birthCertificateReceived, true);
-    const declined = await send('post', `/admissions/${studentId}/decline`, { reason: 'The grade is full' });
-    expectStatus(declined, 200);
-    assert.equal(declined.body.data.admission.status, 'declined');
+    expectStatus(await send('post', `/admissions/${studentId}/decline`, { reason: 'Full' }), 404);
+    const placed = await send('post', '/enrollments', { studentId, classId: school.classB.id });
+    expectStatus(placed, 201);
     assert.equal((await noteOf()).isRead, true, 'nothing is left to do');
   });
 

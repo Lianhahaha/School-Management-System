@@ -1,6 +1,7 @@
 import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
+import { run } from '../src/config/db.js';
 import { bearer } from './helpers/fakeFirebase.js';
 import { APPLICATION_FIELDS, api, as, buildSchool, closeWorld, resetWorld } from './helpers/harness.js';
 
@@ -34,6 +35,12 @@ describe('admissions', () => {
     api.patch(`/api/v1/admissions/${studentId}`).set(as(who)).send(body);
   const decline = (studentId, body, who = school.admin) =>
     api.post(`/api/v1/admissions/${studentId}/decline`).set(as(who)).send(body);
+  /** Nothing declines an application any more; one declined before that is set up straight in the database. */
+  const declinedEarlier = (studentId, reason) =>
+    run("UPDATE admissions SET status = 'declined', decline_reason = ? WHERE student_id = ?", [
+      reason,
+      studentId,
+    ]);
   const enroll = (studentId) =>
     api.post('/api/v1/enrollments').set(as(school.admin)).send({ studentId, classId: school.classB.id });
   const latestActivity = async (action) =>
@@ -42,7 +49,6 @@ describe('admissions', () => {
     );
   const unenrolledCount = async () =>
     (await api.get('/api/v1/dashboard').set(as(school.admin))).body.data.counts.unenrolledStudents;
-  const notificationsOf = async (who) => (await api.get('/api/v1/notifications').set(as(who))).body.data;
 
   before(async () => {
     await resetWorld();
@@ -104,16 +110,24 @@ describe('admissions', () => {
     assert.equal((await getStudent(school.s3.studentId)).admission, null);
   });
 
-  it('lists applications by status and leaves applicants out of the students without a class', async () => {
+  it('counts a pending applicant among the students without a class, and not one declined earlier', async () => {
     const before = await unenrolledCount();
     const applicant = await apply();
     assert.ok((await studentIds('admissionStatus=pending')).includes(applicant.studentId));
     assert.ok(!(await studentIds('admissionStatus=declined')).includes(applicant.studentId));
 
     const withoutAClass = await studentIds('hasActiveEnrollment=false&isActive=true');
-    assert.ok(!withoutAClass.includes(applicant.studentId), 'the Admissions page owns pending applicants');
+    assert.ok(
+      withoutAClass.includes(applicant.studentId),
+      'nobody approves it: the student is still to be placed',
+    );
     assert.ok(withoutAClass.includes(school.s3.studentId), 'an admin-created student without a class stays');
-    assert.equal(await unenrolledCount(), before, 'the dashboard counts the same way');
+    assert.equal(await unenrolledCount(), before + 1, 'the dashboard counts the same way');
+
+    await declinedEarlier(applicant.studentId, 'Grade 7 was full.');
+    assert.ok((await studentIds('admissionStatus=declined')).includes(applicant.studentId));
+    assert.ok(!(await studentIds('hasActiveEnrollment=false')).includes(applicant.studentId));
+    assert.equal(await unenrolledCount(), before);
   });
 
   it('ticks documents off the checklist and logs it', async () => {
@@ -133,45 +147,17 @@ describe('admissions', () => {
     assert.equal((await updateChecklist(school.s3.studentId, { reportCardReceived: true })).status, 404);
   });
 
-  it('declines with a reason the applicant reads, and resolves the admins sign-up note', async () => {
+  it('has no decline route any more', async () => {
     const applicant = await apply();
-    const link = `/admin/students/${applicant.studentId}`;
-    const adminNote = async () => (await notificationsOf(school.admin)).find((note) => note.link === link);
-    assert.equal((await adminNote()).isRead, false);
-
-    assert.equal((await decline(applicant.studentId, {})).status, 400);
-    assert.equal((await decline(applicant.studentId, { reason: '   ' })).status, 400);
-
-    const reason = 'Grade 7 is full this school year. Please apply again in May.';
-    const res = await decline(applicant.studentId, { reason });
-    assert.equal(res.status, 200, JSON.stringify(res.body));
-    assert.equal(res.body.data.admission.status, 'declined');
-    assert.equal(res.body.data.isActive, true, 'the account stays, so the applicant can read the reason');
-
-    const me = await api.get('/api/v1/auth/me').set(as(applicant));
-    assert.equal(me.status, 200);
-    assert.equal(me.body.data.profile.admission.status, 'declined');
-    assert.equal(me.body.data.profile.admission.declineReason, reason);
-
-    assert.equal((await adminNote()).isRead, true);
-    const [told] = await notificationsOf(applicant);
-    assert.deepEqual(
-      [told.type, told.title, told.body],
-      ['enrollment', 'Your application was declined', reason],
-    );
-    assert.match((await latestActivity('admission.decline')).summary, /Declined the Grade 7 application/);
-
-    const again = await decline(applicant.studentId, { reason });
-    assert.equal(again.status, 409);
-    assert.equal(again.body.error.details.reason, 'not_pending');
-    assert.ok((await studentIds('admissionStatus=declined')).includes(applicant.studentId));
-    assert.ok(!(await studentIds('hasActiveEnrollment=false')).includes(applicant.studentId));
+    const res = await decline(applicant.studentId, { reason: 'No.' });
+    assert.equal(res.status, 404, JSON.stringify(res.body));
+    assert.equal((await getStudent(applicant.studentId)).admission.status, 'pending');
   });
 
-  it('enrolling admits the applicant, a declined one too, and an admitted one cannot be declined', async () => {
+  it('enrolling admits the applicant, and one declined earlier too', async () => {
     const pending = await apply();
     const declined = await apply();
-    await decline(declined.studentId, { reason: 'Missing documents.' });
+    await declinedEarlier(declined.studentId, 'Missing documents.');
 
     assert.equal((await enroll(pending.studentId)).status, 201);
     assert.equal((await getStudent(pending.studentId)).admission.status, 'admitted');
@@ -184,23 +170,15 @@ describe('admissions', () => {
     const admitted = (await getStudent(declined.studentId)).admission;
     assert.equal(admitted.status, 'admitted');
     assert.equal(admitted.declineReason, null);
-
-    const refused = await decline(pending.studentId, { reason: 'Too late.' });
-    assert.equal(refused.status, 409);
-    assert.equal(refused.body.error.details.reason, 'not_pending');
   });
 
-  it('answers 404 for a student without an application and 403 for teachers and students', async () => {
-    assert.equal((await decline(school.s3.studentId, { reason: 'No.' })).status, 404);
-    assert.equal((await decline(999999, { reason: 'No.' })).status, 404);
-
+  it('lets only the office tick the checklist', async () => {
     const applicant = await apply();
     for (const who of [school.owner, applicant]) {
       assert.equal(
         (await updateChecklist(applicant.studentId, { reportCardReceived: true }, who)).status,
         403,
       );
-      assert.equal((await decline(applicant.studentId, { reason: 'No.' }, who)).status, 403);
     }
   });
 
@@ -211,7 +189,7 @@ describe('admissions', () => {
     assert.equal((await remove(unused)).status, 200);
 
     const declined = await apply();
-    await decline(declined.studentId, { reason: 'Duplicate account.' });
+    await declinedEarlier(declined.studentId, 'Duplicate account.');
     assert.equal((await remove(declined)).status, 200);
 
     const placed = await apply();

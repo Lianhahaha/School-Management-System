@@ -72,8 +72,14 @@ export async function findTeacherUserId(teacherId) {
   return rows[0]?.userId ?? null;
 }
 
-/** users.id of every active admin and student assistant (the school office). */
+/**
+ * users.id of every active admin and approved student assistant (the school office). An assistant without a
+ * request was created before assistants signed up themselves, and counts as approved (access.service).
+ */
 export async function findActiveOfficeIds() {
-  const rows = await query("SELECT id FROM users WHERE role IN ('admin', 'assistant') AND is_active = 1");
+  const rows = await query(
+    `SELECT u.id FROM users u LEFT JOIN assistant_requests ar ON ar.user_id = u.id
+      WHERE u.role IN ('admin', 'assistant') AND u.is_active = 1 AND (ar.status IS NULL OR ar.status = 'approved')`,
+  );
   return rows.map((row) => row.id);
 }

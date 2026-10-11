@@ -4,8 +4,9 @@
  */
 import request from 'supertest';
 import { createApp } from '../../src/app.js';
+import { run } from '../../src/config/db.js';
 import { createUserAccount } from '../../src/modules/users/users.service.js';
-import { currentAcademicYear } from '../../src/utils/dates.js';
+import { currentAcademicYear, todayYmd } from '../../src/utils/dates.js';
 import { bearer, installFakeFirebase } from './fakeFirebase.js';
 import { prepareDatabase, shutdown } from './db.js';
 
@@ -22,8 +23,54 @@ export const closeWorld = shutdown;
 
 let sequence = 0;
 
-/** Creates an account of any role and returns it with a ready-to-use Authorization header. */
-export async function makeUser(role, overrides = {}) {
+/**
+ * Creates an account of any role but `assistant` (see makeAssistant) and returns it with a ready-to-use
+ * Authorization header.
+ */
+export function makeUser(role, overrides = {}) {
+  if (role === 'assistant')
+    throw new Error('use makeAssistant(): a student assistant needs an approved request');
+  return makeAccount(role, overrides);
+}
+
+/**
+ * A student assistant the school office has approved. Every assistant is created with a pending sign-up
+ * request (only POST /auth/register creates them through the API); the request is approved here directly.
+ */
+export async function makeAssistant(overrides = {}) {
+  const account = await makeAccount('assistant', overrides);
+  await run(
+    "UPDATE assistant_requests SET status = 'approved', decided_at = UTC_TIMESTAMP() WHERE user_id = ?",
+    [account.id],
+  );
+  return { ...account, assistantRequest: { ...account.assistantRequest, status: 'approved' } };
+}
+
+/**
+ * Puts `count` new students in the class (active enrollments from today), for head counts. The students are
+ * written straight to the database, without a sign-in or an application; returns their student ids.
+ */
+export async function fillClass(classId, count) {
+  const studentIds = [];
+  for (let i = 0; i < count; i += 1) {
+    sequence += 1;
+    const { insertId: userId } = await run(
+      "INSERT INTO users (firebase_uid, email, first_name, last_name, role) VALUES (?, ?, 'Seat', ?, 'student')",
+      [`seat-${sequence}`, `seat${sequence}@school.test`, `Holder${sequence}`],
+    );
+    const { insertId } = await run(
+      'INSERT INTO students (user_id, student_number, admission_date) VALUES (?, ?, ?)',
+      [userId, `STU-1999-${String(sequence).padStart(4, '0')}`, todayYmd()],
+    );
+    studentIds.push(insertId);
+  }
+  await run('INSERT INTO enrollments (student_id, class_id, status, enrolled_on) VALUES ?', [
+    studentIds.map((studentId) => [studentId, classId, 'active', todayYmd()]),
+  ]);
+  return studentIds;
+}
+
+async function makeAccount(role, overrides) {
   sequence += 1;
   const account = await createUserAccount(
     {

@@ -1,13 +1,14 @@
 import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
-import { run } from '../src/config/db.js';
+import { query, run } from '../src/config/db.js';
 import { academicYearStart, addDaysYmd, currentAcademicYear } from '../src/utils/dates.js';
 import {
   api,
   as,
   assignTeacher,
   closeWorld,
+  fillClass,
   makeClass,
   makeSubject,
   makeUser,
@@ -235,5 +236,28 @@ describe('students enrolling themselves for next year (DepEd promotion)', () => 
       .set(as(student))
       .send({ classId: sections.g5a.id, studentId: 1 });
     assert.equal(res.status, 400, 'the student is always the caller');
+  });
+
+  it('offers a promoted student only a section with a seat left', async () => {
+    const [{ enrolled }] = await query(
+      "SELECT COUNT(*) AS enrolled FROM enrollments WHERE class_id = ? AND status = 'active'",
+      [sections.g5a.id],
+    );
+    await fillClass(sections.g5a.id, 35 - enrolled);
+    const student = await studentWith(grade4, grade4.subjects, [9, 9, 9, 9]);
+    const offered = await standing(student);
+    assert.equal(offered.status, 'promoted');
+    const seatsOf = (name) => offered.classes.find((klass) => klass.name === name);
+    assert.deepEqual([seatsOf('Grade 5 - A').enrolled, seatsOf('Grade 5 - A').seats], [35, 35]);
+    assert.ok(seatsOf('Grade 5 - B').enrolled < 35, 'Grade 5 - B still has seats, so no extra ones open');
+    assert.equal(seatsOf('Grade 5 - B').seats, 35);
+
+    const full = await enrollIn(student, sections.g5a.id);
+    assert.equal(full.status, 409, JSON.stringify(full.body));
+    assert.deepEqual(
+      [full.body.error.details.reason, full.body.error.details.enrolled, full.body.error.details.seats],
+      ['class_full', 35, 35],
+    );
+    assert.equal((await enrollIn(student, sections.g5b.id)).status, 201);
   });
 });

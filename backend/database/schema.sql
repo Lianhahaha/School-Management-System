@@ -456,6 +456,8 @@ CREATE TABLE IF NOT EXISTS announcement_reads (
 --     an admin or an import have none. Enrolling the student in a class admits
 --     them (same transaction); a declined applicant keeps the account and reads
 --     the reason. Deleting an (unused) account deletes this row first.
+--     Since students pick their own class, nothing sets 'declined' any more: the
+--     value stays so applications declined before that remain valid.
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS admissions (
   student_id                  INT UNSIGNED     NOT NULL COMMENT '1:1 -> students.id',
@@ -536,3 +538,32 @@ CREATE TABLE IF NOT EXISTS payments (
   CONSTRAINT chk_payments_amount CHECK (amount > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='Payments by students towards the fees of a school year';
+
+-- -----------------------------------------------------------------------------
+-- 21. assistant_requests — the sign-up of a student assistant, which the school
+--     office (an admin or an approved assistant) approves or declines. Until it
+--     is approved the account has no office access: the API reads the status
+--     with the user on every request. One row per assistant who signed up; an
+--     assistant without a row (created by an admin before sign-up) counts as
+--     approved. Deleting an (unused) account deletes its row first; a decision
+--     is history of the one who made it (decided_by), so that account is kept.
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS assistant_requests (
+  user_id         INT UNSIGNED NOT NULL COMMENT '1:1 -> users.id (role = assistant)',
+  status          ENUM('pending','approved','declined') NOT NULL DEFAULT 'pending',
+  decline_reason  VARCHAR(255) NULL COMMENT 'Set exactly when status = declined (see CHECK); shown to the applicant',
+  decided_by      INT UNSIGNED NULL COMMENT 'users.id of the admin or assistant who approved or declined (audit)',
+  decided_at      DATETIME     NULL COMMENT 'When it was approved or declined; NULL while pending (see CHECK)',
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'When the request was sent',
+  updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_id),                                        -- one request per account; serves the FK and the per-request auth join
+  KEY idx_assistant_requests_status     (status, created_at),   -- the office's list: one status, oldest first
+  KEY idx_assistant_requests_decided_by (decided_by),           -- FK + "has this account decided a request"
+  CONSTRAINT fk_assistant_requests_user FOREIGN KEY (user_id) REFERENCES users (id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,                      -- the request row goes first; a stray delete fails loudly
+  CONSTRAINT fk_assistant_requests_decided_by FOREIGN KEY (decided_by) REFERENCES users (id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT chk_assistant_requests_declined CHECK ((status = 'declined') = (decline_reason IS NOT NULL)),
+  CONSTRAINT chk_assistant_requests_decided CHECK ((status = 'pending') = (decided_at IS NULL))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Sign-ups of student assistants and the school office decision on them';

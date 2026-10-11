@@ -1,13 +1,14 @@
 /**
  * Admissions: the application a student sends with a self-registration (the grade applied for, the previous
- * school), the documents the school office ticks off, and the outcome. Admitting is enrolling the student in a
- * class: enrollments.service marks the application admitted inside its own transaction. Declining keeps the
- * account active, so the applicant can sign in and read the reason. Students created by an admin or an import
- * have no application. Applications are read as part of the student shape (`admission`).
+ * school), the documents the school office ticks off, and the outcome. Nobody approves or declines it: the
+ * student picks a section of the grade applied for themselves (promotion.service, standing `new`), and
+ * enrolling the student in a class, by themselves or by the office, admits them (enrollments.service marks the
+ * application admitted inside its own transaction). `declined` remains only on applications declined before
+ * students picked their class. Students created by an admin or an import have no application. Applications are
+ * read as part of the student shape (`admission`).
  */
 import { ApiError } from '../../utils/ApiError.js';
 import { changesOf, nameOf, record } from '../activity/activity.service.js';
-import { notifyStudents, resolveSignups } from '../notifications/notifications.service.js';
 import { getStudent } from '../students/students.service.js';
 import * as repo from './admissions.repository.js';
 
@@ -20,6 +21,9 @@ export const admit = (studentIds, conn) => repo.markAdmitted(studentIds, conn);
 
 /** Deletes the application of an account being deleted. Runs inside its transaction, before the profile goes. */
 export const deleteForUser = (userId, conn) => repo.deleteByUserId(userId, conn);
+
+/** The student's application row ({ status, gradeLevel, ... }), or null for a student who did not sign up. */
+export const applicationOf = (studentId) => repo.findApplication(studentId);
 
 const findApplication = async (studentId) =>
   ApiError.assertFound(await repo.findApplication(studentId), 'application', studentId);
@@ -44,33 +48,5 @@ export async function updateChecklist(user, studentId, patch) {
       details: { studentNumber: student.studentNumber, changes },
     });
   }
-  return student;
-}
-
-/**
- * Declines a pending application with the reason the applicant reads on their dashboard. The admins' sign-up
- * notes are done (nothing is left to do), and the applicant is told. 409 `not_pending` once the application
- * is admitted or already declined.
- */
-export async function decline(user, studentId, { reason }) {
-  if (!(await repo.declinePending(studentId, reason))) {
-    const { status } = await findApplication(studentId);
-    throw ApiError.conflict(`only a pending application can be declined; this one is ${status}`, {
-      reason: 'not_pending',
-      status,
-    });
-  }
-  const student = await getStudent(user, studentId);
-  const { gradeLevel } = student.admission;
-  await record({
-    action: 'admission.decline',
-    entityId: studentId,
-    summary: `Declined the Grade ${gradeLevel} application of ${nameOf(student)}`,
-    details: { studentNumber: student.studentNumber, gradeLevel, reason },
-  });
-  await resolveSignups([studentId]);
-  await notifyStudents([
-    { studentId, type: 'enrollment', title: 'Your application was declined', body: reason, link: '/student' },
-  ]);
   return student;
 }

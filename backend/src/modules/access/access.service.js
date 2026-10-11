@@ -5,7 +5,9 @@
  *   assistant : a student assistant. Reads like an admin (the whole school);
  *               writes only what its routes allow, never grades or attendance
  *               (assertCanManageClassSubject). The admin and the assistant
- *               together are "the office" (isOffice).
+ *               together are "the office" (isOffice). An assistant who signed
+ *               up has no access at all until the office approves the request
+ *               (isAwaitingApproval, checked by `authenticate` on every request).
  *   teacher   : "visible" = classes they teach a subject in, or are homeroom
  *               teacher of (reads); "owns" = class-subjects where they are the
  *               assigned teacher (writes).
@@ -27,8 +29,22 @@ export const isAssistant = (user) => user.role === 'assistant';
 export const isTeacher = (user) => user.role === 'teacher';
 export const isStudent = (user) => user.role === 'student';
 
-/** The school office: an admin or a student assistant. School-wide reads, and the office work both may do. */
-export const isOffice = (user) => isAdmin(user) || isAssistant(user);
+/**
+ * A student assistant the school office has approved. `assistantRequestStatus` is loaded with the user on every
+ * request (authenticate): null for an assistant created before assistants signed up themselves, who counts as
+ * approved. A user object without the field (not loaded by authenticate) does not count.
+ */
+export const isApprovedAssistant = (user) =>
+  isAssistant(user) && (user.assistantRequestStatus === null || user.assistantRequestStatus === 'approved');
+
+/** A student assistant whose sign-up is pending or declined: no access beyond their own account (/auth/me). */
+export const isAwaitingApproval = (user) => isAssistant(user) && !isApprovedAssistant(user);
+
+/**
+ * The school office: an admin or an approved student assistant. School-wide reads, and the office work both may
+ * do. `authenticate` already turns an unapproved assistant away; requiring the approval here too is a backstop.
+ */
+export const isOffice = (user) => isAdmin(user) || isApprovedAssistant(user);
 
 /**
  * 403 `role_not_allowed` unless the caller is an admin: the admin-only part of an operation the office
@@ -36,6 +52,11 @@ export const isOffice = (user) => isAdmin(user) || isAssistant(user);
  */
 export function assertAdmin(user, message) {
   if (!isAdmin(user)) throw ApiError.forbidden('role_not_allowed', message);
+}
+
+/** 403 `role_not_allowed` unless the caller is the school office (an admin or an approved assistant). */
+export function assertOffice(user, message = 'only the school office can do this') {
+  if (!isOffice(user)) throw ApiError.forbidden('role_not_allowed', message);
 }
 
 export async function assertCanViewClass(user, classId) {

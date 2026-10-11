@@ -17,15 +17,20 @@ export const USER_SORT_MAP = {
 const COLUMNS = `u.id, u.firebase_uid, u.email, u.first_name, u.last_name, u.phone, u.role, u.is_active,
   u.created_at, u.updated_at`;
 
-/** One query per request: identity, role, profile ids and the class of the active enrollment. */
+/**
+ * One query per request: identity, role, profile ids, the class of the active enrollment and, for a student
+ * assistant, where their sign-up stands (null without a request: created before assistants signed up).
+ */
 export async function findAuthContextByFirebaseUid(firebaseUid) {
   const rows = await query(
     `SELECT u.id, u.firebase_uid, u.email, u.first_name, u.last_name, u.role, u.is_active,
-            s.id AS student_id, t.id AS teacher_id, e.class_id AS active_class_id
+            s.id AS student_id, t.id AS teacher_id, e.class_id AS active_class_id,
+            ar.status AS assistant_request_status
        FROM users u
        LEFT JOIN students s ON s.user_id = u.id
        LEFT JOIN teachers t ON t.user_id = u.id
        LEFT JOIN enrollments e ON e.student_id = s.id AND e.status = 'active'
+       LEFT JOIN assistant_requests ar ON ar.user_id = u.id
       WHERE u.firebase_uid = ?`,
     [firebaseUid],
   );
@@ -112,9 +117,9 @@ export async function lockActiveAdminIds(conn) {
 
 /**
  * True when any record points at the account or its role profile: announcements it wrote, attendance
- * it marked, grades it entered, payments it recorded, a student's enrollments, attendance, grades and
- * payments, or a teacher's class-subject assignments (with their timetable and assessments) and homeroom
- * classes.
+ * it marked, grades it entered, payments it recorded, student assistant requests it approved or declined,
+ * a student's enrollments, attendance, grades and payments, or a teacher's class-subject assignments (with
+ * their timetable and assessments) and homeroom classes.
  */
 export async function hasHistory(id, conn) {
   const rows = await query(
@@ -123,6 +128,7 @@ export async function hasHistory(id, conn) {
        OR EXISTS (SELECT 1 FROM attendance att WHERE att.marked_by = ?)
        OR EXISTS (SELECT 1 FROM grades g WHERE g.graded_by = ?)
        OR EXISTS (SELECT 1 FROM payments p WHERE p.recorded_by = ?)
+       OR EXISTS (SELECT 1 FROM assistant_requests ar WHERE ar.decided_by = ?)
        OR EXISTS (SELECT 1 FROM students s JOIN enrollments e ON e.student_id = s.id WHERE s.user_id = ?)
        OR EXISTS (SELECT 1 FROM students s JOIN attendance att ON att.student_id = s.id WHERE s.user_id = ?)
        OR EXISTS (SELECT 1 FROM students s JOIN grades g ON g.student_id = s.id WHERE s.user_id = ?)
@@ -130,7 +136,7 @@ export async function hasHistory(id, conn) {
        OR EXISTS (SELECT 1 FROM teachers t JOIN class_subjects cs ON cs.teacher_id = t.id WHERE t.user_id = ?)
        OR EXISTS (SELECT 1 FROM teachers t JOIN classes c ON c.homeroom_teacher_id = t.id WHERE t.user_id = ?)
      ) AS has_history`,
-    Array(10).fill(id),
+    Array(11).fill(id),
     conn,
   );
   return Boolean(rows[0].hasHistory);

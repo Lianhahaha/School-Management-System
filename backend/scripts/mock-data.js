@@ -12,7 +12,8 @@
  *   announcements,      title starting with "[Mock]" (announcements also by a mock author or for a mock class)
  *   calendar entries
  * `remove` also deletes what was done to mock records while testing: grades, marks, payments, enrollments, read
- * marks, notifications, and the activity entries by a mock account or naming a mock person, class or subject.
+ * marks, notifications, the sign-up requests of mock student assistants, and the activity entries by a mock
+ * account or naming a mock person, class or subject.
  *
  * What `add` builds, so every screen has something to show:
  *   1 admin, 6 teachers (one subject each), 32 students; this year three classes of 10 with a full weekly
@@ -843,6 +844,11 @@ async function remove() {
     await del('DELETE FROM admissions WHERE student_id IN (?)', [ids(m.studentIds)]);
     await del('DELETE FROM students WHERE id IN (?)', [ids(m.studentIds)]);
     await del('DELETE FROM teachers WHERE id IN (?)', [ids(m.teacherIds)]);
+    // Student assistant sign-ups: a mock applicant's request goes; a real applicant's request that a mock
+    // account decided keeps its decision without the decider. Deleting it would be wrong: an assistant without
+    // a request counts as approved, so a declined applicant would get office access.
+    await del('DELETE FROM assistant_requests WHERE user_id IN (?)', [ids(m.userIds)]);
+    await del('UPDATE assistant_requests SET decided_by = NULL WHERE decided_by IN (?)', [ids(m.userIds)]);
     await del('DELETE FROM users WHERE id IN (?)', [ids(m.userIds)]);
     console.log(
       `  database: ${m.userIds.length} accounts, ${m.classIds.length} classes, ${m.subjectIds.length} subjects and everything on them`,

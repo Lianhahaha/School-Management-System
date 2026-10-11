@@ -47,6 +47,19 @@ export function findClassesOfGrade(academicYear, gradeLevel) {
   ]);
 }
 
+/**
+ * Ids of every class of one grade level in one academic year, row-locked (in id order, so two callers cannot
+ * deadlock) until `conn`'s transaction ends.
+ */
+export async function lockClassIdsOfGrade(academicYear, gradeLevel, conn) {
+  const rows = await query(
+    'SELECT id FROM classes WHERE academic_year = ? AND grade_level = ? ORDER BY id FOR UPDATE',
+    [academicYear, gradeLevel],
+    conn,
+  );
+  return rows.map((row) => row.id);
+}
+
 /** @param {{ sql: string, params: unknown[] } | null} scope class scope on c.id (null = every class) */
 export function listClasses(listQuery, scope = null) {
   const where = new WhereBuilder()

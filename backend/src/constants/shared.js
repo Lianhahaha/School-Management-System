@@ -25,10 +25,18 @@ export const GENDERS = Object.freeze(['male', 'female', 'other']);
 export const ENROLLMENT_STATUSES = Object.freeze(['active', 'completed', 'transferred', 'withdrawn']);
 
 /**
- * Where a self-registered applicant stands: pending (the school office checks the documents), admitted
- * (enrolled in a class) or declined (with a reason the applicant reads on their dashboard).
+ * Where a self-registered student's application stands: pending (signed up, no class yet; the school office
+ * ticks off the documents) or admitted (enrolled in a class, usually one the student picked). Nobody declines
+ * an application any more: declined only remains on applications declined before students picked their class.
  */
 export const ADMISSION_STATUSES = Object.freeze(['pending', 'admitted', 'declined']);
+
+/**
+ * Where the sign-up of a student assistant stands: pending (no office access until the school office approves
+ * it), approved, or declined (with a reason the applicant reads). An assistant without a request (created before
+ * assistants signed up themselves) counts as approved.
+ */
+export const ASSISTANT_REQUEST_STATUSES = Object.freeze(['pending', 'approved', 'declined']);
 
 export const ATTENDANCE_STATUSES = Object.freeze(['present', 'absent', 'late', 'excused']);
 
@@ -65,7 +73,8 @@ export const PASSING_GRADE = 75;
  * Where a student without a class stands for next year (DepEd promotion rules, GET /enrollments/next-class):
  * enrolled (has a class), needs_placement (no finished year to judge: an admin places them), promoted (every
  * subject passed: next grade level), remedial (1 or 2 subjects failed: an admin places them after remedial
- * classes), retained (3 or more failed: same grade level again), finished (passed the highest grade level).
+ * classes), retained (3 or more failed: same grade level again), finished (passed the highest grade level),
+ * new (signed up and never placed: a section of the grade applied for, this school year).
  */
 export const NEXT_CLASS_STANDINGS = Object.freeze([
   'enrolled',
@@ -74,6 +83,7 @@ export const NEXT_CLASS_STANDINGS = Object.freeze([
   'remedial',
   'retained',
   'finished',
+  'new',
 ]);
 
 /** Failed subjects up to this many mean remedial classes; more mean repeating the grade level. */
@@ -129,6 +139,13 @@ export const PAGINATION = Object.freeze({
 
 /** Maximum rows accepted by bulk endpoints (attendance sheet, grade sheet, bulk enrollment). */
 export const BULK_MAX_ROWS = 200;
+
+/**
+ * Seats of a class for students who enroll themselves (the school office may enroll beyond them): CLASS_SEATS,
+ * and CLASS_EXTRA_SEATS more in every class of a grade level and school year once each of them has CLASS_SEATS.
+ */
+export const CLASS_SEATS = 35;
+export const CLASS_EXTRA_SEATS = 10;
 
 export const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 export const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;

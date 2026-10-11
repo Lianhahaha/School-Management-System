@@ -11,28 +11,25 @@ const isEmailTaken = (error) =>
   (error instanceof ApiError && error.details?.key === 'users.uq_users_email') ||
   (error?.code === 'ER_DUP_ENTRY' && /uq_users_email/.test(error.sqlMessage ?? ''));
 
+/** The account a registration body describes: a student with an application, or a student assistant. */
+function accountOf(body) {
+  const { accountType, email, password, firstName, lastName, phone, ...rest } = body;
+  const identity = { email, password, firstName, lastName, phone };
+  if (accountType === 'assistant') return { ...identity, role: 'assistant' };
+  const { gradeLevel, previousSchool, ...profile } = rest;
+  return { ...identity, role: 'student', profile, application: { gradeLevel, previousSchool } };
+}
+
 /**
- * Public registration always creates a student with a pending application (the grade applied for and the
- * previous school); the Firebase account is never adopted. Every "this email is taken" case (a school
- * account, a sign-in without one, a parallel sign-up) gets the same answer, so the form does not tell
- * strangers which kind of account an address has.
+ * Public registration creates a student with a pending application (the grade applied for and the previous
+ * school), who then picks a section of that grade (POST /enrollments/next-class), or a student assistant whose
+ * request waits for the school office's approval; the Firebase account is never adopted. Every "this email is
+ * taken" case (a school account, a sign-in without one, a parallel sign-up) gets the same answer, so the form
+ * does not tell strangers which kind of account an address has.
  */
 export async function register(body) {
-  const { email, password, firstName, lastName, phone, gradeLevel, previousSchool, ...profile } = body;
   try {
-    return await usersService.createUserAccount(
-      {
-        email,
-        password,
-        firstName,
-        lastName,
-        phone,
-        role: 'student',
-        profile,
-        application: { gradeLevel, previousSchool },
-      },
-      { trusted: false },
-    );
+    return await usersService.createUserAccount(accountOf(body), { trusted: false });
   } catch (error) {
     if (!isEmailTaken(error)) throw error;
     throw ApiError.conflict(

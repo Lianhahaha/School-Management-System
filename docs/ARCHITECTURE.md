@@ -50,7 +50,9 @@ Every feature module under `backend/src/modules/<name>/` has the same five files
 
 The other exceptions only drop a layer they do not need: `auth` has no repository (it uses the users module), `dashboard` has no schemas, `health` is a route and a controller, and `access` is a service and a repository that hold the ownership and scoping rules every other service calls (the `assert*` checks, `classScope`, and `scopeRecordFilters`: one scoping rule for the attendance and grade lists and summaries). A bug is found by following one path: the URL names the route file, the route names the controller, and so on down. Cross-module data goes through the other module's **service**, never its SQL.
 
-Two modules answer on two paths: `grades` (`/grades` and `/assessments/:id/grades`) and `fees` (`/fees`, with a student's statement, and `/payments`). `admissions` has the document checklist and the decline; it has no admit route, because enrolling an applicant admits them: `enrollments.service.js` calls `admissions.service.js` inside the enrollment's transaction. Applications are read with the students (`admission` on a student and on `/auth/me`, the `admissionStatus` filter of `GET /students`).
+Two modules answer on two paths: `grades` (`/grades` and `/assessments/:id/grades`) and `fees` (`/fees`, with a student's statement, and `/payments`). `admissions` has the document checklist only; it has no admit or decline route, because a new student picks a section themselves (`promotion.service.js`, standing `new`) and enrolling an applicant admits them: `enrollments.service.js` calls `admissions.service.js` inside the enrollment's transaction. Applications are read with the students (`admission` on a student and on `/auth/me`, the `admissionStatus` filter of `GET /students`). `assistantRequests` holds the sign-ups of student assistants and their approval; the status is read with the user on every request (one join in the auth lookup), and `authenticate` refuses an assistant who is not approved on every route except `GET` and `PATCH /auth/me` (`authenticateOwnAccount`).
+
+Self-enrollment has seats: 35 per class, and 10 more in every class of a grade and school year once each of them has 35 (`CLASS_SEATS`, `CLASS_EXTRA_SEATS`). The enrolling transaction locks the grade's classes and counts their students with a locking read, so two students cannot take the last seat; the office is not limited.
 
 Cross-cutting pieces are written once:
 
@@ -101,6 +103,8 @@ erDiagram
     students ||--o| admissions : "applied with"
     students ||--o{ payments : "pays"
     users ||--o{ payments : "recorded by"
+    users ||--o| assistant_requests : "signed up with"
+    users ||--o{ assistant_requests : "decided by"
     calendar_events {
         enum type "holiday | event"
         date starts_on
@@ -252,16 +256,24 @@ erDiagram
         varchar note
         int recorded_by FK
     }
+    assistant_requests {
+        int user_id PK,FK "student assistants who signed up"
+        enum status "pending | approved | declined"
+        varchar decline_reason "set exactly when declined"
+        int decided_by FK "admin or approved assistant"
+        datetime decided_at "null while pending"
+        datetime created_at "when the request was sent"
+    }
 ```
 
-`activity_log` has no foreign keys on purpose: it copies the actor's name and role, so an entry outlives the rows it mentions. `fees` has none either: a student owes the fees of their class's grade level in that school year plus the every-grade ones, matched on `academic_year` and `grade_level`, and a payment counts towards a school year, not a fee. Students created by an admin or an import have no `admissions` row. Besides these 20 tables there is one bookkeeping table outside `schema.sql`, `schema_migrations`, created by `config/migrations.js` (see schema changes below).
+`activity_log` has no foreign keys on purpose: it copies the actor's name and role, so an entry outlives the rows it mentions. `fees` has none either: a student owes the fees of their class's grade level in that school year plus the every-grade ones, matched on `academic_year` and `grade_level`, and a payment counts towards a school year, not a fee. Students created by an admin or an import have no `admissions` row. Besides these 21 tables there is one bookkeeping table outside `schema.sql`, `schema_migrations`, created by `config/migrations.js` (see schema changes below).
 
 Rules the database itself enforces (not just the API):
 
 - One account per e-mail and per Firebase user; a profile row belongs to exactly one user.
 - **One active enrollment per student**, via a generated `active_flag` column plus a unique key; closed enrollments stay as history, and every enrollment is its own row (re-joining a class adds a row). Attendance and grade rosters are dated: the students who were in the class on that day.
 - One teacher per subject per class; one attendance mark per student per lesson per day; one grade per student per assessment.
-- One application per student, with a decline reason exactly when it is declined; one fee per name, school year and grade level (a generated `grade_key` stands in for "every grade", the `active_flag` trick again); each OR number on one payment only.
+- One application per student, and one sign-up request per student assistant, each with a decline reason exactly when it is declined; one fee per name, school year and grade level (a generated `grade_key` stands in for "every grade", the `active_flag` trick again); each OR number on one payment only.
 - Foreign keys are `RESTRICT` everywhere: history is never silently deleted. An account or a subject with history is retired (`is_active = 0`) instead. One that nothing refers to yet, such as an account created by mistake, can be deleted (`DELETE /users/:id`, `DELETE /subjects/:id`, 409 otherwise); the service first deletes what belongs only to it (an account's profile row, application, notifications and read marks, a subject's grade weights) in the same transaction. Payments count as history, for the student and for the admin who recorded them.
 
 Rules the service layer enforces because SQL cannot express them: schedule overlaps (class, teacher or room, per academic year, serialised with a named lock), `score <= max_score`, no attendance for future dates, only enrolled students on a sheet or grade batch, a subject's grade weights adding up to 100.
@@ -276,11 +288,11 @@ Results: each assessment belongs to one of the four quarters (`term1`..`term4`),
 
 `Y` = any record, `own` = within the caller's scope, `N` = 403. A teacher's *visible* scope is the class-subjects they teach plus every class-subject of a class they are homeroom teacher of (reads); they *own* only the class-subjects assigned to them (writes).
 
-The assistant (`assistant`) is a student assistant who takes everyday office work off the admin. Together they are "the office" (`isOffice`): both read the whole school, and both get the sign-up notifications. What cannot be undone, sets money amounts, changes grades or attendance, or manages accounts other than students' stays with the admin.
+The assistant (`assistant`) is a student assistant who takes everyday office work off the admin. Together they are "the office" (`isOffice`): both read the whole school, and both get the sign-up notifications. What cannot be undone, sets money amounts, changes grades or attendance, or manages accounts other than students' stays with the admin. Assistants sign up themselves (never `POST /users`); until the office approves the request, and after it declines it, the assistant has none of the rights below except their own `/auth/me` (403 `assistant_not_approved`, from `authenticate`; `isOffice` also requires the approval). An assistant created before sign-up existed has no request and counts as approved.
 
 | Capability | Admin | Assistant | Teacher | Student |
 |---|---|---|---|---|
-| Accounts: create, edit name and phone | Y | student accounts only | N | N |
+| Accounts: create (never a student assistant: they sign up), edit name and phone | Y | student accounts only | N | N |
 | Accounts: list and read, (de)activate, delete an unused one | Y | N | N | N |
 | Import students from CSV | Y | Y | N | N |
 | Own identity and contact fields (`/auth/me`) | Y | Y | Y | Y |
@@ -295,9 +307,9 @@ The assistant (`assistant`) is a student assistant who takes everyday office wor
 | Classes, teacher assignment: delete | Y | N | N | N |
 | Enrollments: enroll, bulk enroll, transfer, withdraw | Y | Y | N | N (except self-enrollment, next row) |
 | Enrollments: end a school year, close one as `completed` | Y | N | N | N |
-| Enroll themselves in next year's class (`/enrollments/next-class`, when the promotion rules allow) | N | N | N | own (self) |
+| Enroll themselves in next year's class (`/enrollments/next-class`, when the promotion rules allow), or in a section of the grade applied for right after signing up; only while the class has a seat | N | N | N | own (self) |
 | Timetable, school calendar: write | Y | Y | N | N |
-| Admissions: tick off documents, decline an application (`/admissions`); admitting is enrolling | Y | Y | N | N |
+| Admissions: tick off documents (`/admissions`); admitting is enrolling, nobody declines | Y | Y | N | N |
 | Class-subjects, enrollments, timetable: read | Y | Y | own (visible) | own (active class, self) |
 | Attendance: mark and correct (through the sheet) | Y | N | own (owns the lesson) | N |
 | Attendance: read records, summary and sheets | Y | Y | own (visible) | own (self; no sheets) |
@@ -314,6 +326,7 @@ The assistant (`assistant`) is a student assistant who takes everyday office wor
 | Activity history | Y | Y | N | N |
 | Notifications: read, mark read | own | own | own | own |
 | Dashboard | admin payload: school-wide counts | the admin payload (`role: 'admin'`) | teacher payload: today's lessons, pending grading | student payload: schedule, attendance, grades |
+| Student assistant sign-ups: list, approve, decline (`/assistant-requests`) | Y | Y (approved assistants) | N | N |
 
 Enforcement: the role column is `authorize(...)` on the route; every `own` cell is a named rule in `modules/access/access.service.js` (`assertCanViewClass`, `assertCanViewClassSubject`, `assertCanManageClassSubject`, `assertCanViewStudent`, `assertIsSelfTeacher`, `assertIsAuthor`, and for lists `classScope`, `scopedStudentId`, `assertFiltersInScope` and `scopeRecordFilters`). The office passes every read rule; `assertCanManageClassSubject` (attendance, assessments, grades) passes the admin only. Where a route is shared but part of it is the admin's (an assistant creating or editing a non-student account, closing an enrollment as `completed`), the service calls `assertAdmin`. The UI hides what a role cannot do, but the API is the enforcement point.
 

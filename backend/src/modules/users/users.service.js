@@ -2,6 +2,8 @@
  * Accounts: the one code path that creates a person in Firebase and MySQL,
  * account reads, office edits, activation status and deletion of unused accounts.
  * An admin manages every account; a student assistant creates and edits student accounts only.
+ * Student assistants are never created by the office: they sign up themselves and wait for approval
+ * (assistantRequests).
  */
 import { withTransaction } from '../../config/db.js';
 import { env } from '../../config/env.js';
@@ -14,11 +16,13 @@ import { changedList, changesOf, nameOf, record } from '../activity/activity.ser
 import * as notifications from '../notifications/notifications.service.js';
 import * as admissions from '../admissions/admissions.service.js';
 import * as announcements from '../announcements/announcements.service.js';
+import * as assistantRequests from '../assistantRequests/assistantRequests.service.js';
 import { teacherHasAssignments } from '../classSubjects/classSubjects.service.js';
 import { closeActiveForStudent } from '../enrollments/enrollments.service.js';
 import * as studentsService from '../students/students.service.js';
 import * as teachersService from '../teachers/teachers.service.js';
 import * as repo from './users.repository.js';
+import { ASSISTANT_SIGNUP_ONLY } from './users.schemas.js';
 
 const toUserShape = (row) => ({
   id: row.id,
@@ -32,7 +36,10 @@ const toUserShape = (row) => ({
   updatedAt: row.updatedAt,
 });
 
-/** Identity + role profile (+ current enrollment for students): the shape of /auth/me and /users/:id. */
+/**
+ * Identity + role profile (+ current enrollment for students, + where the sign-up stands for student
+ * assistants): the shape of /auth/me and /users/:id.
+ */
 export async function getAccount(id) {
   const user = ApiError.assertFound(await repo.findUserById(id), 'user', id);
   const account = {
@@ -48,6 +55,8 @@ export async function getAccount(id) {
   } else if (user.role === 'teacher') {
     const profile = await teachersService.getProfileByUserId(id);
     Object.assign(account, { teacherId: profile.id, profile });
+  } else if (user.role === 'assistant') {
+    account.assistantRequest = await assistantRequests.requestOf(id);
   }
   return account;
 }
@@ -62,8 +71,18 @@ function assertMayManageAccountOf(actor, role) {
   if (role !== 'student') assertAdmin(actor, 'student assistants can only manage student accounts');
 }
 
-/** POST /users: the office creates an account (a student assistant, a student account only). */
+/**
+ * POST /users: the office creates an account (a student assistant, a student account only). Never a student
+ * assistant, for anyone: they sign up themselves and wait for approval. The body schema refuses the role
+ * already; this keeps the rule should the schema change.
+ */
 export async function createAccount(actor, body) {
+  if (body.role === 'assistant') {
+    throw ApiError.validation(ASSISTANT_SIGNUP_ONLY, 'body', {
+      reason: 'assistant_signup_only',
+      field: 'role',
+    });
+  }
   assertMayManageAccountOf(actor, body.role);
   return createUserAccount(body, { trusted: true });
 }
@@ -148,10 +167,14 @@ const isGeneratedNumberCollision = (error, profile) =>
  *
  *   1. email already in MySQL        -> 409 CONFLICT (key users.uq_users_email)
  *   2. Firebase account for the email -> see createFirebaseUser
- *   3. users + profile rows, and the application of a self-registration, in ONE transaction (a generated
- *      business number that collides with a parallel sign-up is regenerated, up to 5 attempts)
+ *   3. users + profile rows, the application of a self-registered student, and the pending request of a student
+ *      assistant, in ONE transaction (a generated business number that collides with a parallel sign-up is
+ *      regenerated, up to 5 attempts)
  *   4. MySQL write failed -> delete the Firebase user this call created (no orphans); a failure after the
  *      commit leaves both in place
+ *
+ * Every student assistant created here waits for the school office's approval: assistants come from public
+ * registration only (POST /users refuses the role).
  *
  * @param {{ email: string, password: string, role: 'admin'|'teacher'|'student'|'assistant',
  *           firstName: string, lastName: string, phone?: string, profile?: object,
@@ -179,6 +202,7 @@ export async function createUserAccount(input, { trusted, firebaseUid }) {
         if (input.application) await admissions.createApplication(studentId, input.application, conn);
       }
       if (input.role === 'teacher') await teachersService.createProfile(userId, input.profile, conn);
+      if (input.role === 'assistant') await assistantRequests.createRequest(userId, conn);
       return userId;
     });
 
@@ -206,19 +230,32 @@ export async function createUserAccount(input, { trusted, firebaseUid }) {
     await record({
       action: 'user.register',
       entityId: userId,
-      summary: `${nameOf(account)} signed up as a student (${email})`,
+      summary: `${nameOf(account)} signed up as a ${input.role === 'assistant' ? 'student assistant' : 'student'} (${email})`,
       details,
       actor: account,
     });
-    const application = account.profile.admission;
-    await notifications.notifyOffice({
-      type: 'signup',
-      title: `New application: ${nameOf(account)}`,
-      body: application ? `Grade ${application.gradeLevel} · ${email}` : email,
-      link: notifications.signupLink(account.studentId),
-    });
+    await notifications.notifyOffice(signupNote(account));
   }
   return account;
+}
+
+/** The office's notification of a public sign-up: a student's application, or a student assistant's request. */
+function signupNote(account) {
+  if (account.role === 'assistant') {
+    return {
+      type: 'signup',
+      title: `Student assistant request: ${nameOf(account)}`,
+      body: account.email,
+      link: notifications.assistantSignupLink(account.id),
+    };
+  }
+  const application = account.profile.admission;
+  return {
+    type: 'signup',
+    title: `New application: ${nameOf(account)}`,
+    body: application ? `Grade ${application.gradeLevel} · ${account.email}` : account.email,
+    link: notifications.signupLink(account.studentId),
+  };
 }
 
 /** Tries a generated student or employee number this many times when parallel sign-ups take the same one. */
@@ -334,6 +371,8 @@ export async function deleteUser(actor, id) {
         await studentsService.deleteProfile(id, conn);
       }
       if (target.role === 'teacher') await teachersService.deleteProfile(id, conn);
+      // Nor is a sign-up request: a declined (or never used) student assistant account can still go.
+      if (target.role === 'assistant') await assistantRequests.deleteForUser(id, conn);
       await notifications.deleteForUser(id, conn);
       await announcements.deleteReadsOfUser(id, conn);
       if (!(await repo.deleteUser(id, conn))) throw ApiError.notFound('user', id);

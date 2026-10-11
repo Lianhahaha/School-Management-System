@@ -5,11 +5,14 @@
  * student left, so each period in a class stays on record for dated rosters.
  * Only classes of the current or a future academic year accept students.
  * The end of a school year closes a class's rows as `completed` and can move the students on in one step.
- * After that a student may enroll themselves in a section of the grade level their results allow; those
- * DepEd promotion rules live in promotion.service.js.
+ * After that a student may enroll themselves in a section of the grade level their results allow, and a new
+ * student who signed up in a section of the grade applied for; those rules live in promotion.service.js.
+ * A student enrolling themselves gets a seat only while the class has one (seatsPerClass); the office is not
+ * limited.
  * Enrolling a self-registered applicant admits them (admissions), in the same transaction.
  */
 import { withTransaction } from '../../config/db.js';
+import { CLASS_EXTRA_SEATS, CLASS_SEATS } from '../../constants/shared.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { currentAcademicYear, todayYmd } from '../../utils/dates.js';
 import { resolveMe } from '../../utils/resolveMe.js';
@@ -17,7 +20,11 @@ import * as access from '../access/access.service.js';
 import { nameOf, record } from '../activity/activity.service.js';
 import { admit } from '../admissions/admissions.service.js';
 import { notifyStudents, resolveSignups } from '../notifications/notifications.service.js';
-import { assertEnrollableClass, findReferencedClass } from '../classes/classes.service.js';
+import {
+  assertEnrollableClass,
+  findReferencedClass,
+  lockClassesOfGrade,
+} from '../classes/classes.service.js';
 import * as repo from './enrollments.repository.js';
 
 const toEnrollmentShape = (row) => ({
@@ -117,16 +124,52 @@ async function enrollingTransaction(studentIds, work) {
 }
 
 /**
+ * The seats each class of one grade level and school year offers to students who enroll themselves, given the
+ * head count of every one of those classes: CLASS_SEATS, and CLASS_EXTRA_SEATS more once every class has
+ * CLASS_SEATS students. The same number for each class of the grade.
+ */
+export const seatsPerClass = (headCounts) =>
+  headCounts.length > 0 && headCounts.every((count) => count >= CLASS_SEATS)
+    ? CLASS_SEATS + CLASS_EXTRA_SEATS
+    : CLASS_SEATS;
+
+/**
+ * 409 `class_full` unless `klass` has a seat left for a student enrolling themselves. Inside the enrolling
+ * transaction: the classes of the grade and year are locked first, so self-enrollments in that grade run one
+ * after another (two students cannot take the last seat together, and the extra seats cannot open twice), and
+ * the head counts are read with a locking read, which sees the enrollments committed while this one waited.
+ */
+async function assertSeatLeft(klass, conn) {
+  const classIds = await lockClassesOfGrade(klass.academicYear, klass.gradeLevel, conn);
+  const counts = await repo.countActiveByClass(classIds, conn);
+  const seats = seatsPerClass(classIds.map((id) => counts.get(id) ?? 0));
+  const enrolled = counts.get(klass.id) ?? 0;
+  if (enrolled >= seats) {
+    throw ApiError.conflict(
+      `${klass.name} is full (${enrolled} of ${seats} seats taken); pick another section`,
+      {
+        reason: 'class_full',
+        classId: klass.id,
+        enrolled,
+        seats,
+      },
+    );
+  }
+}
+
+/**
  * Opens an active enrollment in `classId` for each student, all or nothing, and returns the new ids in order.
  * Nothing is written when the class or any student is invalid or already in a class; `refusal(activeRows)`
  * builds that 409 (one student or a list). The applicants among them (pending or declined) are admitted.
+ * `limitSeats` (a student enrolling themselves, one at a time) also refuses a full class.
  */
-function enrollInClass(classId, studentIds, refusal) {
+function enrollInClass(classId, studentIds, refusal, { limitSeats = false } = {}) {
   return enrollingTransaction(studentIds, async (conn) => {
     await assertEnrollable(studentIds, conn);
-    await assertEnrollableClass(classId, conn);
+    const klass = await assertEnrollableClass(classId, conn);
     const active = await repo.findActiveByStudents(studentIds, conn);
     if (active.length) throw refusal(active);
+    if (limitSeats) await assertSeatLeft(klass, conn);
     const today = todayYmd();
     const created = [];
     for (const studentId of studentIds) {
@@ -163,8 +206,14 @@ async function announceEnrollments(enrollments) {
   await resolveSignups(enrollments.map((enrollment) => enrollment.student.id));
 }
 
-export async function enroll({ studentId, classId }) {
-  const [id] = await enrollInClass(classId, [studentId], (active) => alreadyEnrolled(active[0]));
+/**
+ * One student in one class: POST /enrollments (the office, not limited by seats), and a student enrolling
+ * themselves (promotion.service, with `limitSeats`).
+ */
+export async function enroll({ studentId, classId }, { limitSeats = false } = {}) {
+  const [id] = await enrollInClass(classId, [studentId], (active) => alreadyEnrolled(active[0]), {
+    limitSeats,
+  });
   const enrollment = toEnrollmentShape(await repo.findEnrollmentById(id));
   await announceEnrollments([enrollment]);
   return enrollment;

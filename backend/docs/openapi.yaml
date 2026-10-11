@@ -25,6 +25,13 @@ info:
     starts its description with a `Roles:` line that states who may call it and any ownership rule that
     applies on top of the role.
 
+    Student assistants sign up themselves (`POST /auth/register` with `accountType: assistant`); nobody
+    creates them with `POST /users`. Until the school office (an admin or an approved assistant) approves the
+    request (`/assistant-requests`), and after it declines it, the account may only use `GET` and
+    `PATCH /auth/me`: every other operation answers `403 FORBIDDEN` with `details.reason =
+    assistant_not_approved`, whatever its `Roles:` line says. An assistant without a request (created before
+    sign-up existed) counts as approved.
+
     ## Responses
 
     Success: `{ "success": true, "data": ..., "meta": ... }`. `data` is an object, or an array on lists;
@@ -92,7 +99,7 @@ tags:
   - name: students
     description: Student directory and profiles.
   - name: admissions
-    description: Applications sent with a self-registration, their document checklist and declining them.
+    description: Applications sent with a self-registration and their document checklist.
   - name: teachers
     description: Teacher directory and profiles.
   - name: subjects
@@ -125,6 +132,8 @@ tags:
     description: In-app notifications of the signed-in user.
   - name: health
     description: Liveness and database check.
+  - name: assistant requests
+    description: Sign-ups of student assistants, which the school office approves or declines.
 security:
   - bearerAuth: []
 paths:
@@ -132,16 +141,26 @@ paths:
     post:
       tags: [auth]
       operationId: registerStudent
-      summary: Register a student account
+      summary: Register a student or student assistant account
       description: |
         Roles: public (no token).
 
-        Self-registration, which is also an application. Creates the Firebase user, the account, the student
-        profile and a `pending` application (`profile.admission`: the grade applied for and the previous
-        school) in one step, and always assigns the role `student`; there is no `role` field. `gradeLevel`,
-        `guardianName` and `guardianPhone` are required here. The student number is generated
-        (`STU-<admission year>-NNNN`) and `admissionDate` is today. Every active admin and assistant gets a
-        `signup` notification. No token is returned: sign in with the Firebase client SDK afterwards.
+        Self-registration. There is no `role` field: `accountType` (default `student`) decides it.
+
+        `student` is also an application. Creates the Firebase user, the account, the student profile and a
+        `pending` application (`profile.admission`: the grade applied for and the previous school) in one
+        step. `gradeLevel`, `guardianName` and `guardianPhone` are required here. The student number is
+        generated (`STU-<admission year>-NNNN`) and `admissionDate` is today. Nobody approves the application:
+        the student then picks a section of that grade in the current school year (`GET` and `POST
+        /enrollments/next-class`, standing `new`), which admits them.
+
+        `assistant` takes the account fields only (student details and application fields are a 400). Creates
+        the account with the role `assistant` and a `pending` request (`assistantRequest`) in one step. The
+        account has no access beyond `/auth/me` until the school office approves the request
+        (`POST /assistant-requests/{userId}/approve`).
+
+        Every active admin and approved assistant gets a `signup` notification. No token is returned: sign in
+        with the Firebase client SDK afterwards.
 
         Disabled with `ALLOW_PUBLIC_REGISTRATION=false`: 404 with `details.reason = registration_disabled`.
         Limited per IP address and 15 minutes to 30 successful registrations, and separately to 150 rejected
@@ -155,18 +174,30 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/RegisterRequest'
-            example:
-              email: liam.cruz@example.com
-              password: Str0ngPass!
-              firstName: Liam
-              lastName: Cruz
-              phone: +63 917 123 4567
-              dateOfBirth: '2013-04-21'
-              gender: male
-              guardianName: Maria Cruz
-              guardianPhone: +63 917 765 4321
-              gradeLevel: 7
-              previousSchool: Bagong Silang Elementary School
+            examples:
+              student:
+                summary: Student applying for Grade 7
+                value:
+                  email: liam.cruz@example.com
+                  password: Str0ngPass!
+                  firstName: Liam
+                  lastName: Cruz
+                  phone: +63 917 123 4567
+                  dateOfBirth: '2013-04-21'
+                  gender: male
+                  guardianName: Maria Cruz
+                  guardianPhone: +63 917 765 4321
+                  gradeLevel: 7
+                  previousSchool: Bagong Silang Elementary School
+              assistant:
+                summary: Student assistant (waits for approval)
+                value:
+                  accountType: assistant
+                  email: joy.bautista@example.com
+                  password: Str0ngPass!
+                  firstName: Joy
+                  lastName: Bautista
+                  phone: +63 917 555 0123
       responses:
         '201': { $ref: '#/components/responses/AccountResponse' }
         '400': { $ref: '#/components/responses/BadRequest' }
@@ -179,12 +210,14 @@ paths:
       operationId: getMyAccount
       summary: Get the signed-in account
       description: |
-        Roles: any authenticated user.
+        Roles: any authenticated user (also a student assistant whose request is pending or declined).
 
         Identity of the caller with the embedded role profile: `profile` holds the student or teacher record
-        and is `null` for admins and assistants; students also get `currentEnrollment`. Clients call this
-        right after sign-in to learn the role. A valid token without a school account fails with
-        `403 USER_NOT_REGISTERED`, a deactivated account with `403 ACCOUNT_DISABLED`.
+        and is `null` for admins and assistants; students also get `currentEnrollment`, assistants
+        `assistantRequest` (where their sign-up stands, with the reason when declined; `null` for an
+        assistant created before sign-up existed). Clients call this right after sign-in to learn the role.
+        A valid token without a school account fails with `403 USER_NOT_REGISTERED`, a deactivated account
+        with `403 ACCOUNT_DISABLED`.
       responses:
         '200': { $ref: '#/components/responses/AccountResponse' }
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -194,8 +227,8 @@ paths:
       operationId: updateMyAccount
       summary: Update own contact details
       description: |
-        Roles: any authenticated user (own account only); `address`, `guardianName` and `guardianPhone`
-        are accepted from students only.
+        Roles: any authenticated user (own account only; also a student assistant whose request is pending
+        or declined); `address`, `guardianName` and `guardianPhone` are accepted from students only.
 
         Self-service update of contact fields. Names, date of birth and numbers are changed by an admin
         (`PATCH /students/{id}`, `PATCH /teachers/{id}`). A non-student sending student-only fields gets
@@ -253,9 +286,11 @@ paths:
       description: |
         Roles: admin, assistant (student accounts only; any other role is a 403 `role_not_allowed`).
 
-        Creates a Firebase user, the account and the role profile, in one step, for any role. The `profile`
-        object is optional for `student` and `teacher` and not allowed for `admin` and `assistant`. Student
-        and employee numbers are generated when omitted; `admissionDate` and `hireDate` default to today.
+        Creates a Firebase user, the account and the role profile, in one step, for a student, a teacher or
+        an admin. Never a student assistant, for anyone: `role: assistant` is a 400 (assistants sign up
+        themselves with `POST /auth/register` and the school office approves them). The `profile` object is
+        optional for `student` and `teacher` and not allowed for `admin`. Student and employee numbers are
+        generated when omitted; `admissionDate` and `hireDate` default to today.
         A Firebase user with the same email but no school account is deleted and replaced by a new one, so
         whoever created it (anyone can, with the public web key) cannot sign in to the new account.
         Returns the same shape as `GET /auth/me`.
@@ -300,14 +335,6 @@ paths:
                   role: admin
                   firstName: Sam
                   lastName: Ortiz
-              assistant:
-                summary: Student assistant (no profile; created by an admin)
-                value:
-                  email: assistant1@school.test
-                  password: TempPass#2026
-                  role: assistant
-                  firstName: Joy
-                  lastName: Bautista
       responses:
         '201': { $ref: '#/components/responses/AccountResponse' }
         '400': { $ref: '#/components/responses/BadRequest' }
@@ -366,7 +393,9 @@ paths:
         Permanently removes an account created by mistake: the role profile and the account in one
         transaction, then the Firebase user. The email becomes free again. An account that anything refers
         to (enrollments, attendance, grades, class-subject assignments, homeroom classes, announcements it
-        wrote, attendance or grades it entered) is kept; deactivate it instead.
+        wrote, attendance or grades it entered, student assistant requests it approved or declined) is kept;
+        deactivate it instead. A student's application and a student assistant's own request (a declined one
+        too) are not school records: they are deleted with the account.
 
         Refused with `403` (`details.reason = self`) when the target is the caller, with `409`
         (`details.reason = has_history`) when the account has school records, and with `409`
@@ -466,9 +495,10 @@ paths:
 
         Directory, class roster and enrollment picker. Search matches first name, last name, full name
         (`Liam Cruz`), student number, LRN and email. Default order: last name, then first name.
-        `hasActiveEnrollment=false` lists students without a class whom an admin still has to place (admin):
-        pending and declined applicants are left out, `admissionStatus` lists those. A `classId` the teacher
-        cannot see is a 403.
+        `hasActiveEnrollment=false` lists students without a class who are still to get one: pending
+        applicants (who pick a section themselves, or the office places them) are included, applications
+        declined in the past are left out; `admissionStatus` lists applicants by status. A `classId` the
+        teacher cannot see is a 403.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Limit'
@@ -491,8 +521,8 @@ paths:
         - name: hasActiveEnrollment
           in: query
           description: |
-            Use true for students in a class, false for students without one (pending and declined applicants
-            are left out).
+            Use true for students in a class, false for students without one (pending applicants included,
+            applications declined in the past left out).
           schema:
             type: boolean
         - name: admissionStatus
@@ -561,8 +591,9 @@ paths:
 
         The document checklist of a self-registered student's application: the PSA birth certificate and
         the report card (SF9) the school office has received. Accepted whatever the status, since papers may
-        arrive after admission. There is no admit route: enrolling the student in a class (`POST
-        /enrollments`, `/enrollments/bulk`) admits them. 404 when the student has no application (created by
+        arrive after admission. There is no admit or decline route: the student picks a section themselves
+        (`POST /enrollments/next-class`), or the office enrolls them (`POST /enrollments`,
+        `/enrollments/bulk`), and enrolling admits them. 404 when the student has no application (created by
         an admin or an import).
       parameters:
         - $ref: '#/components/parameters/StudentIdPath'
@@ -580,36 +611,6 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
-  /admissions/{studentId}/decline:
-    post:
-      tags: [admissions]
-      operationId: declineAdmission
-      summary: Decline an application
-      description: |
-        Roles: admin, assistant.
-
-        Declines a pending application with a reason the applicant reads on their dashboard. The account
-        stays active, so they can still sign in. The sign-up notifications of the student (admins and
-        assistants) are marked read and the student gets an `enrollment` notification. Enrolling the
-        student later still admits them. 404 when the student has no application; 409
-        `details.reason = not_pending` once it is admitted or declined.
-      parameters:
-        - $ref: '#/components/parameters/StudentIdPath'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DeclineAdmissionRequest'
-            example:
-              reason: Grade 7 is full for this school year. Please apply again in May.
-      responses:
-        '200': { $ref: '#/components/responses/StudentResponse' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
   /teachers:
     get:
       tags: [teachers]
@@ -1222,6 +1223,14 @@ paths:
         it, or the next year has already passed; `finished` after passing the highest grade level. For
         `promoted` and `retained`, `classes` lists the sections of `gradeLevel` in `academicYear` (the year after
         the completed one) the student may pick; it is empty until the school creates them.
+
+        `new` is a student who signed up and was never placed (the application is still `pending`): `classes`
+        lists the sections of the grade applied for in the current school year, and nobody approves the pick.
+        An application declined in the past is `needs_placement`.
+
+        Each section carries `enrolled` (students in it now) and `seats`, what it takes from students enrolling
+        themselves: 35, or 45 in every section of the grade and year once each of them has 35. A section with
+        `enrolled >= seats` is full. The office enrolls beyond the seats.
       responses:
         '200': { $ref: '#/components/responses/NextClassStandingResponse' }
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -1234,9 +1243,12 @@ paths:
         Roles: student.
 
         The standing of `GET /enrollments/next-class` is worked out again: 409 with `details.reason =
-        not_eligible` (and `details.standing`) unless it is `promoted` or `retained`; 400 `class_not_offered`
-        when `classId` is not one of its `classes`. Otherwise this is `POST /enrollments` for the caller (same
-        checks, notifications and activity entry). Returns the new enrollment.
+        not_eligible` (and `details.standing`) unless it is `promoted`, `retained` or `new`; 400
+        `class_not_offered` when `classId` is not one of its `classes`; 409 `class_full` (with
+        `details.classId`, `enrolled` and `seats`) when the section has no seat left, counted when the
+        enrollment is written, so two students cannot take the last seat. Otherwise this is `POST /enrollments`
+        for the caller (same checks, notifications and activity entry), which admits a `new` student's
+        application. Returns the new enrollment.
       requestBody:
         required: true
         content:
@@ -2513,6 +2525,99 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/HealthResponse' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /assistant-requests:
+    get:
+      tags: [assistant requests]
+      operationId: listAssistantRequests
+      summary: List student assistant sign-ups
+      description: |
+        Roles: admin, assistant (approved student assistants only).
+
+        The requests of student assistants who signed up, with the applicant's contact details and who
+        decided. Search matches first name, last name, full name and email. Default order: oldest request
+        first.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Search'
+        - name: sortBy
+          in: query
+          description: Sort field.
+          schema:
+            type: string
+            enum: [requestedAt, decidedAt, lastName]
+        - $ref: '#/components/parameters/SortOrder'
+        - name: status
+          in: query
+          description: Only requests with this status.
+          schema:
+            $ref: '#/components/schemas/AssistantRequestStatus'
+      responses:
+        '200': { $ref: '#/components/responses/AssistantRequestListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /assistant-requests/{userId}/approve:
+    post:
+      tags: [assistant requests]
+      operationId: approveAssistantRequest
+      summary: Approve a student assistant sign-up
+      description: |
+        Roles: admin, assistant (approved student assistants only).
+
+        From the applicant's next request on, they work in the office like any student assistant. The
+        office's `signup` notifications of the request are marked read and the applicant gets a `signup`
+        notification. 404 when the account has no request; 409 `details.reason = not_pending` once it is
+        approved or declined.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: The applicant's account id.
+          schema:
+            $ref: '#/components/schemas/Id'
+      responses:
+        '200': { $ref: '#/components/responses/AssistantRequestResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /assistant-requests/{userId}/decline:
+    post:
+      tags: [assistant requests]
+      operationId: declineAssistantRequest
+      summary: Decline a student assistant sign-up
+      description: |
+        Roles: admin, assistant (approved student assistants only).
+
+        Declines with a reason the applicant reads on `GET /auth/me`. The account stays, without any access
+        beyond `/auth/me`; an admin may delete it (`DELETE /users/{id}`) while it has no school records. The
+        office's `signup` notifications of the request are marked read and the applicant gets a `signup`
+        notification. 404 when the account has no request; 409 `details.reason = not_pending` once it is
+        approved or declined.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: The applicant's account id.
+          schema:
+            $ref: '#/components/schemas/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeclineAssistantRequest'
+            example:
+              reason: We have enough student assistants this semester.
+      responses:
+        '200': { $ref: '#/components/responses/AssistantRequestResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
 components:
   securitySchemes:
     bearerAuth:
@@ -2743,7 +2848,10 @@ components:
     AdmissionStatus:
       type: string
       enum: [pending, admitted, declined]
-      description: pending = the school office checks the documents; admitted = enrolled in a class; declined = with a reason.
+      description: >-
+        pending = signed up, no class yet (the school office checks the documents); admitted = enrolled in a
+        class; declined = with a reason, only on applications declined before students picked their class
+        (nothing declines one any more).
     AttendanceStatus:
       type: string
       enum: [present, absent, late, excused]
@@ -3122,6 +3230,13 @@ components:
               description: Present for students only; `null` while they have no active enrollment.
               allOf:
                 - $ref: '#/components/schemas/CurrentEnrollment'
+            assistantRequest:
+              nullable: true
+              description: >-
+                Present for student assistants only: where their sign-up stands. `null` for an assistant
+                created before sign-up existed, who counts as approved.
+              allOf:
+                - $ref: '#/components/schemas/OwnAssistantRequest'
     Student:
       allOf:
         - $ref: '#/components/schemas/StudentProfile'
@@ -3267,8 +3382,7 @@ components:
       required: [status, lastClass, generalAverage, failedSubjects, gradeLevel, academicYear, classes]
       properties:
         status:
-          type: string
-          enum: [enrolled, needs_placement, promoted, remedial, retained, finished]
+          $ref: '#/components/schemas/NextClassStandingStatus'
         lastClass:
           description: The current class (`enrolled`) or the last completed one; null when there is none.
           nullable: true
@@ -3295,7 +3409,7 @@ components:
               percentage:
                 type: number
         gradeLevel:
-          description: The grade level the student may enroll in (`promoted`, `retained`), else null.
+          description: The grade level the student may enroll in (`promoted`, `retained`, `new`), else null.
           type: integer
           nullable: true
           example: 5
@@ -3307,7 +3421,7 @@ components:
         classes:
           type: array
           items:
-            $ref: '#/components/schemas/Class'
+            $ref: '#/components/schemas/NextClassSection'
     Enrollment:
       type: object
       required: [id, studentId, student, classId, class, status, enrolledOn, leftOn, createdAt, updatedAt]
@@ -4732,23 +4846,12 @@ components:
           $ref: '#/components/schemas/Phone'
     RegisterRequest:
       description: |
-        Account fields, the student details and the application. The guardian and the grade applied for are
-        required here (not when an admin creates a student). There is no `role`; it is always `student`.
-      allOf:
-        - $ref: '#/components/schemas/AccountFields'
-        - $ref: '#/components/schemas/StudentDetails'
-        - type: object
-          required: [guardianName, guardianPhone, gradeLevel]
-          properties:
-            gradeLevel:
-              type: integer
-              minimum: 1
-              maximum: 12
-              description: The grade applied for.
-            previousSchool:
-              type: string
-              maxLength: 150
-              description: Optional; blank is stored as no value.
+        A student (`accountType` omitted or `student`): account fields, the student details and the
+        application; the guardian and the grade applied for are required here (not when an admin creates a
+        student). A student assistant (`accountType: assistant`): account fields only. There is no `role`.
+      oneOf:
+        - $ref: '#/components/schemas/RegisterStudentRequest'
+        - $ref: '#/components/schemas/RegisterAssistantRequest'
     StudentProfileInput:
       description: Every field is optional; a missing number is generated and a missing `admissionDate` is today.
       allOf:
@@ -4775,19 +4878,19 @@ components:
           type: string
           maxLength: 150
     CreateUserRequest:
-      description: Account fields, the role and the matching profile (none for `admin` and `assistant`).
+      description: >-
+        Account fields, the role and the matching profile (none for `admin`). There is no `assistant`: student
+        assistants sign up themselves.
       oneOf:
         - $ref: '#/components/schemas/CreateStudentUser'
         - $ref: '#/components/schemas/CreateTeacherUser'
         - $ref: '#/components/schemas/CreateAdminUser'
-        - $ref: '#/components/schemas/CreateAssistantUser'
       discriminator:
         propertyName: role
         mapping:
           student: '#/components/schemas/CreateStudentUser'
           teacher: '#/components/schemas/CreateTeacherUser'
           admin: '#/components/schemas/CreateAdminUser'
-          assistant: '#/components/schemas/CreateAssistantUser'
     CreateStudentUser:
       allOf:
         - $ref: '#/components/schemas/AccountFields'
@@ -4819,15 +4922,6 @@ components:
             role:
               type: string
               enum: [admin]
-    CreateAssistantUser:
-      allOf:
-        - $ref: '#/components/schemas/AccountFields'
-        - type: object
-          required: [role]
-          properties:
-            role:
-              type: string
-              enum: [assistant]
     UpdateMeRequest:
       type: object
       additionalProperties: false
@@ -5258,16 +5352,6 @@ components:
           type: boolean
         reportCardReceived:
           type: boolean
-    DeclineAdmissionRequest:
-      type: object
-      additionalProperties: false
-      required: [reason]
-      properties:
-        reason:
-          type: string
-          minLength: 1
-          maxLength: 255
-          description: Shown to the applicant on their dashboard.
     CreateScheduleRequest:
       type: object
       additionalProperties: false
@@ -5478,6 +5562,134 @@ components:
           $ref: '#/components/schemas/CreateAnnouncementRequest/properties/publishedAt'
         expiresAt:
           $ref: '#/components/schemas/CreateAnnouncementRequest/properties/expiresAt'
+    # --- Sign-up: new students' sections, student assistants' requests ---
+    RegisterStudentRequest:
+      allOf:
+        - $ref: '#/components/schemas/AccountFields'
+        - $ref: '#/components/schemas/StudentDetails'
+        - type: object
+          required: [guardianName, guardianPhone, gradeLevel]
+          properties:
+            accountType:
+              type: string
+              enum: [student]
+              default: student
+            gradeLevel:
+              type: integer
+              minimum: 1
+              maximum: 12
+              description: The grade applied for.
+            previousSchool:
+              type: string
+              maxLength: 150
+              description: Optional; blank is stored as no value.
+    RegisterAssistantRequest:
+      description: The account fields only; student details and application fields are rejected.
+      allOf:
+        - $ref: '#/components/schemas/AccountFields'
+        - type: object
+          required: [accountType]
+          properties:
+            accountType:
+              type: string
+              enum: [assistant]
+    NextClassStandingStatus:
+      type: string
+      description: >-
+        Where a student without a class stands (see `GET /enrollments/next-class`); `new` = signed up and never
+        placed.
+      enum: [enrolled, needs_placement, promoted, remedial, retained, finished, new]
+    NextClassSection:
+      description: A section the student may pick, with its seats for students enrolling themselves.
+      allOf:
+        - $ref: '#/components/schemas/Class'
+        - type: object
+          required: [enrolled, seats]
+          properties:
+            enrolled:
+              type: integer
+              description: Students with an active enrollment (the same as `studentCount`).
+              example: 28
+            seats:
+              type: integer
+              description: >-
+                Seats for students enrolling themselves: 35, or 45 once every section of the grade and year has
+                35. Full when `enrolled >= seats`.
+              example: 35
+    AssistantRequestStatus:
+      type: string
+      enum: [pending, approved, declined]
+      description: >-
+        pending = no office access until the school office approves; approved = works in the office; declined =
+        with a reason, no office access.
+    OwnAssistantRequest:
+      type: object
+      required: [status, declineReason, requestedAt]
+      properties:
+        status:
+          $ref: '#/components/schemas/AssistantRequestStatus'
+        declineReason:
+          type: string
+          nullable: true
+          description: Set when `status` is `declined`, `null` otherwise.
+        requestedAt:
+          $ref: '#/components/schemas/Timestamp'
+    AssistantRequest:
+      type: object
+      required:
+        [
+          userId,
+          firstName,
+          lastName,
+          email,
+          phone,
+          isActive,
+          status,
+          declineReason,
+          requestedAt,
+          decidedAt,
+          decidedBy,
+        ]
+      properties:
+        userId:
+          $ref: '#/components/schemas/Id'
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          $ref: '#/components/schemas/Email'
+        phone:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        status:
+          $ref: '#/components/schemas/AssistantRequestStatus'
+        declineReason:
+          type: string
+          nullable: true
+        requestedAt:
+          $ref: '#/components/schemas/Timestamp'
+        decidedAt:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+        decidedBy:
+          nullable: true
+          description: The admin or assistant who approved or declined; null while pending.
+          allOf:
+            - $ref: '#/components/schemas/PersonRef'
+    DeclineAssistantRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Shown to the applicant (`GET /auth/me`).
   responses:
     # --- Errors: each response carries the error envelope and the X-Request-Id header ---
     BadRequest:
@@ -5567,6 +5779,15 @@ components:
                   message: this account is not registered in the school system; contact an administrator
                   details:
                     firebaseUid: f1R3b4s3Uid
+            assistantNotApproved:
+              summary: Student assistant whose sign-up is not approved
+              value:
+                success: false
+                error:
+                  code: FORBIDDEN
+                  message: your request to be a student assistant is waiting for the school office to approve it
+                  details:
+                    reason: assistant_not_approved
     NotFound:
       description: >-
         The record does not exist or is not visible to the caller, or the route is unknown (`NOT_FOUND`);
@@ -6620,3 +6841,42 @@ components:
                       className: Grade 7 - A
                       subjectName: Biology
                   recentAnnouncements: []
+    AssistantRequestResponse:
+      description: The student assistant's request.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - { type: object, properties: { data: { $ref: '#/components/schemas/AssistantRequest' } } }
+          example:
+            success: true
+            data:
+              userId: 52
+              firstName: Joy
+              lastName: Bautista
+              email: joy.bautista@example.com
+              phone: +63 917 555 0123
+              isActive: true
+              status: approved
+              declineReason: null
+              requestedAt: '2026-10-11T01:15:00.000Z'
+              decidedAt: '2026-10-11T02:40:00.000Z'
+              decidedBy: { id: 1, firstName: Amara, lastName: Johnson }
+    AssistantRequestListResponse:
+      description: A page of student assistant requests.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/PagedEnvelope'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AssistantRequest'

@@ -85,7 +85,8 @@ function readCodeOperations() {
       const routeRoles = rolesIn(call.args);
       operations.set(`${call.method.toUpperCase()} ${fullPath}`, {
         roles: routeRoles.length ? routeRoles : mount.roles,
-        isPublic: !mount.authenticated && !/\bauthenticate\b/.test(call.args),
+        // authenticate, or authenticateOwnAccount (/auth/me, open to an assistant awaiting approval).
+        isPublic: !mount.authenticated && !/\bauthenticate(OwnAccount)?\b/.test(call.args),
       });
     }
   }
@@ -277,6 +278,8 @@ describe('OpenAPI specification', () => {
       NotificationType: shared.NOTIFICATION_TYPES,
       DayOfWeek: shared.DAYS_OF_WEEK,
       ErrorCode: Object.keys(shared.ERROR_CODES),
+      AssistantRequestStatus: shared.ASSISTANT_REQUEST_STATUSES,
+      NextClassStandingStatus: shared.NEXT_CLASS_STANDINGS,
     };
     for (const [schema, values] of Object.entries(enums)) {
       assert.deepEqual(sorted(schemas[schema].enum), sorted(values), `${schema} enum`);

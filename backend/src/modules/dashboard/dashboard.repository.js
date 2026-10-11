@@ -6,7 +6,10 @@ import { query } from '../../config/db.js';
 import { WhereBuilder } from '../../utils/sql.js';
 import { WITHOUT_A_CLASS } from '../students/students.repository.js';
 
-/** `unenrolled_students` counts like GET /students?hasActiveEnrollment=false&isActive=true (no applicants). */
+/**
+ * `unenrolled_students` counts like GET /students?hasActiveEnrollment=false&isActive=true (pending applicants
+ * included, applications declined in the past left out).
+ */
 export async function findAdminCounts(academicYear) {
   const rows = await query(
     `SELECT

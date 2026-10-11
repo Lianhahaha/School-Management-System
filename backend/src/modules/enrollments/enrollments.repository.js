@@ -117,3 +117,19 @@ export function findActiveByStudents(studentIds, conn, { forUpdate = false } = {
     conn,
   );
 }
+
+/**
+ * Map classId -> number of active enrollments, for these classes (a class without any is absent). A locking
+ * read (FOR SHARE): it counts every committed row, not the transaction's snapshot, which an earlier plain read
+ * in the same transaction may have fixed before a concurrent enrollment committed.
+ */
+export async function countActiveByClass(classIds, conn) {
+  if (!classIds.length) return new Map();
+  const rows = await query(
+    `SELECT class_id, COUNT(*) AS enrolled FROM enrollments WHERE class_id IN (?) AND status = 'active'
+      GROUP BY class_id FOR SHARE`,
+    [classIds],
+    conn,
+  );
+  return new Map(rows.map((row) => [row.classId, row.enrolled]));
+}

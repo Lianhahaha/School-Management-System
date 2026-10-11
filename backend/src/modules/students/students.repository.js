@@ -29,10 +29,12 @@ const FROM = `FROM students s
   LEFT JOIN admissions ad ON ad.student_id = s.id`;
 
 /**
- * Students without a class whom an admin still has to place: an applicant who is pending or declined belongs
- * to the Admissions page instead. The dashboard's unenrolled count uses the same rule (aliases e and ad).
+ * Students without a class who are still to get one: a pending applicant counts (nobody approves applications;
+ * they pick a section themselves, or the office places them), but not an application declined before students
+ * picked their class: the school turned that student away. The dashboard's unenrolled count uses the same rule
+ * (aliases e and ad).
  */
-export const WITHOUT_A_CLASS = "e.id IS NULL AND (ad.status IS NULL OR ad.status = 'admitted')";
+export const WITHOUT_A_CLASS = "e.id IS NULL AND (ad.status IS NULL OR ad.status <> 'declined')";
 
 export async function findStudentById(id) {
   return (await query(`SELECT ${COLUMNS} ${FROM} WHERE s.id = ?`, [id]))[0] ?? null;

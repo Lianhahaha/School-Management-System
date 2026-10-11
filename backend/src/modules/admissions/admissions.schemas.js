@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { id, patchOf, shortText } from '../../utils/zod/common.js';
+import { id, patchOf } from '../../utils/zod/common.js';
 
 /** Applications are keyed by the student: /admissions/:studentId. */
 export const studentIdParams = z.strictObject({ studentId: id });
@@ -9,6 +9,3 @@ export const updateChecklistBody = patchOf({
   birthCertificateReceived: z.boolean(),
   reportCardReceived: z.boolean(),
 });
-
-/** The reason is shown to the applicant (decline_reason is VARCHAR(255)). */
-export const declineBody = z.strictObject({ reason: shortText(255).min(1, { error: 'required' }) });
