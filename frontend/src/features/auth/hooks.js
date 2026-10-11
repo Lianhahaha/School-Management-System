@@ -29,9 +29,11 @@ export function useLogin() {
 }
 
 /**
- * Student self-registration followed by an automatic sign-in. Rejects with an ApiError from the
- * registration call (map it with applyServerErrors). If only the sign-in fails, the account exists,
- * so the user is sent to /login with a notice instead. Silent: the form renders the error itself.
+ * Self-registration (a student, or a student assistant: `accountType`) followed by an automatic sign-in;
+ * the guards then open the student's dashboard, where they pick a class, or the assistant's waiting screen.
+ * Rejects with an ApiError from the registration call (map it with applyServerErrors). If only the sign-in
+ * fails, the account exists, so the user is sent to /login with a notice instead. Silent: the form renders
+ * the error itself.
  */
 export function useRegister() {
   const navigate = useNavigate();
@@ -39,7 +41,9 @@ export function useRegister() {
   const { setAuthNotice } = useAuth();
 
   return useMutation({
-    mutationFn: async (/** @type {{ firstName: string, email: string, password: string }} */ body) => {
+    mutationFn: async (
+      /** @type {{ accountType: 'student' | 'assistant', firstName: string, email: string, password: string }} */ body,
+    ) => {
       await register(body);
       try {
         await signInWithEmailAndPassword(auth, body.email, body.password);
@@ -50,11 +54,17 @@ export function useRegister() {
       }
     },
     onSuccess: ({ isSignedIn }, body) => {
+      const isAssistant = body.accountType === 'assistant';
       if (isSignedIn) {
-        toast.success(`Welcome, ${body.firstName}!`);
+        toast.success(isAssistant ? 'Request sent' : `Welcome, ${body.firstName}!`);
         return;
       }
-      setAuthNotice({ tone: 'success', message: 'Account created. Please sign in.' });
+      setAuthNotice({
+        tone: 'success',
+        message: isAssistant
+          ? 'Request sent. Sign in to see where it stands.'
+          : 'Account created. Please sign in.',
+      });
       navigate('/login', { replace: true });
     },
     onError: (error) => {

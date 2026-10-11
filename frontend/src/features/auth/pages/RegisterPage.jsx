@@ -11,7 +11,7 @@ export default function RegisterPage() {
     <>
       <AuthHeading
         title="Create your account"
-        description="Apply as a student. Sign in any time to see where your application stands."
+        description="Sign up as a student, or as a student assistant for the school office."
       />
       {isRegistrationClosed ? <RegistrationClosed /> : <RegisterForm />}
       <p className="mt-6 text-center text-sm text-gray-600">

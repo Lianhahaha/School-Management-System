@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { ROLES } from '../src/constants/shared';
+import { CREATABLE_ROLE_OPTIONS } from '../src/constants/ui';
+import { isAwaitingApproval } from '../src/features/assistantRequests/status';
 import { PERMISSIONS, can, roleHome, roleLabel } from '../src/utils/roles';
 
-/** What a student assistant may do: everyday office work (backend tests/assistant.test.js, allowed side). */
+/**
+ * What an approved student assistant may do: everyday office work (backend tests/assistant.test.js, allowed
+ * side), approving or declining the sign-ups of other assistants included.
+ */
 const ASSISTANT_ALLOWED = [
   'school.readAll',
+  'assistantRequests.review',
   'enrollments.withdraw',
   'announcements.manageAll',
   'calendar.manage',
@@ -72,5 +78,39 @@ describe('the assistant role in the UI', () => {
   it('is labelled "Student assistant" and works in the admin area', () => {
     expect(roleLabel('assistant')).toBe('Student assistant');
     expect(roleHome('assistant')).toBe('/admin');
+  });
+
+  it('is not offered by the Create user form: assistants sign up themselves (POST /users refuses them)', () => {
+    expect(CREATABLE_ROLE_OPTIONS.map((option) => option.value).sort()).toEqual([
+      'admin',
+      'student',
+      'teacher',
+    ]);
+  });
+});
+
+describe('isAwaitingApproval: who gets the waiting screen instead of the app', () => {
+  const assistant = (assistantRequest) => ({ role: 'assistant', assistantRequest });
+  const request = (status) => ({ status, declineReason: null, requestedAt: '2026-10-11T05:00:00.000Z' });
+
+  it('is a student assistant whose request is pending or declined', () => {
+    expect(isAwaitingApproval(assistant(request('pending')))).toBe(true);
+    expect(isAwaitingApproval(assistant({ ...request('declined'), declineReason: 'Enough this term' }))).toBe(
+      true,
+    );
+  });
+
+  it('lets an approved assistant in, and one created before sign-up existed (no request)', () => {
+    expect(isAwaitingApproval(assistant(request('approved')))).toBe(false);
+    expect(isAwaitingApproval(assistant(null))).toBe(false);
+    expect(isAwaitingApproval({ role: 'assistant' })).toBe(false);
+  });
+
+  it('never stops the other roles, nor a signed-out user', () => {
+    for (const role of ['admin', 'teacher', 'student']) {
+      expect(isAwaitingApproval({ role, assistantRequest: request('pending') })).toBe(false);
+    }
+    expect(isAwaitingApproval(null)).toBe(false);
+    expect(isAwaitingApproval(undefined)).toBe(false);
   });
 });

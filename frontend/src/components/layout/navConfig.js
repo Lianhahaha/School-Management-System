@@ -20,6 +20,7 @@ import {
   LayoutDashboard,
   Megaphone,
   School,
+  UserCheck,
   Users,
   Wallet,
 } from 'lucide-react';
@@ -31,6 +32,12 @@ const OFFICE_NAV = Object.freeze([
   { label: 'Users', to: '/admin/users', icon: Users, adminOnly: true },
   { label: 'Students', to: '/admin/students', icon: GraduationCap, tab: true, badge: 'unenrolledStudents' },
   { label: 'Admissions', to: '/admin/admissions', icon: FileCheck, badge: 'pendingApplications' },
+  {
+    label: 'Assistant requests',
+    to: '/admin/assistant-requests',
+    icon: UserCheck,
+    badge: 'pendingAssistantRequests',
+  },
   { label: 'Teachers', to: '/admin/teachers', icon: BookUser },
   { label: 'Subjects', to: '/admin/subjects', icon: BookOpen },
   { label: 'Classes', to: '/admin/classes', icon: School, tab: true },

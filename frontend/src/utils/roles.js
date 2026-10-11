@@ -31,6 +31,12 @@ export const PERMISSIONS = Object.freeze({
   'users.setStatus': ADMIN,
   /** Delete an account created by mistake (DELETE /users/:id). */
   'users.delete': ADMIN,
+  /**
+   * The sign-ups of student assistants: list, approve and decline them (/assistant-requests), and the count
+   * beside the menu entry. Only an approved assistant gets this far (RequireAuth shows the others a waiting
+   * screen). Nobody creates an assistant account: POST /users refuses the role.
+   */
+  'assistantRequests.review': OFFICE,
   /** Create a teacher account (POST /users) and edit a teacher's record (PATCH /teachers/:id). */
   'teachers.manage': ADMIN,
   /** Close an active enrollment as withdrawn (PATCH /enrollments/:id). */

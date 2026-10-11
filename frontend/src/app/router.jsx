@@ -48,6 +48,10 @@ const adminRoutes = [
     element: page(() => import('../features/students/pages/StudentDetailPage')),
   },
   { path: 'admissions', element: page(() => import('../features/admissions/pages/AdmissionsPage')) },
+  {
+    path: 'assistant-requests',
+    element: page(() => import('../features/assistantRequests/pages/AssistantRequestsPage')),
+  },
   { path: 'teachers', element: page(() => import('../features/teachers/pages/TeachersListPage')) },
   {
     path: 'teachers/:teacherId',
@@ -98,7 +102,8 @@ const studentRoutes = [
  * The route tree. Guards are layout routes, so a page cannot be added without one:
  *   PublicOnly > AuthLayout                         sign in, register, forgot password
  *   RequireAuth > AppShell > RequireRole(role)      everything else (admin-only pages nest a second one)
- * `*` sits inside the shell, so a signed-out visitor who mistypes a URL is sent to /login first.
+ * `*` sits inside the shell, so a signed-out visitor who mistypes a URL is sent to /login first. A student
+ * assistant whose sign-up is not approved never gets past RequireAuth: it shows them a waiting screen.
  */
 export const router = createBrowserRouter([
   {

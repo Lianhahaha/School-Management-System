@@ -6,7 +6,7 @@ import { Input } from '../../../components/ui/Input';
 import { PasswordInput } from '../../../components/ui/PasswordInput';
 import { Select } from '../../../components/ui/Select';
 import { Textarea } from '../../../components/ui/Textarea';
-import { GENDER_OPTIONS, ROLE_OPTIONS } from '../../../constants/ui';
+import { CREATABLE_ROLE_OPTIONS, GENDER_OPTIONS } from '../../../constants/ui';
 import { applyServerErrors } from '../../../lib/formErrors';
 import { CREATE_USER_FIELDS, CREATE_USER_FIELD_MAP, createUserDefaults, createUserSchema } from '../schemas';
 
@@ -81,9 +81,9 @@ function TeacherProfileFields({ register, errors }) {
 }
 
 /**
- * Create form for an account of any role (POST /users). The role decides the record section: student
- * and teacher fields, none for an administrator or a student assistant (the `profile` key is not sent for
- * them).
+ * Create form for a student, teacher or administrator account (POST /users; student assistants sign up
+ * themselves, so the role picker leaves them out). The role decides the record section: student and teacher
+ * fields, none for an administrator (the `profile` key is not sent).
  * `mutation` is useCreateUser(), owned by the modal so its submit button can show the pending state;
  * `trackDirty(isDirty)` lets the modal ask "Discard changes?" before closing.
  */
@@ -136,9 +136,9 @@ export function CreateUserForm({ formId, lockedRole, mutation, onClose, trackDir
         </FormField>
         <FormField label="Role" error={errors.role?.message} required>
           {lockedRole ? (
-            <Select value={lockedRole} options={ROLE_OPTIONS} disabled onChange={() => {}} />
+            <Select value={lockedRole} options={CREATABLE_ROLE_OPTIONS} disabled onChange={() => {}} />
           ) : (
-            <Select {...register('role')} options={ROLE_OPTIONS} />
+            <Select {...register('role')} options={CREATABLE_ROLE_OPTIONS} />
           )}
         </FormField>
       </div>

@@ -13,6 +13,7 @@ import {
   ANNOUNCEMENT_AUDIENCES,
   ANNOUNCEMENT_STATUSES,
   ASSESSMENT_TYPES,
+  ASSISTANT_REQUEST_STATUSES,
   ATTENDANCE_STATUSES,
   CALENDAR_EVENT_TYPES,
   DAYS_OF_WEEK,
@@ -91,6 +92,8 @@ export const ROLE_TONES = Object.freeze({
   assistant: 'violet',
 });
 export const ROLE_OPTIONS = optionsOf(ROLES, ROLE_LABELS);
+/** The roles the Create user form offers: student assistants sign up themselves (POST /users refuses them). */
+export const CREATABLE_ROLE_OPTIONS = ROLE_OPTIONS.filter((option) => option.value !== 'assistant');
 
 /**
  * Where each role lands after signing in; also the prefix of that role's route area. A student assistant
@@ -119,13 +122,38 @@ export const ENROLLMENT_STATUS_TONES = Object.freeze({
   withdrawn: 'amber',
 });
 
-/** The status filter of the Admissions page (it opens on `pending`). */
+/**
+ * The status filter and tags of the Admissions page (it opens on `pending`). Nothing declines an application
+ * any more, so `declined` (left on a few old ones) is neither labelled nor offered.
+ */
 export const ADMISSION_STATUS_LABELS = Object.freeze({
-  pending: 'Pending',
+  pending: 'Waiting to pick a class',
   admitted: 'Admitted',
+});
+export const ADMISSION_STATUS_OPTIONS = optionsOf(
+  ADMISSION_STATUSES.filter((status) => Object.hasOwn(ADMISSION_STATUS_LABELS, status)),
+  ADMISSION_STATUS_LABELS,
+);
+
+/**
+ * Where a student assistant's sign-up stands (the Assistant requests page opens on `pending`). Squared tags in
+ * the school palette: cream while it waits, the "on" green once approved, a grey outline once declined.
+ */
+export const ASSISTANT_REQUEST_STATUS_LABELS = Object.freeze({
+  pending: 'Pending',
+  approved: 'Approved',
   declined: 'Declined',
 });
-export const ADMISSION_STATUS_OPTIONS = optionsOf(ADMISSION_STATUSES, ADMISSION_STATUS_LABELS);
+export const ASSISTANT_REQUEST_STATUS_TONES = Object.freeze({
+  pending: 'cream',
+  approved: 'green',
+  declined: 'gray',
+});
+/** The status filter of the Assistant requests page, which also accepts `all`. */
+export const ASSISTANT_REQUEST_STATUS_FILTER_OPTIONS = Object.freeze([
+  ...optionsOf(ASSISTANT_REQUEST_STATUSES, ASSISTANT_REQUEST_STATUS_LABELS),
+  { value: 'all', label: 'All' },
+]);
 
 export const ATTENDANCE_STATUS_LABELS = Object.freeze({
   present: 'Present',

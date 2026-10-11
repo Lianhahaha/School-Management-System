@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { auth } from '../../config/firebase';
 import { ERROR_CODES } from '../../constants/shared';
 import { SESSION_EXPIRED_MESSAGE, SIGN_OUT_MESSAGES } from '../../constants/ui';
+import { isAwaitingApproval } from '../../features/assistantRequests/status';
 import { getMe } from '../../features/auth/api';
 import { AuthContext } from '../../features/auth/authContext';
 import { authKeys } from '../../features/auth/keys';
@@ -79,10 +80,15 @@ export function AuthProvider({ children }) {
     retry: (failureCount, error) => Boolean(error?.isTransient) && failureCount < 1,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: true, // picks up a deactivation or profile change made by an administrator
-    // A student's class lives in this session (currentEnrollment): refresh it now and then, so an
-    // enrollment or transfer made by an administrator shows without a reload. A failed background
-    // refresh keeps the current session (status stays 'authenticated' while data is present).
-    refetchInterval: (query) => (query.state.data?.role === 'student' ? 60_000 : false),
+    // A student's class lives in this session (currentEnrollment), and so does where a student assistant's
+    // sign-up stands: refresh them now and then, so an enrollment or transfer made by an administrator, or
+    // the office's approval, shows without a reload. A failed background refresh keeps the current session
+    // (status stays 'authenticated' while data is present).
+    refetchInterval: (query) => {
+      const account = query.state.data;
+      if (account?.role === 'student') return 60_000;
+      return isAwaitingApproval(account) ? 30_000 : false;
+    },
   });
 
   const status = deriveStatus(session, meQuery);

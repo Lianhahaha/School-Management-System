@@ -4,7 +4,9 @@ import { createContext } from 'react';
  * What AuthProvider shares (read it through `useAuth()`):
  *   status      'initializing' | 'anonymous' | 'resolving' | 'authenticated' | 'profile-error'
  *   firebaseUser the Firebase user, used for the ID token only; never render its fields
- *   me          the GET /auth/me account when status is 'authenticated', else null
+ *   me          the GET /auth/me account when status is 'authenticated', else null (a student assistant's
+ *               carries `assistantRequest`; while it is pending or declined RequireAuth shows only the
+ *               waiting screen, see features/assistantRequests/status.js)
  *   role        me.role, or null
  *   authNotice  { tone, message } shown on the sign-in page after a forced sign-out, or null
  *   setAuthNotice(notice | null)

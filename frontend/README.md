@@ -129,9 +129,11 @@ the `{ success, data, meta }` envelope, with `toData` and `toPage` from `lib/env
 3. Write the page as the default export of a file in `features/<feature>/pages/`, then add its route to
    `src/app/router.jsx`, inside the matching `RequireRole` area, with `page(() => import('...'))`; add a
    sidebar entry in `components/layout/navConfig.js` if it needs one. The admin area is the office's: the
-   student assistant shares it. A page for the admin alone nests `<RequireRole roles={['admin']} />` and
-   its sidebar entry is `adminOnly`; an action for the admin alone is hidden with `can(role, action)` from
-   `utils/roles.js`, whose `PERMISSIONS` mirror the backend's `authorize()` lists.
+   student assistant shares it once the office has approved their sign-up (until then `RequireAuth` shows
+   them only a waiting screen, which makes no request but `/auth/me`). A page for the admin alone nests
+   `<RequireRole roles={['admin']} />` and its sidebar entry is `adminOnly`; an action for the admin alone is
+   hidden with `can(role, action)` from `utils/roles.js`, whose `PERMISSIONS` mirror the backend's
+   `authorize()` lists.
 
 Error policy (in `lib/queryClient.js`): a first-load query error renders `<ErrorState>` in the page, a
 background refetch error is a toast; a mutation error is a toast except validation errors and mapped

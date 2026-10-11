@@ -4,6 +4,19 @@ import { Spinner } from '../ui/Spinner';
 import { Brand } from './Brand';
 
 /**
+ * The frame of the full-page screens shown outside the app shell (no sidebar, no top bar): the wordmark
+ * above centred content. SplashScreen and the student assistant's waiting screen use it.
+ */
+export function SplashFrame({ children }) {
+  return (
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-8 px-4 text-center">
+      <Brand />
+      {children}
+    </div>
+  );
+}
+
+/**
  * Full-page screen shown while the session is being resolved (variant "loading"), or when the
  * account could not be loaded because the server is unreachable (variant "error": Retry and Sign out).
  * @param {object} props
@@ -13,8 +26,7 @@ import { Brand } from './Brand';
  */
 export function SplashScreen({ variant = 'loading', onRetry, onSignOut }) {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-8 px-4 text-center">
-      <Brand />
+    <SplashFrame>
       {variant === 'error' ? (
         <div role="alert" className="max-w-sm">
           <h1 className="text-lg font-semibold text-gray-900">Can't reach the server</h1>
@@ -34,6 +46,6 @@ export function SplashScreen({ variant = 'loading', onRetry, onSignOut }) {
       ) : (
         <Spinner size="lg" label="Loading your account" />
       )}
-    </div>
+    </SplashFrame>
   );
 }

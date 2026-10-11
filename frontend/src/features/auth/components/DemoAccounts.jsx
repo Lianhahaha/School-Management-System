@@ -1,21 +1,7 @@
-import { ChevronDown, Copy } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { Badge } from '../../../components/ui/Badge';
-import { Button } from '../../../components/ui/Button';
+import { CopyButton } from '../../../components/ui/CopyButton';
 import { env } from '../../../config/env';
-import { toastBus } from '../../../lib/toastBus';
-
-/** Copies `value`; a browser that refuses (an old one, an insecure page) is told to select the text instead. */
-function CopyButton({ value, label }) {
-  const copy = () =>
-    navigator.clipboard
-      .writeText(value)
-      .then(() => toastBus.success(`${label} copied`))
-      .catch(() => toastBus.info(`Couldn't copy. Select the ${label.toLowerCase()} and copy it instead.`));
-
-  return (
-    <Button variant="ghost" size="sm" icon={Copy} aria-label={`Copy ${label.toLowerCase()}`} onClick={copy} />
-  );
-}
 
 /**
  * The demo sign-ins of a public demo (env.demoAccounts, from the build's VITE_DEMO_ACCOUNTS), folded under the
