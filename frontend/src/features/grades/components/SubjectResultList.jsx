@@ -25,20 +25,26 @@ export function SubjectResultList({ subjects, selectedId, onSelect, teacherOf })
                 onClick={() => onSelect(subject.classSubjectId)}
                 aria-current={selected ? 'true' : undefined}
                 className={cx(
-                  'grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-tile bg-surface px-4 py-3 text-left shadow-card transition-colors hover:bg-gray-50',
+                  'grid w-full gap-y-1 rounded-tile bg-surface px-4 py-3 text-left shadow-card transition-colors hover:bg-gray-50',
                   selected && 'ring-2 ring-gray-900 ring-inset',
                 )}
               >
-                <span className="truncate text-sm font-semibold text-gray-900">{subject.subjectName}</span>
-                <span className="justify-self-end text-lg font-semibold text-gray-900 tabular-nums">
-                  {formatResult(subject.percentage)}
+                {/* Two separate lines, so a long descriptor never narrows the subject's name above it; the
+                    descriptor moves under the teacher when they don't fit side by side. */}
+                <span className="flex items-center justify-between gap-3">
+                  <span className="truncate text-sm font-semibold text-gray-900">{subject.subjectName}</span>
+                  <span className="shrink-0 text-lg font-semibold text-gray-900 tabular-nums">
+                    {formatResult(subject.percentage)}
+                  </span>
                 </span>
-                <span className="truncate text-xs text-gray-600">{teacherOf(subject.classSubjectId)}</span>
-                {subject.percentage !== null ? (
-                  <GradeDescriptor result={subject.percentage} className="justify-self-end" />
-                ) : (
-                  <span className="justify-self-end text-xs text-gray-500">Not graded yet</span>
-                )}
+                <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="text-xs text-gray-600">{teacherOf(subject.classSubjectId)}</span>
+                  {subject.percentage !== null ? (
+                    <GradeDescriptor result={subject.percentage} className="ml-auto" />
+                  ) : (
+                    <span className="ml-auto text-xs text-gray-500">Not graded yet</span>
+                  )}
+                </span>
               </button>
             </li>
           );

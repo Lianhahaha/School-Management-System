@@ -38,7 +38,9 @@ const COLUMNS = [
     key: 'score',
     header: 'Score',
     align: 'right',
-    cell: (row) => formatScore(row.score, row.assessment.maxScore),
+    cell: (row) => (
+      <span className="whitespace-nowrap">{formatScore(row.score, row.assessment.maxScore)}</span>
+    ),
   },
   { key: 'percentage', header: 'Percent', align: 'right', cell: (row) => formatPercentage(row.percentage) },
 ];
