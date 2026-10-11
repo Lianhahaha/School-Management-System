@@ -5,8 +5,8 @@ import { TextLink } from '../../../components/ui/TextLink';
 import { formatResult, resultWidth } from '../../../utils/grades';
 
 /**
- * One row per subject with its final grade so far, the average of its quarterly grades, as a bar (payload
- * `gradeSummary`).
+ * One row per subject with its grade of the school year so far, the average of its semesters' grades (each the
+ * average of its quarterly grades), as a bar (payload `gradeSummary`).
  * A subject graded in two classes this year (the student changed class) shows each class's result, named.
  */
 export function StudentGradeSummaryCard({ subjects }) {

@@ -2,45 +2,56 @@ import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { ErrorState } from '../../../components/ui/ErrorState';
 import { Skeleton } from '../../../components/ui/Skeleton';
+import { SEMESTER_LABELS } from '../../../constants/ui';
 import { formatScore } from '../../../utils/format';
 import {
   describeGrading,
   describeQuarters,
+  describeSemesters,
   formatResult,
   gradedQuarters,
+  gradedSemesters,
   resultWidth,
+  wholeYearRows,
 } from '../../../utils/grades';
-import { useGradeSummary } from '../hooks';
+import { useSemesterSummaries } from '../hooks';
 import { GradeDescriptor } from './GradeDescriptor';
 
 /**
- * How the result was reached: the quarterly grades it averages once more than one quarter is graded, else
- * that quarter's K-12 initial grade, the subject's weights, or its points.
+ * How the result was reached: the semester grades it averages once both semesters have one, else the one
+ * semester that has it: the quarterly grades it averages once more than one quarter is graded, or that
+ * quarter's K-12 initial grade, the subject's weights, or its points.
+ * @param {ReturnType<typeof wholeYearRows>[number]} subject
  */
 function resultBasis(subject) {
-  const graded = `${subject.assessmentsGraded} graded`;
-  if (gradedQuarters(subject).length > 1) return `Average of ${describeQuarters(subject)} · ${graded}`;
-  if (subject.method === 'k12') return `Initial grade ${formatResult(subject.initialGrade)} · ${graded}`;
-  if (subject.method === 'weighted') return `${describeGrading(subject)} · ${graded}`;
-  return `${formatScore(subject.totalScore, subject.totalMaxScore)} points · ${graded}`;
+  const graded = `${subject.rows.reduce((sum, row) => sum + row.assessmentsGraded, 0)} graded`;
+  if (gradedSemesters(subject).length > 1) return `Average of ${describeSemesters(subject)} · ${graded}`;
+  const row = subject.rows.find((candidate) => candidate.percentage !== null) ?? subject.rows[0];
+  const semester = SEMESTER_LABELS[row.semester];
+  if (gradedQuarters(row).length > 1) return `${semester} · Average of ${describeQuarters(row)} · ${graded}`;
+  if (row.method === 'k12')
+    return `${semester} · Initial grade ${formatResult(row.initialGrade)} · ${graded}`;
+  if (row.method === 'weighted') return `${semester} · ${describeGrading(row)} · ${graded}`;
+  return `${semester} · ${formatScore(row.totalScore, row.totalMaxScore)} points · ${graded}`;
 }
 
 /**
- * Grades of one student: a card per class-subject (newest academic year first) with its final grade, its DepEd
- * descriptor and a bar. Each quarter is graded on its own, by K-12 components (transmuted to 60-100), on points
- * (sum of scores / sum of max scores) or with the subject's weights per assessment type, and the final grade
- * is the average of the quarterly grades; the card says how it was reached.
+ * Grades of one student: a card per class-subject (newest academic year first) with its grade, its DepEd
+ * descriptor and a bar: the school year's, or the semester's with `semester`. Each quarter is graded on its
+ * own, by K-12 components (transmuted to 60-100), on points (sum of scores / sum of max scores) or with the
+ * subject's weights per assessment type; a semester's grade is the average of its quarterly grades and the
+ * year's the average of its semesters'. The card says how it was reached.
  * Fetches its own data, so the admin's student page and the student's own pages use the same panel.
  *
  * @param {object} props
  * @param {number|string} props.studentId a student id, or 'me' for the signed-in student
  * @param {string} [props.academicYear] one school year (default: every year)
- * @param {string} [props.term] 'term1' to 'term4' to restrict the summary to one quarter (default: all quarters)
+ * @param {string} [props.semester] 'sem1' or 'sem2' to restrict the summary to one semester (default: both)
  * @param {boolean} [props.enabled] set false to hold the request, for example while a student has no class yet
  */
-export function GradeSummaryPanel({ studentId, academicYear, term, enabled = true }) {
-  const { data, error, isPending, refetch } = useGradeSummary(
-    { studentId, academicYear, term, groupBy: 'classSubject' },
+export function GradeSummaryPanel({ studentId, academicYear, semester, enabled = true }) {
+  const { data, error, isPending, refetch } = useSemesterSummaries(
+    { studentId, academicYear, semester },
     { enabled },
   );
 
@@ -52,7 +63,7 @@ export function GradeSummaryPanel({ studentId, academicYear, term, enabled = tru
 
   return (
     <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {data.map((subject) => (
+      {wholeYearRows(data).map((subject) => (
         <li key={subject.classSubjectId}>
           <Card className="h-full">
             <h3 className="text-sm font-semibold text-gray-900">{subject.subjectName}</h3>

@@ -5,7 +5,7 @@ import { TrendChart } from '../../../components/ui/TrendChart';
 import { formatDate } from '../../../utils/date';
 import { countOf } from '../../../utils/format';
 import { formatPercentage, groupBy, passMarkOf } from '../../../utils/grades';
-import { useAllGrades, useGradeSummary } from '../hooks';
+import { useAllGrades, useSemesterSummaries } from '../hooks';
 
 /** "+6 pts since the first" / "−4 pts since the first" / "same as the first", in percentage points. */
 function changeText(first, latest) {
@@ -24,19 +24,19 @@ function changeText(first, latest) {
  * @param {object} props
  * @param {number} [props.studentId] the student; omit for the signed-in student
  * @param {string} [props.academicYear] one school year (default: every year)
- * @param {string} [props.term] 'term1' to 'term4' to restrict it to one quarter (default: all quarters)
+ * @param {string} [props.semester] 'sem1' or 'sem2' to restrict it to one semester (default: both)
  */
-export function GradeTrendCard({ studentId, academicYear, term }) {
+export function GradeTrendCard({ studentId, academicYear, semester }) {
   const { data, error, isPending, refetch } = useAllGrades({
     studentId,
     academicYear,
-    term,
+    semester,
     sortBy: 'assessedOn',
     sortOrder: 'desc',
   });
-  // The same request as GradeSummaryPanel's beside it; only the grading method of each subject is used. The card
-  // waits for it too: without the method a K-12 subject's dashed line would sit at 75% instead of 60%.
-  const summary = useGradeSummary({ studentId, academicYear, term, groupBy: 'classSubject' });
+  // The same requests as GradeSummaryPanel's beside it; only the grading method of each subject is used. The
+  // card waits for them too: without the method a K-12 subject's dashed line would sit at 75% instead of 60%.
+  const summary = useSemesterSummaries({ studentId, academicYear, semester });
   const methodOf = (classSubjectId) =>
     summary.data.find((row) => row.classSubjectId === classSubjectId)?.method;
 

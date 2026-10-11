@@ -1,37 +1,40 @@
 import { Printer } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { Button } from '../../../components/ui/Button';
-import { APP_NAME, GENDER_LABELS, TERM_LABELS, TERM_SHORT_LABELS } from '../../../constants/ui';
+import { PASSING_GRADE } from '../../../constants/shared';
+import { APP_NAME, GENDER_LABELS, SEMESTER_LABELS } from '../../../constants/ui';
 import { academicYearStart, ageOn, formatDate, todayYmd } from '../../../utils/date';
-import { PASSING_GRADE, TERMS } from '../../../constants/shared';
 import {
   describeWeights,
   descriptorOf,
   formatResult,
   generalAverage,
   remarksOf,
+  wholeYearRows,
 } from '../../../utils/grades';
 import { fullName } from '../../../utils/names';
-import { useGradeSummary } from '../hooks';
+import { useSemesterSummaries } from '../hooks';
+import { gradeColumnsOf } from '../periods';
 
-/** The grades on a report card. The card and its Print button share this request (one cache entry). */
-const useReportCardSubjects = ({ studentId, academicYear, term }) =>
-  useGradeSummary({ studentId, academicYear, term, groupBy: 'classSubject' });
+/** The grades on a report card. The card and its Print button share these requests (one cache entry each). */
+const useReportCardSummaries = ({ studentId, academicYear, semester }) =>
+  useSemesterSummaries({ studentId, academicYear, semester });
 
 /**
  * Opens the browser's print dialog; the report card below replaces the page on paper. Until the card's grades
  * have arrived the button is disabled and says why on hover, so a half-loaded card is never printed as if the
- * student had no grades. Pass the same `studentId`, `academicYear` and `term` as the ReportCard.
+ * student had no grades. Pass the same `studentId`, `academicYear` and `semester` as the ReportCard: it
+ * prints the period the page shows.
  *
  * @param {object} props
  * @param {number|string} props.studentId a student id, or 'me'
  * @param {string} props.academicYear
- * @param {string} [props.term]
+ * @param {string} [props.semester] 'sem1' or 'sem2' for one semester; omit for the whole year
  */
-export function PrintReportCardButton({ studentId, academicYear, term }) {
-  const { data, isError } = useReportCardSubjects({ studentId, academicYear, term });
+export function PrintReportCardButton({ studentId, academicYear, semester }) {
+  const { data, error } = useReportCardSummaries({ studentId, academicYear, semester });
   const isReady = data !== undefined;
-  const blockedReason = isError ? "The grades couldn't be loaded" : 'The grades are still loading';
+  const blockedReason = error ? "The grades couldn't be loaded" : 'The grades are still loading';
   return (
     <span title={isReady ? undefined : blockedReason}>
       <Button
@@ -48,31 +51,14 @@ export function PrintReportCardButton({ studentId, academicYear, term }) {
 }
 
 /**
- * The columns between a subject's class and its grade: for the whole school year its quarterly grades, Q1 to
- * Q4, as the SF9 prints them (the grade is then their average, the final grade); for one quarter how many
- * assessments are graded and the initial grade.
- * @param {string} [term]
- */
-const gradeColumnsOf = (term) =>
-  term
-    ? [
-        { header: 'Graded', cell: (subject) => subject.assessmentsGraded },
-        { header: 'Initial', cell: (subject) => formatResult(subject.initialGrade) },
-      ]
-    : TERMS.map((quarter) => ({
-        header: TERM_SHORT_LABELS[quarter],
-        cell: (subject) => formatResult(subject.quarters[quarter]),
-      }));
-
-/**
  * A student's report card for paper (DepEd SF9): who (with LRN, sex and the age on the first day of the school
- * year, as on the SF1), which class, school year and quarter, per subject its quarterly grades and final grade
- * (their average) for the whole year, or its initial grade and grade for one quarter, with Passed / Failed, and
- * the general average (the mean of the subject grades) with its DepEd descriptor. Notes explain the K-12
- * grading and the final grade and list any weighted subjects. It is mounted at the end of <body> (a portal) and
- * shown only when printing, in plain black on white whatever the screen theme; the app itself is hidden then
- * (see `.print-only` in index.css). Printed (Ctrl+P) before its grades have arrived, it says so in place of the
- * table instead of "No grades recorded".
+ * year, as on the SF1), which class, school year and period, per subject the grade of each quarter of a
+ * semester and its final grade (their average), or of each semester of the whole year and the final grade
+ * (their average), with Passed / Failed, and the general average (the mean of the subject grades) with its
+ * DepEd descriptor. Notes explain the K-12 grading and the final grade and list any weighted subjects. It is
+ * mounted at the end of <body> (a portal) and shown only when printing, in plain black on white whatever the
+ * screen theme; the app itself is hidden then (see `.print-only` in index.css). Printed (Ctrl+P) before its
+ * grades have arrived, it says so in place of the table instead of "No grades recorded".
  *
  * @param {object} props
  * @param {{ firstName: string, lastName: string, studentNumber: string, lrn?: string | null,
@@ -80,16 +66,19 @@ const gradeColumnsOf = (term) =>
  * @param {number|string} props.studentId a student id, or 'me'
  * @param {string} props.academicYear the school year on the card
  * @param {string} props.className the student's class in that year
- * @param {string} [props.term] 'term1' to 'term4' for one quarter; omit for the whole year
+ * @param {string} [props.semester] 'sem1' or 'sem2' for one semester; omit for the whole year
  */
-export function ReportCard({ student, studentId, academicYear, className, term }) {
-  const summary = useReportCardSubjects({ studentId, academicYear, term });
-  const subjects = summary.data ?? [];
-  const average = generalAverage(subjects);
+export function ReportCard({ student, studentId, academicYear, className, semester }) {
+  const summary = useReportCardSummaries({ studentId, academicYear, semester });
+  // The summaries are tagged with their semester: a semester's rows are the subjects, with their quarters; the
+  // whole year's are one row per class-subject with its semesters. The average comes from the tagged rows.
+  const rows = summary.data ?? [];
+  const subjects = semester ? rows : wholeYearRows(rows);
+  const average = generalAverage(rows);
   const weighted = subjects.filter((subject) => subject.method === 'weighted');
   const hasK12 = subjects.some((subject) => subject.method === 'k12');
   const age = ageOn(student.dateOfBirth, academicYearStart(academicYear));
-  const gradeColumns = gradeColumnsOf(term);
+  const gradeColumns = gradeColumnsOf(semester ?? '');
   const columnCount = gradeColumns.length + 4;
 
   return createPortal(
@@ -115,8 +104,8 @@ export function ReportCard({ student, studentId, academicYear, className, term }
         <dd>{age ?? '—'}</dd>
         <dt className="font-semibold">Class</dt>
         <dd>{`${className}, ${academicYear}`}</dd>
-        <dt className="font-semibold">Quarter</dt>
-        <dd>{term ? TERM_LABELS[term] : 'Whole school year'}</dd>
+        <dt className="font-semibold">Period</dt>
+        <dd>{semester ? SEMESTER_LABELS[semester] : 'Whole school year'}</dd>
       </dl>
 
       <table className="mt-6 w-full border-collapse text-left">
@@ -125,11 +114,11 @@ export function ReportCard({ student, studentId, academicYear, className, term }
             <th className="py-1.5 pr-3">Subject</th>
             <th className="py-1.5 pr-3">Class</th>
             {gradeColumns.map((column) => (
-              <th key={column.header} className="py-1.5 pr-3 text-right">
+              <th key={column.key} className="py-1.5 pr-3 text-right">
                 {column.header}
               </th>
             ))}
-            <th className="py-1.5 pr-3 text-right">{term ? 'Grade' : 'Final grade'}</th>
+            <th className="py-1.5 pr-3 text-right">Final grade</th>
             <th className="py-1.5">Remarks</th>
           </tr>
         </thead>
@@ -139,8 +128,8 @@ export function ReportCard({ student, studentId, academicYear, className, term }
               <td className="py-1.5 pr-3">{subject.subjectName}</td>
               <td className="py-1.5 pr-3">{subject.className}</td>
               {gradeColumns.map((column) => (
-                <td key={column.header} className="py-1.5 pr-3 text-right">
-                  {column.cell(subject)}
+                <td key={column.key} className="py-1.5 pr-3 text-right">
+                  {formatResult(column.gradeOf(subject))}
                 </td>
               ))}
               <td className="py-1.5 pr-3 text-right font-semibold">{formatResult(subject.percentage)}</td>
@@ -152,7 +141,7 @@ export function ReportCard({ student, studentId, academicYear, className, term }
               <td colSpan={columnCount} className="py-3">
                 {summary.data !== undefined
                   ? 'No grades recorded.'
-                  : summary.isError
+                  : summary.error
                     ? "The grades couldn't be loaded, so this report card is incomplete. Reload the page and print it again."
                     : 'The grades are still loading. Close this and print again in a moment.'}
               </td>
@@ -172,10 +161,11 @@ export function ReportCard({ student, studentId, academicYear, className, term }
         )}
       </table>
 
-      {!term && subjects.length > 0 && (
+      {subjects.length > 0 && (
         <p className="mt-3 text-[9pt]">
-          Final grade: the average of the quarterly grades (DepEd Order No. 8, s. 2015), a whole number in
-          K-12 subjects; until the 4th Quarter is graded, the average of the quarters graded so far.
+          {semester
+            ? 'Final grade: the average of the quarterly grades of the semester (DepEd Order No. 8, s. 2015), a whole number in K-12 subjects; until the 4th Quarter is graded, the average of the quarters graded so far.'
+            : 'Semester grade: the average of its quarterly grades (DepEd Order No. 8, s. 2015). Final grade: the average of the semester grades, a semester with no graded quarter left out. Both are whole numbers in K-12 subjects.'}
         </p>
       )}
       {hasK12 && (

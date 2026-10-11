@@ -31,7 +31,8 @@ npm run format           # Prettier (with the Tailwind class sorter)
 npm run check            # lint + typecheck + test + build
 ```
 
-The tests cover grade arithmetic, form schemas, CSV import and export, dates and school years.
+The tests cover grade arithmetic (quarters, semesters and the school year), form schemas, CSV import and
+export, dates, school years and the periods a school year is shown as.
 `tests/grading-agreement.test.js` runs one table of scores through `../backend/src/utils/grading.js` and
 `src/utils/grades.js` and expects the same numbers, so the frontend and the API compute grades alike. GitHub
 runs lint, typecheck, test and build on every push and pull request (`.github/workflows/frontend-checks.yml`).
@@ -87,7 +88,9 @@ src/
     hooks.js    useQuery / useMutation  schemas.js zod schemas and form defaults
     components/ feature UI            pages/     one default export per page
     *.js        a feature's own rules, e.g. classSubjects/access.js (who may write to a lesson, the
-                API's assertCanManageClassSubject), enrollments/schoolYears.js
+                API's assertCanManageClassSubject), enrollments/schoolYears.js, grades/periods.js (what
+                a school year is shown as: the whole year or a semester, its `semester` URL value and
+                its default, the current semester in the current year)
 tests/          Vitest unit tests (npm test)
 ```
 

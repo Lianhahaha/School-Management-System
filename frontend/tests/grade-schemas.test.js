@@ -5,6 +5,7 @@ import {
   gradeSheetDefaults,
   gradeSheetSchema,
   toSaveGradesPayload,
+  updateAssessmentSchema,
 } from '../src/features/grades/schemas';
 
 /** A grade sheet row as the form holds it: every input is a string. */
@@ -140,6 +141,7 @@ describe('assessment form', () => {
     classSubjectId: '12',
     title: '  Quiz 1 ',
     type: 'quiz',
+    semester: 'sem1',
     term: 'term1',
     maxScore: '50',
     assessedOn: '2026-10-09',
@@ -148,7 +150,33 @@ describe('assessment form', () => {
   it('converts ids and numbers and trims the title', () => {
     const result = createAssessmentSchema.safeParse(valid);
     expect(result.success).toBe(true);
-    expect(result.data).toMatchObject({ classSubjectId: 12, title: 'Quiz 1', maxScore: 50 });
+    expect(result.data).toMatchObject({
+      classSubjectId: 12,
+      title: 'Quiz 1',
+      semester: 'sem1',
+      term: 'term1',
+      maxScore: 50,
+    });
+  });
+
+  it('takes a semester and a quarter, each of its own, and refuses a blank or unknown one', () => {
+    expect(createAssessmentSchema.safeParse({ ...valid, semester: 'sem2', term: 'term4' }).success).toBe(
+      true,
+    );
+    expect(issuesOf(createAssessmentSchema.safeParse({ ...valid, semester: '', term: '' }))).toEqual({
+      semester: 'Choose a semester',
+      term: 'Choose a quarter',
+    });
+    // There is no summer term, and the semester is not a quarter.
+    expect(issuesOf(createAssessmentSchema.safeParse({ ...valid, semester: 'summer' }))).toEqual({
+      semester: 'Choose a semester',
+    });
+    expect(issuesOf(createAssessmentSchema.safeParse({ ...valid, term: 'sem1' }))).toEqual({
+      term: 'Choose a quarter',
+    });
+    expect(issuesOf(updateAssessmentSchema.safeParse({ ...valid, semester: '' }))).toEqual({
+      semester: 'Choose a semester',
+    });
   });
 
   it('keeps the max score above 0, at most 1000 and to two decimals', () => {
@@ -174,18 +202,35 @@ describe('assessment form', () => {
     });
   });
 
-  it('opens a new assessment on today with a max score of 100, and an edit on its saved values', () => {
+  it("opens a new assessment on today, in today's semester, with a max score of 100", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 9, 9, 23, 30));
     expect(assessmentDefaults(null, 12)).toEqual({
       classSubjectId: '12',
       title: '',
       type: '',
+      semester: 'sem1',
       term: '',
       maxScore: 100,
       assessedOn: '2026-10-09',
     });
-    const saved = { title: 'Exam', type: 'exam', term: 'term2', maxScore: 80, assessedOn: '2026-03-02' };
+    vi.setSystemTime(new Date(2027, 1, 3, 9, 0));
+    expect(assessmentDefaults(null, 12)).toMatchObject({ semester: 'sem2', assessedOn: '2027-02-03' });
+  });
+
+  it('opens an edit on the saved values, the semester included', () => {
+    const saved = {
+      title: 'Exam',
+      type: 'exam',
+      semester: 'sem1',
+      term: 'term2',
+      maxScore: 80,
+      assessedOn: '2027-01-12',
+    };
+    // A make-up quiz given in January for the 1st Semester keeps its semester, not its date's.
     expect(assessmentDefaults(saved, 12)).toEqual(saved);
+    // Without a semester on the record, the date says which.
+    const { semester: _semester, ...withoutSemester } = saved;
+    expect(assessmentDefaults(withoutSemester, 12).semester).toBe('sem2');
   });
 });

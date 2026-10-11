@@ -3,9 +3,10 @@ import { Link } from 'react-router';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { DataTable } from '../../../components/ui/DataTable';
-import { ASSESSMENT_TYPE_LABELS, TERM_LABELS } from '../../../constants/ui';
+import { ASSESSMENT_TYPE_LABELS } from '../../../constants/ui';
 import { formatDate } from '../../../utils/date';
 import { formatScore } from '../../../utils/format';
+import { formatPeriod } from '../../../utils/grades';
 
 /**
  * Assessments of one lesson. The sheet link is always there; Edit and Delete only render when
@@ -34,7 +35,12 @@ export function AssessmentsTable({ sheetPath, canManage, onEdit, onDelete, ...ta
       hideBelow: 'sm',
       cell: (row) => <Badge tone="gray">{ASSESSMENT_TYPE_LABELS[row.type]}</Badge>,
     },
-    { key: 'term', header: 'Quarter', hideBelow: 'md', cell: (row) => TERM_LABELS[row.term] },
+    {
+      key: 'period',
+      header: 'Period',
+      hideBelow: 'md',
+      cell: (row) => formatPeriod(row.semester, row.term),
+    },
     {
       key: 'assessedOn',
       header: 'Date',

@@ -5,7 +5,7 @@ import { Skeleton } from '../../../components/ui/Skeleton';
 import { ASSESSMENT_TYPE_LABELS } from '../../../constants/ui';
 import { formatDate } from '../../../utils/date';
 import { countOf, formatPercent, formatScore } from '../../../utils/format';
-import { formatResult } from '../../../utils/grades';
+import { formatPeriod, formatResult } from '../../../utils/grades';
 import { fullName } from '../../../utils/names';
 import { useAttendanceSummary } from '../../attendance/hooks';
 import { useGrades } from '../../grades/hooks';
@@ -60,6 +60,7 @@ export function StudentInSubjectModal({ student, classSubject, result = null, on
               </span>
               <span className="block text-xs text-gray-600">
                 {ASSESSMENT_TYPE_LABELS[grade.assessment.type] ?? grade.assessment.type} ·{' '}
+                {formatPeriod(grade.assessment.semester, grade.assessment.term)} ·{' '}
                 {formatDate(grade.assessment.assessedOn)}
                 {grade.remarks && ` · ${grade.remarks}`}
               </span>

@@ -8,7 +8,7 @@ import { formatResult, generalAverage } from '../../../utils/grades';
 import { ApplicationCard } from '../../admissions/components/ApplicationCard';
 import { isApplicant } from '../../admissions/status';
 import { useAttendanceSummary } from '../../attendance/hooks';
-import { useGradeSummary } from '../../grades/hooks';
+import { useSemesterSummaries } from '../../grades/hooks';
 
 /**
  * The hint under a figure whose data has not arrived: loading, or a failed load said plainly, so a failure never
@@ -38,10 +38,13 @@ export function StudentOverview({ student, onOpenTab }) {
     dateFrom: yearStart <= today ? yearStart : today,
     dateTo: today,
   });
-  const grades = useGradeSummary({ studentId: student.id, groupBy: 'classSubject' });
+  // Both semesters of the year, tagged: the year's general average puts the semesters (and a subject's two
+  // classes) together exactly as the API does.
+  const grades = useSemesterSummaries({ studentId: student.id, academicYear });
 
-  const subjectsThisYear = (grades.data ?? []).filter((subject) => subject.academicYear === academicYear);
-  const average = generalAverage(subjectsThisYear);
+  const rowsThisYear = grades.data ?? [];
+  const subjectCount = new Set(rowsThisYear.map((row) => row.subjectId)).size;
+  const average = generalAverage(rowsThisYear);
   const marks = attendance.data?.total ?? 0;
   // A self-registered student's application: on top while they have not picked a class, below once admitted.
   const application = student.admission && <ApplicationCard student={student} />;
@@ -79,8 +82,8 @@ export function StudentOverview({ student, onOpenTab }) {
           hint={
             grades.data === undefined
               ? waitingHint(grades, 'grades')
-              : subjectsThisYear.length
-                ? `${countOf(subjectsThisYear.length, 'subject')} this school year`
+              : subjectCount
+                ? `${countOf(subjectCount, 'subject')} this school year`
                 : 'No grades this school year'
           }
           icon={Award}

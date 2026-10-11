@@ -1,6 +1,6 @@
 import { PASSING_GRADE } from '../../../constants/shared';
 import { countOf } from '../../../utils/format';
-import { formatResult, generalAverage, isPassing } from '../../../utils/grades';
+import { formatResult, isPassing } from '../../../utils/grades';
 import { GradeDescriptor } from './GradeDescriptor';
 
 /** One figure of the overview: a label, the figure, and a line or tag under it. */
@@ -19,12 +19,13 @@ function Figure({ label, children, note }) {
  * attention, and how many assessments are graded.
  *
  * @param {object} props
- * @param {Array<{ subjectName: string, percentage: number | null }>} props.subjects summary rows of the period
+ * @param {Array<{ subjectName: string, percentage: number | null }>} props.subjects one row per class-subject of
+ *   the period (a semester's summary rows, or the whole year's, see wholeYearRows)
+ * @param {number | null} props.average the general average of the period (utils/grades generalAverage)
  * @param {number} props.graded how many grades the period has
  * @param {number | null} props.upcoming assessments still ahead in the current class, or null for a past period
  */
-export function GradesOverview({ subjects, graded, upcoming }) {
-  const average = generalAverage(subjects);
+export function GradesOverview({ subjects, average, graded, upcoming }) {
   const withResult = subjects.filter((subject) => subject.percentage !== null);
   const below = withResult.filter((subject) => !isPassing(subject.percentage));
 

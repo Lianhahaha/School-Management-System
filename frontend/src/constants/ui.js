@@ -209,6 +209,8 @@ export const GRADE_DESCRIPTORS = Object.freeze([
 
 /** The API's semesters as the school names them: two to a school year, each with its own four quarters. */
 export const SEMESTER_LABELS = Object.freeze({ sem1: '1st Semester', sem2: '2nd Semester' });
+/** The semesters where space is short (a period in a table cell, "1st Sem · Q1"). */
+export const SEMESTER_SHORT_LABELS = Object.freeze({ sem1: '1st Sem', sem2: '2nd Sem' });
 export const SEMESTER_OPTIONS = optionsOf(SEMESTERS, SEMESTER_LABELS);
 
 /** The API's terms as the school names them: the four quarters of each semester. */
@@ -364,7 +366,7 @@ export const UNIQUE_KEY_FIELDS = Object.freeze({
   },
   'assessments.uq_assessments_cs_period_title': {
     field: 'title',
-    message: 'An assessment with this title already exists for this quarter of this semester',
+    message: 'A quarter of this semester already has an assessment with this title',
   },
   'fees.uq_fees_year_grade_name': {
     field: 'name',

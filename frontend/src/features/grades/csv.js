@@ -25,11 +25,12 @@ export const GRADE_SHEET_CSV_COLUMNS = [
   { header: 'Graded by', value: (record) => (record.gradedBy ? fullName(record.gradedBy) : '') },
 ];
 
-/** GET /grades items (a student's grades, with their assessment). */
+/** GET /grades items (a student's grades, with their assessment); the quarter is the one within the semester. */
 export const STUDENT_GRADES_CSV_COLUMNS = [
   { header: 'Subject', value: (grade) => grade.assessment.subjectName },
   { header: 'Assessment', value: (grade) => grade.assessment.title },
   { header: 'Type', value: (grade) => ASSESSMENT_TYPE_LABELS[grade.assessment.type] },
+  { header: 'Semester', value: (grade) => SEMESTER_LABELS[grade.assessment.semester] },
   { header: 'Quarter', value: (grade) => TERM_LABELS[grade.assessment.term] },
   { header: 'Date', value: (grade) => grade.assessment.assessedOn },
   { header: 'Score', value: (grade) => grade.score },

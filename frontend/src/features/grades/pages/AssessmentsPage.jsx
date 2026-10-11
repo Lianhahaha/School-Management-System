@@ -8,7 +8,7 @@ import { FilterBar } from '../../../components/ui/FilterBar';
 import { Pagination } from '../../../components/ui/Pagination';
 import { SearchInput } from '../../../components/ui/SearchInput';
 import { Select } from '../../../components/ui/Select';
-import { ASSESSMENT_TYPE_OPTIONS, TERM_OPTIONS } from '../../../constants/ui';
+import { ASSESSMENT_TYPE_OPTIONS, SEMESTER_OPTIONS, TERM_OPTIONS } from '../../../constants/ui';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { useDisclosure } from '../../../hooks/useDisclosure';
 import { useListParams } from '../../../hooks/useListParams';
@@ -24,7 +24,10 @@ import { useAssessments, useDeleteAssessment } from '../hooks';
 export default function AssessmentsPage() {
   const selection = useClassSubjectSelection();
   const { role, classSubjectId, selected, isOwner } = selection;
-  const list = useListParams({ filters: ['term', 'type'], defaultSort: ['assessedOn', 'desc'] });
+  const list = useListParams({
+    filters: ['semester', 'term', 'type'],
+    defaultSort: ['assessedOn', 'desc'],
+  });
   const confirm = useConfirm();
   const modal = useDisclosure();
   const [editing, setEditing] = useState(null);
@@ -112,6 +115,14 @@ export default function AssessmentsPage() {
       <>
         <FilterBar onClear={list.hasActiveFilters ? list.clearFilters : undefined}>
           <SearchInput value={list.params.search} onChange={list.setSearch} placeholder="Search title" />
+          <Select
+            aria-label="Semester"
+            options={SEMESTER_OPTIONS}
+            placeholder="All semesters"
+            value={list.params.semester}
+            onChange={(event) => list.setFilter('semester', event.target.value)}
+            className="w-44"
+          />
           <Select
             aria-label="Quarter"
             options={TERM_OPTIONS}

@@ -4,9 +4,10 @@ import { PageSkeleton } from '../../../components/layout/PageSkeleton';
 import { Badge } from '../../../components/ui/Badge';
 import { ExportCsvButton } from '../../../components/ui/ExportCsvButton';
 import { ErrorState } from '../../../components/ui/ErrorState';
-import { ASSESSMENT_TYPE_LABELS, TERM_LABELS } from '../../../constants/ui';
+import { ASSESSMENT_TYPE_LABELS } from '../../../constants/ui';
 import { formatDate } from '../../../utils/date';
 import { formatScore } from '../../../utils/format';
+import { formatPeriod } from '../../../utils/grades';
 import { roleHome } from '../../../utils/roles';
 import { useAuth } from '../../auth/hooks';
 import { isClassSubjectOwner } from '../../classSubjects/access';
@@ -36,7 +37,7 @@ export default function GradeSheetPage() {
   }
   if (roster.isPending || assessment.isPending) return <PageSkeleton />;
 
-  const { title, type, term, assessedOn, maxScore, className, subjectName, classSubjectId } =
+  const { title, type, semester, term, assessedOn, maxScore, className, subjectName, classSubjectId } =
     roster.data.assessment;
   const canSave = isClassSubjectOwner(me, assessment.data.classSubject);
 
@@ -52,7 +53,7 @@ export default function GradeSheetPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
             <Badge tone="gray">{ASSESSMENT_TYPE_LABELS[type]}</Badge>
-            <Badge tone="gray">{TERM_LABELS[term]}</Badge>
+            <Badge tone="gray">{formatPeriod(semester, term)}</Badge>
             <time dateTime={assessedOn}>{formatDate(assessedOn)}</time>
             <span>Max score {formatScore(maxScore)}</span>
             <ExportCsvButton

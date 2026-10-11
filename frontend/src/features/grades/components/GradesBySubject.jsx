@@ -5,10 +5,10 @@ import { ErrorState } from '../../../components/ui/ErrorState';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { PAGINATION } from '../../../constants/shared';
 import { todayYmd } from '../../../utils/date';
-import { groupBy } from '../../../utils/grades';
+import { generalAverage, groupBy, wholeYearRows } from '../../../utils/grades';
 import { fullName } from '../../../utils/names';
 import { NotEnrolledState, NotInClassNote } from '../../enrollments/components/NotEnrolledState';
-import { useAllGrades, useAssessments, useGradeSummary } from '../hooks';
+import { useAllGrades, useAssessments, useSemesterSummaries } from '../hooks';
 import { GradesOverview } from './GradesOverview';
 import { QuarterGradesTable } from './QuarterGradesTable';
 import { SubjectResultList } from './SubjectResultList';
@@ -18,27 +18,36 @@ import { SubjectScores } from './SubjectScores';
 const rowIdOf = (classSubjectId) => `quarter-grades-${classSubjectId}`;
 
 /**
- * The signed-in student's grades of one school year or quarter: an overview (general average, subjects
- * passed, those below 75), the subjects as a list on the left and, on the right, one table of every subject's
- * quarterly and final grades with the general average, then the scores of the chosen subject. Choosing a
+ * The signed-in student's grades of one school year, or of one semester of it: an overview (general average,
+ * subjects passed, those below 75), the subjects as a list on the left and, on the right, one table of every
+ * subject's grades with the general average (the four quarters and the final grade of a semester; the 1st and
+ * 2nd Semester and the final grade of the whole year), then the scores of the chosen subject. Choosing a
  * subject marks its row in the table. The chosen subject lives in the URL (`subject`, a class-subject id) and
  * falls back to the first one.
- * Grades come from every page of GET /grades, results from GET /grades/summary. A student who is not in a
- * class (`notEnrolled`) still sees the grades of earlier classes, under a note; with no grades at all they get
- * the not-enrolled state.
+ * Grades come from every page of GET /grades, results from GET /grades/summary: one request with the semester,
+ * or one for each semester for the whole year, which is put together from them (see useSemesterSummaries).
+ * A student who is not in a class (`notEnrolled`) still sees the grades of earlier classes, under a note; with
+ * no grades at all and no class in this year (`inClass`) they get the not-enrolled state.
  *
  * @param {object} props
  * @param {string} props.academicYear the school year shown
- * @param {string} [props.term] 'term1' to 'term4' for one quarter; omit for the whole year
+ * @param {string} [props.semester] 'sem1' or 'sem2' for one semester; omit for the whole year
  * @param {boolean} [props.notEnrolled] the student has no active enrollment
+ * @param {boolean} [props.inClass] the student has a class in the school year shown (default true)
  * @param {boolean} [props.withUpcoming] show upcoming assessments (only the current class has any)
  */
-export function GradesBySubject({ academicYear, term, notEnrolled = false, withUpcoming = false }) {
+export function GradesBySubject({
+  academicYear,
+  semester,
+  notEnrolled = false,
+  inClass = true,
+  withUpcoming = false,
+}) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const grades = useAllGrades({ academicYear, term, sortBy: 'assessedOn', sortOrder: 'desc' });
-  const summary = useGradeSummary({ studentId: 'me', academicYear, term, groupBy: 'classSubject' });
+  const grades = useAllGrades({ academicYear, semester, sortBy: 'assessedOn', sortOrder: 'desc' });
+  const summary = useSemesterSummaries({ studentId: 'me', academicYear, semester });
   const upcoming = useAssessments(
-    { term, dateFrom: todayYmd(), sortBy: 'assessedOn', sortOrder: 'asc', limit: PAGINATION.MAX_LIMIT },
+    { semester, dateFrom: todayYmd(), sortBy: 'assessedOn', sortOrder: 'asc', limit: PAGINATION.MAX_LIMIT },
     { enabled: withUpcoming },
   );
 
@@ -48,20 +57,26 @@ export function GradesBySubject({ academicYear, term, notEnrolled = false, withU
     return <ErrorState title="Couldn't load grades" message={failed.message} onRetry={retry} />;
   }
   if (grades.isPending || summary.isPending) return <Skeleton className="h-96 w-full" />;
-  if (grades.data.length === 0 && notEnrolled && !term) return <NotEnrolledState />;
+  if (grades.data.length === 0 && notEnrolled && !inClass) return <NotEnrolledState />;
   if (summary.data.length === 0) {
     return (
       <EmptyState
         icon={GraduationCap}
         title={
-          term ? 'No grades recorded for this quarter yet' : 'No grades recorded for this school year yet'
+          semester
+            ? 'No grades recorded for this semester yet'
+            : 'No grades recorded for this school year yet'
         }
         description="Graded assessments will appear here."
       />
     );
   }
 
-  const subjects = summary.data;
+  // The summary rows are tagged with their semester: a semester's are the rows, with their quarters; the
+  // whole year's are one row per class-subject with its semesters. The general average is read off the tagged
+  // rows either way, so a subject taken in two classes counts once with the quarters of both.
+  const subjects = semester ? summary.data : wholeYearRows(summary.data);
+  const average = generalAverage(summary.data);
   const gradesBySubject = groupBy(grades.data, (grade) => grade.assessment.classSubjectId);
   const upcomingItems = withUpcoming ? (upcoming.data?.items ?? []) : [];
   const wanted = Number(searchParams.get('subject'));
@@ -95,6 +110,7 @@ export function GradesBySubject({ academicYear, term, notEnrolled = false, withU
       )}
       <GradesOverview
         subjects={subjects}
+        average={average}
         graded={grades.data.length}
         upcoming={withUpcoming && upcoming.data ? upcomingItems.length : null}
       />
@@ -108,10 +124,10 @@ export function GradesBySubject({ academicYear, term, notEnrolled = false, withU
         <div className="grid min-w-0 gap-6">
           <QuarterGradesTable
             subjects={subjects}
+            average={average}
             academicYear={academicYear}
-            term={term}
+            semester={semester}
             selectedId={selected.classSubjectId}
-            teacherOf={teacherOf}
             rowIdOf={rowIdOf}
           />
           <SubjectScores

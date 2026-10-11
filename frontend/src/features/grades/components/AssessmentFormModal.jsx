@@ -1,24 +1,30 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useRef } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { Button } from '../../../components/ui/Button';
 import { FormField, FormRootError } from '../../../components/ui/FormField';
 import { Input } from '../../../components/ui/Input';
 import { Modal } from '../../../components/ui/Modal';
 import { Select } from '../../../components/ui/Select';
 import { ERROR_CODES } from '../../../constants/shared';
-import { ASSESSMENT_TYPE_OPTIONS, TERM_OPTIONS } from '../../../constants/ui';
+import { ASSESSMENT_TYPE_OPTIONS, SEMESTER_OPTIONS, TERM_OPTIONS } from '../../../constants/ui';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { applyServerErrors } from '../../../lib/formErrors';
 import { changedFields } from '../../../utils/forms';
 import { useCreateAssessment, useUpdateAssessment } from '../hooks';
-import { assessmentDefaults, createAssessmentSchema, updateAssessmentSchema } from '../schemas';
+import {
+  assessmentDefaults,
+  createAssessmentSchema,
+  defaultAssessmentSemester,
+  updateAssessmentSchema,
+} from '../schemas';
 
 const FORM_ID = 'assessment-form';
 
 /**
  * Create (pass `classSubjectId`) or edit (pass `assessment`) an assessment. The class-subject of an
- * assessment is fixed: the page has already chosen it.
+ * assessment is fixed: the page has already chosen it. A new assessment's Semester follows its date (the
+ * semester the date falls in) until the teacher picks one; an edit keeps the saved semester.
  *
  * @param {object} props
  * @param {boolean} props.open
@@ -40,16 +46,29 @@ export function AssessmentFormModal({ open, onClose, assessment, classSubjectId,
     handleSubmit,
     reset,
     setError,
+    setValue,
+    control,
     formState: { errors, isDirty, dirtyFields },
   } = useForm({
     resolver: zodResolver(schema),
     defaultValues: assessmentDefaults(assessment, classSubjectId),
   });
+  const assessedOn = useWatch({ control, name: 'assessedOn' });
+  const semesterPicked = useRef(false);
+  const semesterField = register('semester');
 
   // The modal stays mounted while closed, so every opening starts from the assessment's own values.
   useEffect(() => {
-    if (open) reset(assessmentDefaults(assessment, classSubjectId));
+    if (open) {
+      reset(assessmentDefaults(assessment, classSubjectId));
+      semesterPicked.current = false;
+    }
   }, [open, assessment, classSubjectId, reset]);
+
+  // A new assessment's semester follows its date until the teacher chooses one.
+  useEffect(() => {
+    if (!isEdit && !semesterPicked.current) setValue('semester', defaultAssessmentSemester(assessedOn));
+  }, [assessedOn, isEdit, setValue]);
 
   const requestClose = async () => {
     if (isDirty) {
@@ -107,9 +126,6 @@ export function AssessmentFormModal({ open, onClose, assessment, classSubjectId,
           <FormField label="Type" error={errors.type?.message} required>
             <Select {...register('type')} options={ASSESSMENT_TYPE_OPTIONS} placeholder="Choose a type" />
           </FormField>
-          <FormField label="Quarter" error={errors.term?.message} required>
-            <Select {...register('term')} options={TERM_OPTIONS} placeholder="Choose a quarter" />
-          </FormField>
           <FormField label="Max score" error={errors.maxScore?.message} required>
             <Input
               {...register('maxScore', { valueAsNumber: true })}
@@ -120,7 +136,20 @@ export function AssessmentFormModal({ open, onClose, assessment, classSubjectId,
               step="0.01"
             />
           </FormField>
-          <FormField label="Date" error={errors.assessedOn?.message} required>
+          <FormField label="Semester" error={errors.semester?.message} required>
+            <Select
+              {...semesterField}
+              onChange={(event) => {
+                semesterPicked.current = true;
+                return semesterField.onChange(event);
+              }}
+              options={SEMESTER_OPTIONS}
+            />
+          </FormField>
+          <FormField label="Quarter" error={errors.term?.message} required>
+            <Select {...register('term')} options={TERM_OPTIONS} placeholder="Choose a quarter" />
+          </FormField>
+          <FormField label="Date" error={errors.assessedOn?.message} required className="sm:col-span-2">
             <Input {...register('assessedOn')} type="date" />
           </FormField>
         </div>

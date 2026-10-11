@@ -3,6 +3,8 @@ import {
   ASSESSMENT_TYPE_LABELS,
   GRADE_DESCRIPTORS,
   GRADING_GROUP_LABELS,
+  SEMESTER_LABELS,
+  SEMESTER_SHORT_LABELS,
   TERM_SHORT_LABELS,
 } from '../constants/ui';
 import { formatPercent, formatScore } from './format';
@@ -184,6 +186,57 @@ export function generalAverage(subjects) {
 }
 
 /**
+ * Summary rows of one semester, each tagged with the `semester` it was fetched for: the tag subjectSemesters,
+ * subjectFinalGrade and generalAverage read (the API's rows do not carry it).
+ * @param {Array<Record<string, any>>} rows
+ * @param {string} semester
+ * @returns {Array<Record<string, any> & { semester: string }>}
+ */
+export const tagSemester = (rows, semester) => rows.map((row) => ({ ...row, semester }));
+
+/**
+ * One row per class-subject for the whole school year from its tagged rows of both semesters (the rows of
+ * `GET /grades/summary?groupBy=classSubject&semester=sem1` and `...=sem2`, as GradesBySubject and the report
+ * card fetch them): its `semesters` ({ sem1: 88, sem2: null }) and its year grade in `percentage`, by
+ * subjectSemesters and subjectFinalGrade, so they are the API's own numbers, and in the API's order (school
+ * year newest first, class, subject). A semester the class-subject has no row in is null. Only what a whole
+ * year can say is kept (no `quarters`, `initialGrade` or points, which belong to one semester), and `rows`,
+ * the semester rows it was put together from, for what needs them (the quarters, the points). One semester's
+ * rows alone give the rows of that semester, with its grade.
+ * @template {{ classSubjectId: number, subjectId: number, subjectName: string, className: string,
+ *   academicYear: string, method: string, gradingGroup?: string | null, gradeWeights?: object | null,
+ *   semester: string, quarters: Record<string, number|null> }} T
+ * @param {T[]} rows tagged with their semester
+ */
+export function wholeYearRows(rows) {
+  return [...groupBy(rows, (row) => row.classSubjectId).values()]
+    .map((group) => {
+      const { classSubjectId, subjectId, subjectName, className, academicYear, method } = group[0];
+      const { gradingGroup = null, gradeWeights = null } = group[0];
+      return {
+        classSubjectId,
+        subjectId,
+        subjectName,
+        className,
+        academicYear,
+        method,
+        gradingGroup,
+        gradeWeights,
+        semesters: subjectSemesters(group),
+        percentage: subjectFinalGrade(group),
+        rows: group,
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.academicYear.localeCompare(a.academicYear) ||
+        a.className.localeCompare(b.className) ||
+        a.subjectName.localeCompare(b.subjectName) ||
+        a.classSubjectId - b.classSubjectId,
+    );
+}
+
+/**
  * The quarters of a summary row that have a grade, in order: ['term1', 'term2'].
  * @param {{ quarters?: Record<string, number|null> }} row
  */
@@ -198,6 +251,32 @@ export const describeQuarters = (row) =>
   gradedQuarters(row)
     .map((term) => `${TERM_SHORT_LABELS[term]} ${formatResult(row.quarters[term])}`)
     .join(', ');
+
+/**
+ * The semesters of a summary row without the `semester` filter that have a grade, in order: ['sem1'].
+ * @param {{ semesters?: Record<string, number|null> }} row
+ */
+export const gradedSemesters = (row) =>
+  SEMESTERS.filter(
+    (semester) => row.semesters?.[semester] !== null && row.semesters?.[semester] !== undefined,
+  );
+
+/**
+ * The graded semesters of such a row with their grades, for a line of text: '1st Semester 88, 2nd Semester 90'.
+ * @param {{ semesters?: Record<string, number|null> }} row
+ */
+export const describeSemesters = (row) =>
+  gradedSemesters(row)
+    .map((semester) => `${SEMESTER_LABELS[semester]} ${formatResult(row.semesters[semester])}`)
+    .join(', ');
+
+/**
+ * A grading period in a table cell: the semester and the quarter within it, '1st Sem · Q1'.
+ * @param {string} semester 'sem1' or 'sem2'
+ * @param {string} term 'term1' to 'term4'
+ */
+export const formatPeriod = (semester, term) =>
+  `${SEMESTER_SHORT_LABELS[semester]} · ${TERM_SHORT_LABELS[term]}`;
 
 /**
  * A subject's grade weights as text, in assessment-type order and without the types weighted 0:

@@ -29,6 +29,7 @@ import {
   subjectFinalGrade,
   subjectQuarters,
   subjectSemesters,
+  wholeYearRows,
 } from '../src/utils/grades';
 
 /**
@@ -340,6 +341,37 @@ describe('frontend and API agree on grades', () => {
     expect(
       [mathQuarters.term1, mathQuarters.term2, mathQuarters.term3].every((value) => value !== null),
     ).toBe(true);
+  });
+
+  it("gives each class-subject's whole-year row the semester and year grades of the API's own result", () => {
+    // The whole-year My grades and report card fetch both semesters' summaries and put them together per
+    // class-subject (wholeYearRows) instead of asking the API for the year, which would carry no quarters.
+    const rows = CLASS_SUBJECTS.flatMap((classSubject, index) =>
+      SEMESTERS.filter((semester) => gradesOf(classSubject, semester).length).map((semester) => {
+        const { percentage, method, quarters } = apiSemesterResult(classSubject, semester);
+        return {
+          classSubjectId: index,
+          subjectId: classSubject.subjectId,
+          subjectName: classSubject.name,
+          className: classSubject.name,
+          academicYear: classSubject.academicYear,
+          semester,
+          percentage,
+          method,
+          quarters,
+        };
+      }),
+    );
+    const yearRows = wholeYearRows(rows);
+    expect(yearRows).toHaveLength(CLASS_SUBJECTS.filter((classSubject) => classSubject.grades.length).length);
+    for (const row of yearRows) {
+      const [classSubject, result] = yearResults[row.classSubjectId];
+      expect(row.semesters, classSubject.name).toEqual(result.semesters);
+      expect(row.percentage, classSubject.name).toBe(result.percentage);
+    }
+    // Some class-subject has one semester only, and one has both: the two shapes of a year row.
+    expect(yearRows.some((row) => row.semesters.sem2 === null)).toBe(true);
+    expect(yearRows.some((row) => row.semesters.sem1 !== null && row.semesters.sem2 !== null)).toBe(true);
   });
 
   it('computes the same general average over every method, per year, per semester and overall', () => {

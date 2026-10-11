@@ -3,7 +3,8 @@
  *
  * Assessments
  *   useAssessments(params, { enabled })  paginated list; params: page, limit, search, sortBy, sortOrder,
- *                                        classSubjectId, classId, type, term, dateFrom, dateTo
+ *                                        classSubjectId, classId, type, semester, term (the quarter),
+ *                                        dateFrom, dateTo
  *   useAssessment(id)                    one assessment, with gradedCount and enrolledCount
  *   useCreateAssessment() [form]         mutate(body) with the createAssessmentSchema output
  *   useUpdateAssessment() [form]         mutate({ id, body }) with the updateAssessmentSchema output
@@ -13,22 +14,30 @@
  *   useSaveGrades()                      mutate({ assessmentId, grades }) resolves the saved roster; grades from toSaveGradesPayload
  * Recorded grades
  *   useGrades(params, { enabled })       flat rows (no `search`); params: page, limit, sortBy, sortOrder,
- *                                        studentId ('me'), classSubjectId, classId, academicYear, term,
- *                                        assessmentId, type
+ *                                        studentId ('me'), classSubjectId, classId, academicYear, semester,
+ *                                        term (the quarter), assessmentId, type
  *   useAllGrades(params)                 every row the filters match (all pages), as an array
- *   useGradeSummary(params, { enabled }) per-subject (or per-student) points-weighted percentages; params:
- *                                        studentId ('me'), classSubjectId, classId, academicYear, term, groupBy
+ *   useGradeSummary(params, { enabled }) per-subject (or per-student) grades of the scope; params:
+ *                                        studentId ('me'), classSubjectId, classId, academicYear, semester,
+ *                                        term (the quarter), groupBy
+ *   useSemesterSummaries(params, { enabled })
+ *                                        a student's per-subject rows of one semester, or of both put
+ *                                        together, each tagged with its semester (what generalAverage,
+ *                                        subjectSemesters and wholeYearRows read); params: studentId ('me'),
+ *                                        academicYear, semester
  *   useDeleteGrade()                     mutate(id) clears one grade (the caller raises the toast)
  *   useRestoreGrade()                    mutate({ assessmentId, grade }) puts a cleared grade back (Undo)
  *
  * Mutations tagged [form] are silent (meta.silent): the form that sends them shows every error itself
  * (applyServerErrors + FormRootError). Every other mutation raises an error toast.
  */
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQueries, useQuery } from '@tanstack/react-query';
+import { SEMESTERS } from '../../constants/shared';
 import { useInvalidate } from '../../hooks/useInvalidate';
 import { useToast } from '../../hooks/useToast';
 import { fetchAllPages } from '../../lib/csv';
 import { isInlineFormError } from '../../lib/formErrors';
+import { tagSemester } from '../../utils/grades';
 import { dashboardKeys } from '../dashboard/keys';
 import {
   createAssessment,
@@ -94,6 +103,44 @@ export function useGradeSummary(params, { enabled = true } = {}) {
     queryKey: gradeKeys.summary(params),
     queryFn: () => getGradeSummary(params),
     enabled,
+  });
+}
+
+/** The result of useSemesterSummaries: the rows once every semester asked for has arrived. */
+const combineSemesterSummaries = (results) => ({
+  data: results.every((result) => result.data !== undefined)
+    ? results.flatMap((result) => result.data)
+    : undefined,
+  isPending: results.some((result) => result.isPending),
+  isError: results.some((result) => result.isError),
+  error: results.find((result) => result.error)?.error ?? null,
+  refetch: () => Promise.all(results.map((result) => result.refetch())),
+});
+
+/**
+ * The per-subject rows (groupBy classSubject) of a school year's semester, or of both semesters put together
+ * when `semester` is omitted, each row tagged with the semester it was fetched for (utils/grades
+ * tagSemester). That tag is what the helpers that span rows read: a class-subject's grade of the whole year
+ * (wholeYearRows), a subject taken in two classes (subjectSemesters) and the general average. They need the
+ * quarters of each semester, which only a request with `semester` returns, so the whole year is two requests.
+ * Each is the request `useGradeSummary` makes for that semester, so choosing between a semester and the
+ * whole year costs nothing the second time. Resolves { data (undefined until every request has arrived),
+ * isPending, isError, error, refetch }.
+ * @param {{ studentId?: number|string, academicYear?: string, semester?: string }} params
+ * @param {{ enabled?: boolean }} [options]
+ */
+export function useSemesterSummaries({ semester, ...params }, { enabled = true } = {}) {
+  return useQueries({
+    queries: (semester ? [semester] : SEMESTERS).map((name) => {
+      const query = { ...params, semester: name, groupBy: 'classSubject' };
+      return {
+        queryKey: gradeKeys.summary(query),
+        queryFn: () => getGradeSummary(query),
+        select: (/** @type {object[]} */ rows) => tagSemester(rows, name),
+        enabled,
+      };
+    }),
+    combine: combineSemesterSummaries,
   });
 }
 

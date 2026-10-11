@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { ASSESSMENT_TYPES, TERMS } from '../../constants/shared';
+import { ASSESSMENT_TYPES, DATE_REGEX, SEMESTERS, TERMS } from '../../constants/shared';
 import { dateYMD, optionalField, positiveInt, requiredId, score } from '../../lib/validators';
-import { todayYmd } from '../../utils/date';
+import { currentSemester, semesterOf, todayYmd } from '../../utils/date';
 
 const MAX_SCORE_LIMIT = 1000;
 
@@ -16,6 +16,8 @@ const maxScore = z.coerce
 const assessmentFields = {
   title,
   type: z.enum(ASSESSMENT_TYPES, { error: 'Choose a type' }),
+  semester: z.enum(SEMESTERS, { error: 'Choose a semester' }),
+  /** The quarter within the semester. */
   term: z.enum(TERMS, { error: 'Choose a quarter' }),
   maxScore,
   assessedOn: dateYMD,
@@ -30,15 +32,31 @@ export const createAssessmentSchema = z.object({
 /** PATCH /assessments/:id: the class-subject of an assessment cannot change. */
 export const updateAssessmentSchema = z.object(assessmentFields);
 
-/** Form values; with an assessment it is the edit form, otherwise the create form (today, max score 100). */
-export const assessmentDefaults = (assessment, classSubjectId = '') => ({
-  ...(assessment ? {} : { classSubjectId: String(classSubjectId) }),
-  title: assessment?.title ?? '',
-  type: assessment?.type ?? '',
-  term: assessment?.term ?? '',
-  maxScore: assessment?.maxScore ?? 100,
-  assessedOn: assessment?.assessedOn ?? todayYmd(),
-});
+/**
+ * The semester a new assessment starts in: the one its date falls in, or the current one while the date is
+ * not a date (yet). The teacher can still choose the other (a make-up quiz given in January for the 1st
+ * Semester).
+ * @param {string} assessedOn 'YYYY-MM-DD' as typed in the form, possibly blank or incomplete
+ */
+export const defaultAssessmentSemester = (assessedOn) =>
+  DATE_REGEX.test(assessedOn) ? semesterOf(assessedOn) : currentSemester();
+
+/**
+ * Form values; with an assessment it is the edit form, otherwise the create form (today, today's semester,
+ * max score 100).
+ */
+export const assessmentDefaults = (assessment, classSubjectId = '') => {
+  const assessedOn = assessment?.assessedOn ?? todayYmd();
+  return {
+    ...(assessment ? {} : { classSubjectId: String(classSubjectId) }),
+    title: assessment?.title ?? '',
+    type: assessment?.type ?? '',
+    semester: assessment?.semester ?? defaultAssessmentSemester(assessedOn),
+    term: assessment?.term ?? '',
+    maxScore: assessment?.maxScore ?? 100,
+    assessedOn,
+  };
+};
 
 /**
  * Grade sheet form: one row per student of the roster. A blank score means "not graded yet" and the

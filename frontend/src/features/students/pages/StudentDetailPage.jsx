@@ -7,7 +7,8 @@ import { Badge } from '../../../components/ui/Badge';
 import { Card } from '../../../components/ui/Card';
 import { ExportCsvButton } from '../../../components/ui/ExportCsvButton';
 import { Tabs } from '../../../components/ui/Tabs';
-import { PAGINATION } from '../../../constants/shared';
+import { PAGINATION, SEMESTERS } from '../../../constants/shared';
+import { tagSemester } from '../../../utils/grades';
 import { fullName } from '../../../utils/names';
 import { AdmissionStatusBadge } from '../../admissions/components/AdmissionStatusBadge';
 import { isApplicant } from '../../admissions/status';
@@ -111,20 +112,30 @@ export default function StudentDetailPage() {
             content: (
               <div className="space-y-4">
                 <div className="flex flex-wrap justify-end gap-2">
-                  {/* SF10: every school year of the student, with the year's remarks. */}
+                  {/* SF10: every school year of the student, with the year's remarks. Its quarters and
+                      semester grades come from each semester's summary (every year of it), tagged. */}
                   <ExportCsvButton
                     label="Download SF10"
                     fileName={`SF10 ${name}`}
                     columns={SF10_CSV_COLUMNS}
                     getRows={async () => {
-                      const [enrollments, subjects] = await Promise.all([
+                      const [enrollments, ...bySemester] = await Promise.all([
                         listEnrollments({ studentId: student.id, limit: PAGINATION.MAX_LIMIT }),
-                        getGradeSummary({ studentId: student.id, groupBy: 'classSubject' }),
+                        ...SEMESTERS.map(async (semester) =>
+                          tagSemester(
+                            await getGradeSummary({
+                              studentId: student.id,
+                              groupBy: 'classSubject',
+                              semester,
+                            }),
+                            semester,
+                          ),
+                        ),
                       ]);
-                      return sf10Rows(enrollments.items, subjects);
+                      return sf10Rows(enrollments.items, bySemester.flat());
                     }}
                   />
-                  {/* The report card is for the student's current class and its school year. */}
+                  {/* The report card is for the student's current class and its school year, as a whole. */}
                   {student.currentEnrollment && (
                     <PrintReportCardButton
                       studentId={student.id}

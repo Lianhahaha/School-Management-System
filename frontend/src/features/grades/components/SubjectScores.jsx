@@ -1,9 +1,9 @@
 import { DataTable } from '../../../components/ui/DataTable';
 import { EmptyState } from '../../../components/ui/EmptyState';
-import { ASSESSMENT_TYPE_LABELS, TERM_SHORT_LABELS } from '../../../constants/ui';
+import { ASSESSMENT_TYPE_LABELS } from '../../../constants/ui';
 import { formatDate } from '../../../utils/date';
 import { formatScore } from '../../../utils/format';
-import { formatPercentage } from '../../../utils/grades';
+import { formatPercentage, formatPeriod } from '../../../utils/grades';
 
 const COLUMNS = [
   {
@@ -18,11 +18,21 @@ const COLUMNS = [
       </span>
     ),
   },
-  { key: 'term', header: 'Quarter', cell: (row) => TERM_SHORT_LABELS[row.assessment.term] },
+  {
+    key: 'period',
+    header: 'Period',
+    cell: (row) => (
+      <span className="whitespace-nowrap">{formatPeriod(row.assessment.semester, row.assessment.term)}</span>
+    ),
+  },
   {
     key: 'assessedOn',
     header: 'Date',
-    cell: (row) => <time dateTime={row.assessment.assessedOn}>{formatDate(row.assessment.assessedOn)}</time>,
+    cell: (row) => (
+      <time dateTime={row.assessment.assessedOn} className="whitespace-nowrap">
+        {formatDate(row.assessment.assessedOn)}
+      </time>
+    ),
   },
   {
     key: 'score',
