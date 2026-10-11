@@ -2,16 +2,15 @@ import { cx } from '../../utils/cx';
 
 /**
  * Selected-chip colours per option tone. Full class names so that Tailwind can find them.
- * The neutral choice (no tone) is an ink outline; status choices take their soft tone and a ring.
+ * The neutral choice (no tone) is an ink outline; status choices (the attendance sheet) fill with their flat
+ * school-palette colour, the same as their badges: no tinted wash.
  */
 const CHECKED_CLASSES = {
   neutral: 'peer-checked:bg-surface peer-checked:text-gray-900 peer-checked:ring-gray-900',
-  gray: 'peer-checked:bg-gray-200 peer-checked:text-gray-900 peer-checked:ring-gray-500',
-  green: 'peer-checked:bg-green-50 peer-checked:text-green-700 peer-checked:ring-green-600',
-  amber: 'peer-checked:bg-amber-50 peer-checked:text-amber-700 peer-checked:ring-amber-600',
-  red: 'peer-checked:bg-red-50 peer-checked:text-red-700 peer-checked:ring-red-600',
-  blue: 'peer-checked:bg-blue-50 peer-checked:text-blue-700 peer-checked:ring-blue-600',
-  violet: 'peer-checked:bg-violet-50 peer-checked:text-violet-700 peer-checked:ring-violet-600',
+  green: 'peer-checked:bg-positive peer-checked:text-white peer-checked:ring-positive',
+  oxblood: 'peer-checked:bg-mark-oxblood peer-checked:text-mark-cream peer-checked:ring-mark-oxblood',
+  cream: 'peer-checked:bg-mark-cream peer-checked:text-mark-oxblood peer-checked:ring-mark-oxblood/50',
+  sage: 'peer-checked:bg-mark-sage peer-checked:text-mark-cream peer-checked:ring-mark-sage',
 };
 
 /**

@@ -96,6 +96,8 @@
   /* A figure below the school's line (a low attendance rate or average), set in oxblood text rather than a
      bright red tag; graphite gets a light rose of the same hue (8:1 on the dark sheet). */
   --attention-ink: var(--mark-oxblood);
+  /* The leaf green of "on" (Active, Present, Enrolled), the same on paper and graphite. */
+  --positive: #346739;
 
   /*
    * Page band: the solid blood-maroon band behind every page title; in dark it deepens to a near-black
@@ -260,6 +262,7 @@
   --color-mark-cream: var(--mark-cream);
   --color-mark-edge: var(--mark-edge);
   --color-attention-ink: var(--attention-ink);
+  --color-positive: var(--positive);
   --color-band: var(--band);
   --color-band-ink: var(--band-ink);
   --color-subject-navy: var(--subject-navy);
@@ -376,7 +379,7 @@
 
   /* The "on" badge (Active, Present, Enrolled): a flat deep leaf green, white text at 6.7:1. No gradient. */
   .badge-positive {
-    background: #346739;
+    background: var(--positive);
   }
 
   /*

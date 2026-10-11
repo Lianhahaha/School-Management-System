@@ -114,11 +114,15 @@ export const ATTENDANCE_STATUS_LABELS = Object.freeze({
   late: 'Late',
   excused: 'Excused',
 });
+/**
+ * Status colours, flat and from the school palette (no bright red or amber): Present in the leaf green of the
+ * "on" badge, Absent oxblood, Late cream, Excused sage. Used by the status badges and the sheet's chips.
+ */
 export const ATTENDANCE_STATUS_TONES = Object.freeze({
   present: 'green',
-  absent: 'red',
-  late: 'amber',
-  excused: 'blue',
+  absent: 'oxblood',
+  late: 'cream',
+  excused: 'sage',
 });
 export const ATTENDANCE_STATUS_OPTIONS = optionsOf(ATTENDANCE_STATUSES, ATTENDANCE_STATUS_LABELS);
 
