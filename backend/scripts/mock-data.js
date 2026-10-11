@@ -18,9 +18,10 @@
  * What `add` builds, so every screen has something to show:
  *   1 admin, 6 teachers (one subject each), 32 students; this year three classes of 10 with a full weekly
  *   timetable, marks on every school day since August (today's lessons left to mark), K-12 graded subjects with
- *   1st-quarter written work, projects and quarterly exams, a quiz waiting to be graded and upcoming
- *   midterms; last year's class with grades in the 1st to 3rd Quarters (for the school-year picker; its 4th
- *   Quarter has none); next year's empty class (to try End of school year); one
+ *   1st Semester 1st-quarter written work, projects and quarterly exams, a quiz waiting to be graded and
+ *   upcoming midterms in the 2nd Quarter; last year's class with grades in the 1st and 2nd Quarters of both
+ *   semesters (for the school-year picker; no 3rd or 4th Quarter); next year's empty class (to try End of
+ *   school year); one
  *   transfer, one student without a class, one deactivated student; announcements (current, scheduled,
  *   expired, class-only), calendar holidays and events, and unread notifications.
  */
@@ -33,6 +34,7 @@ import {
   addDaysYmd,
   currentAcademicYear,
   isoWeekdayOf,
+  semesterOf,
   todayYmd,
 } from '../src/utils/dates.js';
 
@@ -131,6 +133,16 @@ const PAST_YEAR = `${FIRST - 1}-${FIRST}`;
 const NEXT_YEAR = `${FIRST + 1}-${FIRST + 2}`;
 const TODAY = todayYmd();
 const YEAR_START = academicYearStart(YEAR);
+
+/**
+ * The grading period of this year's assessments dated `day` that come after the 1st Quarter's work: the
+ * semester the day falls in and, in the 1st Semester, the 2nd Quarter; once the 2nd Semester has begun, that
+ * semester's own 1st Quarter.
+ */
+const laterPeriodOf = (day) => {
+  const semester = semesterOf(day);
+  return { semester, term: semester === 'sem1' ? 'term2' : 'term1' };
+};
 
 /** Deterministic pseudo-random numbers (mulberry32), so every run builds the same school. */
 function random(seed) {
@@ -483,11 +495,12 @@ async function buildSchool({ admin, teachers, students }, conn) {
 
   // Assessments and grades.
   const gradeRows = [];
-  const addAssessment = async (classSubject, title, type, term, maxScore, assessedOn) =>
+  const addAssessment = async (classSubject, title, type, { semester, term }, maxScore, assessedOn) =>
     (
       await run(
-        'INSERT INTO assessments (class_subject_id, title, type, term, max_score, assessed_on) VALUES (?, ?, ?, ?, ?, ?)',
-        [classSubject.id, title, type, term, maxScore, assessedOn],
+        `INSERT INTO assessments (class_subject_id, title, type, semester, term, max_score, assessed_on)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [classSubject.id, title, type, semester, term, maxScore, assessedOn],
         conn,
       )
     ).insertId;
@@ -504,8 +517,9 @@ async function buildSchool({ admin, teachers, students }, conn) {
       ]);
     }
   };
-  // This year, 1st Quarter: graded written work (quizzes, a test, an assignment), a performance task and the
-  // quarterly exam; a quiz still to grade; an upcoming midterm.
+  // This year, the 1st Quarter of the 1st Semester: graded written work (quizzes, a test, an assignment), a
+  // performance task and the quarterly exam; then, in the 2nd Quarter, a quiz still to grade and an upcoming
+  // midterm.
   const plan = [
     ['Quiz 1', 'quiz', 20, 17],
     ['Quiz 2', 'quiz', 20, 31],
@@ -519,37 +533,28 @@ async function buildSchool({ admin, teachers, students }, conn) {
       for (const [title, type, maxScore, offset] of plan) {
         const day = weekdayFrom(addDaysYmd(YEAR_START, offset + subjectIndex + classIndex));
         if (day >= TODAY) continue;
-        const id = await addAssessment(classSubject, title, type, 'term1', maxScore, day);
+        const period = { semester: semesterOf(day), term: 'term1' };
+        const id = await addAssessment(classSubject, title, type, period, maxScore, day);
         grade(id, classSubject, rosterOn(klass, day), maxScore);
       }
       if (subjectIndex % 2 === 0) {
-        await addAssessment(
-          classSubject,
-          'Quiz 3',
-          'quiz',
-          'term1',
-          20,
-          weekdayFrom(addDaysYmd(TODAY, -3 - subjectIndex)),
-        );
+        const day = weekdayFrom(addDaysYmd(TODAY, -3 - subjectIndex));
+        await addAssessment(classSubject, 'Quiz 3', 'quiz', laterPeriodOf(day), 20, day);
       }
-      await addAssessment(
-        classSubject,
-        'Midterm exam',
-        'exam',
-        'term1',
-        100,
-        weekdayFrom(addDaysYmd(examWeek, subjectIndex % 3)),
-      );
+      const midterm = weekdayFrom(addDaysYmd(examWeek, subjectIndex % 3));
+      await addAssessment(classSubject, 'Midterm exam', 'exam', laterPeriodOf(midterm), 100, midterm);
     }
   }
-  // Last year: a quiz, a test, a project and an exam in each of the 1st, 2nd and 3rd Quarters (none in the 4th).
-  const pastTerms = [
-    ['term1', `${FIRST - 1}-09-15`],
-    ['term2', `${FIRST}-01-20`],
-    ['term3', `${FIRST}-04-20`],
+  // Last year: a quiz, a test, a project and an exam in the 1st and 2nd Quarters of each semester (none in the
+  // 3rd or 4th Quarter of either).
+  const pastPeriods = [
+    [{ semester: 'sem1', term: 'term1' }, `${FIRST - 1}-09-01`],
+    [{ semester: 'sem1', term: 'term2' }, `${FIRST - 1}-10-20`],
+    [{ semester: 'sem2', term: 'term1' }, `${FIRST}-01-20`],
+    [{ semester: 'sem2', term: 'term2' }, `${FIRST}-03-09`],
   ];
   for (const [subjectIndex, classSubject] of past.classSubjects.entries()) {
-    for (const [term, start] of pastTerms) {
+    for (const [period, start] of pastPeriods) {
       for (const [index, [title, type, maxScore]] of [
         ['Quiz', 'quiz', 20],
         ['Long test', 'test', 50],
@@ -557,7 +562,7 @@ async function buildSchool({ admin, teachers, students }, conn) {
         ['Exam', 'exam', 100],
       ].entries()) {
         const day = weekdayFrom(addDaysYmd(start, index * 14 + subjectIndex));
-        const id = await addAssessment(classSubject, title, type, term, maxScore, day);
+        const id = await addAssessment(classSubject, title, type, period, maxScore, day);
         grade(id, classSubject, past.students, maxScore);
       }
     }
@@ -882,8 +887,8 @@ async function remove() {
 
 /**
  * Gives an existing (real) student mock grades, so their own sign-in has something to show: a completed place
- * in last year's mock class with grades in the 1st to 3rd Quarters, and "[Mock]" 1st-quarter assessments with
- * grades in their current class. `remove` deletes all of it and leaves the account and its class as they were.
+ * in last year's mock class with grades in the 1st and 2nd Quarters of both semesters, and "[Mock]" 1st-quarter
+ * assessments with grades in their current class. `remove` deletes all of it and leaves the account and its class as they were.
  */
 async function attach() {
   const target = process.argv[3];
@@ -950,17 +955,19 @@ async function attach() {
         for (const [title, type, maxScore, offset] of plan) {
           const day = weekdayFrom(addDaysYmd(YEAR_START, offset + index));
           if (day >= TODAY) continue;
+          const semester = semesterOf(day);
           const exists = await query(
-            'SELECT id FROM assessments WHERE class_subject_id = ? AND term = ? AND title = ?',
-            [lesson.id, 'term1', title],
+            'SELECT id FROM assessments WHERE class_subject_id = ? AND semester = ? AND term = ? AND title = ?',
+            [lesson.id, semester, 'term1', title],
             conn,
           );
           const assessmentId = exists.length
             ? exists[0].id
             : (
                 await run(
-                  'INSERT INTO assessments (class_subject_id, title, type, term, max_score, assessed_on) VALUES (?, ?, ?, ?, ?, ?)',
-                  [lesson.id, title, type, 'term1', maxScore, day],
+                  `INSERT INTO assessments (class_subject_id, title, type, semester, term, max_score, assessed_on)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                  [lesson.id, title, type, semester, 'term1', maxScore, day],
                   conn,
                 )
               ).insertId;

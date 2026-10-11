@@ -16,6 +16,7 @@ import {
   resultWidth,
   subjectFinalGrade,
   subjectQuarters,
+  subjectSemesters,
 } from '../src/utils/grades';
 
 describe('groupBy', () => {
@@ -112,11 +113,15 @@ describe('averageOf', () => {
 /** Quarterly grades of a summary row, Q1 to Q4; null = nothing graded in that quarter. */
 const quarters = (term1 = null, term2 = null, term3 = null, term4 = null) => ({ term1, term2, term3, term4 });
 
-/** A row of GET /grades/summary?groupBy=classSubject as the averages read it. */
-const subjectRow = (subjectId, academicYear, quarterGrades, method = 'points') => ({
+/**
+ * A row of GET /grades/summary?groupBy=classSubject&semester= as the averages read it: its quarters, tagged
+ * with the semester the request was for (the 1st Semester unless said otherwise).
+ */
+const subjectRow = (subjectId, academicYear, quarterGrades, method = 'points', semester = 'sem1') => ({
   subjectId,
   academicYear,
   method,
+  semester,
   quarters: quarterGrades,
 });
 
@@ -136,11 +141,12 @@ describe('finalGradeOf', () => {
   });
 });
 
-describe('subjectQuarters and subjectFinalGrade', () => {
-  it("is a single class's own final grade", () => {
+describe('subjectQuarters, subjectSemesters and subjectFinalGrade', () => {
+  it("is a single class's own grade", () => {
     const row = subjectRow(1, '2026-2027', quarters(91, 73, null, 96), 'k12');
     expect(subjectQuarters([row])).toEqual(row.quarters);
-    expect(subjectFinalGrade([row])).toBe(87); // 86.67
+    expect(subjectSemesters([row])).toEqual({ sem1: 87, sem2: null }); // 86.67
+    expect(subjectFinalGrade([row])).toBe(87); // the one semester graded
   });
 
   it('puts the quarters of two classes together instead of averaging the class results', () => {
@@ -160,6 +166,51 @@ describe('subjectQuarters and subjectFinalGrade', () => {
     ];
     expect(subjectQuarters(rows)).toEqual(quarters(88, 83)); // 82.5, half up
     expect(subjectFinalGrade(rows)).toBe(86); // 85.5
+  });
+
+  it('averages the semester grades that exist, so the semesters weigh the same however many quarters', () => {
+    // 1st Semester: Q1 60, Q2 80, Q3 100 (80). 2nd Semester: Q1 90. (80 + 90) / 2 = 85, not the 82.5 of
+    // the four quarters.
+    const rows = [
+      subjectRow(1, '2026-2027', quarters(60, 80, 100)),
+      subjectRow(1, '2026-2027', quarters(90), 'points', 'sem2'),
+    ];
+    expect(subjectSemesters(rows)).toEqual({ sem1: 80, sem2: 90 });
+    expect(subjectFinalGrade(rows)).toBe(85);
+  });
+
+  it('leaves out a semester that has no row or no graded quarter', () => {
+    const first = subjectRow(1, '2026-2027', quarters(88, 90));
+    expect(subjectSemesters([first])).toEqual({ sem1: 89, sem2: null });
+    expect(subjectFinalGrade([first])).toBe(89);
+    const ungradedSecond = subjectRow(1, '2026-2027', quarters(), 'points', 'sem2');
+    expect(subjectSemesters([first, ungradedSecond])).toEqual({ sem1: 89, sem2: null });
+    expect(subjectFinalGrade([first, ungradedSecond])).toBe(89);
+    expect(subjectFinalGrade([ungradedSecond])).toBeNull();
+  });
+
+  it('rounds a K-12 semester to a whole number before the semesters are averaged', () => {
+    // 88 and 89 make 88.5, a whole 89; with 80 the year is (89 + 80) / 2 = 84.5, a whole 85. Unrounded, it
+    // would be 84.25 (84).
+    const rows = [
+      subjectRow(1, '2026-2027', quarters(88, 89), 'k12'),
+      subjectRow(1, '2026-2027', quarters(80), 'k12', 'sem2'),
+    ];
+    expect(subjectSemesters(rows)).toEqual({ sem1: 89, sem2: 80 });
+    expect(subjectFinalGrade(rows)).toBe(85);
+  });
+
+  it('puts the quarters of two classes together per semester and quarter', () => {
+    // 10-A: 1st Semester Q1 60, Q2 80. 10-B: 1st Semester Q2 100, Q3 90; 2nd Semester Q1 70.
+    // 1st Semester: Q1 60, Q2 (80 + 100) / 2 = 90, Q3 90 -> 80; 2nd Semester 70; year 75.
+    const rows = [
+      subjectRow(1, '2026-2027', quarters(60, 80)),
+      subjectRow(1, '2026-2027', quarters(null, 100, 90)),
+      subjectRow(1, '2026-2027', quarters(), 'points', 'sem2'),
+      subjectRow(1, '2026-2027', quarters(70), 'points', 'sem2'),
+    ];
+    expect(subjectSemesters(rows)).toEqual({ sem1: 80, sem2: 70 });
+    expect(subjectFinalGrade(rows)).toBe(75);
   });
 });
 
@@ -206,6 +257,26 @@ describe('generalAverage', () => {
   it('is null with no subjects or none graded', () => {
     expect(generalAverage([])).toBeNull();
     expect(generalAverage([subjectRow(1, '2026-2027', quarters())])).toBeNull();
+  });
+
+  it("averages each subject's semester grades first, then the subjects", () => {
+    // Math: 1st Semester Q1 60, Q2 80, Q3 100 (80), 2nd Semester Q1 90: 85. English: 1st Semester 70,
+    // 2nd Semester 80: 75. (85 + 75) / 2 = 80.
+    const subjects = [
+      subjectRow(1, '2026-2027', quarters(60, 80, 100)),
+      subjectRow(1, '2026-2027', quarters(90), 'points', 'sem2'),
+      subjectRow(2, '2026-2027', quarters(70)),
+      subjectRow(2, '2026-2027', quarters(80), 'points', 'sem2'),
+    ];
+    expect(generalAverage(subjects)).toBe(80);
+  });
+
+  it('gives the general average of one semester from the rows of that semester alone', () => {
+    const subjects = [
+      subjectRow(1, '2026-2027', quarters(60, 80), 'points', 'sem2'),
+      subjectRow(2, '2026-2027', quarters(90), 'points', 'sem2'),
+    ];
+    expect(generalAverage(subjects)).toBe(80); // (70 + 90) / 2
   });
 });
 

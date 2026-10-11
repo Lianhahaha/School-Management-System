@@ -3,8 +3,10 @@
  * Each quarter of a subject is graded on its own: its K-12 grade when the subject has a grading group
  * (components weighted by the group, transmuted to 60-100), else on points (SUM(score) / SUM(max_score) * 100
  * over the quarter's graded assessments) or, when the subject has grade weights, weighted per assessment type.
- * The subject's final grade is the average of its quarterly grades; a student's result over several subjects
- * is the mean of the subjects' final grades. The arithmetic lives in utils/grading.js.
+ * A semester's grade is the average of its quarterly grades and the school year's grade the average of the
+ * semester grades that exist; a student's result over several subjects is the mean of the subjects' grades
+ * for the scope (a semester when filtered by it, the year otherwise). The arithmetic lives in
+ * utils/grading.js.
  */
 import { withTransaction } from '../../config/db.js';
 import { ApiError } from '../../utils/ApiError.js';
@@ -28,6 +30,7 @@ const toAssessmentRef = ({
   title,
   type,
   maxScore,
+  semester,
   term,
   assessedOn,
   classSubjectId,
@@ -38,6 +41,7 @@ const toAssessmentRef = ({
   title,
   type,
   maxScore,
+  semester,
   term,
   assessedOn,
   classSubjectId,
@@ -75,7 +79,7 @@ function groupRows(rows, keyOf) {
   return groups;
 }
 
-/** Counts and points of a group of per-quarter, per-type rows. */
+/** Counts and points of a group of per-semester, per-quarter, per-type rows. */
 const totalsOf = (rows) => ({
   assessmentsGraded: rows.reduce((sum, row) => sum + row.assessmentsGraded, 0),
   totalScore: sumPoints(rows.map((row) => row.totalScore)),
@@ -83,19 +87,23 @@ const totalsOf = (rows) => ({
 });
 
 /**
- * Folds the per-quarter, per-type rows of repo.summarizeGrades into summary rows:
- *   classSubject  one row per class-subject: its final grade, the average of its quarterly grades (`method`
- *                 k12, points or weighted; each quarter graded on its own, for K-12 transmuted), with
- *                 `quarters`, `initialGrade`, the `components` and the rules used;
- *   student       one row per student: the final grade of their one class-subject, or the general average of
+ * Folds the per-semester, per-quarter, per-type rows of repo.summarizeGrades into summary rows:
+ *   classSubject  one row per class-subject: the grade of the scope (`method` k12, points or weighted; each
+ *                 quarter graded on its own, for K-12 transmuted): the semester's grade, the average of its
+ *                 quarterly grades, when `semester` is filtered, else the school year's, the average of the
+ *                 semester grades that exist. With `semester` the row has `quarters`, without it
+ *                 `semesters`; both have `initialGrade`, the `components` and the rules used, and
+ *                 `periods` (every semester's quarters, which the callers inside the API put the classes of a
+ *                 year together from; the API leaves it out);
+ *   student       one row per student: the grade of their one class-subject, or the general average of
  *                 several (`average`), each subject counting once per academic year (utils/grading.js).
  * `rules` comes from allGradingRules; a subject in neither of its maps is graded on points.
  */
-function foldSummary(rows, groupBy, rules) {
+function foldSummary(rows, { groupBy, semester = null }, rules) {
   const weightsOf = (subjectId) => rules.weights.get(subjectId) ?? null;
   const groupOf = (subjectId) => rules.groups.get(subjectId) ?? null;
   const classSubjectResult = (typeRows) =>
-    finalResult(typeRows, weightsOf(typeRows[0].subjectId), groupOf(typeRows[0].subjectId));
+    finalResult(typeRows, weightsOf(typeRows[0].subjectId), groupOf(typeRows[0].subjectId), semester);
 
   if (groupBy === 'student') {
     return [...groupRows(rows, (row) => row.studentId).values()].map((studentRows) => {
@@ -133,10 +141,13 @@ function foldSummary(rows, groupBy, rules) {
   });
 }
 
-/** The summary rows for `filters` within `scope`; the grades and the grading rules are read at the same time. */
+/**
+ * The summary rows for `filters` within `scope`; the grades and the grading rules are read at the same time.
+ * The class-subject rows keep `periods`, the input of utils/grading's subjectYearResults.
+ */
 async function summarize(filters, scope) {
   const [rows, rules] = await Promise.all([repo.summarizeGrades(filters, scope), allGradingRules()]);
-  return foldSummary(rows, filters.groupBy, rules);
+  return foldSummary(rows, filters, rules);
 }
 
 export async function listGrades(user, listQuery) {
@@ -150,12 +161,15 @@ export async function getSummary(user, query) {
     throw ApiError.forbidden('group_by_student_not_allowed', 'students cannot group grades by student');
   }
   const { filters, scope } = await access.scopeRecordFilters(user, query);
-  return summarize(filters, scope);
+  const rows = await summarize(filters, scope);
+  return rows.map(({ periods: _periods, ...row }) => row);
 }
 
 /**
  * Unscoped per-class-subject summary of one student in an academic year, every class of that year included
- * (a student who changed class keeps the grades of the first one) (dashboards; the caller did the checks).
+ * (a student who changed class keeps the grades of the first one) (dashboards, promotion; the caller did the
+ * checks). Each row carries `periods` for utils/grading's subjectYearResults, which puts the classes of a
+ * subject together per (semester, quarter).
  */
 export async function summarizeStudentGradesUnscoped(studentId, academicYear) {
   return summarize({ groupBy: 'classSubject', studentId, academicYear }, null);
@@ -163,8 +177,8 @@ export async function summarizeStudentGradesUnscoped(studentId, academicYear) {
 
 /**
  * Each student's result in an academic year, within `scope` (a class scope fragment on cs.class_id, null for
- * all): the mean of their subjects' final grades, or their one subject's final grade (dashboards; no access
- * check).
+ * all): the mean of their subjects' school year grades (each the average of its semester grades), or their
+ * one subject's year grade (dashboards; no access check).
  * @returns {Promise<Map<number, number | null>>} studentId -> percentage
  */
 export async function studentResultsUnscoped(academicYear, scope) {

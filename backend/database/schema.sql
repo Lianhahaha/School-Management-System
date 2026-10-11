@@ -271,14 +271,16 @@ CREATE TABLE IF NOT EXISTS assessments (
   class_subject_id  INT UNSIGNED NOT NULL,
   title             VARCHAR(150) NOT NULL,
   type              ENUM('quiz','test','exam','assignment','project','other') NOT NULL,
-  term              ENUM('term1','term2','term3','term4') NOT NULL, -- DepEd quarters: term1 = 1st Quarter … term4 = 4th
+  term              ENUM('term1','term2','term3','term4') NOT NULL, -- the QUARTER within the semester: term1 = 1st Quarter … term4 = 4th
+  semester          ENUM('sem1','sem2') NOT NULL DEFAULT 'sem1'
+                    COMMENT 'Semester of the school year (sem1 = 1st, sem2 = 2nd); each semester has its own term1..term4',
   max_score         DECIMAL(6,2) NOT NULL COMMENT 'Exact decimal, never FLOAT. Grades are validated against it by the API',
   assessed_on       DATE         NOT NULL,
   created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_assessments_cs_term_title (class_subject_id, term, title), -- no accidental double-create; serves FK; per-term listing
-  KEY        idx_assessments_date         (assessed_on),                   -- date-range filters / "recent assessments"
+  UNIQUE KEY uq_assessments_cs_period_title (class_subject_id, semester, term, title), -- no accidental double-create; serves FK; per-period listing
+  KEY        idx_assessments_date           (assessed_on),                             -- date-range filters / "recent assessments"
   CONSTRAINT fk_assessments_class_subject FOREIGN KEY (class_subject_id) REFERENCES class_subjects (id)
     ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT chk_assessments_max_score CHECK (max_score > 0)

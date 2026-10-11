@@ -1610,6 +1610,7 @@ paths:
         - $ref: '#/components/parameters/ClassSubjectIdFilter'
         - $ref: '#/components/parameters/ClassIdFilter'
         - $ref: '#/components/parameters/AssessmentTypeFilter'
+        - $ref: '#/components/parameters/SemesterFilter'
         - $ref: '#/components/parameters/TermFilter'
         - $ref: '#/components/parameters/DateFromFilter'
         - $ref: '#/components/parameters/DateToFilter'
@@ -1625,8 +1626,10 @@ paths:
       description: |
         Roles: admin, teacher (only the teacher assigned to the class-subject).
 
-        `assessedOn` defaults to today. A title that is already used for the same class-subject and quarter
-        (`term`) is a 409 (`details.key = assessments.uq_assessments_cs_term_title`).
+        `assessedOn` defaults to today and `semester` to `sem1`; `term` is the quarter within the semester. A
+        title that is already used for the same class-subject, semester and quarter is a 409
+        (`details.key = assessments.uq_assessments_cs_period_title`): the same title may be used again in the
+        other semester or another quarter.
       requestBody:
         required: true
         content:
@@ -1637,6 +1640,7 @@ paths:
               classSubjectId: 12
               title: Unit 2 Exam
               type: exam
+              semester: sem1
               term: term1
               maxScore: 50
               assessedOn: '2026-10-07'
@@ -1734,6 +1738,7 @@ paths:
         - $ref: '#/components/parameters/ClassSubjectIdFilter'
         - $ref: '#/components/parameters/ClassIdFilter'
         - $ref: '#/components/parameters/AcademicYearFilter'
+        - $ref: '#/components/parameters/SemesterFilter'
         - $ref: '#/components/parameters/TermFilter'
         - $ref: '#/components/parameters/AssessmentTypeFilter'
       responses:
@@ -1753,23 +1758,31 @@ paths:
         Aggregate over graded assessments only. `groupBy=classSubject` (default) returns one row per
         class-subject, `groupBy=student` one row per student (403 for students).
 
-        Each quarter (`term`) of a subject is graded on its own. A subject with a grading group
+        A school year has two semesters (`semester`: `sem1`, `sem2`), each with its own four quarters
+        (`term`). Each quarter of a subject is graded on its own. A subject with a grading group
         (`Subject.gradingGroup`) is graded by K-12 components (`method: k12`): in each quarter, each component's
         points percentage times the group's weight, over the components that have grades, gives the quarter's
         initial grade, transmuted to the 60-100 scale (75 passes). Otherwise a quarter is graded on points,
         `SUM(score) / SUM(maxScore) * 100` (`method: points`), unless the subject has grade weights
         (`Subject.gradeWeights`): then each assessment type's points percentage counts with its weight, over the
-        types that have grades (`method: weighted`). A class-subject row gives each quarter's grade in
-        `quarters`, and its `percentage` is the final grade: the average of the quarterly grades (DepEd Order 8,
-        s. 2015), over the quarters that have one, so it is the average so far until the 4th Quarter is graded.
-        With `term`, only that quarter counts and `percentage` is its grade. A student row that spans several
-        class-subjects is the mean of their final grades (`method: average`). `totalScore` and `totalMaxScore`
-        are always the plain points of the whole period.
+        types that have grades (`method: weighted`).
+
+        A semester's grade is the average of its quarterly grades (DepEd Order 8, s. 2015), over the quarters
+        that have one, so it is the average so far until its 4th Quarter is graded. The school year's grade is
+        the average of the semester grades that exist: a semester with no graded quarter is left out. A K-12
+        grade at either level is a whole number (rounded half up); otherwise it keeps 2 decimals.
+
+        A class-subject row's `percentage` is the grade of the scope: with `semester`, that semester's grade and
+        `quarters` holds its quarterly grades; without it, the school year's grade and `semesters` holds each
+        semester's grade. With `term` only that quarter counts (in the filtered semester, or in each semester
+        without one). A student row that spans several class-subjects is the mean of their grades for the scope
+        (`method: average`). `totalScore` and `totalMaxScore` are always the plain points of the whole period.
       parameters:
         - $ref: '#/components/parameters/StudentIdFilter'
         - $ref: '#/components/parameters/ClassSubjectIdFilter'
         - $ref: '#/components/parameters/ClassIdFilter'
         - $ref: '#/components/parameters/AcademicYearFilter'
+        - $ref: '#/components/parameters/SemesterFilter'
         - $ref: '#/components/parameters/TermFilter'
         - name: groupBy
           in: query
@@ -2754,10 +2767,20 @@ components:
       description: Only assessments of this type.
       schema:
         $ref: '#/components/schemas/AssessmentType'
+    SemesterFilter:
+      name: semester
+      in: query
+      description: |
+        Only assessments of this semester (sem1 or sem2, shown in the app as 1st and 2nd Semester). Each
+        semester has its own four quarters.
+      schema:
+        $ref: '#/components/schemas/Semester'
     TermFilter:
       name: term
       in: query
-      description: Only assessments of this quarter (term1 to term4, shown in the app as 1st to 4th Quarter).
+      description: |
+        Only assessments of this quarter (term1 to term4, shown in the app as 1st to 4th Quarter). A quarter
+        belongs to a semester: without `semester`, the quarters of that number in both semesters.
       schema:
         $ref: '#/components/schemas/Term'
   schemas:
@@ -2866,11 +2889,19 @@ components:
         mapeh (and EPP, TLE) 20/60/20. Quiz, test and assignment count as written work; project and other as
         performance tasks; exam as quarterly assessment.
       enum: [languages, math_science, mapeh]
+    Semester:
+      type: string
+      description: |
+        The semester of a school year an assessment belongs to: sem1 (1st Semester, August to December with the
+        default school year start) or sem2 (2nd Semester, January to July). There is no summer term. Each
+        semester has its own four quarters.
+      enum: [sem1, sem2]
     Term:
       type: string
       description: |
-        The grading period of an assessment: one of DepEd's four quarters of a school year, shown in the app as
-        1st Quarter (term1), 2nd Quarter (term2), 3rd Quarter (term3) and 4th Quarter (term4).
+        The quarter within the semester of an assessment, shown in the app as 1st Quarter (term1), 2nd Quarter
+        (term2), 3rd Quarter (term3) and 4th Quarter (term4). Every semester has its own four, so a grading
+        period is a semester and a quarter.
       enum: [term1, term2, term3, term4]
     AnnouncementAudience:
       type: string
@@ -3701,6 +3732,7 @@ components:
           classSubject,
           title,
           type,
+          semester,
           term,
           maxScore,
           assessedOn,
@@ -3721,6 +3753,8 @@ components:
           example: Unit 2 Exam
         type:
           $ref: '#/components/schemas/AssessmentType'
+        semester:
+          $ref: '#/components/schemas/Semester'
         term:
           $ref: '#/components/schemas/Term'
         maxScore:
@@ -3742,7 +3776,8 @@ components:
           $ref: '#/components/schemas/Timestamp'
     AssessmentRef:
       type: object
-      required: [id, title, type, maxScore, term, assessedOn, classSubjectId, subjectName, className]
+      required:
+        [id, title, type, maxScore, semester, term, assessedOn, classSubjectId, subjectName, className]
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -3754,6 +3789,8 @@ components:
         maxScore:
           type: number
           example: 50
+        semester:
+          $ref: '#/components/schemas/Semester'
         term:
           $ref: '#/components/schemas/Term'
         assessedOn:
@@ -3907,22 +3944,34 @@ components:
           type: number
           nullable: true
           description: |
-            The final grade (see `method`): the average of the quarterly grades in `quarters`, over the quarters
-            that have one. For K-12 a whole number from 60 to 100 (rounded half up); otherwise 0-100 rounded to 2
-            decimals. Null when no quarter has a grade (a weighted subject with grades only in types weighted 0).
+            The grade of the scope (see `method`). With `semester`: that semester's grade, the average of its
+            quarterly grades in `quarters`, over the quarters that have one. Without: the school year's grade,
+            the average of the semester grades in `semesters` that exist. For K-12 a whole number from 60 to 100
+            (rounded half up); otherwise 0-100 rounded to 2 decimals. Null when nothing has a grade (a weighted
+            subject with grades only in types weighted 0).
           example: 89
         quarters:
           type: object
           description: |
-            Present with `groupBy=classSubject`; the grade of each quarter, graded on its own by the subject's
-            method (for K-12 the quarter's transmuted grade), null for a quarter with nothing graded (or left
-            out by the `term` filter).
+            Present with `groupBy=classSubject` and the `semester` filter; the grade of each quarter of that
+            semester, graded on its own by the subject's method (for K-12 the quarter's transmuted grade), null
+            for a quarter with nothing graded (or left out by the `term` filter).
           required: [term1, term2, term3, term4]
           properties:
             term1: { type: number, nullable: true, example: 88 }
             term2: { type: number, nullable: true, example: 90 }
             term3: { type: number, nullable: true, example: null }
             term4: { type: number, nullable: true, example: null }
+        semesters:
+          type: object
+          description: |
+            Present with `groupBy=classSubject` and no `semester` filter; the grade of each semester (the
+            average of its quarterly grades), null for a semester with nothing graded. `percentage` is their
+            average over the semesters that have one.
+          required: [sem1, sem2]
+          properties:
+            sem1: { type: number, nullable: true, example: 89 }
+            sem2: { type: number, nullable: true, example: null }
         initialGrade:
           type: number
           nullable: true
@@ -3937,17 +3986,18 @@ components:
           description: |
             How each quarter is graded: k12 = the subject's grading group weights its components, transmuted
             to 60-100; points = the quarter's total score / total max score * 100; weighted = the subject's grade
-            weights per assessment type. The final grade is the average of the quarters in every method.
-            average = mean of the student's subjects' final grades (a student row spanning several
+            weights per assessment type. A semester's grade is the average of its quarters, and the school
+            year's the average of the semesters, in every method.
+            average = mean of the student's subjects' grades for the scope (a student row spanning several
             class-subjects), each subject counting once per academic year: a subject graded in two classes of a
-            year (the student changed class) puts the quarters of both together first, a quarter graded in both
-            averaged.
+            year (the student changed class) puts the quarters of both together first, per semester and
+            quarter, a quarter graded in both averaged.
         components:
           type: array
           nullable: true
           description: |
             Present with `groupBy=classSubject`; for `method` k12 the three components over every graded
-            assessment of the period (with one quarter graded, the working of `initialGrade`), otherwise null.
+            assessment of the scope (with one quarter graded, the working of `initialGrade`), otherwise null.
           items:
             type: object
             required: [component, weight, percentage, assessmentsGraded]
@@ -5445,6 +5495,11 @@ components:
           maxLength: 150
         type:
           $ref: '#/components/schemas/AssessmentType'
+        semester:
+          allOf:
+            - $ref: '#/components/schemas/Semester'
+          default: sem1
+          description: Defaults to the 1st Semester.
         term:
           $ref: '#/components/schemas/Term'
         maxScore:
@@ -5467,6 +5522,8 @@ components:
           $ref: '#/components/schemas/CreateAssessmentRequest/properties/title'
         type:
           $ref: '#/components/schemas/AssessmentType'
+        semester:
+          $ref: '#/components/schemas/Semester'
         term:
           $ref: '#/components/schemas/Term'
         maxScore:
@@ -6623,7 +6680,7 @@ components:
                 totalScore: 70
                 totalMaxScore: 80
                 percentage: 87.5
-                quarters: { term1: 90, term2: 85, term3: null, term4: null }
+                semesters: { sem1: 87.5, sem2: null }
                 initialGrade: 87.5
                 method: points
     GradeRosterResponse:
@@ -6645,6 +6702,7 @@ components:
                 title: Unit 2 Exam
                 type: exam
                 maxScore: 50
+                semester: sem1
                 term: term1
                 assessedOn: '2026-10-07'
                 classSubjectId: 12

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { SEMESTERS } from '../src/constants/shared';
 import {
   academicYearEnd,
   academicYearMonths,
@@ -6,6 +7,7 @@ import {
   addDaysYmd,
   ageOn,
   currentAcademicYear,
+  currentSemester,
   formatDate,
   formatTimeRange,
   fromIsoToDatetimeLocal,
@@ -14,6 +16,7 @@ import {
   isWithinDays,
   mondayOf,
   relativeTime,
+  semesterOf,
   timeRangeParts,
   todayIsoWeekday,
   todayYmd,
@@ -86,6 +89,41 @@ describe('calendar arithmetic on YYYY-MM-DD', () => {
     expect(ageOn('2012-12-31', '2026-08-01')).toBe(13);
     expect(ageOn('2012-01-15', '2026-08-01')).toBe(14);
     expect(ageOn(null, '2026-08-01')).toBeNull();
+  });
+});
+
+describe('semesterOf and currentSemester (August to December, then January to July)', () => {
+  it.each([
+    ['2026-08-01', 'sem1'],
+    ['2026-09-15', 'sem1'],
+    ['2026-10-15', 'sem1'],
+    ['2026-11-15', 'sem1'],
+    ['2026-12-31', 'sem1'],
+    ['2027-01-01', 'sem2'],
+    ['2027-02-15', 'sem2'],
+    ['2027-03-15', 'sem2'],
+    ['2027-04-15', 'sem2'],
+    ['2027-05-15', 'sem2'],
+    ['2027-06-15', 'sem2'],
+    ['2027-07-31', 'sem2'],
+  ])('puts %s in the %s', (date, semester) => {
+    expect(semesterOf(date)).toBe(semester);
+  });
+
+  it('keeps both semesters in one academic year', () => {
+    expect(SEMESTERS).toEqual(['sem1', 'sem2']);
+    expect([semesterOf('2026-10-03'), semesterOf('2027-02-10')]).toEqual(SEMESTERS);
+    expect(semesterOf('2026-07-31')).toBe('sem2'); // the day before the next school year starts
+  });
+
+  it('turns over at local midnight on 1 January, and today is the default date', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 11, 31, 23, 59, 59));
+    expect(currentSemester()).toBe('sem1');
+    expect(semesterOf()).toBe('sem1');
+    vi.setSystemTime(new Date(2027, 0, 1, 0, 0, 0));
+    expect(currentSemester()).toBe('sem2');
+    expect(semesterOf()).toBe('sem2');
   });
 });
 

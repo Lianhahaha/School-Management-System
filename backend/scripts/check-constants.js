@@ -59,6 +59,7 @@ const ENUM_COLUMNS = {
   'enrollments.status': constants.ENROLLMENT_STATUSES,
   'attendance.status': constants.ATTENDANCE_STATUSES,
   'assessments.type': constants.ASSESSMENT_TYPES,
+  'assessments.semester': constants.SEMESTERS,
   'assessments.term': constants.TERMS,
   'subject_grade_weights.assessment_type': constants.ASSESSMENT_TYPES,
   'subjects.grading_group': constants.GRADING_GROUPS,

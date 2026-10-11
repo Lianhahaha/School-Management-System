@@ -269,6 +269,7 @@ describe('OpenAPI specification', () => {
       AdmissionStatus: shared.ADMISSION_STATUSES,
       AttendanceStatus: shared.ATTENDANCE_STATUSES,
       AssessmentType: shared.ASSESSMENT_TYPES,
+      Semester: shared.SEMESTERS,
       Term: shared.TERMS,
       AnnouncementAudience: shared.ANNOUNCEMENT_AUDIENCES,
       AnnouncementStatus: shared.ANNOUNCEMENT_STATUSES,

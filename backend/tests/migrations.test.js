@@ -9,6 +9,8 @@ import { openSession } from './helpers/locks.js';
 after(shutdown);
 
 const UPGRADE_IDS = UPGRADES.map((upgrade) => upgrade.id);
+const SEMESTER_UPGRADE = '2026-10-11-assessments-semester';
+const PERIOD_KEY_UPGRADE = '2026-10-11-assessments-period-key';
 
 describe('database migrations', () => {
   let session;
@@ -39,6 +41,18 @@ describe('database migrations', () => {
         [table, column],
       )
     )[0];
+  /** The columns of assessments' unique key on the period and title, in key order. */
+  const periodKeyColumns = async () =>
+    (
+      await rows(
+        `SELECT COLUMN_NAME, NON_UNIQUE FROM information_schema.STATISTICS
+          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'assessments' AND INDEX_NAME = 'uq_assessments_cs_period_title'
+          ORDER BY SEQ_IN_INDEX`,
+      )
+    ).map((row) => {
+      assert.equal(row.NON_UNIQUE, 0, 'the key is unique');
+      return row.COLUMN_NAME;
+    });
   const hasTable = async (table) =>
     (
       await rows(
@@ -46,6 +60,26 @@ describe('database migrations', () => {
         [table],
       )
     ).length > 0;
+  /** The smallest set of rows an assessment can hang from, by raw SQL; returns the class-subject's id. */
+  const makeClassSubject = async () => {
+    await session.query(
+      `INSERT INTO users (firebase_uid, email, first_name, last_name, role)
+       VALUES ('uid-migration', 'migration@school.test', 'Mia', 'Migration', 'teacher')`,
+    );
+    await session.query(
+      `INSERT INTO teachers (user_id, employee_number, hire_date)
+       SELECT id, 'EMP-2020-0001', '2020-06-01' FROM users WHERE email = 'migration@school.test'`,
+    );
+    await session.query("INSERT INTO subjects (code, name) VALUES ('MIG', 'Migration')");
+    await session.query(
+      "INSERT INTO classes (name, grade_level, academic_year) VALUES ('Grade 7 - M', 7, '2026-2027')",
+    );
+    await session.query(
+      `INSERT INTO class_subjects (class_id, subject_id, teacher_id)
+       SELECT c.id, s.id, t.id FROM classes c, subjects s, teachers t WHERE s.code = 'MIG' AND c.name = 'Grade 7 - M'`,
+    );
+    return (await rows('SELECT id FROM class_subjects'))[0].id;
+  };
   const migrate = async () => {
     const messages = [];
     const changed = await migrateDatabase({ log: (message) => messages.push(message) });
@@ -91,6 +125,7 @@ describe('database migrations', () => {
       ['users', 'role'],
       ['activity_log', 'actor_role'],
       ['assessments', 'term'],
+      ['assessments', 'semester'],
     ];
     const definitions = () =>
       Promise.all(enumColumns.map(([table, column]) => columnDefinition(table, column)));
@@ -104,6 +139,11 @@ describe('database migrations', () => {
       "ALTER TABLE activity_log MODIFY COLUMN actor_role ENUM('admin','teacher','student') NULL",
     );
     await session.query("ALTER TABLE assessments MODIFY COLUMN term ENUM('term1','term2','term3') NOT NULL");
+    await session.query(
+      `ALTER TABLE assessments
+         DROP INDEX uq_assessments_cs_period_title, DROP COLUMN semester,
+         ADD UNIQUE KEY uq_assessments_cs_term_title (class_subject_id, term, title)`,
+    );
     await session.query('ALTER TABLE subjects DROP COLUMN grading_group');
     await session.query(
       'ALTER TABLE enrollments ADD UNIQUE KEY uq_enrollments_student_class (student_id, class_id)',
@@ -111,6 +151,16 @@ describe('database migrations', () => {
     await session.query(
       'ALTER TABLE students DROP CHECK chk_students_lrn, DROP INDEX uq_students_lrn, DROP COLUMN lrn',
     );
+    // Assessments of the older schema: a title used in two quarters, as the old key allowed.
+    const classSubjectId = await makeClassSubject();
+    await session.query(
+      `INSERT INTO assessments (class_subject_id, title, type, term, max_score, assessed_on) VALUES
+         (?, 'Quiz 1', 'quiz', 'term1', 20, '2026-08-20'),
+         (?, 'Quiz 1', 'quiz', 'term2', 20, '2026-10-02'),
+         (?, 'Exam', 'exam', 'term3', 100, '2026-12-01')`,
+      [classSubjectId, classSubjectId, classSubjectId],
+    );
+    const assessmentsBefore = await rows('SELECT id, title, term FROM assessments ORDER BY id');
     await session.query('DELETE FROM schema_migrations WHERE id <> ?', ['schema.sql']);
 
     const { changed, messages } = await migrate();
@@ -122,6 +172,65 @@ describe('database migrations', () => {
     assert.equal(await hasColumn('students', 'lrn'), true);
     assert.equal(await hasIndex('students', 'uq_students_lrn'), true);
     assert.deepEqual(await definitions(), current, 'the ENUM columns end up as schema.sql defines them');
+
+    // Every assessment is still there, in the 1st Semester through the column's default.
+    assert.equal(await hasColumn('assessments', 'semester'), true);
+    assert.deepEqual(
+      await rows('SELECT id, title, term, semester FROM assessments ORDER BY id'),
+      assessmentsBefore.map((row) => ({ ...row, semester: 'sem1' })),
+    );
+    assert.equal(await hasIndex('assessments', 'uq_assessments_cs_term_title'), false);
+    assert.deepEqual(await periodKeyColumns(), ['class_subject_id', 'semester', 'term', 'title']);
+  });
+
+  it('adds the semester column and swaps the unique key as two upgrades, in that order', () => {
+    assert.ok(UPGRADE_IDS.indexOf(SEMESTER_UPGRADE) >= 0 && UPGRADE_IDS.includes(PERIOD_KEY_UPGRADE));
+    assert.ok(
+      UPGRADE_IDS.indexOf(SEMESTER_UPGRADE) < UPGRADE_IDS.indexOf(PERIOD_KEY_UPGRADE),
+      'the key names the column, so the column comes first',
+    );
+  });
+
+  it('swaps the assessments unique key alone when the semester column is already there', async () => {
+    await migrate();
+    const classSubjectId = await makeClassSubject();
+    await session.query(
+      `ALTER TABLE assessments
+         DROP INDEX uq_assessments_cs_period_title,
+         ADD UNIQUE KEY uq_assessments_cs_term_title (class_subject_id, term, title)`,
+    );
+    await session.query("DELETE FROM schema_migrations WHERE id = '2026-10-11-assessments-period-key'");
+    const addQuiz = (semester) =>
+      session.query(
+        `INSERT INTO assessments (class_subject_id, title, type, semester, term, max_score, assessed_on)
+         VALUES (?, 'Quiz 1', 'quiz', ?, 'term1', 20, '2026-10-02')`,
+        [classSubjectId, semester],
+      );
+    await addQuiz('sem1');
+    await assert.rejects(addQuiz('sem2'), { code: 'ER_DUP_ENTRY' }, 'the old key ignores the semester');
+
+    const { changed, messages } = await migrate();
+
+    assert.deepEqual(changed, [PERIOD_KEY_UPGRADE]);
+    assert.deepEqual(
+      messages.filter((message) => message.startsWith('Upgraded')),
+      [
+        'Upgraded: replace assessments.uq_assessments_cs_term_title with uq_assessments_cs_period_title ' +
+          `(${PERIOD_KEY_UPGRADE})`,
+      ],
+    );
+    assert.equal(await hasIndex('assessments', 'uq_assessments_cs_term_title'), false);
+    assert.deepEqual(await periodKeyColumns(), ['class_subject_id', 'semester', 'term', 'title']);
+    await addQuiz('sem2'); // the same title and quarter of the other semester now fits
+    await assert.rejects(addQuiz('sem1'), {
+      code: 'ER_DUP_ENTRY',
+      message: /uq_assessments_cs_period_title/,
+    });
+    const [foreignKey] = await rows(
+      `SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'assessments' AND REFERENCED_TABLE_NAME = 'class_subjects'`,
+    );
+    assert.equal(foreignKey?.CONSTRAINT_NAME, 'fk_assessments_class_subject', 'the foreign key stays');
   });
 
   it('applies a changed schema.sql again, creating a table that is missing', async () => {

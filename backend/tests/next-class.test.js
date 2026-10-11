@@ -191,6 +191,45 @@ describe('students enrolling themselves for next year (DepEd promotion)', () => 
     assert.equal(result.generalAverage, 81.88); // (57.5 + 90 + 90 + 90) / 4 = 81.875
   });
 
+  it('judges each subject on the average of its semester grades, not of all its quarters', async () => {
+    // Subjects 2 to 4 pass with 9/10. Subject 1: the 1st Quarter to the 3rd Quarter of the 1st Semester each
+    // 10/10 (semester grade 100) and the 1st Quarter of the 2nd Semester 4/10 (semester grade 40). The year
+    // is (100 + 40) / 2 = 70 and fails; the average of the four quarters, 85, would have passed.
+    const student = await studentWith(grade4, grade4.subjects, [null, 9, 9, 9]);
+    for (const [semester, term, score, day] of [
+      ['sem1', 'term1', 10, 20],
+      ['sem1', 'term2', 10, 50],
+      ['sem1', 'term3', 10, 80],
+      ['sem2', 'term1', 4, 200],
+    ]) {
+      const assessment = await api
+        .post('/api/v1/assessments')
+        .set(as(teacher))
+        .send({
+          classSubjectId: grade4.subjects[0].id,
+          title: `${semester} ${term} ${student.studentId}`,
+          type: 'exam',
+          semester,
+          term,
+          maxScore: 10,
+          assessedOn: addDaysYmd(lastYearStart, day),
+        });
+      assert.equal(assessment.status, 201, JSON.stringify(assessment.body));
+      const saved = await api
+        .put(`/api/v1/assessments/${assessment.body.data.id}/grades`)
+        .set(as(teacher))
+        .send({ grades: [{ studentId: student.studentId, score }] });
+      assert.equal(saved.status, 200, JSON.stringify(saved.body));
+    }
+    const result = await standing(student);
+    assert.equal(result.status, 'remedial');
+    assert.deepEqual(
+      result.failedSubjects.map((subject) => [subject.subjectName, subject.percentage]),
+      [[pastSubjects[0].name, 70]],
+    );
+    assert.equal(result.generalAverage, 85); // (70 + 90 + 90 + 90) / 4
+  });
+
   it('keeps a student who failed three or more subjects in the same grade level', async () => {
     const student = await studentWith(grade4, grade4.subjects, [6, 5, 7, 9]);
     const result = await standing(student);

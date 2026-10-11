@@ -6,19 +6,26 @@ import {
   finalResult,
   generalAverageOf,
   subjectFinalGrade,
+  subjectQuarters,
   subjectResult,
+  subjectSemesters,
+  subjectYearResults,
   transmute,
 } from '../src/utils/grading.js';
 
-/** The `quarters` of a summary row: Q1 to Q4, null for a quarter with nothing graded. */
+/** The quarters of a semester: Q1 to Q4, null for a quarter with nothing graded. */
 const quarters = (term1 = null, term2 = null, term3 = null, term4 = null) => ({ term1, term2, term3, term4 });
 
-/** A class-subject result as the summary returns it: its method and its quarterly grades. */
-const classResult = (subjectId, academicYear, method, quarterGrades) => ({
+/**
+ * A class-subject result as the summary holds it: its method and the quarterly grades of each semester
+ * (`periods`). The quarters given first are the 1st Semester's, so a result with only those is a school year in
+ * which only the 1st Semester has been graded.
+ */
+const classResult = (subjectId, academicYear, method, sem1 = quarters(), sem2 = quarters()) => ({
   subjectId,
   academicYear,
   method,
-  quarters: quarterGrades,
+  periods: { sem1, sem2 },
 });
 
 describe('grading arithmetic', () => {
@@ -125,15 +132,16 @@ describe('grading arithmetic', () => {
 
 describe('quarterly grades and the final grade (DepEd Order 8 s. 2015)', () => {
   /** Graded points of one quarter and assessment type, as the summary query returns them. */
-  const totals = (term, type, totalScore, totalMaxScore) => ({
+  const totals = (term, type, totalScore, totalMaxScore, semester = 'sem1') => ({
+    semester,
     term,
     type,
     totalScore,
     totalMaxScore,
     assessmentsGraded: 1,
   });
-  /** The same rows with the quarter dropped: what the old whole-year rule graded together. */
-  const wholeYear = (rows) => rows.map(({ term: _term, ...row }) => row);
+  /** The same rows with semester and quarter dropped: what the old whole-year rule graded together. */
+  const wholeYear = (rows) => rows.map(({ term: _term, semester: _semester, ...row }) => row);
 
   // Math and Science (written 40, performance 40, quarterly 20).
   // Q1: written 18/20 = 90, performance 40/50 = 80, quarterly 45/50 = 90: initial 86, transmuted 91.
@@ -149,8 +157,9 @@ describe('quarterly grades and the final grade (DepEd Order 8 s. 2015)', () => {
 
   it('grades each K-12 quarter on its own and averages the quarterly grades', () => {
     const final = finalResult(k12Rows, null, 'math_science');
-    assert.deepEqual(final.quarters, quarters(91, 73));
-    assert.equal(final.percentage, 82); // (91 + 73) / 2
+    assert.deepEqual(final.periods.sem1, quarters(91, 73));
+    assert.deepEqual(final.semesters, { sem1: 82, sem2: null });
+    assert.equal(final.percentage, 82); // (91 + 73) / 2, the one semester graded
     assert.equal(final.method, 'k12');
     // The old rule transmuted the whole year at once: written 28/40 = 70, performance 70, quarterly 65 give an
     // initial grade of 69, transmuted to 80.
@@ -171,11 +180,11 @@ describe('quarterly grades and the final grade (DepEd Order 8 s. 2015)', () => {
   it('leaves out a quarter with nothing graded: the final grade is the average so far', () => {
     // Nothing in Q3; Q4 has only a quiz, 19/20 = written 95, so its initial grade is 95 (the other components
     // are left out within the quarter), transmuted 96.
-    const final = finalResult([...k12Rows, totals('term4', 'quiz', 19, 20)], null, 'math_science');
+    const final = finalResult([...k12Rows, totals('term4', 'quiz', 19, 20)], null, 'math_science', 'sem1');
     assert.deepEqual(final.quarters, quarters(91, 73, null, 96));
     assert.equal(final.percentage, 87); // (91 + 73 + 96) / 3 = 86.67, a whole number
     assert.equal(finalResult([], null, 'math_science').percentage, null);
-    assert.deepEqual(finalResult([], null, 'math_science').quarters, quarters());
+    assert.deepEqual(finalResult([], null, 'math_science', 'sem1').quarters, quarters());
   });
 
   it("keeps the one graded quarter's initial grade, so a single quarter reads as before", () => {
@@ -195,7 +204,7 @@ describe('quarterly grades and the final grade (DepEd Order 8 s. 2015)', () => {
     // would let one big exam outweigh a whole quarter.
     const rows = [totals('term1', 'exam', 95, 100), totals('term2', 'quiz', 2, 10)];
     const final = finalResult(rows, null);
-    assert.deepEqual(final.quarters, quarters(95, 20));
+    assert.deepEqual(final.periods.sem1, quarters(95, 20));
     assert.equal(final.percentage, 57.5);
     assert.equal(final.initialGrade, 57.5);
     assert.equal(final.method, 'points');
@@ -212,7 +221,7 @@ describe('quarterly grades and the final grade (DepEd Order 8 s. 2015)', () => {
       totals('term3', 'test', 5, 10), // tests weigh 0: Q3 has no grade
     ];
     const final = finalResult(rows, weights);
-    assert.deepEqual(final.quarters, quarters(75, 60));
+    assert.deepEqual(final.periods.sem1, quarters(75, 60));
     assert.equal(final.percentage, 67.5);
     assert.equal(final.method, 'weighted');
     // The whole year at once: quiz 16/20 = 80 and exam 50 weigh 65.
@@ -243,6 +252,7 @@ describe('quarterly grades and the final grade (DepEd Order 8 s. 2015)', () => {
       classResult(1, '2026-2027', 'k12', quarters(70)),
       classResult(1, '2026-2027', 'k12', quarters(null, 80, 84, 86)),
     ];
+    assert.deepEqual(subjectQuarters(moved, 'sem1'), quarters(70, 80, 84, 86));
     assert.equal(subjectFinalGrade(moved), 80);
     assert.equal(subjectFinalGrade([moved[1]]), 83); // 10-B alone: 83.33
     assert.equal(generalAverageOf([...moved, classResult(2, '2026-2027', 'k12', quarters(91))]), 85.5);
@@ -254,5 +264,132 @@ describe('quarterly grades and the final grade (DepEd Order 8 s. 2015)', () => {
       classResult(1, '2026-2027', 'k12', quarters(null, 85)),
     ];
     assert.equal(subjectFinalGrade(midQuarter), 86);
+  });
+});
+
+describe('semesters and the school year grade', () => {
+  /** Graded points of one quarter of one semester and assessment type, as the summary query returns them. */
+  const totals = (semester, term, type, totalScore, totalMaxScore) => ({
+    semester,
+    term,
+    type,
+    totalScore,
+    totalMaxScore,
+    assessmentsGraded: 1,
+  });
+
+  it('grades a semester as the mean of its graded quarters, leaving the other semester out', () => {
+    // 1st Semester: Q1 exam 80/100, Q2 exam 90/100, nothing in Q3 or Q4; nothing in the 2nd Semester.
+    const rows = [totals('sem1', 'term1', 'exam', 80, 100), totals('sem1', 'term2', 'exam', 90, 100)];
+
+    const year = finalResult(rows, null);
+    assert.deepEqual(year.semesters, { sem1: 85, sem2: null });
+    assert.equal(year.percentage, 85, 'with one semester graded, the year is that semester');
+    assert.equal(year.quarters, undefined, 'a school year has no single set of quarters');
+
+    const first = finalResult(rows, null, null, 'sem1');
+    assert.deepEqual(first.quarters, quarters(80, 90));
+    assert.equal(first.percentage, 85);
+    assert.equal(first.semesters, undefined);
+
+    const second = finalResult(rows, null, null, 'sem2');
+    assert.deepEqual(second.quarters, quarters());
+    assert.equal(second.percentage, null);
+  });
+
+  it('averages the semesters, not all the quarters, when they have a different number of graded quarters', () => {
+    // 1st Semester: Q1 60, Q2 80, Q3 100 (mean 80); 2nd Semester: Q1 90. The mean of the four quarters would
+    // be 82.5; each semester counts once, so the year is (80 + 90) / 2.
+    const rows = [
+      totals('sem1', 'term1', 'exam', 60, 100),
+      totals('sem1', 'term2', 'exam', 80, 100),
+      totals('sem1', 'term3', 'exam', 100, 100),
+      totals('sem2', 'term1', 'exam', 90, 100),
+    ];
+    const year = finalResult(rows, null);
+    assert.deepEqual(year.semesters, { sem1: 80, sem2: 90 });
+    assert.equal(year.percentage, 85);
+    assert.deepEqual(year.periods, {
+      sem1: quarters(60, 80, 100),
+      sem2: quarters(90),
+    });
+    assert.equal(finalGradeOf([60, 80, 100, 90], 'points'), 82.5, 'what the old rule gave');
+    // The semester filter gives each semester's own grade.
+    assert.equal(finalResult(rows, null, null, 'sem1').percentage, 80);
+    assert.equal(finalResult(rows, null, null, 'sem2').percentage, 90);
+  });
+
+  it('rounds a K-12 semester to a whole number first, then averages the semester grades', () => {
+    // Quarters 88 and 89 make a semester of 88.5, a whole 89; the other semester is 80. The year is
+    // (89 + 80) / 2 = 84.5, a whole 85. Averaged unrounded it would be 84.25 (84); over the three quarters
+    // 85.67 (86).
+    const results = [classResult(1, '2026-2027', 'k12', quarters(88, 89), quarters(80))];
+    assert.deepEqual(subjectSemesters(results), { sem1: 89, sem2: 80 });
+    assert.equal(subjectFinalGrade(results), 85);
+    assert.equal(finalGradeOf([88, 89, 80], 'k12'), 86);
+  });
+
+  it('averages the same quarter of both semesters when only that quarter is asked for', () => {
+    // The 1st Quarter of each semester: 70 and 90. With `term` alone, the summary's rows hold just those.
+    const rows = [totals('sem1', 'term1', 'exam', 70, 100), totals('sem2', 'term1', 'exam', 90, 100)];
+    const year = finalResult(rows, null);
+    assert.deepEqual(year.semesters, { sem1: 70, sem2: 90 });
+    assert.equal(year.percentage, 80);
+    assert.equal(year.initialGrade, 80, 'a points result keeps its grade as the initial grade');
+  });
+
+  it('keeps one K-12 initial grade only while one quarter of the scope is graded', () => {
+    const rows = [totals('sem1', 'term1', 'quiz', 18, 20), totals('sem2', 'term1', 'quiz', 10, 20)];
+    // Written work only in each quarter: initial grades 90 and 50, transmuted to 93 and 72 on their own.
+    const year = finalResult(rows, null, 'languages');
+    assert.equal(year.initialGrade, null, 'two quarters were transmuted, each on its own');
+    const first = finalResult(rows, null, 'languages', 'sem1');
+    assert.equal(first.initialGrade, 90);
+    assert.equal(first.percentage, 93);
+    assert.deepEqual(
+      first.components.map((part) => [part.component, part.percentage]),
+      [
+        ['written', 90],
+        ['performance', null],
+        ['quarterly', null],
+      ],
+      'the components of a semester count that semester only',
+    );
+  });
+
+  it('puts the quarters of a student who changed class together per semester and quarter', () => {
+    // 10-A: 1st Semester Q1 60, Q2 80. 10-B: 1st Semester Q2 100, Q3 90; 2nd Semester Q1 70.
+    // Merged 1st Semester: Q1 60, Q2 (80 + 100) / 2 = 90, Q3 90 -> 80; 2nd Semester 70; year 75.
+    // The mean of the two classes' own years, (70 + 82.5) / 2 = 76.25, would be wrong.
+    const classA = classResult(1, '2026-2027', 'points', quarters(60, 80));
+    const classB = classResult(1, '2026-2027', 'points', quarters(null, 100, 90), quarters(70));
+    assert.deepEqual(subjectQuarters([classA, classB], 'sem1'), quarters(60, 90, 90));
+    assert.deepEqual(subjectQuarters([classA, classB], 'sem2'), quarters(70));
+    assert.deepEqual(subjectSemesters([classA, classB]), { sem1: 80, sem2: 70 });
+    assert.equal(subjectFinalGrade([classA, classB]), 75);
+    assert.equal(subjectFinalGrade([classA]), 70);
+    assert.equal(subjectFinalGrade([classB]), 82.5);
+
+    // One subject of the year, then another: the general average counts the moved subject once.
+    const english = classResult(2, '2026-2027', 'points', quarters(90), quarters(80));
+    assert.equal(generalAverageOf([classA, classB, english]), 80); // (75 + 85) / 2
+    assert.deepEqual(
+      subjectYearResults([classA, classB, english]).map(({ subjectId, percentage }) => [
+        subjectId,
+        percentage,
+      ]),
+      [
+        [1, 75],
+        [2, 85],
+      ],
+    );
+  });
+
+  it('gives the general average of one semester from results that hold only that semester', () => {
+    // A summary filtered to the 2nd Semester: the 1st Semester's quarters are not in its rows.
+    const math = classResult(1, '2026-2027', 'points', quarters(), quarters(60, 80));
+    const english = classResult(2, '2026-2027', 'points', quarters(), quarters(90));
+    assert.equal(subjectFinalGrade([math]), 70);
+    assert.equal(generalAverageOf([math, english]), 80); // (70 + 90) / 2
   });
 });

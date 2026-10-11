@@ -1,4 +1,4 @@
-import { ASSESSMENT_TYPES, COMPONENT_WEIGHTS, PASSING_GRADE, TERMS } from '../constants/shared';
+import { ASSESSMENT_TYPES, COMPONENT_WEIGHTS, PASSING_GRADE, SEMESTERS, TERMS } from '../constants/shared';
 import {
   ASSESSMENT_TYPE_LABELS,
   GRADE_DESCRIPTORS,
@@ -11,10 +11,10 @@ import { formatPercent, formatScore } from './format';
  * Groups rows by the key `keyFn` returns, keeping the order in which keys first appear.
  * Used to split the flat `GET /grades` rows into one card per subject:
  *   groupBy(grades, (grade) => grade.assessment.classSubjectId)
- * Quarterly grades and each class-subject's final grade always come from `GET /grades/summary` (K-12
- * components, points or the subject's weights) and are never recomputed here; only what spans several
- * summary rows is derived from them: a subject's final grade over two classes of a year (subjectFinalGrade)
- * and the general average.
+ * Quarterly grades and each class-subject's grade of a semester or of the year always come from
+ * `GET /grades/summary` (K-12 components, points or the subject's weights) and are never recomputed here;
+ * only what spans several summary rows is derived from them: a subject's grade over two classes of a year
+ * (subjectSemesters, subjectFinalGrade) and the general average.
  * @template T
  * @param {T[]} rows
  * @param {(row: T) => *} keyFn
@@ -102,24 +102,27 @@ export function averageOf(percentages) {
 }
 
 /**
- * A final grade from quarterly grades, as the API computes it: their mean over the quarters that have one
- * (the average so far while a quarter is ungraded), a whole number for K-12 (rounded half up), otherwise
- * rounded to 2 decimals. Null when no quarter has a grade.
- * @param {Array<number|null|undefined>} quarterGrades
+ * A grade from the grades one level below, as the API computes it: the quarterly grades of a semester, or
+ * the semester grades of a school year. Their mean over those that have one (the average so far while a
+ * quarter is ungraded), a whole number for K-12 (rounded half up), otherwise rounded to 2 decimals. Null when
+ * none has a grade.
+ * @param {Array<number|null|undefined>} grades
  * @param {string} [method] 'k12', 'points' or 'weighted'
  */
-export function finalGradeOf(quarterGrades, method) {
-  const values = quarterGrades.filter((value) => value !== null && value !== undefined);
+export function finalGradeOf(grades, method) {
+  const values = grades.filter((value) => value !== null && value !== undefined);
   if (values.length === 0) return null;
   const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
   return method === 'k12' ? roundWhole(mean) : round2(mean);
 }
 
 /**
- * The quarterly grades of one subject in one school year from its summary rows (one per class; two when the
- * student changed class): the quarters of the classes put together, a quarter graded in both averaged
- * (finalGradeOf). { term1: 88, term2: 90, term3: null, term4: null }.
- * @param {Array<{ method: string, quarters: Record<string, number|null> }>} rows at least one
+ * The quarterly grades of one subject in one semester of a school year from its summary rows of that
+ * semester (`GET /grades/summary?semester=`, one per class; two when the student changed class): the quarters
+ * of the classes put together, a quarter graded in both averaged (finalGradeOf).
+ * { term1: 88, term2: 90, term3: null, term4: null }. The API's subjectQuarters, which reads the semester out
+ * of the results it holds instead.
+ * @param {Array<{ method: string, quarters: Record<string, number|null> }>} rows of one semester, at least one
  * @returns {Record<string, number|null>}
  */
 export function subjectQuarters(rows) {
@@ -136,17 +139,43 @@ export function subjectQuarters(rows) {
 }
 
 /**
- * The final grade of one subject in one school year from its summary rows: the average of its quarterly
- * grades (subjectQuarters). With one class it is that row's `percentage`. The API's subjectFinalGrade.
- * @param {Array<{ method: string, quarters: Record<string, number|null> }>} rows at least one
+ * The grade of each semester of one subject in one school year from its summary rows: the rows of each
+ * semester (`semester` tags the request the row came from: rows fetched with `?semester=sem1` are tagged
+ * 'sem1') have their quarters put together per class (subjectQuarters) and averaged, null for a semester
+ * with no row or no graded quarter. { sem1: 88, sem2: null }. The API's subjectSemesters.
+ * @param {Array<{ method: string, semester: string, quarters: Record<string, number|null> }>} rows
+ *   at least one, of any semesters
+ * @returns {Record<string, number|null>}
  */
-export const subjectFinalGrade = (rows) => finalGradeOf(Object.values(subjectQuarters(rows)), rows[0].method);
+export function subjectSemesters(rows) {
+  const { method } = rows[0];
+  return Object.fromEntries(
+    SEMESTERS.map((semester) => {
+      const ofSemester = rows.filter((row) => row.semester === semester);
+      return [
+        semester,
+        ofSemester.length ? finalGradeOf(Object.values(subjectQuarters(ofSemester)), method) : null,
+      ];
+    }),
+  );
+}
 
 /**
- * The general average of summary rows (`GET /grades/summary?groupBy=classSubject`): the mean of the subjects'
- * final grades, each subject counting once per school year (subjectFinalGrade over its classes of that year).
- * The same rule as the API's `method: average`.
- * @param {Array<{ subjectId: number, academicYear: string, method: string,
+ * The grade of one subject in one school year from its summary rows (tagged with their semester, as in
+ * subjectSemesters): the average of its semester grades that exist. A semester with no graded quarter is left
+ * out, so one semester graded gives that semester's grade, and two semesters with different numbers of graded
+ * quarters weigh the semesters equally, not the quarters. The API's subjectFinalGrade.
+ * @param {Array<{ method: string, semester: string, quarters: Record<string, number|null> }>} rows at least one
+ */
+export const subjectFinalGrade = (rows) =>
+  finalGradeOf(Object.values(subjectSemesters(rows)), rows[0].method);
+
+/**
+ * The general average of summary rows (`GET /grades/summary?groupBy=classSubject&semester=`, the rows of each
+ * semester tagged with it): the mean of the subjects' grades, each subject counting once per school year
+ * (subjectFinalGrade over its classes of that year). Rows of one semester alone give that semester's general
+ * average. The same rule as the API's `method: average`.
+ * @param {Array<{ subjectId: number, academicYear: string, method: string, semester: string,
  *   quarters: Record<string, number|null> }>} subjects
  */
 export function generalAverage(subjects) {

@@ -96,7 +96,10 @@ describe('SF10 permanent record', () => {
     expect(sf10Remarks([], true)).toBe('In progress');
   });
 
-  /** A row of GET /grades/summary?groupBy=classSubject: a K-12 subject with its quarterly grades Q1 to Q4. */
+  /**
+   * A row of GET /grades/summary?groupBy=classSubject&semester=: a K-12 subject with its quarterly grades Q1
+   * to Q4 in the semester it was fetched for (the 1st Semester unless `inSecond`), tagged with it.
+   */
   const subject = (subjectId, subjectName, className, academicYear, ...quarterGrades) => {
     const [term1 = null, term2 = null, term3 = null, term4 = null] = quarterGrades;
     return {
@@ -105,9 +108,11 @@ describe('SF10 permanent record', () => {
       className,
       academicYear,
       method: 'k12',
+      semester: 'sem1',
       quarters: { term1, term2, term3, term4 },
     };
   };
+  const inSecond = (row) => ({ ...row, semester: 'sem2' });
   const pick = ({ academicYear, gradeLevel, section, subject: name, finalGrade, remarks }) =>
     [academicYear, gradeLevel, section, name, finalGrade, remarks].join('|');
 
@@ -131,19 +136,48 @@ describe('SF10 permanent record', () => {
       '2026-2027|8|Grade 8 - A|Science|88|Passed',
       '2026-2027|8|Grade 8 - A|General average|88|In progress',
     ]);
-    // The quarterly grades beside each final grade, as on the DepEd form; none on the general average.
+    // Each semester's quarterly grades and grade beside the final grade, as on the DepEd form; no quarters
+    // on the general average, which carries each semester's average instead.
     expect(toCsv(SF10_CSV_COLUMNS, rows).split('\r\n').slice(0, 5)).toEqual([
-      'School year,Grade level,Section,Subject,Q1,Q2,Q3,Q4,Final grade,Remarks',
-      '2025-2026,7,Grade 7 - B,English,,,,,,',
-      '2025-2026,7,Grade 7 - B,Math,70,72,68,70,70,Failed',
-      '2025-2026,7,Grade 7 - B,Science,90,91,89,90,90,Passed',
-      '2025-2026,7,Grade 7 - B,General average,,,,,80,Remedial',
+      'School year,Grade level,Section,Subject,1st Semester Q1,1st Semester Q2,1st Semester Q3,1st Semester Q4,1st Semester grade,2nd Semester Q1,2nd Semester Q2,2nd Semester Q3,2nd Semester Q4,2nd Semester grade,Final grade,Remarks',
+      '2025-2026,7,Grade 7 - B,English,,,,,,,,,,,,',
+      '2025-2026,7,Grade 7 - B,Math,70,72,68,70,70,,,,,,70,Failed',
+      '2025-2026,7,Grade 7 - B,Science,90,91,89,90,90,,,,,,90,Passed',
+      '2025-2026,7,Grade 7 - B,General average,,,,,80,,,,,,80,Remedial',
     ]);
   });
 
-  it('gives a subject taken in two sections the average of all its quarters', () => {
-    // Q1 in 8-A, Q2 to Q4 in 8-B: (70 + 80 + 84 + 86) / 4 = 80 passes. The mean of the two sections' final
-    // grades, (70 + 83) / 2 = 76.5, would understate the three quarters in 8-B.
+  it('gives a subject its grade in each semester and the final grade as their average', () => {
+    // 1st Semester: Q1 60, Q2 80, Q3 100 (80). 2nd Semester: Q1 90. The final grade is (80 + 90) / 2 = 85,
+    // not the 82.5 of the four quarters. A second subject is graded in the 1st Semester only.
+    const enrollments = [
+      { status: 'completed', class: { name: 'Grade 8 - A', gradeLevel: 8, academicYear: '2026-2027' } },
+    ];
+    const subjects = [
+      subject(1, 'Math', 'Grade 8 - A', '2026-2027', 60, 80, 100),
+      inSecond(subject(1, 'Math', 'Grade 8 - A', '2026-2027', 90)),
+      subject(2, 'Science', 'Grade 8 - A', '2026-2027', 70),
+    ];
+    const rows = sf10Rows(enrollments, subjects);
+    expect(rows.map(pick)).toEqual([
+      '2026-2027|8|Grade 8 - A|Math|85|Passed',
+      '2026-2027|8|Grade 8 - A|Science|70|Failed',
+      '2026-2027|8|Grade 8 - A|General average|77.5|Remedial',
+    ]);
+    expect(rows[0].semesters).toEqual({ sem1: 80, sem2: 90 });
+    expect(rows[0].quarters.sem2).toEqual({ term1: 90, term2: null, term3: null, term4: null });
+    expect(rows[1].semesters).toEqual({ sem1: 70, sem2: null });
+    expect(rows[1].quarters.sem2).toBeNull();
+    // The general average of each semester, then of the year: (85 + 70) / 2.
+    expect(rows[2].semesters).toEqual({ sem1: 75, sem2: 90 });
+    expect(toCsv(SF10_CSV_COLUMNS, rows).split('\r\n')[1]).toBe(
+      '2026-2027,8,Grade 8 - A,Math,60,80,100,,80,90,,,,90,85,Passed',
+    );
+  });
+
+  it('gives a subject taken in two sections the average of all its quarters of a semester', () => {
+    // Q1 in 8-A, Q2 to Q4 in 8-B: (70 + 80 + 84 + 86) / 4 = 80 passes. The mean of the two sections' grades,
+    // (70 + 83) / 2 = 76.5, would understate the three quarters in 8-B.
     const enrollments = [
       { status: 'transferred', class: { name: 'Grade 8 - A', gradeLevel: 8, academicYear: '2026-2027' } },
       { status: 'completed', class: { name: 'Grade 8 - B', gradeLevel: 8, academicYear: '2026-2027' } },
@@ -157,6 +191,6 @@ describe('SF10 permanent record', () => {
       '2026-2027|8|Grade 8 - A / Grade 8 - B|Math|80|Passed',
       '2026-2027|8|Grade 8 - A / Grade 8 - B|General average|80|Promoted',
     ]);
-    expect(rows[0].quarters).toEqual({ term1: 70, term2: 80, term3: 84, term4: 86 });
+    expect(rows[0].quarters.sem1).toEqual({ term1: 70, term2: 80, term3: 84, term4: 86 });
   });
 });

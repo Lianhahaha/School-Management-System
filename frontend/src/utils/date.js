@@ -3,7 +3,12 @@
  * for timestamps. Date-only strings are never passed to `new Date('YYYY-MM-DD')`: that
  * parses as UTC midnight and shows the previous day in time zones west of Greenwich.
  */
-import { ACADEMIC_YEAR_START_MONTH, jsDayToIsoDay } from '../constants/shared';
+import {
+  ACADEMIC_YEAR_START_MONTH,
+  FIRST_SEMESTER_MONTHS,
+  SEMESTERS,
+  jsDayToIsoDay,
+} from '../constants/shared';
 
 const EMPTY = '—';
 
@@ -120,6 +125,22 @@ export function currentAcademicYear() {
   const [year, month] = todayYmd().split('-').map(Number);
   const startYear = month >= ACADEMIC_YEAR_START_MONTH ? year : year - 1;
   return `${startYear}-${startYear + 1}`;
+}
+
+/**
+ * The semester of a 'YYYY-MM-DD' date within its academic year, by the same rule as the API's semesterOf:
+ * 'sem1' for the first FIRST_SEMESTER_MONTHS months from ACADEMIC_YEAR_START_MONTH (August to December),
+ * 'sem2' for the rest (January to July). Today's date by default.
+ */
+export function semesterOf(ymd = todayYmd()) {
+  const month = Number(ymd.split('-')[1]);
+  const monthsIntoYear = (month - ACADEMIC_YEAR_START_MONTH + 12) % 12;
+  return monthsIntoYear < FIRST_SEMESTER_MONTHS ? SEMESTERS[0] : SEMESTERS[1];
+}
+
+/** The semester containing today, in the viewer's local time zone. */
+export function currentSemester() {
+  return semesterOf(todayYmd());
 }
 
 /** 'YYYY-MM-DD' plus `days` calendar days (negative allowed); independent of the time zone. */

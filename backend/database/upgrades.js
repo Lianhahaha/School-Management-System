@@ -71,4 +71,26 @@ export const UPGRADES = Object.freeze([
                 AND COLUMN_TYPE NOT LIKE '%term4%'`,
     apply: `ALTER TABLE assessments MODIFY COLUMN term ENUM('term1','term2','term3','term4') NOT NULL`,
   },
+  {
+    // Two semesters a year, each with its own four quarters: `term` now names the quarter within the semester.
+    // Every assessment stored so far becomes a 1st Semester one through the column's default; no row moves.
+    id: '2026-10-11-assessments-semester',
+    description: 'add assessments.semester',
+    needed: `SELECT 1 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'assessments' AND COLUMN_NAME = 'semester')`,
+    apply: `ALTER TABLE assessments ADD COLUMN semester ENUM('sem1','sem2') NOT NULL DEFAULT 'sem1'
+              COMMENT 'Semester of the school year (sem1 = 1st, sem2 = 2nd); each semester has its own term1..term4'
+              AFTER term`,
+  },
+  {
+    // The same title may come back in the other semester's quarter, so the unique key takes the semester in.
+    // One ALTER: the foreign key on class_subject_id is served by the new key before the old one goes.
+    id: '2026-10-11-assessments-period-key',
+    description: 'replace assessments.uq_assessments_cs_term_title with uq_assessments_cs_period_title',
+    needed: `SELECT 1 FROM information_schema.STATISTICS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'assessments' AND INDEX_NAME = 'uq_assessments_cs_term_title'`,
+    apply: `ALTER TABLE assessments
+              DROP INDEX uq_assessments_cs_term_title,
+              ADD UNIQUE KEY uq_assessments_cs_period_title (class_subject_id, semester, term, title)`,
+  },
 ]);

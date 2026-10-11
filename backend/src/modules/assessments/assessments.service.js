@@ -13,6 +13,7 @@ const toAssessmentShape = (row) => ({
   classSubject: classSubjectRef(row),
   title: row.title,
   type: row.type,
+  semester: row.semester,
   term: row.term,
   maxScore: row.maxScore,
   assessedOn: row.assessedOn,
@@ -46,9 +47,10 @@ export async function getManagedAssessment(user, id) {
 export const describeAssessment = (assessment) =>
   `${assessment.title} of ${assessment.classSubject.subjectName} · ${assessment.classSubject.className}`;
 
-const assessmentFields = ({ title, type, term, maxScore, assessedOn }) => ({
+const assessmentFields = ({ title, type, semester, term, maxScore, assessedOn }) => ({
   title,
   type,
+  semester,
   term,
   maxScore,
   assessedOn,

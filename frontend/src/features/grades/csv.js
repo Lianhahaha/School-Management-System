@@ -2,8 +2,8 @@
  * CSV for grades: one assessment's grade sheet, a student's own grades, and DepEd school form 10 (SF10,
  * Learner's Permanent Academic Record) of one student.
  */
-import { REMEDIAL_MAX_FAILED, TERMS } from '../../constants/shared';
-import { ASSESSMENT_TYPE_LABELS, TERM_LABELS, TERM_SHORT_LABELS } from '../../constants/ui';
+import { REMEDIAL_MAX_FAILED, SEMESTERS, TERMS } from '../../constants/shared';
+import { ASSESSMENT_TYPE_LABELS, SEMESTER_LABELS, TERM_LABELS, TERM_SHORT_LABELS } from '../../constants/ui';
 import {
   generalAverage,
   groupBy,
@@ -11,6 +11,7 @@ import {
   remarksOf,
   subjectFinalGrade,
   subjectQuarters,
+  subjectSemesters,
 } from '../../utils/grades';
 import { fullName } from '../../utils/names';
 
@@ -57,14 +58,17 @@ export function sf10Remarks(finalGrades, isActive) {
 
 /**
  * The SF10 rows of one student, school year by school year, oldest first: a row per subject with its quarterly
- * grades, its final grade (their average, utils/grades subjectFinalGrade) and Passed or Failed (a subject taken
- * in two sections of one year puts the quarters of both together, as the general average does), then the
- * year's general average with the year's remarks (sf10Remarks).
+ * grades and grade in each semester (`quarters` and `semesters`, by semester; null for a semester with no
+ * row), its final grade (the average of the semester grades that exist, utils/grades subjectFinalGrade) and
+ * Passed or Failed (a subject taken in two sections of one year puts the quarters of both together per
+ * semester and quarter, as the general average does), then the year's general average, with each semester's
+ * in `semesters`, and the year's remarks (sf10Remarks).
  * @param {Array<{ status: string, class: { name: string, gradeLevel: number, academicYear: string } }>} enrollments
  *   the student's enrollments (GET /enrollments?studentId=)
  * @param {Array<{ subjectId: number, subjectName: string, className: string, academicYear: string,
- *   method: string, quarters: Record<string, number | null> }>} subjects GET /grades/summary?groupBy=classSubject
- *   of the student, every year
+ *   method: string, semester: string, quarters: Record<string, number | null> }>} subjects the rows of
+ *   GET /grades/summary?groupBy=classSubject&semester= of the student, every year, of both semesters, each
+ *   tagged with the `semester` it was fetched for
  */
 export function sf10Rows(enrollments, subjects) {
   const years = [
@@ -83,7 +87,13 @@ export function sf10Rows(enrollments, subjects) {
       .map((rows) => ({
         subject: rows[0].subjectName,
         section: sectionsOf(rows.map((row) => row.className)),
-        quarters: subjectQuarters(rows),
+        quarters: Object.fromEntries(
+          SEMESTERS.map((semester) => {
+            const ofSemester = rows.filter((row) => row.semester === semester);
+            return [semester, ofSemester.length ? subjectQuarters(ofSemester) : null];
+          }),
+        ),
+        semesters: subjectSemesters(rows),
         finalGrade: subjectFinalGrade(rows),
       }))
       .sort((a, b) => a.subject.localeCompare(b.subject));
@@ -98,6 +108,12 @@ export function sf10Rows(enrollments, subjects) {
         ]),
         subject: 'General average',
         quarters: null,
+        semesters: Object.fromEntries(
+          SEMESTERS.map((semester) => [
+            semester,
+            generalAverage(yearSubjects.filter((row) => row.semester === semester)),
+          ]),
+        ),
         finalGrade: generalAverage(yearSubjects),
         remarks: sf10Remarks(
           results.map((result) => result.finalGrade),
@@ -109,15 +125,23 @@ export function sf10Rows(enrollments, subjects) {
 }
 
 /**
- * Columns of sf10Rows: Q1 to Q4 are a subject's quarterly grades (blank on the general average), `Final grade`
- * their average. `Remarks` is Passed or Failed for a subject, and the year's remarks on its average.
+ * Columns of sf10Rows: each semester's Q1 to Q4 are a subject's quarterly grades (blank on the general average)
+ * and its semester grade their average (the semester's general average on that row); `Final grade` is the
+ * average of the semester grades. `Remarks` is Passed or Failed for a subject, and the year's remarks on its
+ * average.
  */
 export const SF10_CSV_COLUMNS = [
   { header: 'School year', value: (row) => row.academicYear },
   { header: 'Grade level', value: (row) => row.gradeLevel },
   { header: 'Section', value: (row) => row.section },
   { header: 'Subject', value: (row) => row.subject },
-  ...TERMS.map((term) => ({ header: TERM_SHORT_LABELS[term], value: (row) => row.quarters?.[term] })),
+  ...SEMESTERS.flatMap((semester) => [
+    ...TERMS.map((term) => ({
+      header: `${SEMESTER_LABELS[semester]} ${TERM_SHORT_LABELS[term]}`,
+      value: (row) => row.quarters?.[semester]?.[term],
+    })),
+    { header: `${SEMESTER_LABELS[semester]} grade`, value: (row) => row.semesters?.[semester] },
+  ]),
   { header: 'Final grade', value: (row) => row.finalGrade },
   { header: 'Remarks', value: (row) => row.remarks },
 ];

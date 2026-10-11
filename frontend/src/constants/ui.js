@@ -21,6 +21,7 @@ import {
   GENDERS,
   PAYMENT_METHODS,
   ROLES,
+  SEMESTERS,
   TERMS,
 } from './shared';
 
@@ -206,7 +207,11 @@ export const GRADE_DESCRIPTORS = Object.freeze([
   { min: 0, label: 'Did Not Meet Expectations', tone: 'oxblood' },
 ]);
 
-/** The API's terms as the school names them: the four DepEd quarters of each school year. */
+/** The API's semesters as the school names them: two to a school year, each with its own four quarters. */
+export const SEMESTER_LABELS = Object.freeze({ sem1: '1st Semester', sem2: '2nd Semester' });
+export const SEMESTER_OPTIONS = optionsOf(SEMESTERS, SEMESTER_LABELS);
+
+/** The API's terms as the school names them: the four quarters of each semester. */
 export const TERM_LABELS = Object.freeze({
   term1: '1st Quarter',
   term2: '2nd Quarter',
@@ -357,9 +362,9 @@ export const UNIQUE_KEY_FIELDS = Object.freeze({
     field: 'startTime',
     message: 'This subject already has a period starting at this time on that day',
   },
-  'assessments.uq_assessments_cs_term_title': {
+  'assessments.uq_assessments_cs_period_title': {
     field: 'title',
-    message: 'An assessment with this title already exists for this quarter',
+    message: 'An assessment with this title already exists for this quarter of this semester',
   },
   'fees.uq_fees_year_grade_name': {
     field: 'name',

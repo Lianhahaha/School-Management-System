@@ -27,8 +27,9 @@ export const ROSTER_STUDENT_IDS = `SELECT e.student_id FROM enrollments e
 const GRADED_COUNT = '(SELECT COUNT(*) FROM grades g WHERE g.assessment_id = a.id)';
 const ENROLLED_COUNT = `(SELECT COUNT(*) FROM (${ROSTER_STUDENT_IDS}) roster)`;
 
-const COLUMNS = `a.id, a.class_subject_id, ${CLASS_SUBJECT_REF_COLUMNS}, a.title, a.type, a.term, a.max_score,
-  a.assessed_on, ${GRADED_COUNT} AS graded_count, ${ENROLLED_COUNT} AS enrolled_count, a.created_at, a.updated_at`;
+const COLUMNS = `a.id, a.class_subject_id, ${CLASS_SUBJECT_REF_COLUMNS}, a.title, a.type, a.semester, a.term,
+  a.max_score, a.assessed_on, ${GRADED_COUNT} AS graded_count, ${ENROLLED_COUNT} AS enrolled_count,
+  a.created_at, a.updated_at`;
 
 const FROM = `FROM assessments a ${joinClassSubject('a')}`;
 
@@ -42,6 +43,7 @@ export function listAssessments(listQuery, scope) {
     .addIf(listQuery.classSubjectId, 'a.class_subject_id = ?')
     .addIf(listQuery.classId, 'cs.class_id = ?')
     .addIf(listQuery.type, 'a.type = ?')
+    .addIf(listQuery.semester, 'a.semester = ?')
     .addIf(listQuery.term, 'a.term = ?')
     .addIf(listQuery.dateFrom, 'a.assessed_on >= ?')
     .addIf(listQuery.dateTo, 'a.assessed_on <= ?')
@@ -85,8 +87,9 @@ export function findPendingGrading(teacherId, academicYear, today, limit) {
 
 export async function insertAssessment(data) {
   const result = await run(
-    `INSERT INTO assessments (class_subject_id, title, type, term, max_score, assessed_on) VALUES (?, ?, ?, ?, ?, ?)`,
-    [data.classSubjectId, data.title, data.type, data.term, data.maxScore, data.assessedOn],
+    `INSERT INTO assessments (class_subject_id, title, type, semester, term, max_score, assessed_on)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [data.classSubjectId, data.title, data.type, data.semester, data.term, data.maxScore, data.assessedOn],
   );
   return result.insertId;
 }
@@ -94,6 +97,7 @@ export async function insertAssessment(data) {
 const PATCH_COLUMNS = {
   title: 'title',
   type: 'type',
+  semester: 'semester',
   term: 'term',
   maxScore: 'max_score',
   assessedOn: 'assessed_on',

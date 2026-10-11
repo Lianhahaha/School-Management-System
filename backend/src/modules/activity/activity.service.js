@@ -50,8 +50,8 @@ export function changesOf(before, patch) {
   return Object.keys(changes).length ? changes : null;
 }
 
-/** Field names a summary spells out rather than splitting at capitals. */
-const FIELD_WORDS = { lrn: 'LRN' };
+/** Field names a summary spells out rather than splitting at capitals; `term` is the quarter of a semester. */
+const FIELD_WORDS = { lrn: 'LRN', term: 'quarter' };
 
 /** "phone and guardian phone" from changes keyed by camelCase field names, for summaries. */
 export function changedList(changes) {

@@ -6,10 +6,12 @@ import { api, as, buildSchool, closeWorld, resetWorld } from './helpers/harness.
 after(closeWorld);
 
 /**
- * The four quarters through the API: each quarter of a subject is graded on its own and the final grade is
- * the average of the quarterly grades (DepEd Order 8 s. 2015), and every figure built on a subject's grade
- * (the summary, the student dashboard, a teacher's results per student, the at-risk list) uses that final
- * grade. The numbers are chosen so the old whole-year rule gives a different answer.
+ * The four quarters of a semester through the API: each quarter of a subject is graded on its own and a
+ * semester's grade is the average of the quarterly grades (DepEd Order 8 s. 2015); the school year's grade is
+ * the average of the semesters', so with every assessment in the 1st Semester (the default) it is that
+ * semester's. Every figure built on a subject's grade (the summary, the student dashboard, a teacher's
+ * results per student, the at-risk list) uses it. The numbers are chosen so the old whole-year rule gives a
+ * different answer. The semesters themselves are in semesters.test.js.
  */
 describe('quarters and the final grade', () => {
   let school;
@@ -77,9 +79,13 @@ describe('quarters and the final grade', () => {
   });
 
   it('averages the quarterly grades, leaving out the quarters with nothing graded', async () => {
+    // The quarters are those of one semester: ask for the 1st, where everything here was assessed.
+    const [first] = await summary(school.s1, '?semester=sem1');
+    assert.deepEqual(first.quarters, { term1: 95, term2: 20, term3: null, term4: null });
+    assert.equal(first.percentage, 57.5);
     const [row] = await summary(school.s1);
     assert.equal(row.method, 'points');
-    assert.deepEqual(row.quarters, { term1: 95, term2: 20, term3: null, term4: null });
+    assert.deepEqual(row.semesters, { sem1: 57.5, sem2: null });
     // (95 + 20) / 2. The old rule pooled the year's points: 97 / 110 = 88.18.
     assert.equal(row.percentage, 57.5);
     assert.equal(row.initialGrade, 57.5);
@@ -89,9 +95,10 @@ describe('quarters and the final grade', () => {
   });
 
   it('gives one quarter on its own with the term filter', async () => {
-    const [row] = await summary(school.s1, '?term=term2');
+    const [row] = await summary(school.s1, '?term=term2&semester=sem1');
     assert.deepEqual(row.quarters, { ...NO_QUARTERS, term2: 20 });
     assert.equal(row.percentage, 20);
+    assert.equal((await summary(school.s1, '?term=term2'))[0].percentage, 20, 'without semester too');
     assert.equal(row.totalScore, 2);
     assert.deepEqual(await summary(school.s1, '?term=term3'), []);
   });
@@ -123,10 +130,11 @@ describe('quarters and the final grade', () => {
     // s1, Math and Science: Q1 has only the exam (quarterly 95), initial 95, transmuted 96; Q2 only the quiz
     // (written 20), initial 20, transmuted 65. Final (96 + 65) / 2 = 80.5, a whole 81. The old rule weighed
     // the year's components together, (20 * 40 + 95 * 20) / 60 = 45, transmuted to 71: a fail.
-    const [row] = await summary(school.s1);
+    const [row] = await summary(school.s1, '?semester=sem1');
     assert.equal(row.method, 'k12');
     assert.deepEqual(row.quarters, { term1: 96, term2: 65, term3: null, term4: null });
     assert.equal(row.percentage, 81);
+    assert.equal((await summary(school.s1))[0].percentage, 81, 'the year is the one semester graded');
     assert.equal(row.initialGrade, null, 'two quarters were transmuted, each on its own');
     assert.deepEqual(
       row.components.map((part) => [part.component, part.percentage]),
@@ -137,7 +145,7 @@ describe('quarters and the final grade', () => {
       ],
     );
 
-    const [q1] = await summary(school.s1, '?term=term1');
+    const [q1] = await summary(school.s1, '?term=term1&semester=sem1');
     assert.equal(q1.percentage, 96);
     assert.equal(q1.initialGrade, 95);
 

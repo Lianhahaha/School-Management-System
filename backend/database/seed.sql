@@ -9,7 +9,8 @@
 -- nothing here depends on AUTO_INCREMENT values.
 -- Session variables set by seed.js before this file runs (school time zone, so the
 -- demo data lines up with what the API treats as "today"):
---   @today (DATE), @now_time (TIME), @now (DATETIME, UTC), @ay_start_month (1-12)
+--   @today (DATE), @now_time (TIME), @now (DATETIME, UTC), @ay_start_month (1-12),
+--   @first_semester_months (how many months from @ay_start_month the 1st Semester lasts, 5)
 -- Dates are relative to @today so the demo looks "live" whenever it is run:
 -- attendance covers last week (Mon-Fri) plus this week up to the current time.
 -- Assumes the non-user tables are empty: seed.js refuses to run when `subjects`
@@ -185,12 +186,18 @@ JOIN enrollments e      ON e.class_id = cs.class_id                 -- the class
 WHERE d.dt < @today OR sch.end_time <= @now_time;
 
 -- ---------- 8. Assessments + grades --------------------------------------------
-INSERT INTO assessments (class_subject_id, title, type, term, max_score, assessed_on) VALUES
-  (@cs_a_math, 'Algebra Quiz 1',               'quiz', 'term1', 20.00, CAST(@last_monday AS DATE) + INTERVAL 1 DAY),  -- Tue: 10-A has Maths
-  (@cs_b_eng,  'Reading Comprehension Test 1', 'test', 'term1', 50.00, CAST(@last_monday AS DATE) + INTERVAL 3 DAY);  -- Thu: 10-B has English
+-- Each is the 1st Quarter of the semester its date falls in (same rule as semesterOf in src/utils/dates.js).
+SET @math_on  := CAST(@last_monday AS DATE) + INTERVAL 1 DAY;  -- Tue: 10-A has Maths
+SET @eng_on   := CAST(@last_monday AS DATE) + INTERVAL 3 DAY;  -- Thu: 10-B has English
+SET @math_sem := IF(MOD(MONTH(@math_on) - @ay_start_month + 12, 12) < @first_semester_months, 'sem1', 'sem2');
+SET @eng_sem  := IF(MOD(MONTH(@eng_on)  - @ay_start_month + 12, 12) < @first_semester_months, 'sem1', 'sem2');
 
-SET @assess_math := (SELECT id FROM assessments WHERE class_subject_id = @cs_a_math AND term = 'term1' AND title = 'Algebra Quiz 1');
-SET @assess_eng  := (SELECT id FROM assessments WHERE class_subject_id = @cs_b_eng  AND term = 'term1' AND title = 'Reading Comprehension Test 1');
+INSERT INTO assessments (class_subject_id, title, type, semester, term, max_score, assessed_on) VALUES
+  (@cs_a_math, 'Algebra Quiz 1',               'quiz', @math_sem, 'term1', 20.00, @math_on),
+  (@cs_b_eng,  'Reading Comprehension Test 1', 'test', @eng_sem,  'term1', 50.00, @eng_on);
+
+SET @assess_math := (SELECT id FROM assessments WHERE class_subject_id = @cs_a_math AND semester = @math_sem AND term = 'term1' AND title = 'Algebra Quiz 1');
+SET @assess_eng  := (SELECT id FROM assessments WHERE class_subject_id = @cs_b_eng  AND semester = @eng_sem  AND term = 'term1' AND title = 'Reading Comprehension Test 1');
 
 INSERT INTO grades (assessment_id, student_id, score, remarks, graded_by) VALUES
   (@assess_math, @s1, 18.50, 'Excellent work',          @t1_user),

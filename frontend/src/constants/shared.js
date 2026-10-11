@@ -93,10 +93,23 @@ export const REMEDIAL_MAX_FAILED = 2;
 export const HIGHEST_GRADE_LEVEL = 12;
 
 /**
- * The grading periods of a school year: DepEd's four quarters, term1 = 1st Quarter … term4 = 4th Quarter.
- * Each quarter is graded on its own; a subject's final grade is the average of its quarterly grades.
+ * The quarters of a semester: term1 = 1st Quarter … term4 = 4th Quarter. Every semester has its own four, so a
+ * grading period is a (semester, quarter) pair, eight to a school year. Each quarter is graded on its own; a
+ * semester's grade of a subject is the average of its quarterly grades.
  */
 export const TERMS = Object.freeze(['term1', 'term2', 'term3', 'term4']);
+
+/**
+ * The two semesters of a school year (no summer term): sem1 = 1st Semester, sem2 = 2nd Semester. The school
+ * year's grade of a subject is the average of its semesters' grades.
+ */
+export const SEMESTERS = Object.freeze(['sem1', 'sem2']);
+
+/**
+ * How many months the 1st Semester lasts, counted from ACADEMIC_YEAR_START_MONTH: with a start in August, August
+ * to December are the 1st Semester and January to July the 2nd.
+ */
+export const FIRST_SEMESTER_MONTHS = 5;
 
 export const ANNOUNCEMENT_AUDIENCES = Object.freeze(['all', 'students', 'teachers']);
 

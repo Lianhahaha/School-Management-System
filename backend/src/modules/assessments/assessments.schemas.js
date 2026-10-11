@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ASSESSMENT_TYPES, TERMS } from '../../constants/shared.js';
+import { ASSESSMENT_TYPES, SEMESTERS, TERMS } from '../../constants/shared.js';
 import {
   dateRangeRefinement,
   dateStr,
@@ -13,6 +13,8 @@ import { ASSESSMENT_SORT_MAP } from './assessments.repository.js';
 
 const title = shortText(150).min(1, { error: 'required' });
 const type = z.enum(ASSESSMENT_TYPES);
+const semester = z.enum(SEMESTERS);
+/** The quarter within the semester. */
 const term = z.enum(TERMS);
 const maxScore = z.number().positive().max(1000).multipleOf(0.01);
 
@@ -20,6 +22,7 @@ export const listAssessmentsQuery = listQuery(Object.keys(ASSESSMENT_SORT_MAP), 
   classSubjectId: id.optional(),
   classId: id.optional(),
   type: type.optional(),
+  semester: semester.optional(),
   term: term.optional(),
   dateFrom: dateStr.optional(),
   dateTo: dateStr.optional(),
@@ -29,12 +32,14 @@ export const createAssessmentBody = z.strictObject({
   classSubjectId: id,
   title,
   type,
+  /** Defaults to the 1st Semester, so a caller that knows only the quarter keeps working. */
+  semester: semester.default('sem1'),
   term,
   maxScore,
   assessedOn: dateStr.optional(),
 });
 
 /** The class-subject of an assessment is immutable. */
-export const updateAssessmentBody = patchOf({ title, type, term, maxScore, assessedOn: dateStr });
+export const updateAssessmentBody = patchOf({ title, type, semester, term, maxScore, assessedOn: dateStr });
 
 export { idParams };

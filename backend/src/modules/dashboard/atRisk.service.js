@@ -32,7 +32,8 @@ const shortfall = (student) =>
  * Students enrolled this academic year in the classes the user can see (every class for the office, the
  * classes a teacher teaches or leads) whose attendance or general average is below the AT_RISK lines. Both
  * figures cover the current academic year within the same classes; the general average is the mean of the
- * subjects' final grades so far, each the average of its quarterly grades (grades.service).
+ * subjects' school year grades so far, each the average of its semester grades, a semester's the average of
+ * its quarterly grades (grades.service, utils/grading.js).
  */
 export async function atRiskStudents(user) {
   const year = currentAcademicYear();

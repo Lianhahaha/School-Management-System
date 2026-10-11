@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ASSESSMENT_TYPES, TERMS } from '../../constants/shared.js';
+import { ASSESSMENT_TYPES, SEMESTERS, TERMS } from '../../constants/shared.js';
 import {
   academicYear,
   bulkArray,
@@ -18,6 +18,9 @@ const scopeFilters = {
   classId: id.optional(),
   /** The academic year of the assessment's class. */
   academicYear: academicYear.optional(),
+  /** The semester of the school year, with its own four quarters. */
+  semester: z.enum(SEMESTERS).optional(),
+  /** The quarter within the semester (all semesters' quarters of that number without `semester`). */
   term: z.enum(TERMS).optional(),
 };
 

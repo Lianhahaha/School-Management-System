@@ -4,7 +4,12 @@
  * 'YYYY-MM-DD' strings end to end.
  */
 import { env } from '../config/env.js';
-import { ACADEMIC_YEAR_START_MONTH, jsDayToIsoDay } from '../constants/shared.js';
+import {
+  ACADEMIC_YEAR_START_MONTH,
+  FIRST_SEMESTER_MONTHS,
+  SEMESTERS,
+  jsDayToIsoDay,
+} from '../constants/shared.js';
 
 const ymdFormatter = new Intl.DateTimeFormat('en-CA', {
   timeZone: env.APP_TIMEZONE,
@@ -64,6 +69,22 @@ export function academicYearOf(ymd = todayYmd()) {
 /** Current academic year label in APP_TIMEZONE. */
 export function currentAcademicYear(now = new Date()) {
   return academicYearOf(todayYmd(now));
+}
+
+/**
+ * Semester of a date within its academic year: 'sem1' for the first FIRST_SEMESTER_MONTHS months from
+ * ACADEMIC_YEAR_START_MONTH (August to December by default), 'sem2' for the rest (January to July).
+ * 2026-10-03 -> 'sem1', 2027-02-10 -> 'sem2'. Mirrored by the frontend's utils/date semesterOf.
+ */
+export function semesterOf(ymd = todayYmd()) {
+  const month = Number(ymd.split('-')[1]);
+  const monthsIntoYear = (month - ACADEMIC_YEAR_START_MONTH + 12) % 12;
+  return monthsIntoYear < FIRST_SEMESTER_MONTHS ? SEMESTERS[0] : SEMESTERS[1];
+}
+
+/** Current semester in APP_TIMEZONE. */
+export function currentSemester(now = new Date()) {
+  return semesterOf(todayYmd(now));
 }
 
 /** The academic year after the given label: '2025-2026' -> '2026-2027'. */

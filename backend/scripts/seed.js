@@ -14,7 +14,7 @@ import { closePool, query } from '../src/config/db.js';
 import { dbConnectionOptions, dbErrorHint } from '../src/config/dbConnection.js';
 import { env } from '../src/config/env.js';
 import { assertFirebaseReady, firebase } from '../src/config/firebase.js';
-import { ACADEMIC_YEAR_START_MONTH } from '../src/constants/shared.js';
+import { ACADEMIC_YEAR_START_MONTH, FIRST_SEMESTER_MONTHS } from '../src/constants/shared.js';
 import { createUserAccount } from '../src/modules/users/users.service.js';
 import * as usersRepository from '../src/modules/users/users.repository.js';
 import { todayYmd } from '../src/utils/dates.js';
@@ -155,12 +155,14 @@ async function seedSchoolData() {
   try {
     await conn.query("SET time_zone = '+00:00'");
     await conn.query(
-      'SET @today = CAST(? AS DATE), @now_time = CAST(? AS TIME), @now = CAST(? AS DATETIME), @ay_start_month = ?',
+      `SET @today = CAST(? AS DATE), @now_time = CAST(? AS TIME), @now = CAST(? AS DATETIME),
+           @ay_start_month = ?, @first_semester_months = ?`,
       [
         todayYmd(),
         schoolClockTime(),
         new Date().toISOString().slice(0, 19).replace('T', ' '),
         ACADEMIC_YEAR_START_MONTH,
+        FIRST_SEMESTER_MONTHS,
       ],
     );
     await conn.query(sql);
