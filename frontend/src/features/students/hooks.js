@@ -31,8 +31,8 @@ import { studentKeys } from './keys';
 
 /**
  * Active students without a class: the filter of the dashboard's "Unenrolled students" tile, the nav badge
- * and the Students page note. Pending and declined applicants are left out (the Admissions page has them).
- * `limit: 1` because only `meta.total` is read.
+ * and the Students page note. Pending applicants (who have not picked a class yet) are included, applications
+ * declined in the past left out. `limit: 1` because only `meta.total` is read.
  */
 export const UNENROLLED_STUDENTS_PARAMS = Object.freeze({
   hasActiveEnrollment: 'false',

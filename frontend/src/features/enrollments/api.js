@@ -32,14 +32,17 @@ export const completeSchoolYear = ({ classId, studentIds, nextClassId }) =>
   api.post('/enrollments/complete', { classId, studentIds, nextClassId }).then(toData);
 
 /**
- * Student only. Where the signed-in student stands for next year (DepEd promotion rules): { status, lastClass,
- * generalAverage, failedSubjects, gradeLevel, academicYear, classes }; status is one of NEXT_CLASS_STANDINGS.
+ * Student only. Where the signed-in student stands for next year (DepEd promotion rules), or, just signed up
+ * (`new`), for this one: { status, lastClass, generalAverage, failedSubjects, gradeLevel, academicYear,
+ * classes }; status is one of NEXT_CLASS_STANDINGS. Each of `classes` carries `enrolled` and `seats` (see
+ * enrollments/seats.js).
  */
 export const getNextClass = () => api.get('/enrollments/next-class').then(toData);
 
 /**
  * Student only. Enrolls the signed-in student in one of the offered sections. 409 `not_eligible` when the
- * standing does not allow it, 400 `class_not_offered` for another class.
+ * standing does not allow it, 409 `class_full` (details: classId, enrolled, seats) when the section has no
+ * seat left, 400 `class_not_offered` for another class.
  */
 export const enrollMyself = (classId) => api.post('/enrollments/next-class', { classId }).then(toData);
 

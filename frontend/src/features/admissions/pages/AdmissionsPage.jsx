@@ -16,20 +16,23 @@ import { fullName } from '../../../utils/names';
 import { EnrollStudentModal } from '../../enrollments/components/EnrollStudentModal';
 import { useStudents } from '../../students/hooks';
 import { AdmissionStatusBadge } from '../components/AdmissionStatusBadge';
-import { DeclineApplicationModal } from '../components/DeclineApplicationModal';
 import { DocumentChecklist } from '../components/DocumentChecklist';
 
-/** The list opens on the applications that wait for the school office. */
+/** The list opens on the applicants who have not picked a class yet. */
 const DEFAULT_STATUS = 'pending';
 
 /**
- * /admin/admissions: the applications sent with a self-registration, oldest first. The office ticks the
- * documents off as they arrive, then admits (Enroll in a class, the usual enroll dialog) or declines with a
- * reason the applicant reads. Pending applicants are not in the Students page's "without a class" count.
+ * /admin/admissions: the applications sent with a self-registration, oldest first. Nobody approves them: the
+ * student picks a class right after signing up, which admits them. The office ticks the documents off as they
+ * arrive, and Admit (the usual enroll dialog) places a student who has not picked a class yet. Pending
+ * applicants also count among the Students page's "without a class".
  */
 export default function AdmissionsPage() {
   const list = useListParams({ filters: ['admissionStatus'], defaultSort: ['createdAt', 'asc'] });
-  const status = list.params.admissionStatus || DEFAULT_STATUS;
+  // Only the statuses the filter offers; an old link to `declined` opens the default list.
+  const status = Object.hasOwn(ADMISSION_STATUS_LABELS, list.params.admissionStatus)
+    ? list.params.admissionStatus
+    : DEFAULT_STATUS;
   const { data, isPending, isFetching, error, refetch } = useStudents(
     toApiParams({
       ...list.apiParams,
@@ -39,7 +42,6 @@ export default function AdmissionsPage() {
     }),
   );
   const [admitTarget, setAdmitTarget] = useState(null);
-  const [declineTarget, setDeclineTarget] = useState(null);
 
   const columns = [
     {
@@ -84,31 +86,19 @@ export default function AdmissionsPage() {
       key: 'actions',
       header: <span className="sr-only">Actions</span>,
       align: 'right',
-      cell: (student) => (
-        <span className="inline-flex flex-wrap justify-end gap-1">
-          {/* A declined applicant can still be admitted; a deactivated account cannot be enrolled. */}
-          {!student.currentEnrollment && student.isActive && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setAdmitTarget(student)}
-              aria-label={`Admit ${fullName(student)}`}
-            >
-              Admit
-            </Button>
-          )}
-          {student.admission.status === 'pending' && (
-            <Button
-              size="sm"
-              variant="dangerGhost"
-              onClick={() => setDeclineTarget(student)}
-              aria-label={`Decline ${fullName(student)}`}
-            >
-              Decline
-            </Button>
-          )}
-        </span>
-      ),
+      // The office's shortcut for a student who has not picked a class; a deactivated account cannot be enrolled.
+      cell: (student) =>
+        !student.currentEnrollment &&
+        student.isActive && (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setAdmitTarget(student)}
+            aria-label={`Admit ${fullName(student)}`}
+          >
+            Admit
+          </Button>
+        ),
     },
   ];
 
@@ -117,7 +107,7 @@ export default function AdmissionsPage() {
       <PageHeader
         total={data?.meta?.total}
         title="Admissions"
-        description="Students who applied on the sign-up page. Tick the documents as they arrive, then admit them into a class."
+        description="Students who applied on the sign-up page. They pick their class themselves; tick the documents as they arrive."
       />
 
       <FilterBar onClear={list.hasActiveFilters ? list.clearFilters : undefined}>
@@ -175,7 +165,6 @@ export default function AdmissionsPage() {
         open={Boolean(admitTarget)}
         onClose={() => setAdmitTarget(null)}
       />
-      <DeclineApplicationModal student={declineTarget} onClose={() => setDeclineTarget(null)} />
     </>
   );
 }

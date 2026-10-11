@@ -10,8 +10,10 @@
  *   useTransferStudent() [form]          mutate({ studentId, classId }) one request, no half-done state
  *   useSetEnrollmentStatus()             mutate({ id, status }) status 'completed' | 'withdrawn'
  *   useCompleteSchoolYear() [form]       mutate({ classId, studentIds, nextClassId? }) all or nothing
- *   useNextClass({ enabled })            the signed-in student's standing for next year
- *   useEnrollMyself()                    mutate(classId) the student enrolls in an offered section
+ *   useNextClass({ enabled })            the signed-in student's standing for next year (or, just signed
+ *                                        up, for this one), with the seats of each offered section
+ *   useEnrollMyself() [form]             mutate(classId) the student enrolls in an offered section; a
+ *                                        refusal (409 class_full) reloads the standing
  *
  * Every write refreshes enrollments, students, classes (student counts), the attendance sheets and
  * grade rosters (they list the enrolled students) and the dashboard; a student's own enrollment also
@@ -162,10 +164,17 @@ export function useEnrollMyself() {
   const toast = useToast();
   return useMutation({
     mutationFn: enrollMyself,
+    // SectionPicker shows every refusal next to the sections.
+    meta: { silent: true },
     onSuccess: (enrollment) => {
       invalidateEnrollments();
       invalidate(authKeys.me());
       toast.success(`You are enrolled in ${enrollment.class.name}, ${enrollment.class.academicYear}`);
+    },
+    // A refusal means the sections changed (one filled up, the standing moved on): show them as they are now.
+    onError: (error) => {
+      if (!(/** @type {import('../../lib/apiClient').ApiError} */ (error).isTransient))
+        invalidate(nextClassKey);
     },
   });
 }

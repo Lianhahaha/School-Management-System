@@ -1,4 +1,4 @@
-import { ArrowBigUpDash, PartyPopper, RotateCcw, TriangleAlert } from 'lucide-react';
+import { ArrowBigUpDash, PartyPopper, RotateCcw, School, TriangleAlert } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { ErrorState } from '../../../components/ui/ErrorState';
 import { Skeleton } from '../../../components/ui/Skeleton';
@@ -18,6 +18,14 @@ function copyOf(standing) {
   const { lastClass, gradeLevel, academicYear, failedSubjects } = standing;
   const pick = `Pick your Grade ${gradeLevel} section for ${academicYear}.`;
   switch (standing.status) {
+    case 'new':
+      return {
+        icon: School,
+        mark: 'cream',
+        title: `Pick your Grade ${gradeLevel} class for ${academicYear}`,
+        description:
+          "You're enrolled as soon as you pick one. Bring your PSA birth certificate and last report card (SF9) to the school office.",
+      };
     case 'promoted':
       return {
         icon: ArrowBigUpDash,
@@ -53,10 +61,14 @@ function copyOf(standing) {
   }
 }
 
+/** The standings whose student enrolls themselves in one of the offered sections (backend SELF_ENROLLING). */
+const SELF_ENROLLING = ['promoted', 'retained', 'new'];
+
 /**
  * A student without a class and their next step, from GET /enrollments/next-class: their last year's general
- * average and, when they may enroll themselves (promoted or retained), the sections to pick from. Renders
- * nothing for the standings an admin handles alone (`enrolled`, `needs_placement`).
+ * average and, when they may enroll themselves (promoted, retained, or new: just signed up), the sections to
+ * pick from, with their seats. Renders nothing for the standings an admin handles alone (`enrolled`,
+ * `needs_placement`).
  *
  * @param {object} props
  * @param {object} props.standing the next-class standing
@@ -64,7 +76,7 @@ function copyOf(standing) {
 export function NextClassCard({ standing }) {
   const copy = copyOf(standing);
   if (!copy) return null;
-  const canEnroll = standing.status === 'promoted' || standing.status === 'retained';
+  const canEnroll = SELF_ENROLLING.includes(standing.status);
 
   return (
     <Card icon={copy.icon} mark={copy.mark} title={copy.title} description={copy.description}>
@@ -93,8 +105,9 @@ export function NextClassCard({ standing }) {
 }
 
 /**
- * For a student without a class: their next step for next year (NextClassCard), or `fallback` when the
- * school places them (no completed year to judge). Fetches the standing itself.
+ * For a student without a class: their next step (NextClassCard: a class to pick after signing up, or the
+ * next year after a finished one), or `fallback` when the school places them (no completed year to judge).
+ * Fetches the standing itself.
  *
  * @param {object} props
  * @param {import('react').ReactNode} props.fallback shown for `needs_placement`
@@ -102,9 +115,7 @@ export function NextClassCard({ standing }) {
 export function NextClassStep({ fallback }) {
   const { data, error, isPending, refetch } = useNextClass();
   if (error) {
-    return (
-      <ErrorState title="Couldn't load your next school year" message={error.message} onRetry={refetch} />
-    );
+    return <ErrorState title="Couldn't load your next class" message={error.message} onRetry={refetch} />;
   }
   if (isPending) return <Skeleton className="h-40 w-full" />;
   return copyOf(data) ? <NextClassCard standing={data} /> : fallback;

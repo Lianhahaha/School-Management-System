@@ -43,7 +43,7 @@ export function StudentOverview({ student, onOpenTab }) {
   const subjectsThisYear = (grades.data ?? []).filter((subject) => subject.academicYear === academicYear);
   const average = generalAverage(subjectsThisYear);
   const marks = attendance.data?.total ?? 0;
-  // A self-registered student's application: on top while it is open or declined, below once admitted.
+  // A self-registered student's application: on top while they have not picked a class, below once admitted.
   const application = student.admission && <ApplicationCard student={student} />;
   const applicationFirst = isApplicant(student);
 

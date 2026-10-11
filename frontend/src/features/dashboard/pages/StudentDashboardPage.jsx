@@ -11,9 +11,9 @@ import { UpcomingAssessmentsCard } from '../components/UpcomingAssessmentsCard';
 import { UpcomingEventsCard } from '../components/UpcomingEventsCard';
 
 /**
- * /student: "How am I doing?" Without an active enrollment the identity hero, the next step (enroll for
- * next year, or wait for the school to place them) and the announcements are shown, because every other
- * block is class based.
+ * /student: "How am I doing?" Without an active enrollment the identity hero, the next step (pick a class
+ * after signing up, enroll for next year, or wait for the school to place them) and the announcements are
+ * shown, because every other block is class based.
  */
 export default function StudentDashboardPage() {
   return (
