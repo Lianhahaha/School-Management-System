@@ -1,6 +1,7 @@
 /**
  * Accounts: the one code path that creates a person in Firebase and MySQL,
- * account reads, admin edits, activation status and deletion of unused accounts.
+ * account reads, office edits, activation status and deletion of unused accounts.
+ * An admin manages every account; a student assistant creates and edits student accounts only.
  */
 import { withTransaction } from '../../config/db.js';
 import { env } from '../../config/env.js';
@@ -8,6 +9,7 @@ import { firebase } from '../../config/firebase.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { currentAcademicYear } from '../../utils/dates.js';
 import { logger } from '../../utils/logger.js';
+import { assertAdmin } from '../access/access.service.js';
 import { changedList, changesOf, nameOf, record } from '../activity/activity.service.js';
 import * as notifications from '../notifications/notifications.service.js';
 import * as admissions from '../admissions/admissions.service.js';
@@ -55,6 +57,25 @@ export async function listUsers(listQuery) {
   return { data: rows.map(toUserShape), meta };
 }
 
+/** 403 unless `actor` may manage an account of `role`: an admin any, a student assistant students' only. */
+function assertMayManageAccountOf(actor, role) {
+  if (role !== 'student') assertAdmin(actor, 'student assistants can only manage student accounts');
+}
+
+/** POST /users: the office creates an account (a student assistant, a student account only). */
+export async function createAccount(actor, body) {
+  assertMayManageAccountOf(actor, body.role);
+  return createUserAccount(body, { trusted: true });
+}
+
+/** PATCH /users/:id: the office edits an account's name and phone (a student assistant, a student's only). */
+export async function editAccount(actor, id, patch) {
+  const target = ApiError.assertFound(await repo.findUserById(id), 'user', id);
+  assertMayManageAccountOf(actor, target.role);
+  return updateUser(id, patch);
+}
+
+/** Name and phone of any account, unchecked: editAccount (the office) and PATCH /auth/me (one's own). */
 export async function updateUser(id, patch) {
   const before = ApiError.assertFound(await repo.findUserById(id), 'user', id);
   await repo.updateUser(id, patch);
@@ -90,7 +111,7 @@ const emailInUse = (message = 'this email is already in use; contact an administ
  * Creates the Firebase account of a new person and returns its uid. The caller has checked that no
  * MySQL row uses the email. An existing Firebase user with it is never reused: anyone can create a
  * Firebase user with the public web key and keep its ID token, and reusing that uid would hand them
- * the new account. Public registration refuses it (409). Trusted callers (admin, import) replace it
+ * the new account. Public registration refuses it (409). Trusted callers (the office, import) replace it
  * with a fresh user, but only when it is linked to no account here (an account whose email was changed
  * in Firebase keeps its sign-in) and only outside local development, where the Firebase project is
  * usually shared with the live site and the user may be a live account.
@@ -132,11 +153,11 @@ const isGeneratedNumberCollision = (error, profile) =>
  *   4. MySQL write failed -> delete the Firebase user this call created (no orphans); a failure after the
  *      commit leaves both in place
  *
- * @param {{ email: string, password: string, role: 'admin'|'teacher'|'student', firstName: string,
- *           lastName: string, phone?: string, profile?: object,
+ * @param {{ email: string, password: string, role: 'admin'|'teacher'|'student'|'assistant',
+ *           firstName: string, lastName: string, phone?: string, profile?: object,
  *           application?: { gradeLevel: number, previousSchool?: string|null } }} input
- *   `application` is sent by public registration only: admin-created and imported students have none
- * @param {{ trusted: boolean, firebaseUid?: string }} options trusted = admin, import or seed;
+ *   `application` is sent by public registration only: office-created and imported students have none
+ * @param {{ trusted: boolean, firebaseUid?: string }} options trusted = the office, import or seed;
  *   firebaseUid links an existing Firebase user instead of creating one (the seed's demo accounts only)
  */
 export async function createUserAccount(input, { trusted, firebaseUid }) {
@@ -190,7 +211,7 @@ export async function createUserAccount(input, { trusted, firebaseUid }) {
       actor: account,
     });
     const application = account.profile.admission;
-    await notifications.notifyAdmins({
+    await notifications.notifyOffice({
       type: 'signup',
       title: `New application: ${nameOf(account)}`,
       body: application ? `Grade ${application.gradeLevel} · ${email}` : email,

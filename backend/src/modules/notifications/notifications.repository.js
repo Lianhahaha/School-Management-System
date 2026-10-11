@@ -72,7 +72,8 @@ export async function findTeacherUserId(teacherId) {
   return rows[0]?.userId ?? null;
 }
 
-export async function findActiveAdminIds() {
-  const rows = await query("SELECT id FROM users WHERE role = 'admin' AND is_active = 1");
+/** users.id of every active admin and student assistant (the school office). */
+export async function findActiveOfficeIds() {
+  const rows = await query("SELECT id FROM users WHERE role IN ('admin', 'assistant') AND is_active = 1");
   return rows.map((row) => row.id);
 }

@@ -6,7 +6,7 @@ export async function list(req, res) {
 }
 
 export async function create(req, res) {
-  ok(res, await service.createUserAccount(req.validated.body, { trusted: true }), { status: 201 });
+  ok(res, await service.createAccount(req.user, req.validated.body), { status: 201 });
 }
 
 export async function get(req, res) {
@@ -14,7 +14,7 @@ export async function get(req, res) {
 }
 
 export async function update(req, res) {
-  ok(res, await service.updateUser(req.validated.params.id, req.validated.body));
+  ok(res, await service.editAccount(req.user, req.validated.params.id, req.validated.body));
 }
 
 export async function remove(req, res) {

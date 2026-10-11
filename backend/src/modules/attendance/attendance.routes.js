@@ -11,7 +11,7 @@ attendanceRoutes.get('/', validate({ query: schemas.listAttendanceQuery }), cont
 attendanceRoutes.get('/summary', validate({ query: schemas.summaryQuery }), controller.summary);
 attendanceRoutes.get(
   '/sheet',
-  authorize('admin', 'teacher'),
+  authorize('admin', 'assistant', 'teacher'),
   validate({ query: schemas.sheetQuery }),
   controller.getSheet,
 );

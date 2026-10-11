@@ -5,8 +5,9 @@
  *
  *   student   a grade recorded or changed, an absence or late mark, a new class, a declined application
  *   teacher   a lesson to teach, a homeroom class
- *   admin     a student signed up on their own and sent an application (marked read for every admin once
- *             the student is enrolled or the application declined, since nothing is left to do)
+ *   office    (admins and student assistants) a student signed up on their own and sent an application
+ *             (marked read for all of them once the student is enrolled or the application declined, since
+ *             nothing is left to do)
  */
 import { logger } from '../../utils/logger.js';
 import { currentUser } from '../../utils/requestContext.js';
@@ -54,10 +55,10 @@ export async function notifyTeacher(teacherId, note) {
   }
 }
 
-/** One note to every active administrator. Never throws. */
-export async function notifyAdmins(note) {
+/** One note to every active admin and student assistant. Never throws. */
+export async function notifyOffice(note) {
   try {
-    await notify((await repo.findActiveAdminIds()).map((userId) => ({ ...note, userId })));
+    await notify((await repo.findActiveOfficeIds()).map((userId) => ({ ...note, userId })));
   } catch (error) {
     logger.error('could not write notifications', { error: String(error) });
   }
@@ -68,7 +69,7 @@ export const signupLink = (studentId) => `/admin/students/${studentId}`;
 
 /**
  * The students now have a class, or their application was declined: their sign-up notes are done for every
- * admin. Never throws.
+ * recipient in the office. Never throws.
  */
 export async function resolveSignups(studentIds) {
   try {

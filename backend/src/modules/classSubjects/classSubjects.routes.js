@@ -9,14 +9,14 @@ export const classSubjectsRoutes = Router();
 classSubjectsRoutes.get('/', validate({ query: schemas.listClassSubjectsQuery }), controller.list);
 classSubjectsRoutes.post(
   '/',
-  authorize('admin'),
+  authorize('admin', 'assistant'),
   validate({ body: schemas.createClassSubjectBody }),
   controller.create,
 );
 classSubjectsRoutes.get('/:id', validate({ params: schemas.idParams }), controller.get);
 classSubjectsRoutes.patch(
   '/:id',
-  authorize('admin'),
+  authorize('admin', 'assistant'),
   validate({ params: schemas.idParams, body: schemas.reassignBody }),
   controller.reassign,
 );

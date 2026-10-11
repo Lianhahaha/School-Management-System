@@ -8,7 +8,7 @@ export const importsRoutes = Router();
 
 importsRoutes.post(
   '/students',
-  authorize('admin'),
+  authorize('admin', 'assistant'),
   validate({ body: schemas.importStudentsBody }),
   controller.students,
 );

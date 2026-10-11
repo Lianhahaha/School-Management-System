@@ -1,6 +1,6 @@
 /**
  * The school calendar: holidays (no classes, so attendance cannot be marked on them) and school events.
- * Everyone reads it; administrators write it.
+ * Everyone reads it; the office (admins and student assistants) writes it.
  */
 import { ApiError } from '../../utils/ApiError.js';
 import { addDaysYmd, formatDayLabel, todayYmd } from '../../utils/dates.js';

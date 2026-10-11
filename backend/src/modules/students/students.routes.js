@@ -8,19 +8,19 @@ export const studentsRoutes = Router();
 
 studentsRoutes.get(
   '/',
-  authorize('admin', 'teacher'),
+  authorize('admin', 'assistant', 'teacher'),
   validate({ query: schemas.listStudentsQuery }),
   controller.list,
 );
 studentsRoutes.get(
   '/:id',
-  authorize('admin', 'teacher', 'student'),
+  authorize('admin', 'assistant', 'teacher', 'student'),
   validate({ params: schemas.idOrMeParams }),
   controller.get,
 );
 studentsRoutes.patch(
   '/:id',
-  authorize('admin'),
+  authorize('admin', 'assistant'),
   validate({ params: schemas.idParams, body: schemas.updateStudentBody }),
   controller.update,
 );

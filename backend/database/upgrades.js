@@ -40,4 +40,25 @@ export const UPGRADES = Object.freeze([
               ADD UNIQUE KEY uq_students_lrn (lrn),
               ADD CONSTRAINT chk_students_lrn CHECK (lrn IS NULL OR lrn REGEXP '^[0-9]{12}$')`,
   },
+  {
+    // Student assistants, a fourth role. A value appended to an ENUM leaves every stored value as it is; the
+    // rest of the column's definition (NOT NULL, comment) is restated unchanged.
+    id: '2026-10-11-users-role-assistant',
+    description: "add 'assistant' to users.role",
+    needed: `SELECT 1 FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'role'
+                AND COLUMN_TYPE NOT LIKE '%assistant%'`,
+    apply: `ALTER TABLE users MODIFY COLUMN role ENUM('admin','teacher','student','assistant') NOT NULL
+              COMMENT 'Single source of truth for RBAC. Immutable after creation'`,
+  },
+  {
+    // The activity log copies the actor's role, so it takes the new role too (the column stays nullable).
+    id: '2026-10-11-activity-log-actor-role-assistant',
+    description: "add 'assistant' to activity_log.actor_role",
+    needed: `SELECT 1 FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'activity_log' AND COLUMN_NAME = 'actor_role'
+                AND COLUMN_TYPE NOT LIKE '%assistant%'`,
+    apply: `ALTER TABLE activity_log
+              MODIFY COLUMN actor_role ENUM('admin','teacher','student','assistant') NULL`,
+  },
 ]);

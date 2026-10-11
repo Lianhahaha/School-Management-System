@@ -302,8 +302,14 @@ export async function completeYear({ classId, studentIds, nextClassId }) {
   return { classId, nextClassId: next?.id ?? null, completed: closed.length, enrollments };
 }
 
-/** Close an active enrollment as `completed` or `withdrawn`. Closed rows cannot be changed. */
-export async function setStatus(id, status) {
+/**
+ * Close an active enrollment as `completed` or `withdrawn`. Closed rows cannot be changed. Completing a
+ * year is the admin's (as POST /complete is); a student assistant withdraws only.
+ */
+export async function setStatus(user, id, status) {
+  if (status === 'completed') {
+    access.assertAdmin(user, 'only an administrator can close an enrollment as completed');
+  }
   const alreadyClosed = (from) =>
     ApiError.conflict(`enrollment is already ${from}`, {
       reason: 'invalid_status_transition',

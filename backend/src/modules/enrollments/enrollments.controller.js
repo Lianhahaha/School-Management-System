@@ -35,5 +35,5 @@ export async function enrollMyself(req, res) {
 }
 
 export async function setStatus(req, res) {
-  ok(res, await service.setStatus(req.validated.params.id, req.validated.body.status));
+  ok(res, await service.setStatus(req.user, req.validated.params.id, req.validated.body.status));
 }

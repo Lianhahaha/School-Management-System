@@ -1,6 +1,6 @@
 /**
  * Student profiles: creation and deletion (called by users.service inside its transaction),
- * reads with role scoping, admin edits.
+ * reads with role scoping, office edits.
  */
 import { withTransaction } from '../../config/db.js';
 import { ApiError } from '../../utils/ApiError.js';

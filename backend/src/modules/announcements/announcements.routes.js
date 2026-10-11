@@ -9,7 +9,7 @@ export const announcementsRoutes = Router();
 announcementsRoutes.get('/', validate({ query: schemas.listAnnouncementsQuery }), controller.list);
 announcementsRoutes.post(
   '/',
-  authorize('admin', 'teacher'),
+  authorize('admin', 'assistant', 'teacher'),
   validate({ body: schemas.createAnnouncementBody }),
   controller.create,
 );
@@ -17,13 +17,13 @@ announcementsRoutes.post('/read', validate({ body: schemas.markReadBody }), cont
 announcementsRoutes.get('/:id', validate({ params: schemas.idParams }), controller.get);
 announcementsRoutes.patch(
   '/:id',
-  authorize('admin', 'teacher'),
+  authorize('admin', 'assistant', 'teacher'),
   validate({ params: schemas.idParams, body: schemas.updateAnnouncementBody }),
   controller.update,
 );
 announcementsRoutes.delete(
   '/:id',
-  authorize('admin', 'teacher'),
+  authorize('admin', 'assistant', 'teacher'),
   validate({ params: schemas.idParams }),
   controller.remove,
 );

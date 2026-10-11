@@ -1,10 +1,10 @@
 /**
  * Fees and payments. Administrators set what the school charges in each school year (a fee for one grade
- * level or for every grade) and record what students pay, with the official receipt (OR) number. A
- * student's statement for a year lists the fees of their class's grade plus the every-grade ones, their
- * payments and the balance, which is negative when they paid more than the fees. Admins read any statement
- * and a student reads their own; teachers have no access. A payment is never edited: a mistake is removed
- * (logged) and recorded again.
+ * level or for every grade); the office (admins and student assistants) records what students pay, with the
+ * official receipt (OR) number. A student's statement for a year lists the fees of their class's grade plus
+ * the every-grade ones, their payments and the balance, which is negative when they paid more than the fees.
+ * The office reads any statement and a student reads their own; teachers have no access. A payment is never
+ * edited: a mistake is removed by an admin (logged) and recorded again.
  */
 import { ApiError } from '../../utils/ApiError.js';
 import { resolveMe } from '../../utils/resolveMe.js';

@@ -23,7 +23,7 @@ export const assessmentGradesRoutes = Router({ mergeParams: true });
 
 assessmentGradesRoutes.get(
   '/',
-  authorize('admin', 'teacher'),
+  authorize('admin', 'assistant', 'teacher'),
   validate({ params: schemas.idParams }),
   controller.getRoster,
 );

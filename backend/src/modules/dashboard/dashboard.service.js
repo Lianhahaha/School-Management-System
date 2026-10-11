@@ -1,7 +1,7 @@
 /**
- * GET /dashboard: one payload per role, discriminated by `role`. "Today" and the current
- * academic year come from the school's time zone. Data owned by other modules is fetched through
- * their services; only true aggregates live in dashboard.repository.
+ * GET /dashboard: one payload per role, discriminated by `role` (student assistants get the admin's).
+ * "Today" and the current academic year come from the school's time zone. Data owned by other modules is
+ * fetched through their services; only true aggregates live in dashboard.repository.
  */
 import { academicYearStart, currentAcademicYear, todayIsoWeekday, todayYmd } from '../../utils/dates.js';
 import * as access from '../access/access.service.js';
@@ -271,8 +271,9 @@ async function studentDashboard(user) {
   };
 }
 
+/** A student assistant gets the admin's payload as it is, `role: 'admin'` included (it names the payload). */
 export function getDashboard(user) {
-  if (access.isAdmin(user)) return adminDashboard(user);
+  if (access.isOffice(user)) return adminDashboard(user);
   if (access.isTeacher(user)) return teacherDashboard(user);
   return studentDashboard(user);
 }

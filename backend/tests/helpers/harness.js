@@ -32,7 +32,8 @@ export async function makeUser(role, overrides = {}) {
       role,
       firstName: `First${sequence}`,
       lastName: `Last${sequence}`,
-      ...(role === 'admin' ? {} : { profile: {} }),
+      // Students and teachers have a profile; admins and assistants have none.
+      ...(role === 'student' || role === 'teacher' ? { profile: {} } : {}),
       ...overrides,
     },
     { trusted: true },

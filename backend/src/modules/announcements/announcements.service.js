@@ -1,6 +1,6 @@
 /**
  * Announcements and their visibility:
- *   admin   : everything, any status.
+ *   office  : (admins and student assistants) everything, any status; they edit or delete any announcement.
  *   teacher : active school-wide notices for teachers or everyone, active notices of visible classes,
  *             plus everything they authored whatever its status.
  *   student : active notices for students or everyone that are school-wide or target their class.
@@ -33,22 +33,25 @@ const toAnnouncementShape = (row) => ({
   updatedAt: row.updatedAt,
 });
 
-/** `{ sql, params }` limiting rows to what `user` may read, or null for admins. */
+/** `{ sql, params }` limiting rows to what `user` may read, or null for the office. */
 function visibilityScope(user) {
-  if (access.isAdmin(user)) return null;
+  if (access.isOffice(user)) return null;
   if (access.isTeacher(user)) return repo.teacherVisibility(access.classScope(user, 'a.class_id'), user.id);
   return repo.studentVisibility(user.activeClassId);
 }
 
 export async function listAnnouncements(user, listQuery) {
-  if (listQuery.status !== undefined && !access.isAdmin(user)) {
-    throw ApiError.forbidden('admin_only_filter', 'only administrators can filter announcements by status');
+  if (listQuery.status !== undefined && !access.isOffice(user)) {
+    throw ApiError.forbidden(
+      'admin_only_filter',
+      'only the school office can filter announcements by status',
+    );
   }
   if (listQuery.classId !== undefined) await access.assertCanViewClass(user, listQuery.classId);
   const query = {
     ...listQuery,
     authorId: resolveMe(user, listQuery.authorId, 'user'),
-    status: access.isAdmin(user) ? (listQuery.status ?? 'active') : undefined,
+    status: access.isOffice(user) ? (listQuery.status ?? 'active') : undefined,
   };
   const { rows, meta } = await repo.listAnnouncements(query, user.id, visibilityScope(user));
   return { data: rows.map(toAnnouncementShape), meta };

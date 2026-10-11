@@ -17,8 +17,13 @@ info:
     `npm run token --silent -- teacher1@school.test` (run in `backend/`) prints one for a demo account.
     The token only proves identity: the account must exist in the school database and be active.
 
-    There are three roles: `admin`, `teacher` and `student`. Each operation starts its description with a
-    `Roles:` line that states who may call it and any ownership rule that applies on top of the role.
+    There are four roles: `admin`, `teacher`, `student` and `assistant`. An `assistant` is a student
+    assistant who takes everyday office work off the admin: it reads everything an admin reads and does the
+    office's routine writes (enrollment, student records and student accounts, classes, teacher assignments,
+    the timetable, announcements, the calendar, payments). What cannot be undone, sets money amounts, changes
+    grades or attendance, or manages accounts other than students' stays with the admin. Each operation
+    starts its description with a `Roles:` line that states who may call it and any ownership rule that
+    applies on top of the role.
 
     ## Responses
 
@@ -58,10 +63,11 @@ info:
     `meta: { page, limit, total, totalPages }`; `total` honours the filters.
 
     Scoped lists follow one rule. Omitting a filter returns the caller's own scope: a student sees their
-    own records, a teacher the classes they teach or are homeroom teacher of, an admin everything. Naming
-    a filter outside that scope (another student, a class the teacher cannot see) is a `403 FORBIDDEN`,
-    never a silently narrowed result. Teachers read what they can see (teach or homeroom) but may only
-    modify the class-subjects assigned to them.
+    own records, a teacher the classes they teach or are homeroom teacher of, an admin or an assistant
+    everything. Naming a filter outside that scope (another student, a class the teacher cannot see) is a
+    `403 FORBIDDEN`, never a silently narrowed result. Teachers read what they can see (teach or homeroom)
+    but may only modify the class-subjects assigned to them; assistants never modify attendance, assessments
+    or grades.
 
     ## Conventions
 
@@ -134,8 +140,8 @@ paths:
         profile and a `pending` application (`profile.admission`: the grade applied for and the previous
         school) in one step, and always assigns the role `student`; there is no `role` field. `gradeLevel`,
         `guardianName` and `guardianPhone` are required here. The student number is generated
-        (`STU-<admission year>-NNNN`) and `admissionDate` is today. Every active admin gets a `signup`
-        notification. No token is returned: sign in with the Firebase client SDK afterwards.
+        (`STU-<admission year>-NNNN`) and `admissionDate` is today. Every active admin and assistant gets a
+        `signup` notification. No token is returned: sign in with the Firebase client SDK afterwards.
 
         Disabled with `ALLOW_PUBLIC_REGISTRATION=false`: 404 with `details.reason = registration_disabled`.
         Limited per IP address and 15 minutes to 30 successful registrations, and separately to 150 rejected
@@ -176,9 +182,9 @@ paths:
         Roles: any authenticated user.
 
         Identity of the caller with the embedded role profile: `profile` holds the student or teacher record
-        and is `null` for admins; students also get `currentEnrollment`. Clients call this right after sign-in
-        to learn the role. A valid token without a school account fails with `403 USER_NOT_REGISTERED`,
-        a deactivated account with `403 ACCOUNT_DISABLED`.
+        and is `null` for admins and assistants; students also get `currentEnrollment`. Clients call this
+        right after sign-in to learn the role. A valid token without a school account fails with
+        `403 USER_NOT_REGISTERED`, a deactivated account with `403 ACCOUNT_DISABLED`.
       responses:
         '200': { $ref: '#/components/responses/AccountResponse' }
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -245,11 +251,11 @@ paths:
       operationId: createUser
       summary: Create an account
       description: |
-        Roles: admin.
+        Roles: admin, assistant (student accounts only; any other role is a 403 `role_not_allowed`).
 
         Creates a Firebase user, the account and the role profile, in one step, for any role. The `profile`
-        object is optional for `student` and `teacher` and not allowed for `admin`. Student and employee
-        numbers are generated when omitted; `admissionDate` and `hireDate` default to today.
+        object is optional for `student` and `teacher` and not allowed for `admin` and `assistant`. Student
+        and employee numbers are generated when omitted; `admissionDate` and `hireDate` default to today.
         A Firebase user with the same email but no school account is deleted and replaced by a new one, so
         whoever created it (anyone can, with the public web key) cannot sign in to the new account.
         Returns the same shape as `GET /auth/me`.
@@ -294,6 +300,14 @@ paths:
                   role: admin
                   firstName: Sam
                   lastName: Ortiz
+              assistant:
+                summary: Student assistant (no profile; created by an admin)
+                value:
+                  email: assistant1@school.test
+                  password: TempPass#2026
+                  role: assistant
+                  firstName: Joy
+                  lastName: Bautista
       responses:
         '201': { $ref: '#/components/responses/AccountResponse' }
         '400': { $ref: '#/components/responses/BadRequest' }
@@ -322,7 +336,7 @@ paths:
       operationId: updateUser
       summary: Update an account
       description: |
-        Roles: admin.
+        Roles: admin, assistant (student accounts only; any other account is a 403 `role_not_allowed`).
 
         Changes name and phone. Email and role are immutable: an account created by mistake is removed with
         `DELETE /users/{id}` while it has no school records, and created again.
@@ -372,7 +386,7 @@ paths:
       operationId: importStudents
       summary: Import student accounts from spreadsheet rows
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         Each row is one new student: `email`, `firstName`, `lastName` and optionally `phone`, `studentNumber`,
         `lrn`, `admissionDate`, `dateOfBirth`, `gender` (any case), `address`, `guardianName`, `guardianPhone`
@@ -448,7 +462,7 @@ paths:
       operationId: listStudents
       summary: List students
       description: |
-        Roles: admin, teacher (only students with an active enrollment in a class they can see).
+        Roles: admin, assistant, teacher (only students with an active enrollment in a class they can see).
 
         Directory, class roster and enrollment picker. Search matches first name, last name, full name
         (`Liam Cruz`), student number, LRN and email. Default order: last name, then first name.
@@ -497,7 +511,7 @@ paths:
       operationId: getStudent
       summary: Get a student
       description: |
-        Roles: admin, teacher (students in a class they can see), student (own profile only).
+        Roles: admin, assistant, teacher (students in a class they can see), student (own profile only).
 
         Full student profile with the current enrollment. `id` accepts `me`.
       parameters:
@@ -513,7 +527,7 @@ paths:
       operationId: updateStudent
       summary: Update a student
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         Edits account and profile fields in one call. `dateOfBirth` must be in the past, as at registration.
         A student number that is already taken is a 409 (`details.key = students.uq_students_number`), and so
@@ -543,7 +557,7 @@ paths:
       operationId: updateAdmission
       summary: Tick off an applicant's documents
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         The document checklist of a self-registered student's application: the PSA birth certificate and
         the report card (SF9) the school office has received. Accepted whatever the status, since papers may
@@ -572,13 +586,13 @@ paths:
       operationId: declineAdmission
       summary: Decline an application
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         Declines a pending application with a reason the applicant reads on their dashboard. The account
-        stays active, so they can still sign in. The admins' sign-up notifications of the student are marked
-        read and the student gets an `enrollment` notification. Enrolling the student later still admits
-        them. 404 when the student has no application; 409 `details.reason = not_pending` once it is admitted
-        or declined.
+        stays active, so they can still sign in. The sign-up notifications of the student (admins and
+        assistants) are marked read and the student gets an `enrollment` notification. Enrolling the
+        student later still admits them. 404 when the student has no application; 409
+        `details.reason = not_pending` once it is admitted or declined.
       parameters:
         - $ref: '#/components/parameters/StudentIdPath'
       requestBody:
@@ -602,7 +616,7 @@ paths:
       operationId: listTeachers
       summary: List teachers
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         Staff list for assignment and homeroom pickers. Search matches first name, last name, full name
         (`Liam Cruz`), employee number and department. Default order: last name, then first name.
@@ -636,7 +650,7 @@ paths:
       operationId: getTeacher
       summary: Get a teacher
       description: |
-        Roles: admin, teacher (own profile only).
+        Roles: admin, assistant, teacher (own profile only).
 
         `id` accepts `me`.
       parameters:
@@ -836,7 +850,7 @@ paths:
       operationId: createClass
       summary: Create a class
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         The group letter is part of the name (`Grade 7 - A`). A class with the same name in the same academic
         year is a 409 (`details.key = classes.uq_classes_year_name`). The homeroom teacher must exist and be
@@ -878,7 +892,7 @@ paths:
       operationId: updateClass
       summary: Update a class
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         `homeroomTeacherId` may be set to `null` to remove the homeroom teacher. `academicYear` and `gradeLevel`
         are fixed once the class has enrollments (current or past) or teacher assignments: changing either is a
@@ -957,7 +971,7 @@ paths:
       operationId: createClassSubject
       summary: Assign a teacher to a subject in a class
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         One teacher teaches one subject per class: repeating a class and subject is a 409
         (`details.key = class_subjects.uq_class_subjects_class_subject`). The teacher must exist and be
@@ -999,7 +1013,7 @@ paths:
       operationId: reassignClassSubject
       summary: Reassign the teacher
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         Only the teacher can change. To change the class or the subject, delete the assignment and create a new
         one; that keeps attendance and grade history honest. The new teacher takes over the timetable slots, so
@@ -1078,7 +1092,7 @@ paths:
       operationId: enrollStudent
       summary: Enroll a student in a class
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         Creates an active enrollment dated today. Every enrollment is a new record, also a return to a class the
         student left, so earlier periods in that class stay on record. A student who is already active in a
@@ -1108,7 +1122,7 @@ paths:
       operationId: enrollStudentsBulk
       summary: Enroll many students in one class
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         All or nothing: one transaction enrolls up to 200 students. If any student is unknown, deactivated or
         already active in a class nothing is written; the 409 lists them in `details.alreadyActive`
@@ -1135,7 +1149,7 @@ paths:
       operationId: transferStudent
       summary: Transfer a student to another class
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         One transaction closes the active enrollment as `transferred` (left today) and opens a new enrollment in
         the target class from today, so on that date the student belongs to the target class. Returns the new
@@ -1163,7 +1177,7 @@ paths:
       operationId: completeSchoolYear
       summary: End the school year for students of a class
       description: |
-        Roles: admin.
+        Roles: admin (it cannot be undone).
 
         All or nothing: one transaction closes the listed students' active enrollments in `classId` as
         `completed` (left today) and, with `nextClassId`, enrolls them in that class from today. Students of the
@@ -1262,7 +1276,7 @@ paths:
       operationId: closeEnrollment
       summary: Close an enrollment
       description: |
-        Roles: admin.
+        Roles: admin, assistant (`withdrawn` only; closing as `completed` is a 403 `role_not_allowed`).
 
         Allowed transitions are `active` to `completed` and `active` to `withdrawn`; both set `leftOn` to today.
         Anything else, such as re-activation or closing a closed enrollment, is a 409
@@ -1333,7 +1347,7 @@ paths:
       operationId: createSchedule
       summary: Create a timetable slot
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         A slot overlaps another when it is on the same weekday and `start < other.end AND end > other.start`;
         back-to-back slots do not overlap. Slots are compared within the same academic year against the same
@@ -1377,7 +1391,7 @@ paths:
       operationId: updateSchedule
       summary: Update a timetable slot
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         Applies the same conflict check as creation to the merged slot, ignoring the slot itself.
         The merged `endTime` must be after `startTime` (400).
@@ -1404,7 +1418,7 @@ paths:
       operationId: deleteSchedule
       summary: Delete a timetable slot
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
       parameters:
         - $ref: '#/components/parameters/IdPath'
       responses:
@@ -1487,7 +1501,7 @@ paths:
       operationId: getAttendanceSheet
       summary: Get the attendance sheet of a lesson
       description: |
-        Roles: admin, teacher (class-subjects they can see).
+        Roles: admin, assistant, teacher (class-subjects they can see).
 
         The roster of the class-subject's class on that date with its marks merged in: students enrolled on or
         before the date who had not left it yet (a student who changed class on the date belongs to the new
@@ -1776,7 +1790,7 @@ paths:
       operationId: getAssessmentGrades
       summary: Get the grade roster of an assessment
       description: |
-        Roles: admin, teacher (class-subjects they can see).
+        Roles: admin, assistant, teacher (class-subjects they can see).
 
         The assessment's roster with each student's score: the students in the class on `assessedOn` (same rule
         as `GET /attendance/sheet`), plus anyone already graded. Students who are not graded yet have
@@ -1866,7 +1880,9 @@ paths:
             $ref: '#/components/schemas/IdOrMe'
         - name: status
           in: query
-          description: Admin only (403 `admin_only_filter` for other roles). `all` disables the status filter.
+          description: >-
+            Admins and assistants only (403 `admin_only_filter` for other roles). `all` disables the status
+            filter.
           schema:
             type: string
             enum: [active, scheduled, expired, all]
@@ -1886,7 +1902,7 @@ paths:
       operationId: createAnnouncement
       summary: Publish an announcement
       description: |
-        Roles: admin, teacher (must target a class they can see).
+        Roles: admin, assistant, teacher (must target a class they can see).
 
         `publishedAt` defaults to now and `expiresAt` must be after it. Teachers must send `classId`
         (400, `details.reason = class_required`) of a class they can see (403). Admins may omit `classId` for
@@ -1975,7 +1991,7 @@ paths:
       operationId: updateAnnouncement
       summary: Update an announcement
       description: |
-        Roles: admin, teacher (only the author; admins may edit any announcement).
+        Roles: admin, assistant, teacher (only the author; admins and assistants may edit any announcement).
 
         Teachers can only retarget to a class they can see. A teacher who is not the author gets 403 with
         `details.reason = not_author`.
@@ -2000,7 +2016,7 @@ paths:
       operationId: deleteAnnouncement
       summary: Delete an announcement
       description: |
-        Roles: admin, teacher (only the author; admins may delete any announcement).
+        Roles: admin, assistant, teacher (only the author; admins and assistants may delete any announcement).
       parameters:
         - $ref: '#/components/parameters/IdPath'
       responses:
@@ -2015,7 +2031,7 @@ paths:
       operationId: listActivity
       summary: List the activity log
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         Every change made through the API is logged after it succeeds: accounts (created, signed up, edited,
         activated, deactivated, deleted), enrollments, classes and teacher assignments, subjects, timetable
@@ -2063,9 +2079,9 @@ paths:
         Roles: any authenticated user (always their own notifications).
 
         Newest first. Students hear about grades recorded or changed, absences and late marks, and a new
-        class; teachers about lessons they now teach and homeroom classes; admins about students who signed up
-        on their own and need a class. Nobody is notified of their own action. `unread=true` lists only unread
-        ones.
+        class; teachers about lessons they now teach and homeroom classes; admins and assistants about
+        students who signed up on their own and need a class. Nobody is notified of their own action.
+        `unread=true` lists only unread ones.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Limit'
@@ -2200,7 +2216,7 @@ paths:
       operationId: createCalendarEvent
       summary: Add a holiday or school event
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         `endsOn` defaults to `startsOn` (a one-day entry). It must not be before `startsOn`
         (400, `details.reason = invalid_date_range`) and an entry spans at most 366 days
@@ -2242,7 +2258,7 @@ paths:
       operationId: updateCalendarEvent
       summary: Update a calendar entry
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         The date rules of the create apply to the merged values.
       parameters:
@@ -2266,7 +2282,7 @@ paths:
       operationId: deleteCalendarEvent
       summary: Delete a calendar entry
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
       parameters:
         - $ref: '#/components/parameters/IdPath'
       responses:
@@ -2281,7 +2297,7 @@ paths:
       operationId: listFees
       summary: List fees
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         The fees the school charges, each for one grade level or for every grade (`gradeLevel` null).
         `gradeLevel` lists what a student of that grade pays: that grade's fees and the every-grade ones.
@@ -2343,14 +2359,14 @@ paths:
       operationId: getFeeStatement
       summary: Get a student's fee statement for a school year
       description: |
-        Roles: admin, student (their own statement only).
+        Roles: admin, assistant, student (their own statement only).
 
         The fees the student owes for `academicYear`, their payments towards that year (latest first) and
         the totals. The grade level comes from the class the student was in last during that year, whatever
         the enrollment's status; without a class that year, only the every-grade fees apply (`class` is
         null). `balance` is `totalFees - totalPaid`, summed exactly; it is negative when the student paid more
-        than the fees. A student passes `studentId=me` (another student's id is a 403); `me` from an admin is
-        a 400. Teachers get a 403.
+        than the fees. A student passes `studentId=me` (another student's id is a 403); `me` from an admin or
+        an assistant is a 400. Teachers get a 403.
       parameters:
         - name: studentId
           in: query
@@ -2420,7 +2436,7 @@ paths:
       operationId: recordPayment
       summary: Record a payment
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         Money a student paid towards one school year's fees, with the official receipt (OR) number. `paidOn`
         must not be after today (school time zone). A receipt number already used is a 409 with
@@ -2470,9 +2486,10 @@ paths:
       description: |
         Roles: any authenticated user (the payload depends on the role).
 
-        One URL for all roles; the `role` property tells which payload was returned. It is built from the
-        caller alone and accepts no query parameters (any parameter is a 400). Lists are capped and not
-        paginated. Teacher lists cover the current academic year only.
+        One URL for all roles; the `role` property tells which payload was returned. An assistant gets the
+        admin's payload, `role: admin` included (the property names the payload, not the caller). It is
+        built from the caller alone and accepts no query parameters (any parameter is a 400). Lists are capped
+        and not paginated. Teacher lists cover the current academic year only.
       responses:
         '200': { $ref: '#/components/responses/DashboardResponse' }
         '400': { $ref: '#/components/responses/BadRequest' }
@@ -2711,7 +2728,8 @@ components:
       example: 38.5
     Role:
       type: string
-      enum: [admin, teacher, student]
+      description: '`assistant` is a student assistant, who does the office work an admin hands over.'
+      enum: [admin, teacher, student, assistant]
     Gender:
       type: string
       enum: [male, female, other]
@@ -3088,7 +3106,8 @@ components:
               description: Id of the teacher profile; `null` unless the role is `teacher`.
             profile:
               nullable: true
-              description: Student profile for students, teacher profile for teachers, `null` for admins.
+              description: >-
+                Student profile for students, teacher profile for teachers, `null` for admins and assistants.
               oneOf:
                 - $ref: '#/components/schemas/StudentProfile'
                 - $ref: '#/components/schemas/TeacherProfile'
@@ -4124,9 +4143,9 @@ components:
     AtRiskStudents:
       type: object
       description: |
-        Students enrolled this academic year, in the classes the caller can see (all classes for an admin; the
-        classes a teacher teaches or leads), whose attendance rate is below `attendanceRateBelow` after at least
-        `minAttendanceMarks` marks, or whose general average (the mean of their subject results, see
+        Students enrolled this academic year, in the classes the caller can see (all classes for an admin or
+        an assistant; the classes a teacher teaches or leads), whose attendance rate is below
+        `attendanceRateBelow` after at least `minAttendanceMarks` marks, or whose general average (the mean of their subject results, see
         `GET /grades/summary`) is below `gradeAverageBelow`. Both figures cover the current academic year in those
         classes. Worst first: two reasons before one, then the furthest below its line.
       required: [attendanceRateBelow, minAttendanceMarks, gradeAverageBelow, total, students]
@@ -4225,6 +4244,7 @@ components:
             - $ref: '#/components/schemas/HolidayToday'
         role:
           type: string
+          description: '`admin` for an assistant too: it names the payload.'
           enum: [admin]
         counts:
           type: object
@@ -4725,17 +4745,19 @@ components:
           type: string
           maxLength: 150
     CreateUserRequest:
-      description: Account fields, the role and the matching profile (not allowed for `admin`).
+      description: Account fields, the role and the matching profile (none for `admin` and `assistant`).
       oneOf:
         - $ref: '#/components/schemas/CreateStudentUser'
         - $ref: '#/components/schemas/CreateTeacherUser'
         - $ref: '#/components/schemas/CreateAdminUser'
+        - $ref: '#/components/schemas/CreateAssistantUser'
       discriminator:
         propertyName: role
         mapping:
           student: '#/components/schemas/CreateStudentUser'
           teacher: '#/components/schemas/CreateTeacherUser'
           admin: '#/components/schemas/CreateAdminUser'
+          assistant: '#/components/schemas/CreateAssistantUser'
     CreateStudentUser:
       allOf:
         - $ref: '#/components/schemas/AccountFields'
@@ -4767,6 +4789,15 @@ components:
             role:
               type: string
               enum: [admin]
+    CreateAssistantUser:
+      allOf:
+        - $ref: '#/components/schemas/AccountFields'
+        - type: object
+          required: [role]
+          properties:
+            role:
+              type: string
+              enum: [assistant]
     UpdateMeRequest:
       type: object
       additionalProperties: false
@@ -5389,7 +5420,8 @@ components:
           type: integer
           minimum: 1
           nullable: true
-          description: Target class; required for teachers, optional for admins (null for school-wide).
+          description: >-
+            Target class; required for teachers, optional for admins and assistants (null for school-wide).
         publishedAt:
           allOf:
             - $ref: '#/components/schemas/Timestamp'

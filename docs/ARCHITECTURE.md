@@ -25,7 +25,7 @@ MySQL 8  ── users, profiles, classes, attendance, grades, …  (all data and
 | Concern | Where it lives |
 |---|---|
 | Password, e-mail ownership, token signing | Firebase Authentication |
-| Role (`admin`, `teacher`, `student`), `is_active` | `users` table (role is immutable) |
+| Role (`admin`, `teacher`, `student`, `assistant`), `is_active` | `users` table (role is immutable) |
 | "May this teacher edit this class?" | `access` module, the single policy file for ownership and visibility |
 
 Per request, `authenticate` does: verify the ID token → find the `users` row by `firebase_uid` → reject unknown users (`USER_NOT_REGISTERED`) and inactive users (`ACCOUNT_DISABLED`) → attach `{ id, role, studentId, teacherId, activeClassId }` to the request. Role gates (`authorize('admin', 'teacher')`) sit next to each route; row-level rules (a teacher only grades their own class-subjects, a student only reads their own records) are in `modules/access`.
@@ -131,7 +131,7 @@ erDiagram
         int id PK
         varchar firebase_uid UK
         varchar email UK
-        enum role "admin | teacher | student"
+        enum role "admin | teacher | student | assistant"
         boolean is_active
     }
     teachers {
@@ -276,34 +276,46 @@ Results: a subject with a grading group is graded on the DepEd K-12 components (
 
 `Y` = any record, `own` = within the caller's scope, `N` = 403. A teacher's *visible* scope is the class-subjects they teach plus every class-subject of a class they are homeroom teacher of (reads); they *own* only the class-subjects assigned to them (writes).
 
-| Capability | Admin | Teacher | Student |
-|---|---|---|---|
-| Accounts: create any role, edit, (de)activate, delete an unused one; import students from CSV | Y | N | N |
-| Own identity and contact fields (`/auth/me`) | Y | Y | Y |
-| Students: list and read | Y | own (visible classes) | own (self) |
-| Students: edit profile | Y | N | N |
-| Teachers: list | Y | N | N |
-| Teachers: read | Y | own (self) | N |
-| Teachers: edit | Y | N | N |
-| Subjects, classes, school calendar: read | Y | Y | Y |
-| Subjects, classes, teacher assignment, enrollments, timetable, school calendar: write | Y | N | N (except self-enrollment, next row) |
-| Enroll themselves in next year's class (`/enrollments/next-class`, when the promotion rules allow) | N | N | own (self) |
-| Admissions: tick off documents, decline an application (`/admissions`); admitting is enrolling | Y | N | N |
-| Class-subjects, enrollments, timetable: read | Y | own (visible) | own (active class, self) |
-| Attendance: mark and correct (through the sheet) | Y | own (owns the lesson) | N |
-| Attendance: read records and summary | Y | own (visible) | own (self) |
-| Assessments: create, edit, delete; grades: enter, delete | Y | own (owns the lesson) | N |
-| Assessments, grades: read | Y | own (visible) | own (active class, own grades) |
-| Fees: list, create, edit, delete; payments: record, delete | Y | N | N |
-| Fee statement of a school year (`/fees/statement`) | Y | N | own (self) |
-| Announcements: create | Y (any audience, optional class) | own (a visible class is required) | N |
-| Announcements: edit, delete | Y | own (authored) | N |
-| Announcements: read | Y (all statuses) | targeted and authored | targeted, active only |
-| Activity history | Y | N | N |
-| Notifications: read, mark read | own | own | own |
-| Dashboard | admin payload: school-wide counts | teacher payload: today's lessons, pending grading | student payload: schedule, attendance, grades |
+The assistant (`assistant`) is a student assistant who takes everyday office work off the admin. Together they are "the office" (`isOffice`): both read the whole school, and both get the sign-up notifications. What cannot be undone, sets money amounts, changes grades or attendance, or manages accounts other than students' stays with the admin.
 
-Enforcement: the role column is `authorize(...)` on the route; every `own` cell is a named rule in `modules/access/access.service.js` (`assertCanViewClass`, `assertCanViewClassSubject`, `assertCanManageClassSubject`, `assertCanViewStudent`, `assertIsSelfTeacher`, `assertIsAuthor`, and for lists `classScope`, `scopedStudentId`, `assertFiltersInScope` and `scopeRecordFilters`). The UI hides what a role cannot do, but the API is the enforcement point.
+| Capability | Admin | Assistant | Teacher | Student |
+|---|---|---|---|---|
+| Accounts: create, edit name and phone | Y | student accounts only | N | N |
+| Accounts: list and read, (de)activate, delete an unused one | Y | N | N | N |
+| Import students from CSV | Y | Y | N | N |
+| Own identity and contact fields (`/auth/me`) | Y | Y | Y | Y |
+| Students: list and read | Y | Y | own (visible classes) | own (self) |
+| Students: edit profile (LRN included) | Y | Y | N | N |
+| Teachers: list | Y | Y | N | N |
+| Teachers: read | Y | Y | own (self) | N |
+| Teachers: edit | Y | N | N | N |
+| Subjects, classes, school calendar: read | Y | Y | Y | Y |
+| Subjects: create, edit (grading rules and weights included), delete | Y | N | N | N |
+| Classes, teacher assignment: create, edit | Y | Y | N | N |
+| Classes, teacher assignment: delete | Y | N | N | N |
+| Enrollments: enroll, bulk enroll, transfer, withdraw | Y | Y | N | N (except self-enrollment, next row) |
+| Enrollments: end a school year, close one as `completed` | Y | N | N | N |
+| Enroll themselves in next year's class (`/enrollments/next-class`, when the promotion rules allow) | N | N | N | own (self) |
+| Timetable, school calendar: write | Y | Y | N | N |
+| Admissions: tick off documents, decline an application (`/admissions`); admitting is enrolling | Y | Y | N | N |
+| Class-subjects, enrollments, timetable: read | Y | Y | own (visible) | own (active class, self) |
+| Attendance: mark and correct (through the sheet) | Y | N | own (owns the lesson) | N |
+| Attendance: read records, summary and sheets | Y | Y | own (visible) | own (self; no sheets) |
+| Assessments: create, edit, delete; grades: enter, delete | Y | N | own (owns the lesson) | N |
+| Assessments, grades: read | Y | Y | own (visible) | own (active class, own grades) |
+| Fees: list | Y | Y | N | N |
+| Fees: create, edit, delete | Y | N | N | N |
+| Payments: record | Y | Y | N | N |
+| Payments: delete | Y | N | N | N |
+| Fee statement of a school year (`/fees/statement`) | Y | Y | N | own (self) |
+| Announcements: create | Y (any audience, optional class) | Y (as the admin) | own (a visible class is required) | N |
+| Announcements: edit, delete | Y | Y | own (authored) | N |
+| Announcements: read | Y (all statuses) | Y (all statuses) | targeted and authored | targeted, active only |
+| Activity history | Y | Y | N | N |
+| Notifications: read, mark read | own | own | own | own |
+| Dashboard | admin payload: school-wide counts | the admin payload (`role: 'admin'`) | teacher payload: today's lessons, pending grading | student payload: schedule, attendance, grades |
+
+Enforcement: the role column is `authorize(...)` on the route; every `own` cell is a named rule in `modules/access/access.service.js` (`assertCanViewClass`, `assertCanViewClassSubject`, `assertCanManageClassSubject`, `assertCanViewStudent`, `assertIsSelfTeacher`, `assertIsAuthor`, and for lists `classScope`, `scopedStudentId`, `assertFiltersInScope` and `scopeRecordFilters`). The office passes every read rule; `assertCanManageClassSubject` (attendance, assessments, grades) passes the admin only. Where a route is shared but part of it is the admin's (an assistant creating or editing a non-student account, closing an enrollment as `completed`), the service calls `assertAdmin`. The UI hides what a role cannot do, but the API is the enforcement point.
 
 ## 7. Frontend
 

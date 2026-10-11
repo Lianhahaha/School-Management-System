@@ -1,6 +1,6 @@
 /**
- * /admissions (admin): the document checklist of an application and declining it. There is no admit route:
- * enrolling the applicant in a class (POST /enrollments, /enrollments/bulk) admits them.
+ * /admissions (the office): the document checklist of an application and declining it. There is no admit
+ * route: enrolling the applicant in a class (POST /enrollments, /enrollments/bulk) admits them.
  */
 import { Router } from 'express';
 import { authorize } from '../../middleware/authorize.js';
@@ -12,13 +12,13 @@ export const admissionsRoutes = Router();
 
 admissionsRoutes.patch(
   '/:studentId',
-  authorize('admin'),
+  authorize('admin', 'assistant'),
   validate({ params: schemas.studentIdParams, body: schemas.updateChecklistBody }),
   controller.updateChecklist,
 );
 admissionsRoutes.post(
   '/:studentId/decline',
-  authorize('admin'),
+  authorize('admin', 'assistant'),
   validate({ params: schemas.studentIdParams, body: schemas.declineBody }),
   controller.decline,
 );

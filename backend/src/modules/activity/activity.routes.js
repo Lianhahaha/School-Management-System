@@ -6,4 +6,9 @@ import * as schemas from './activity.schemas.js';
 
 export const activityRoutes = Router();
 
-activityRoutes.get('/', authorize('admin'), validate({ query: schemas.listActivityQuery }), controller.list);
+activityRoutes.get(
+  '/',
+  authorize('admin', 'assistant'),
+  validate({ query: schemas.listActivityQuery }),
+  controller.list,
+);

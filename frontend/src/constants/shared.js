@@ -13,7 +13,12 @@
  * no framework code. Values only, plus the two tiny helpers at the bottom.
  */
 
-export const ROLES = Object.freeze(['admin', 'teacher', 'student']);
+/**
+ * `assistant` is a student assistant: everyday office work for the admin (enrollment, student records,
+ * classes, the timetable, announcements, payments). What cannot be undone, sets money amounts, changes
+ * grades or manages accounts other than students' stays with the admin.
+ */
+export const ROLES = Object.freeze(['admin', 'teacher', 'student', 'assistant']);
 
 export const GENDERS = Object.freeze(['male', 'female', 'other']);
 

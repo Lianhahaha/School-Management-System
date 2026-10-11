@@ -6,10 +6,15 @@ import * as schemas from './teachers.schemas.js';
 
 export const teachersRoutes = Router();
 
-teachersRoutes.get('/', authorize('admin'), validate({ query: schemas.listTeachersQuery }), controller.list);
+teachersRoutes.get(
+  '/',
+  authorize('admin', 'assistant'),
+  validate({ query: schemas.listTeachersQuery }),
+  controller.list,
+);
 teachersRoutes.get(
   '/:id',
-  authorize('admin', 'teacher'),
+  authorize('admin', 'assistant', 'teacher'),
   validate({ params: schemas.idOrMeParams }),
   controller.get,
 );

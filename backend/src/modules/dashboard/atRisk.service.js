@@ -29,9 +29,9 @@ const shortfall = (student) =>
   );
 
 /**
- * Students enrolled this academic year in the classes the user can see (every class for admins, the classes
- * a teacher teaches or leads) whose attendance or general average is below the AT_RISK lines. Both figures
- * cover the current academic year within the same classes.
+ * Students enrolled this academic year in the classes the user can see (every class for the office, the
+ * classes a teacher teaches or leads) whose attendance or general average is below the AT_RISK lines. Both
+ * figures cover the current academic year within the same classes.
  */
 export async function atRiskStudents(user) {
   const year = currentAcademicYear();

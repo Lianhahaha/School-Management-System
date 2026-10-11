@@ -17,7 +17,8 @@
 SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 1. users — one row per account of ANY role (admin / teacher / student).
+-- 1. users — one row per account of ANY role (admin / teacher / student /
+--    assistant, a student assistant who helps the school office).
 --    Identity (password, tokens, MFA) lives in Firebase Auth. This row stores
 --    the profile, the role and the active flag, keyed by firebase_uid.
 --    An account with history is never deleted: the API sets is_active = 0 (and
@@ -33,7 +34,7 @@ CREATE TABLE IF NOT EXISTS users (
   first_name    VARCHAR(100) NOT NULL,
   last_name     VARCHAR(100) NOT NULL,
   phone         VARCHAR(30)  NULL,
-  role          ENUM('admin','teacher','student') NOT NULL
+  role          ENUM('admin','teacher','student','assistant') NOT NULL
                 COMMENT 'Single source of truth for RBAC. Immutable after creation',
   is_active     BOOLEAN      NOT NULL DEFAULT TRUE
                 COMMENT 'Stored as tinyint(1). 0 = deactivated: API rejects the request even if the Firebase token is valid',
@@ -391,7 +392,7 @@ CREATE TABLE IF NOT EXISTS activity_log (
   id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   actor_id    INT UNSIGNED NULL COMMENT 'users.id at the time; NULL for the system',
   actor_name  VARCHAR(201) NOT NULL COMMENT 'Copied: "First Last", or "System"',
-  actor_role  ENUM('admin','teacher','student') NULL,
+  actor_role  ENUM('admin','teacher','student','assistant') NULL,
   action      VARCHAR(40)  NOT NULL COMMENT 'e.g. grades.save, enrollment.transfer, user.deactivate',
   area        VARCHAR(20)  NOT NULL COMMENT 'One of ACTIVITY_AREAS (filter)',
   entity_id   INT UNSIGNED NULL COMMENT 'Id of the record the action names (its type is the action prefix)',
@@ -408,7 +409,8 @@ CREATE TABLE IF NOT EXISTS activity_log (
 -- -----------------------------------------------------------------------------
 -- 16. notifications — in-app messages to one user about something that
 --     concerns them: a grade recorded, an absence, a new class, a lesson to
---     teach, a student sign-up (admins). Read when read_at is set.
+--     teach, a student sign-up (admins and assistants). Read when read_at is
+--     set.
 --     Announcements are not copied here: announcement_reads tracks those.
 --     Deleting an (unused) account deletes its notifications first.
 -- -----------------------------------------------------------------------------
@@ -508,7 +510,7 @@ CREATE TABLE IF NOT EXISTS fees (
 --     official receipt (OR) number the school office issued. A payment is never
 --     edited: a mistake is deleted (logged in activity_log) and recorded again.
 --     Payments are history, so an account that has them, as the student or as
---     the admin who recorded them, cannot be deleted.
+--     the admin or assistant who recorded them, cannot be deleted.
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS payments (
   id              INT UNSIGNED  NOT NULL AUTO_INCREMENT,

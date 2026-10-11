@@ -130,6 +130,9 @@ function rolesLine(operation) {
 
 const sorted = (values) => [...values].map(String).sort();
 
+/** Every role name, as a whole word, in a "Roles:" line. */
+const ROLE_WORDS = new RegExp(`\\b(${shared.ROLES.join('|')})\\b`, 'g');
+
 describe('OpenAPI specification', () => {
   it('parses as OpenAPI 3.0 with the global bearer security and a described tag list', () => {
     assert.match(spec.openapi, /^3\.0\./);
@@ -234,7 +237,7 @@ describe('OpenAPI specification', () => {
         continue;
       }
       if (code.roles.length) {
-        const documented = sorted(new Set(line.match(/\b(admin|teacher|student)\b/g) ?? []));
+        const documented = sorted(new Set(line.match(ROLE_WORDS) ?? []));
         if (documented.join() !== sorted(code.roles).join()) {
           problems.push(`${key}: code allows [${sorted(code.roles)}], spec says [${documented}]`);
         }

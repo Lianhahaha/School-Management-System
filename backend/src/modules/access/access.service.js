@@ -1,11 +1,15 @@
 /**
  * Ownership and visibility policy: the only place these rules exist.
  *
- *   admin    : no restrictions.
- *   teacher  : "visible" = classes they teach a subject in, or are homeroom
- *              teacher of (reads); "owns" = class-subjects where they are the
- *              assigned teacher (writes).
- *   student  : own records and the class of their active enrollment.
+ *   admin     : no restrictions.
+ *   assistant : a student assistant. Reads like an admin (the whole school);
+ *               writes only what its routes allow, never grades or attendance
+ *               (assertCanManageClassSubject). The admin and the assistant
+ *               together are "the office" (isOffice).
+ *   teacher   : "visible" = classes they teach a subject in, or are homeroom
+ *               teacher of (reads); "owns" = class-subjects where they are the
+ *               assigned teacher (writes).
+ *   student   : own records and the class of their active enrollment.
  *
  * Every `assert*` throws 403 FORBIDDEN with a stable `details.reason`.
  * List endpoints follow one rule: rows are always limited to the caller's scope (`classScope`,
@@ -19,18 +23,30 @@ import { resolveMe } from '../../utils/resolveMe.js';
 import * as repo from './access.repository.js';
 
 export const isAdmin = (user) => user.role === 'admin';
+export const isAssistant = (user) => user.role === 'assistant';
 export const isTeacher = (user) => user.role === 'teacher';
 export const isStudent = (user) => user.role === 'student';
 
+/** The school office: an admin or a student assistant. School-wide reads, and the office work both may do. */
+export const isOffice = (user) => isAdmin(user) || isAssistant(user);
+
+/**
+ * 403 `role_not_allowed` unless the caller is an admin: the admin-only part of an operation the office
+ * shares (a student assistant manages student accounts only, and closes enrollments as withdrawn only).
+ */
+export function assertAdmin(user, message) {
+  if (!isAdmin(user)) throw ApiError.forbidden('role_not_allowed', message);
+}
+
 export async function assertCanViewClass(user, classId) {
-  if (isAdmin(user)) return;
+  if (isOffice(user)) return;
   if (isTeacher(user) && (await repo.teacherCanViewClass(user.teacherId, classId))) return;
   if (isStudent(user) && classId != null && user.activeClassId === classId) return;
   throw ApiError.forbidden('class_not_visible', 'you do not have access to this class');
 }
 
 export async function assertCanViewClassSubject(user, classSubjectId) {
-  if (isAdmin(user)) return;
+  if (isOffice(user)) return;
   if (isTeacher(user) && (await repo.teacherCanViewClassSubject(user.teacherId, classSubjectId))) return;
   if (isStudent(user) && user.activeClassId != null) {
     if ((await repo.classIdOfClassSubject(classSubjectId)) === user.activeClassId) return;
@@ -41,6 +57,7 @@ export async function assertCanViewClassSubject(user, classSubjectId) {
   );
 }
 
+/** Attendance, assessments and grades of a class-subject: its teacher or an admin, never an assistant. */
 export async function assertCanManageClassSubject(user, classSubjectId) {
   if (isAdmin(user)) return;
   if (isTeacher(user) && (await repo.teacherOwnsClassSubject(user.teacherId, classSubjectId))) return;
@@ -51,27 +68,29 @@ export async function assertCanManageClassSubject(user, classSubjectId) {
 }
 
 export async function assertCanViewStudent(user, studentId) {
-  if (isAdmin(user)) return;
+  if (isOffice(user)) return;
   if (isStudent(user) && user.studentId === studentId) return;
   if (isTeacher(user) && (await repo.teacherCanViewStudent(user.teacherId, studentId))) return;
   throw ApiError.forbidden('student_not_visible', 'you do not have access to this student');
 }
 
+/** Reading a teacher's profile: the office reads any, a teacher their own. */
 export function assertIsSelfTeacher(user, teacherId) {
-  if (isAdmin(user)) return;
+  if (isOffice(user)) return;
   if (isTeacher(user) && user.teacherId === teacherId) return;
   throw ApiError.forbidden('not_self', 'you can only access your own profile');
 }
 
+/** Editing or deleting an announcement: its author, or the office (any announcement). */
 export function assertIsAuthor(user, authorId) {
-  if (isAdmin(user)) return;
+  if (isOffice(user)) return;
   if (user.id === authorId) return;
   throw ApiError.forbidden('not_author', 'only the author can modify this announcement');
 }
 
 /**
  * Resolves the effective `studentId` filter. Students are always limited to
- * themselves (an explicit foreign id is a 403); teachers and admins keep the
+ * themselves (an explicit foreign id is a 403); teachers and the office keep the
  * requested value (their class scope applies separately).
  */
 export function scopedStudentId(user, requested) {
@@ -84,10 +103,10 @@ export function scopedStudentId(user, requested) {
 
 /**
  * WHERE fragment `{ sql, params }` restricting rows to the caller's classes, or
- * null for admins. `classColumn` is the SQL column holding the class id (e.g. 'e.class_id').
+ * null for the office. `classColumn` is the SQL column holding the class id (e.g. 'e.class_id').
  */
 export function classScope(user, classColumn) {
-  if (isAdmin(user)) return null;
+  if (isOffice(user)) return null;
   if (isTeacher(user)) {
     return {
       sql: `${classColumn} IN ${repo.VISIBLE_CLASS_IDS_SQL}`,
@@ -108,7 +127,7 @@ export async function assertFiltersInScope(user, { classId, classSubjectId }) {
  * The scoping rule of the student records kept per class-subject (attendance marks, grades), shared by their
  * lists and summaries: own records for students, visible classes for teachers. Returns the `filters` with
  * the effective `studentId` (`me` resolved) and the class `scope` on `cs.class_id` (null for students and
- * admins).
+ * the office).
  */
 export async function scopeRecordFilters(user, filters) {
   await assertFiltersInScope(user, filters);

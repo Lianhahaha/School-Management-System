@@ -7,20 +7,26 @@ import * as schemas from './enrollments.schemas.js';
 export const enrollmentsRoutes = Router();
 
 enrollmentsRoutes.get('/', validate({ query: schemas.listEnrollmentsQuery }), controller.list);
-enrollmentsRoutes.post('/', authorize('admin'), validate({ body: schemas.enrollBody }), controller.create);
+enrollmentsRoutes.post(
+  '/',
+  authorize('admin', 'assistant'),
+  validate({ body: schemas.enrollBody }),
+  controller.create,
+);
 // Fixed sub-paths are declared before '/:id'.
 enrollmentsRoutes.post(
   '/bulk',
-  authorize('admin'),
+  authorize('admin', 'assistant'),
   validate({ body: schemas.enrollManyBody }),
   controller.createMany,
 );
 enrollmentsRoutes.post(
   '/transfer',
-  authorize('admin'),
+  authorize('admin', 'assistant'),
   validate({ body: schemas.transferBody }),
   controller.transfer,
 );
+// The end of a school year cannot be undone: admins only.
 enrollmentsRoutes.post(
   '/complete',
   authorize('admin'),
@@ -36,9 +42,10 @@ enrollmentsRoutes.post(
   controller.enrollMyself,
 );
 enrollmentsRoutes.get('/:id', validate({ params: schemas.idParams }), controller.get);
+// A student assistant may close an enrollment as withdrawn only (enrollments.service).
 enrollmentsRoutes.patch(
   '/:id',
-  authorize('admin'),
+  authorize('admin', 'assistant'),
   validate({ params: schemas.idParams, body: schemas.setStatusBody }),
   controller.setStatus,
 );

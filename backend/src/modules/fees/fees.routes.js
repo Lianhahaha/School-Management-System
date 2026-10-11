@@ -1,7 +1,8 @@
 /**
  * Two routers: /fees (the fees of each school year, and a student's statement) and /payments (recording a
- * payment, and removing one recorded by mistake). Administrators only, except the statement, which a
- * student reads for themselves.
+ * payment, and removing one recorded by mistake). Setting fees and removing a payment are the admin's; a
+ * student assistant reads the fees and any statement and records payments; a student reads their own
+ * statement.
  */
 import { Router } from 'express';
 import { authorize } from '../../middleware/authorize.js';
@@ -11,10 +12,15 @@ import * as schemas from './fees.schemas.js';
 
 export const feesRoutes = Router();
 
-feesRoutes.get('/', authorize('admin'), validate({ query: schemas.listFeesQuery }), controller.list);
+feesRoutes.get(
+  '/',
+  authorize('admin', 'assistant'),
+  validate({ query: schemas.listFeesQuery }),
+  controller.list,
+);
 feesRoutes.get(
   '/statement',
-  authorize('admin', 'student'),
+  authorize('admin', 'assistant', 'student'),
   validate({ query: schemas.statementQuery }),
   controller.statement,
 );
@@ -31,7 +37,7 @@ export const paymentsRoutes = Router();
 
 paymentsRoutes.post(
   '/',
-  authorize('admin'),
+  authorize('admin', 'assistant'),
   validate({ body: schemas.createPaymentBody }),
   controller.recordPayment,
 );

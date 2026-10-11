@@ -9,15 +9,20 @@ export const schedulesRoutes = Router();
 schedulesRoutes.get('/', validate({ query: schemas.listSchedulesQuery }), controller.list);
 schedulesRoutes.post(
   '/',
-  authorize('admin'),
+  authorize('admin', 'assistant'),
   validate({ body: schemas.createScheduleBody }),
   controller.create,
 );
 schedulesRoutes.get('/:id', validate({ params: schemas.idParams }), controller.get);
 schedulesRoutes.patch(
   '/:id',
-  authorize('admin'),
+  authorize('admin', 'assistant'),
   validate({ params: schemas.idParams, body: schemas.updateScheduleBody }),
   controller.update,
 );
-schedulesRoutes.delete('/:id', authorize('admin'), validate({ params: schemas.idParams }), controller.remove);
+schedulesRoutes.delete(
+  '/:id',
+  authorize('admin', 'assistant'),
+  validate({ params: schemas.idParams }),
+  controller.remove,
+);

@@ -7,11 +7,16 @@ import * as schemas from './classes.schemas.js';
 export const classesRoutes = Router();
 
 classesRoutes.get('/', validate({ query: schemas.listClassesQuery }), controller.list);
-classesRoutes.post('/', authorize('admin'), validate({ body: schemas.createClassBody }), controller.create);
+classesRoutes.post(
+  '/',
+  authorize('admin', 'assistant'),
+  validate({ body: schemas.createClassBody }),
+  controller.create,
+);
 classesRoutes.get('/:id', validate({ params: schemas.idParams }), controller.get);
 classesRoutes.patch(
   '/:id',
-  authorize('admin'),
+  authorize('admin', 'assistant'),
   validate({ params: schemas.idParams, body: schemas.updateClassBody }),
   controller.update,
 );
