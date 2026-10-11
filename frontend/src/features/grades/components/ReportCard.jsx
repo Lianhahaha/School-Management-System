@@ -9,7 +9,7 @@ import {
   descriptorOf,
   formatResult,
   generalAverage,
-  isPassing,
+  remarksOf,
 } from '../../../utils/grades';
 import { fullName } from '../../../utils/names';
 import { useGradeSummary } from '../hooks';
@@ -46,9 +46,6 @@ export function PrintReportCardButton({ studentId, academicYear, term }) {
     </span>
   );
 }
-
-/** Passed / Failed against the passing grade (75), a dash without a result. */
-const remarksOf = (result) => (result === null ? '—' : isPassing(result) ? 'Passed' : 'Failed');
 
 /**
  * The columns between a subject's class and its grade: for the whole school year its quarterly grades, Q1 to
@@ -147,7 +144,7 @@ export function ReportCard({ student, studentId, academicYear, className, term }
                 </td>
               ))}
               <td className="py-1.5 pr-3 text-right font-semibold">{formatResult(subject.percentage)}</td>
-              <td className="py-1.5">{remarksOf(subject.percentage)}</td>
+              <td className="py-1.5">{remarksOf(subject.percentage) || '—'}</td>
             </tr>
           ))}
           {subjects.length === 0 && (

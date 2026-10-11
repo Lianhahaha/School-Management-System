@@ -4,7 +4,14 @@
  */
 import { REMEDIAL_MAX_FAILED, TERMS } from '../../constants/shared';
 import { ASSESSMENT_TYPE_LABELS, TERM_LABELS, TERM_SHORT_LABELS } from '../../constants/ui';
-import { generalAverage, groupBy, isPassing, subjectFinalGrade, subjectQuarters } from '../../utils/grades';
+import {
+  generalAverage,
+  groupBy,
+  isPassing,
+  remarksOf,
+  subjectFinalGrade,
+  subjectQuarters,
+} from '../../utils/grades';
 import { fullName } from '../../utils/names';
 
 /** GET /assessments/:id/grades `records` (the roster, graded or not). */
@@ -81,9 +88,8 @@ export function sf10Rows(enrollments, subjects) {
       }))
       .sort((a, b) => a.subject.localeCompare(b.subject));
     const year = { academicYear, gradeLevel: yearEnrollments[0]?.class.gradeLevel ?? null };
-    const passedOrFailed = (grade) => (grade === null ? '' : isPassing(grade) ? 'Passed' : 'Failed');
     return [
-      ...results.map((result) => ({ ...year, ...result, remarks: passedOrFailed(result.finalGrade) })),
+      ...results.map((result) => ({ ...year, ...result, remarks: remarksOf(result.finalGrade) })),
       {
         ...year,
         section: sectionsOf([

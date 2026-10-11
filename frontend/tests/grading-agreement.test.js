@@ -1,8 +1,8 @@
 /**
  * The API and the frontend both do grade arithmetic: the API computes every quarterly grade and each
  * class-subject's final grade (backend/src/utils/grading.js), the frontend what spans several summary rows (a
- * subject's final grade over two classes of a year, the general average), the per-type bars of a subject and
- * the pass/fail line (src/utils/grades.js). This test runs one fixed table through both sides and expects the
+ * subject's final grade over two classes of a year, the general average) and the pass/fail line
+ * (src/utils/grades.js). This test runs one fixed table through both sides and expects the
  * same numbers, so a change to the rounding, the quarter or averaging rule or the passing grade on one side
  * fails here until the other side follows.
  *
@@ -12,7 +12,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import * as api from '../../backend/src/utils/grading.js';
-import { COMPONENT_OF_TYPE, GRADING_GROUPS, TERMS } from '../src/constants/shared';
+import { GRADING_GROUPS, TERMS } from '../src/constants/shared';
 import {
   averageOf,
   descriptorOf,
@@ -21,7 +21,6 @@ import {
   groupBy,
   isPassing,
   passMarkOf,
-  percentageByType,
   subjectFinalGrade,
   subjectQuarters,
 } from '../src/utils/grades';
@@ -31,7 +30,7 @@ const grade = (type, score, maxScore, term = 'term1') => ({ score, assessment: {
 
 /**
  * The totals the API's summary query hands to finalResult: per quarter and assessment type, or with
- * `perQuarter: false` per type over every quarter (what a bar of the subject page shows). MySQL sums DECIMAL
+ * `perQuarter: false` per type over every quarter (the old whole-year rule). MySQL sums DECIMAL
  * scores exactly; sumPoints is the API's own exact sum of 2-decimal points, so it stands in for the query here.
  */
 function typeTotalsOf(grades, { perQuarter = true } = {}) {
@@ -271,36 +270,6 @@ describe('frontend and API agree on grades', () => {
     const oneSubject = separate.map((row) => ({ ...row, subjectId: 1 }));
     expect(generalAverage(separate)).toBe(api.generalAverageOf(separate));
     expect(generalAverage(oneSubject)).toBe(api.generalAverageOf(oneSubject));
-  });
-
-  it("draws each assessment type's bar at the figure the API computes for that type", () => {
-    for (const classSubject of CLASS_SUBJECTS) {
-      const bars = percentageByType(classSubject.grades);
-      for (const totals of typeTotalsOf(classSubject.grades, { perQuarter: false })) {
-        const label = `${classSubject.name}: ${totals.type}`;
-        // On points, one type alone; weighted, one type weighted 100: both are that type's points percentage.
-        expect(bars[totals.type], label).toBe(api.subjectResult([totals], null).percentage);
-        expect(bars[totals.type], label).toBe(api.subjectResult([totals], { [totals.type]: 100 }).percentage);
-      }
-    }
-  });
-
-  it("lists a K-12 component's grades at the percentage the API gives that component", () => {
-    for (const classSubject of CLASS_SUBJECTS.filter((row) => row.group)) {
-      // The subject page groups the grades by component (COMPONENT_OF_TYPE) under the API's component figures,
-      // which cover every quarter of the period shown.
-      const byComponent = percentageByType(
-        classSubject.grades.map(({ score, assessment }) => ({
-          score,
-          assessment: { ...assessment, type: COMPONENT_OF_TYPE[assessment.type] },
-        })),
-      );
-      for (const part of apiResult(classSubject).components) {
-        expect(byComponent[part.component] ?? null, `${classSubject.name}: ${part.component}`).toBe(
-          part.percentage,
-        );
-      }
-    }
   });
 
   // A subject scored exactly at the frontend's pass mark for its method, in every part of every quarter, and

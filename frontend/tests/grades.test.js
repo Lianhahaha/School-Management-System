@@ -12,14 +12,11 @@ import {
   groupBy,
   isPassing,
   passMarkOf,
-  percentageByType,
+  remarksOf,
   resultWidth,
   subjectFinalGrade,
   subjectQuarters,
 } from '../src/utils/grades';
-
-/** A row of GET /grades as percentageByType reads it. Scores arrive as numbers or, from DECIMAL columns, strings. */
-const grade = (type, score, maxScore) => ({ score, assessment: { type, maxScore } });
 
 describe('groupBy', () => {
   it('keeps keys in the order they first appear, and rows in their order within a key', () => {
@@ -80,6 +77,15 @@ describe('isPassing and passMarkOf', () => {
     expect(passMarkOf('k12')).toBe(60);
     expect(passMarkOf('points')).toBe(75);
     expect(passMarkOf('weighted')).toBe(75);
+  });
+
+  it('remarks Passed from 75 up, Failed below, and nothing without a grade', () => {
+    expect(remarksOf(75)).toBe('Passed');
+    expect(remarksOf(100)).toBe('Passed');
+    expect(remarksOf(74.99)).toBe('Failed');
+    expect(remarksOf(60)).toBe('Failed');
+    expect(remarksOf(null)).toBe('');
+    expect(remarksOf(undefined)).toBe('');
   });
 });
 
@@ -200,30 +206,6 @@ describe('generalAverage', () => {
   it('is null with no subjects or none graded', () => {
     expect(generalAverage([])).toBeNull();
     expect(generalAverage([subjectRow(1, '2026-2027', quarters())])).toBeNull();
-  });
-});
-
-describe('percentageByType', () => {
-  it('totals the points of each type before dividing, rather than averaging percentages', () => {
-    // Quiz 1/2 (50%) and 19/20 (95%): 20/22 = 90.91%, not the 72.5% mean of the two.
-    const grades = [grade('quiz', 1, 2), grade('quiz', 19, 20), grade('exam', 45, 50)];
-    expect(percentageByType(grades)).toEqual({ quiz: 90.91, exam: 90 });
-  });
-
-  it('reads scores and max scores sent as decimal strings', () => {
-    expect(percentageByType([grade('test', '8.5', '10.00'), grade('test', '7.25', '10')])).toEqual({
-      test: 78.75,
-    });
-  });
-
-  it('leaves out types without grades and gives an empty object for no grades', () => {
-    expect(Object.keys(percentageByType([grade('project', 9, 10)]))).toEqual(['project']);
-    expect(percentageByType([])).toEqual({});
-  });
-
-  it('rounds to 2 decimals without floating-point dust', () => {
-    expect(percentageByType([grade('quiz', 2, 3)])).toEqual({ quiz: 66.67 });
-    expect(percentageByType([grade('quiz', 0.1, 0.15), grade('quiz', 0.2, 0.15)])).toEqual({ quiz: 100 });
   });
 });
 

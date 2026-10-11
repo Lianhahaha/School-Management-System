@@ -36,8 +36,13 @@ export function TBody({ className, children, ...props }) {
   );
 }
 
-export function Tr({ children }) {
-  return <tr className="transition-colors hover:bg-gray-50">{children}</tr>;
+/** Other props (id, aria-current) go to the <tr>. */
+export function Tr({ className, children, ...props }) {
+  return (
+    <tr className={cx('transition-colors hover:bg-gray-50', className)} {...props}>
+      {children}
+    </tr>
+  );
 }
 
 /**

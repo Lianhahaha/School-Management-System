@@ -62,6 +62,15 @@ export const passMarkOf = (method) => (method === 'k12' ? 60 : PASSING_GRADE);
 export const isPassing = (result) => result !== null && result !== undefined && result >= PASSING_GRADE;
 
 /**
+ * The remarks of a grade, as a report card writes them: Passed from the passing grade (75) up, else Failed;
+ * an empty string without a grade.
+ * @param {number | null | undefined} result
+ * @returns {'Passed' | 'Failed' | ''}
+ */
+export const remarksOf = (result) =>
+  result === null || result === undefined ? '' : isPassing(result) ? 'Passed' : 'Failed';
+
+/**
  * How a subject is graded, in words: 'K-12 · Math and Science (40 · 40 · 20)', 'Quiz 20% · Exam 80%' or
  * 'On points'. Takes a subject or a summary row (both carry `gradingGroup` and `gradeWeights`).
  */
@@ -81,23 +90,6 @@ const round2 = (value) => Math.round(Number((value * 100).toPrecision(15))) / 10
 
 /** Rounded to a whole number, half up, without floating-point dust (the API's roundWhole). */
 const roundWhole = (value) => Math.round(Number(value.toPrecision(15)));
-
-/**
- * The points percentage of each assessment type in one subject's grades, { quiz: 85, exam: 92 }, the same
- * figure the API weights for a weighted subject. Types without grades are left out.
- * @param {Array<{ score: number, assessment: { type: string, maxScore: number } }>} grades
- */
-export function percentageByType(grades) {
-  const totals = {};
-  for (const { score, assessment } of grades) {
-    totals[assessment.type] ??= { score: 0, max: 0 };
-    totals[assessment.type].score += Number(score);
-    totals[assessment.type].max += Number(assessment.maxScore);
-  }
-  return Object.fromEntries(
-    Object.entries(totals).map(([type, total]) => [type, round2((total.score / total.max) * 100)]),
-  );
-}
 
 /**
  * The mean of results, ignoring those without one. Rounded to 2 decimals; null when empty.

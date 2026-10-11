@@ -10,14 +10,19 @@ import { fullName } from '../../../utils/names';
 import { NotEnrolledState, NotInClassNote } from '../../enrollments/components/NotEnrolledState';
 import { useAllGrades, useAssessments, useGradeSummary } from '../hooks';
 import { GradesOverview } from './GradesOverview';
-import { SubjectResultDetail } from './SubjectResultDetail';
+import { QuarterGradesTable } from './QuarterGradesTable';
 import { SubjectResultList } from './SubjectResultList';
+import { SubjectScores } from './SubjectScores';
+
+/** The id of a subject's row in the grades table, to scroll to it. */
+const rowIdOf = (classSubjectId) => `quarter-grades-${classSubjectId}`;
 
 /**
  * The signed-in student's grades of one school year or quarter: an overview (general average, subjects
- * passed, those below 75), the subjects as a list on the left and the chosen subject in detail on the right
- * (a bar per part of the grade, how it was worked out and every graded assessment). The
- * chosen subject lives in the URL (`subject`, a class-subject id) and falls back to the first one.
+ * passed, those below 75), the subjects as a list on the left and, on the right, one table of every subject's
+ * quarterly and final grades with the general average, then the scores of the chosen subject. Choosing a
+ * subject marks its row in the table. The chosen subject lives in the URL (`subject`, a class-subject id) and
+ * falls back to the first one.
  * Grades come from every page of GET /grades, results from GET /grades/summary. A student who is not in a
  * class (`notEnrolled`) still sees the grades of earlier classes, under a note; with no grades at all they get
  * the not-enrolled state.
@@ -66,8 +71,8 @@ export function GradesBySubject({ academicYear, term, notEnrolled = false, withU
     const latest = gradesBySubject.get(classSubjectId)?.[0];
     return latest?.gradedBy ? fullName(latest.gradedBy) : '';
   };
-  // replace: picking a subject is not a new page, so Back leaves My grades. Where the detail sits below the
-  // list (narrow screens), the page moves to it.
+  // replace: picking a subject is not a new page, so Back leaves My grades. The page scrolls to the subject's
+  // row only when it is out of sight (below the list on narrow screens).
   const select = (classSubjectId) => {
     setSearchParams(
       (params) => {
@@ -76,9 +81,9 @@ export function GradesBySubject({ academicYear, term, notEnrolled = false, withU
       },
       { replace: true },
     );
-    if (!window.matchMedia('(min-width: 64rem)').matches) {
-      document.getElementById('subject-detail')?.scrollIntoView({ behavior: 'smooth' });
-    }
+    document
+      .getElementById(rowIdOf(classSubjectId))
+      ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   };
 
   return (
@@ -100,13 +105,21 @@ export function GradesBySubject({ academicYear, term, notEnrolled = false, withU
           onSelect={select}
           teacherOf={teacherOf}
         />
-        <SubjectResultDetail
-          key={selected.classSubjectId}
-          subject={selected}
-          grades={gradesBySubject.get(selected.classSubjectId) ?? []}
-          teacher={teacherOf(selected.classSubjectId)}
-          next={upcomingItems.find((assessment) => assessment.classSubjectId === selected.classSubjectId)}
-        />
+        <div className="grid min-w-0 gap-6">
+          <QuarterGradesTable
+            subjects={subjects}
+            academicYear={academicYear}
+            term={term}
+            selectedId={selected.classSubjectId}
+            teacherOf={teacherOf}
+            rowIdOf={rowIdOf}
+          />
+          <SubjectScores
+            subjectName={selected.subjectName}
+            grades={gradesBySubject.get(selected.classSubjectId) ?? []}
+            next={upcomingItems.find((assessment) => assessment.classSubjectId === selected.classSubjectId)}
+          />
+        </div>
       </div>
     </div>
   );
