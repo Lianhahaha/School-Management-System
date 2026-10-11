@@ -93,6 +93,9 @@
   --mark-sage: #757d6f;
   --mark-cream: #eeead7;
   --mark-edge: rgb(109 8 8 / 0.14);
+  /* A figure below the school's line (a low attendance rate or average), set in oxblood text rather than a
+     bright red tag; graphite gets a light rose of the same hue (8:1 on the dark sheet). */
+  --attention-ink: var(--mark-oxblood);
 
   /*
    * Page band: the solid blood-maroon band behind every page title; in dark it deepens to a near-black
@@ -193,6 +196,7 @@
   --secondary-hover: #43444b;
   --secondary-edge: rgb(255 255 255 / 0.09);
   --mark-edge: rgb(255 255 255 / 0.12);
+  --attention-ink: #e8c4b8;
   --band: #240000;
   --subject-edge: rgb(255 255 255 / 0.14);
 
@@ -255,6 +259,7 @@
   --color-mark-sage: var(--mark-sage);
   --color-mark-cream: var(--mark-cream);
   --color-mark-edge: var(--mark-edge);
+  --color-attention-ink: var(--attention-ink);
   --color-band: var(--band);
   --color-band-ink: var(--band-ink);
   --color-subject-navy: var(--subject-navy);

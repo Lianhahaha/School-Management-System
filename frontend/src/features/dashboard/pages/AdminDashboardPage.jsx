@@ -12,10 +12,15 @@ import { SetupChecklistCard } from '../components/SetupChecklistCard';
 import { UpcomingAssessmentsCard } from '../components/UpcomingAssessmentsCard';
 import { UpcomingEventsCard } from '../components/UpcomingEventsCard';
 
+/** How many upcoming assessments and announcements the dashboard lists; their pages hold the rest. */
+const ASSESSMENTS_SHOWN = 5;
+const ANNOUNCEMENTS_SHOWN = 3;
+
 /**
- * /admin: "Is the school running?" The setup checklist while the school is still being set up, then
- * counts, then three columns: the students who need attention and today's attendance; what is coming
- * (calendar, assessments); enrollment by grade and the latest announcements.
+ * /admin: "Is the school running?" The setup checklist while the school is still being set up, then the
+ * counts, then the students who need attention as a full-width table read across, then two roomy columns:
+ * today's attendance and the next assessments; what is coming on the calendar, enrollment by grade and the
+ * latest announcements.
  */
 export default function AdminDashboardPage() {
   return (
@@ -41,26 +46,25 @@ export default function AdminDashboardPage() {
       }
     >
       {(data) => (
-        <div className="space-y-6">
+        <div className="space-y-8">
           <SetupChecklistCard counts={data.counts} />
           <AdminCountTiles counts={data.counts} />
+          <AtRiskCard atRisk={data.atRisk} studentPath={(id) => `/admin/students/${id}`} layout="table" />
           <DashboardColumns
             first={
               <>
-                <AtRiskCard atRisk={data.atRisk} studentPath={(id) => `/admin/students/${id}`} />
                 <AdminAttendanceCard attendance={data.attendanceToday} holiday={data.holidayToday} />
+                <UpcomingAssessmentsCard assessments={data.upcomingAssessments} limit={ASSESSMENTS_SHOWN} />
               </>
             }
             second={
               <>
                 <UpcomingEventsCard events={data.upcomingEvents} to="/admin/calendar" />
-                <UpcomingAssessmentsCard assessments={data.upcomingAssessments} />
-              </>
-            }
-            third={
-              <>
                 <EnrollmentByGradeCard grades={data.enrollmentsByGrade} />
-                <RecentAnnouncementsCard announcements={data.recentAnnouncements} to="/admin/announcements" />
+                <RecentAnnouncementsCard
+                  announcements={data.recentAnnouncements.slice(0, ANNOUNCEMENTS_SHOWN)}
+                  to="/admin/announcements"
+                />
               </>
             }
           />

@@ -1,24 +1,20 @@
 import { ATTENDANCE_STATUSES } from '../../../constants/shared';
-import {
-  ATTENDANCE_RATE_LINE,
-  ATTENDANCE_STATUS_LABELS,
-  ATTENDANCE_STATUS_TONES,
-} from '../../../constants/ui';
-import { Badge } from '../../../components/ui/Badge';
+import { ATTENDANCE_RATE_LINE, ATTENDANCE_STATUS_LABELS } from '../../../constants/ui';
+import { cx } from '../../../utils/cx';
 import { formatPercent } from '../../../utils/format';
 
 const RING_RADIUS = 52;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 /**
- * At least 90 % green, red below the "needs attention" line (80 %), amber in between; the percentage text is
- * always shown too.
+ * At least 90 % green, oxblood below the "needs attention" line (80 %), amber in between; the percentage text
+ * is always shown too.
  */
 function ringTone(rate) {
   if (rate === null || rate === undefined) return 'stroke-gray-300';
   if (rate >= 0.9) return 'stroke-green-600';
   if (rate >= ATTENDANCE_RATE_LINE) return 'stroke-amber-500';
-  return 'stroke-red-600';
+  return 'stroke-attention-ink';
 }
 
 function AttendanceRing({ rate }) {
@@ -51,8 +47,9 @@ function AttendanceRing({ rate }) {
 }
 
 /**
- * Attendance rate ring with the present / absent / late / excused counts beside it. Used for the
- * school's attendance today (admin) and a student's attendance this year (student).
+ * Attendance rate ring with the present / absent / late / excused counts beside it, as plain labelled figures
+ * (absences in oxblood ink when there are any) rather than coloured tags. Used for the school's attendance
+ * today (admin) and a student's attendance this year (student).
  *
  * @param {object} props
  * @param {{ rate: number|null, present: number, absent: number, late: number, excused: number }} props.summary
@@ -64,10 +61,17 @@ export function AttendanceOverview({ summary }) {
       <dl className="grid flex-1 grid-cols-2 gap-x-6 gap-y-3 sm:min-w-56">
         {ATTENDANCE_STATUSES.map((status) => (
           <div key={status}>
-            <dt>
-              <Badge tone={ATTENDANCE_STATUS_TONES[status]}>{ATTENDANCE_STATUS_LABELS[status]}</Badge>
+            <dt className="text-xs tracking-wide text-gray-600 uppercase">
+              {ATTENDANCE_STATUS_LABELS[status]}
             </dt>
-            <dd className="mt-1 text-xl font-semibold text-gray-900">{summary[status]}</dd>
+            <dd
+              className={cx(
+                'tabular mt-0.5 text-xl font-semibold',
+                status === 'absent' && summary.absent > 0 ? 'text-attention-ink' : 'text-gray-900',
+              )}
+            >
+              {summary[status]}
+            </dd>
           </div>
         ))}
       </dl>

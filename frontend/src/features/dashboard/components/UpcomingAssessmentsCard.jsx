@@ -8,14 +8,18 @@ import { formatDate } from '../../../utils/date';
 /**
  * Assessments coming up in the next seven days (dashboard payload `upcomingAssessments`).
  * Shown on the admin and the student dashboard.
+ * @param {object} props
+ * @param {object[]} props.assessments soonest first
+ * @param {number} [props.limit] list only the first few (the count beside the title stays the full one)
  */
-export function UpcomingAssessmentsCard({ assessments }) {
+export function UpcomingAssessmentsCard({ assessments: all, limit }) {
+  const assessments = limit ? all.slice(0, limit) : all;
   return (
     <Card
       icon={ClipboardCheck}
       mark="cream"
       title="Upcoming assessments"
-      total={assessments.length > 0 ? assessments.length : undefined}
+      total={all.length > 0 ? all.length : undefined}
       description="In the next 7 days"
     >
       {assessments.length === 0 ? (
@@ -42,6 +46,11 @@ export function UpcomingAssessmentsCard({ assessments }) {
             </li>
           ))}
         </ul>
+      )}
+      {assessments.length < all.length && (
+        <p className="mt-3 text-xs text-gray-600">
+          Showing the next {assessments.length} of {all.length}.
+        </p>
       )}
     </Card>
   );
