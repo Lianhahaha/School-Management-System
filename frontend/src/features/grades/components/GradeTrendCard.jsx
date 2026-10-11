@@ -24,7 +24,7 @@ function changeText(first, latest) {
  * @param {object} props
  * @param {number} [props.studentId] the student; omit for the signed-in student
  * @param {string} [props.academicYear] one school year (default: every year)
- * @param {string} [props.term] 'term1' | 'term2' | 'term3' to restrict it (default: all semesters)
+ * @param {string} [props.term] 'term1' to 'term4' to restrict it to one quarter (default: all quarters)
  */
 export function GradeTrendCard({ studentId, academicYear, term }) {
   const { data, error, isPending, refetch } = useAllGrades({

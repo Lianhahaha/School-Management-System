@@ -155,6 +155,41 @@ describe('students enrolling themselves for next year (DepEd promotion)', () => 
     assert.equal(res.body.error.details.standing, 'remedial');
   });
 
+  it('judges each subject on the average of its quarterly grades', async () => {
+    // Subjects 2 to 4 pass with 9/10. Subject 1 has a 1st Quarter exam of 95/100 and a 2nd Quarter quiz of
+    // 2/10: (95 + 20) / 2 = 57.5 fails, although the year's points (97 / 110 = 88.18) would pass.
+    const student = await studentWith(grade4, grade4.subjects, [null, 9, 9, 9]);
+    for (const [term, type, maxScore, score, day] of [
+      ['term1', 'exam', 100, 95, 30],
+      ['term2', 'quiz', 10, 2, 120],
+    ]) {
+      const assessment = await api
+        .post('/api/v1/assessments')
+        .set(as(teacher))
+        .send({
+          classSubjectId: grade4.subjects[0].id,
+          title: `${term} ${type} ${student.studentId}`,
+          type,
+          term,
+          maxScore,
+          assessedOn: addDaysYmd(lastYearStart, day),
+        });
+      assert.equal(assessment.status, 201, JSON.stringify(assessment.body));
+      const saved = await api
+        .put(`/api/v1/assessments/${assessment.body.data.id}/grades`)
+        .set(as(teacher))
+        .send({ grades: [{ studentId: student.studentId, score }] });
+      assert.equal(saved.status, 200, JSON.stringify(saved.body));
+    }
+    const result = await standing(student);
+    assert.equal(result.status, 'remedial');
+    assert.deepEqual(
+      result.failedSubjects.map((subject) => [subject.subjectName, subject.percentage]),
+      [[pastSubjects[0].name, 57.5]],
+    );
+    assert.equal(result.generalAverage, 81.88); // (57.5 + 90 + 90 + 90) / 4 = 81.875
+  });
+
   it('keeps a student who failed three or more subjects in the same grade level', async () => {
     const student = await studentWith(grade4, grade4.subjects, [6, 5, 7, 9]);
     const result = await standing(student);

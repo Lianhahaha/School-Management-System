@@ -14,7 +14,7 @@ import { SubjectResultDetail } from './SubjectResultDetail';
 import { SubjectResultList } from './SubjectResultList';
 
 /**
- * The signed-in student's grades of one school year or semester: an overview (general average, subjects
+ * The signed-in student's grades of one school year or quarter: an overview (general average, subjects
  * passed, those below 75), the subjects as a list on the left and the chosen subject in detail on the right
  * (a bar per part of the grade, how it was worked out and every graded assessment). The
  * chosen subject lives in the URL (`subject`, a class-subject id) and falls back to the first one.
@@ -24,7 +24,7 @@ import { SubjectResultList } from './SubjectResultList';
  *
  * @param {object} props
  * @param {string} props.academicYear the school year shown
- * @param {string} [props.term] 'term1' | 'term2' | 'term3'; omit for the whole year
+ * @param {string} [props.term] 'term1' to 'term4' for one quarter; omit for the whole year
  * @param {boolean} [props.notEnrolled] the student has no active enrollment
  * @param {boolean} [props.withUpcoming] show upcoming assessments (only the current class has any)
  */
@@ -49,7 +49,7 @@ export function GradesBySubject({ academicYear, term, notEnrolled = false, withU
       <EmptyState
         icon={GraduationCap}
         title={
-          term ? 'No grades recorded for this semester yet' : 'No grades recorded for this school year yet'
+          term ? 'No grades recorded for this quarter yet' : 'No grades recorded for this school year yet'
         }
         description="Graded assessments will appear here."
       />

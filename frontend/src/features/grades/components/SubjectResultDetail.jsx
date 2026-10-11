@@ -1,13 +1,15 @@
 import { DataTable } from '../../../components/ui/DataTable';
-import { ASSESSMENT_TYPES, COMPONENT_OF_TYPE, GRADING_COMPONENTS } from '../../../constants/shared';
+import { ASSESSMENT_TYPES, COMPONENT_OF_TYPE, GRADING_COMPONENTS, TERMS } from '../../../constants/shared';
 import { ASSESSMENT_TYPE_LABELS, COMPONENT_LABELS } from '../../../constants/ui';
 import { cx } from '../../../utils/cx';
 import { formatDate } from '../../../utils/date';
 import { formatScore } from '../../../utils/format';
 import {
   describeGrading,
+  describeQuarters,
   formatPercentage,
   formatResult,
+  gradedQuarters,
   groupBy,
   passMarkOf,
   percentageByType,
@@ -50,8 +52,9 @@ const COLUMNS = [
 ];
 
 /**
- * The parts of a subject's grade, one bar each: the K-12 components with their weights, or the assessment types
- * graded so far (with their weights in a weighted subject; a weighted type not graded yet shows "Not yet").
+ * The parts of a subject's grade, one bar each, over every graded assessment of the period shown: the K-12
+ * components with their weights, or the assessment types graded so far (with their weights in a weighted
+ * subject; a weighted type not graded yet shows "Not yet").
  * @returns {Array<{ key: string, label: string, weight: number | null, percentage: number | null }>}
  */
 function partsOf(subject, grades) {
@@ -102,8 +105,17 @@ function PartBar({ part, passMark }) {
   );
 }
 
-/** How the grade was worked out, in one sentence, from the parts its bars show. */
+/**
+ * How the grade was worked out, in one sentence: the quarterly grades it averages once more than one quarter
+ * is graded (each quarter is graded on its own, so the bars, which cover every quarter, are not its working),
+ * else from the parts its bars show.
+ */
 function workings(subject, parts) {
+  const quarters = gradedQuarters(subject);
+  if (quarters.length > 1) {
+    const soFar = quarters.length < TERMS.length ? ', the quarters graded so far' : '';
+    return `Final grade ${formatResult(subject.percentage)} = the average of the quarterly grades (${describeQuarters(subject)}${soFar}). Each quarter is graded on its own; the bars above cover all of them.`;
+  }
   if (subject.method === 'points') {
     return `All points scored divided by all points possible: ${formatScore(subject.totalScore, subject.totalMaxScore)}.`;
   }

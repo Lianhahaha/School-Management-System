@@ -15,8 +15,8 @@ import { SchoolPeriodSelect } from '../components/SchoolPeriodSelect';
 import { STUDENT_GRADES_CSV_COLUMNS } from '../csv';
 
 /**
- * A student's own grades for one school year, optionally one semester (one picker: "AY 2026-2027 · 1st
- * Semester"), with CSV download and a printable report card of that year's class. Both choices live in the URL
+ * A student's own grades for one school year, optionally one quarter (one picker: "AY 2026-2027 · 1st
+ * Quarter"), with CSV download and a printable report card of that year's class. Both choices live in the URL
  * (`academicYear`, `term`); the page opens on the year of the student's class (see useSchoolYear).
  */
 export default function StudentGradesPage() {

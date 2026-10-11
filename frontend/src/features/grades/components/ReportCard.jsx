@@ -1,9 +1,9 @@
 import { Printer } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { Button } from '../../../components/ui/Button';
-import { APP_NAME, GENDER_LABELS, TERM_LABELS } from '../../../constants/ui';
+import { APP_NAME, GENDER_LABELS, TERM_LABELS, TERM_SHORT_LABELS } from '../../../constants/ui';
 import { academicYearStart, ageOn, formatDate, todayYmd } from '../../../utils/date';
-import { PASSING_GRADE } from '../../../constants/shared';
+import { PASSING_GRADE, TERMS } from '../../../constants/shared';
 import {
   describeWeights,
   descriptorOf,
@@ -51,10 +51,28 @@ export function PrintReportCardButton({ studentId, academicYear, term }) {
 const remarksOf = (result) => (result === null ? '—' : isPassing(result) ? 'Passed' : 'Failed');
 
 /**
+ * The columns between a subject's class and its grade: for the whole school year its quarterly grades, Q1 to
+ * Q4, as the SF9 prints them (the grade is then their average, the final grade); for one quarter how many
+ * assessments are graded and the initial grade.
+ * @param {string} [term]
+ */
+const gradeColumnsOf = (term) =>
+  term
+    ? [
+        { header: 'Graded', cell: (subject) => subject.assessmentsGraded },
+        { header: 'Initial', cell: (subject) => formatResult(subject.initialGrade) },
+      ]
+    : TERMS.map((quarter) => ({
+        header: TERM_SHORT_LABELS[quarter],
+        cell: (subject) => formatResult(subject.quarters[quarter]),
+      }));
+
+/**
  * A student's report card for paper (DepEd SF9): who (with LRN, sex and the age on the first day of the school
- * year, as on the SF1), which class, school year and semester, per subject its initial
- * grade, its grade and Passed / Failed, and the general average (the mean of the subject grades) with its
- * DepEd descriptor, for one school year. Notes explain the K-12 grading and list any weighted subjects. It is mounted at the end of <body> (a portal) and
+ * year, as on the SF1), which class, school year and quarter, per subject its quarterly grades and final grade
+ * (their average) for the whole year, or its initial grade and grade for one quarter, with Passed / Failed, and
+ * the general average (the mean of the subject grades) with its DepEd descriptor. Notes explain the K-12
+ * grading and the final grade and list any weighted subjects. It is mounted at the end of <body> (a portal) and
  * shown only when printing, in plain black on white whatever the screen theme; the app itself is hidden then
  * (see `.print-only` in index.css). Printed (Ctrl+P) before its grades have arrived, it says so in place of the
  * table instead of "No grades recorded".
@@ -65,7 +83,7 @@ const remarksOf = (result) => (result === null ? '—' : isPassing(result) ? 'Pa
  * @param {number|string} props.studentId a student id, or 'me'
  * @param {string} props.academicYear the school year on the card
  * @param {string} props.className the student's class in that year
- * @param {string} [props.term] 'term1' | 'term2' | 'term3'; omit for the whole year
+ * @param {string} [props.term] 'term1' to 'term4' for one quarter; omit for the whole year
  */
 export function ReportCard({ student, studentId, academicYear, className, term }) {
   const summary = useReportCardSubjects({ studentId, academicYear, term });
@@ -74,6 +92,8 @@ export function ReportCard({ student, studentId, academicYear, className, term }
   const weighted = subjects.filter((subject) => subject.method === 'weighted');
   const hasK12 = subjects.some((subject) => subject.method === 'k12');
   const age = ageOn(student.dateOfBirth, academicYearStart(academicYear));
+  const gradeColumns = gradeColumnsOf(term);
+  const columnCount = gradeColumns.length + 4;
 
   return createPortal(
     <article className="print-only bg-white font-sans text-[11pt] text-black">
@@ -98,7 +118,7 @@ export function ReportCard({ student, studentId, academicYear, className, term }
         <dd>{age ?? '—'}</dd>
         <dt className="font-semibold">Class</dt>
         <dd>{`${className}, ${academicYear}`}</dd>
-        <dt className="font-semibold">Semester</dt>
+        <dt className="font-semibold">Quarter</dt>
         <dd>{term ? TERM_LABELS[term] : 'Whole school year'}</dd>
       </dl>
 
@@ -107,9 +127,12 @@ export function ReportCard({ student, studentId, academicYear, className, term }
           <tr className="border-b border-black">
             <th className="py-1.5 pr-3">Subject</th>
             <th className="py-1.5 pr-3">Class</th>
-            <th className="py-1.5 pr-3 text-right">Graded</th>
-            <th className="py-1.5 pr-3 text-right">Initial</th>
-            <th className="py-1.5 pr-3 text-right">Grade</th>
+            {gradeColumns.map((column) => (
+              <th key={column.header} className="py-1.5 pr-3 text-right">
+                {column.header}
+              </th>
+            ))}
+            <th className="py-1.5 pr-3 text-right">{term ? 'Grade' : 'Final grade'}</th>
             <th className="py-1.5">Remarks</th>
           </tr>
         </thead>
@@ -118,15 +141,18 @@ export function ReportCard({ student, studentId, academicYear, className, term }
             <tr key={subject.classSubjectId} className="border-b border-black/30">
               <td className="py-1.5 pr-3">{subject.subjectName}</td>
               <td className="py-1.5 pr-3">{subject.className}</td>
-              <td className="py-1.5 pr-3 text-right">{subject.assessmentsGraded}</td>
-              <td className="py-1.5 pr-3 text-right">{formatResult(subject.initialGrade)}</td>
+              {gradeColumns.map((column) => (
+                <td key={column.header} className="py-1.5 pr-3 text-right">
+                  {column.cell(subject)}
+                </td>
+              ))}
               <td className="py-1.5 pr-3 text-right font-semibold">{formatResult(subject.percentage)}</td>
               <td className="py-1.5">{remarksOf(subject.percentage)}</td>
             </tr>
           ))}
           {subjects.length === 0 && (
             <tr>
-              <td colSpan={6} className="py-3">
+              <td colSpan={columnCount} className="py-3">
                 {summary.data !== undefined
                   ? 'No grades recorded.'
                   : summary.isError
@@ -139,7 +165,7 @@ export function ReportCard({ student, studentId, academicYear, className, term }
         {subjects.length > 0 && (
           <tfoot>
             <tr className="border-t-2 border-black">
-              <td colSpan={4} className="py-2 font-semibold">
+              <td colSpan={columnCount - 2} className="py-2 font-semibold">
                 General average (mean of the subject grades, each subject counted once)
               </td>
               <td className="py-2 pr-3 text-right font-semibold">{formatResult(average)}</td>
@@ -149,11 +175,17 @@ export function ReportCard({ student, studentId, academicYear, className, term }
         )}
       </table>
 
+      {!term && subjects.length > 0 && (
+        <p className="mt-3 text-[9pt]">
+          Final grade: the average of the quarterly grades (DepEd Order No. 8, s. 2015), a whole number in
+          K-12 subjects; until the 4th Quarter is graded, the average of the quarters graded so far.
+        </p>
+      )}
       {hasK12 && (
         <p className="mt-3 text-[9pt]">
-          K-12 subjects: the initial grade weighs written work, performance tasks and the quarterly assessment
-          (DepEd Order No. 8, s. 2015) and is transmuted to the grade, 60 to 100. Passing grade is{' '}
-          {PASSING_GRADE}.
+          K-12 subjects: each quarter's initial grade weighs written work, performance tasks and the quarterly
+          assessment (DepEd Order No. 8, s. 2015) and is transmuted to the quarterly grade, 60 to 100. Passing
+          grade is {PASSING_GRADE}.
         </p>
       )}
       {weighted.length > 0 && (

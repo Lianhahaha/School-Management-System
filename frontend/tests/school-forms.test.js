@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { sf2DayMark, sf2Sheet } from '../src/features/attendance/csv';
-import { sf10Remarks, sf10Rows } from '../src/features/grades/csv';
+import { SF10_CSV_COLUMNS, sf10Remarks, sf10Rows } from '../src/features/grades/csv';
 import { inSchoolFormOrder, sf1Columns } from '../src/features/students/csv';
 import { toCsv } from '../src/lib/csv';
 
@@ -96,27 +96,34 @@ describe('SF10 permanent record', () => {
     expect(sf10Remarks([], true)).toBe('In progress');
   });
 
+  /** A row of GET /grades/summary?groupBy=classSubject: a K-12 subject with its quarterly grades Q1 to Q4. */
+  const subject = (subjectId, subjectName, className, academicYear, ...quarterGrades) => {
+    const [term1 = null, term2 = null, term3 = null, term4 = null] = quarterGrades;
+    return {
+      subjectId,
+      subjectName,
+      className,
+      academicYear,
+      method: 'k12',
+      quarters: { term1, term2, term3, term4 },
+    };
+  };
+  const pick = ({ academicYear, gradeLevel, section, subject: name, finalGrade, remarks }) =>
+    [academicYear, gradeLevel, section, name, finalGrade, remarks].join('|');
+
   it('lists every school year oldest first: its subjects, then its general average and remarks', () => {
     const enrollments = [
       { status: 'active', class: { name: 'Grade 8 - A', gradeLevel: 8, academicYear: '2026-2027' } },
       { status: 'completed', class: { name: 'Grade 7 - B', gradeLevel: 7, academicYear: '2025-2026' } },
     ];
-    const subject = (subjectId, subjectName, className, academicYear, percentage) => ({
-      subjectId,
-      subjectName,
-      className,
-      academicYear,
-      percentage,
-    });
     const subjects = [
       subject(2, 'Science', 'Grade 8 - A', '2026-2027', 88),
-      subject(1, 'Math', 'Grade 7 - B', '2025-2026', 70),
-      subject(2, 'Science', 'Grade 7 - B', '2025-2026', 90),
-      subject(3, 'English', 'Grade 7 - B', '2025-2026', null),
+      subject(1, 'Math', 'Grade 7 - B', '2025-2026', 70, 72, 68, 70),
+      subject(2, 'Science', 'Grade 7 - B', '2025-2026', 90, 91, 89, 90),
+      subject(3, 'English', 'Grade 7 - B', '2025-2026'),
     ];
-    const pick = ({ academicYear, gradeLevel, section, subject: name, finalGrade, remarks }) =>
-      [academicYear, gradeLevel, section, name, finalGrade, remarks].join('|');
-    expect(sf10Rows(enrollments, subjects).map(pick)).toEqual([
+    const rows = sf10Rows(enrollments, subjects);
+    expect(rows.map(pick)).toEqual([
       '2025-2026|7|Grade 7 - B|English||',
       '2025-2026|7|Grade 7 - B|Math|70|Failed',
       '2025-2026|7|Grade 7 - B|Science|90|Passed',
@@ -124,5 +131,32 @@ describe('SF10 permanent record', () => {
       '2026-2027|8|Grade 8 - A|Science|88|Passed',
       '2026-2027|8|Grade 8 - A|General average|88|In progress',
     ]);
+    // The quarterly grades beside each final grade, as on the DepEd form; none on the general average.
+    expect(toCsv(SF10_CSV_COLUMNS, rows).split('\r\n').slice(0, 5)).toEqual([
+      'School year,Grade level,Section,Subject,Q1,Q2,Q3,Q4,Final grade,Remarks',
+      '2025-2026,7,Grade 7 - B,English,,,,,,',
+      '2025-2026,7,Grade 7 - B,Math,70,72,68,70,70,Failed',
+      '2025-2026,7,Grade 7 - B,Science,90,91,89,90,90,Passed',
+      '2025-2026,7,Grade 7 - B,General average,,,,,80,Remedial',
+    ]);
+  });
+
+  it('gives a subject taken in two sections the average of all its quarters', () => {
+    // Q1 in 8-A, Q2 to Q4 in 8-B: (70 + 80 + 84 + 86) / 4 = 80 passes. The mean of the two sections' final
+    // grades, (70 + 83) / 2 = 76.5, would understate the three quarters in 8-B.
+    const enrollments = [
+      { status: 'transferred', class: { name: 'Grade 8 - A', gradeLevel: 8, academicYear: '2026-2027' } },
+      { status: 'completed', class: { name: 'Grade 8 - B', gradeLevel: 8, academicYear: '2026-2027' } },
+    ];
+    const subjects = [
+      subject(1, 'Math', 'Grade 8 - A', '2026-2027', 70),
+      subject(1, 'Math', 'Grade 8 - B', '2026-2027', null, 80, 84, 86),
+    ];
+    const rows = sf10Rows(enrollments, subjects);
+    expect(rows.map(pick)).toEqual([
+      '2026-2027|8|Grade 8 - A / Grade 8 - B|Math|80|Passed',
+      '2026-2027|8|Grade 8 - A / Grade 8 - B|General average|80|Promoted',
+    ]);
+    expect(rows[0].quarters).toEqual({ term1: 70, term2: 80, term3: 84, term4: 86 });
   });
 });

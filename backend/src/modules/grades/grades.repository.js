@@ -60,24 +60,25 @@ export function findRecentGrades(studentId, limit) {
 const TOTALS = `COUNT(g.id) AS assessments_graded, SUM(g.score) AS total_score, SUM(a.max_score) AS total_max_score`;
 
 /**
- * Graded points per class-subject (default) or per student and class-subject, split by assessment type, so the
- * service can apply each subject's weights (utils/grading.js).
+ * Graded points per class-subject (default) or per student and class-subject, split by quarter (term) and
+ * assessment type, so the service can grade each quarter with the subject's rules and average the quarters
+ * (utils/grading.js).
  */
 export function summarizeGrades({ groupBy = 'classSubject', ...filters }, scope) {
   const where = filtersToWhere(filters, scope);
   if (groupBy === 'student') {
     return query(
       `SELECT s.id AS student_id, CONCAT(u.first_name, ' ', u.last_name) AS label, cs.id AS class_subject_id,
-              cs.subject_id, c.academic_year, a.type, ${TOTALS} ${FROM} ${where.sql}
-        GROUP BY s.id, u.first_name, u.last_name, cs.id, cs.subject_id, c.academic_year, a.type
+              cs.subject_id, c.academic_year, a.term, a.type, ${TOTALS} ${FROM} ${where.sql}
+        GROUP BY s.id, u.first_name, u.last_name, cs.id, cs.subject_id, c.academic_year, a.term, a.type
         ORDER BY u.last_name, u.first_name, s.id, cs.id`,
       where.params,
     );
   }
   return query(
     `SELECT cs.id AS class_subject_id, cs.subject_id, sub.name AS subject_name, c.name AS class_name,
-            c.academic_year, CONCAT(c.name, ' - ', sub.name) AS label, a.type, ${TOTALS} ${FROM} ${where.sql}
-      GROUP BY cs.id, cs.subject_id, c.name, c.academic_year, sub.name, a.type
+            c.academic_year, CONCAT(c.name, ' - ', sub.name) AS label, a.term, a.type, ${TOTALS} ${FROM} ${where.sql}
+      GROUP BY cs.id, cs.subject_id, c.name, c.academic_year, sub.name, a.term, a.type
       ORDER BY c.academic_year DESC, c.name, sub.name, cs.id`,
     where.params,
   );

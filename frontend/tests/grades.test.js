@@ -2,15 +2,20 @@ import { describe, expect, it } from 'vitest';
 import {
   averageOf,
   describeGrading,
+  describeQuarters,
   describeWeights,
   descriptorOf,
+  finalGradeOf,
   formatResult,
   generalAverage,
+  gradedQuarters,
   groupBy,
   isPassing,
   passMarkOf,
   percentageByType,
   resultWidth,
+  subjectFinalGrade,
+  subjectQuarters,
 } from '../src/utils/grades';
 
 /** A row of GET /grades as percentageByType reads it. Scores arrive as numbers or, from DECIMAL columns, strings. */
@@ -98,38 +103,103 @@ describe('averageOf', () => {
   });
 });
 
+/** Quarterly grades of a summary row, Q1 to Q4; null = nothing graded in that quarter. */
+const quarters = (term1 = null, term2 = null, term3 = null, term4 = null) => ({ term1, term2, term3, term4 });
+
+/** A row of GET /grades/summary?groupBy=classSubject as the averages read it. */
+const subjectRow = (subjectId, academicYear, quarterGrades, method = 'points') => ({
+  subjectId,
+  academicYear,
+  method,
+  quarters: quarterGrades,
+});
+
+describe('finalGradeOf', () => {
+  it('averages the quarters graded so far, a whole number (half up) for K-12', () => {
+    expect(finalGradeOf([88, 89, null, null], 'k12')).toBe(89); // 88.5
+    expect(finalGradeOf([88, 89, 89], 'k12')).toBe(89); // 88.67
+    expect(finalGradeOf([74, 74, 74, 75], 'k12')).toBe(74); // 74.25
+    expect(finalGradeOf([74, 74, 75, 75], 'k12')).toBe(75); // 74.5
+    expect(finalGradeOf([null, undefined], 'k12')).toBeNull();
+  });
+
+  it('keeps 2 decimals on points and weighted, half up despite floating-point dust', () => {
+    expect(finalGradeOf([95, 20], 'points')).toBe(57.5);
+    expect(finalGradeOf([80.01, 80.02], 'weighted')).toBe(80.02);
+    expect(finalGradeOf([], 'points')).toBeNull();
+  });
+});
+
+describe('subjectQuarters and subjectFinalGrade', () => {
+  it("is a single class's own final grade", () => {
+    const row = subjectRow(1, '2026-2027', quarters(91, 73, null, 96), 'k12');
+    expect(subjectQuarters([row])).toEqual(row.quarters);
+    expect(subjectFinalGrade([row])).toBe(87); // 86.67
+  });
+
+  it('puts the quarters of two classes together instead of averaging the class results', () => {
+    // Q1 in 10-A, Q2 to Q4 in 10-B: (70 + 80 + 84 + 86) / 4 = 80, not (70 + 83) / 2 = 76.5.
+    const rows = [
+      subjectRow(1, '2026-2027', quarters(70), 'k12'),
+      subjectRow(1, '2026-2027', quarters(null, 80, 84, 86), 'k12'),
+    ];
+    expect(subjectQuarters(rows)).toEqual(quarters(70, 80, 84, 86));
+    expect(subjectFinalGrade(rows)).toBe(80);
+  });
+
+  it('averages a quarter graded in both classes the same way', () => {
+    const rows = [
+      subjectRow(1, '2026-2027', quarters(88, 80), 'k12'),
+      subjectRow(1, '2026-2027', quarters(null, 85), 'k12'),
+    ];
+    expect(subjectQuarters(rows)).toEqual(quarters(88, 83)); // 82.5, half up
+    expect(subjectFinalGrade(rows)).toBe(86); // 85.5
+  });
+});
+
+describe('gradedQuarters and describeQuarters', () => {
+  it('lists the quarters with a grade, in order', () => {
+    const row = { quarters: quarters(88, null, 90.5) };
+    expect(gradedQuarters(row)).toEqual(['term1', 'term3']);
+    expect(describeQuarters(row)).toBe('Q1 88, Q3 90.5');
+    expect(gradedQuarters({ quarters: quarters() })).toEqual([]);
+    expect(gradedQuarters({})).toEqual([]);
+  });
+});
+
 describe('generalAverage', () => {
   it('counts a subject taken in two classes of one year once', () => {
-    // Moved from 10-A to 10-B mid-year: Math 60 then 90, English 80. (75 + 80) / 2, not (60 + 90 + 80) / 3.
+    // Moved from 10-A to 10-B at the half year: Math 60 in Q1 and Q2, then 90 in Q3 and Q4; English 80.
+    // (75 + 80) / 2, not (60 + 90 + 80) / 3.
     const subjects = [
-      { subjectId: 1, academicYear: '2026-2027', percentage: 60 },
-      { subjectId: 1, academicYear: '2026-2027', percentage: 90 },
-      { subjectId: 2, academicYear: '2026-2027', percentage: 80 },
+      subjectRow(1, '2026-2027', quarters(60, 60)),
+      subjectRow(1, '2026-2027', quarters(null, null, 90, 90)),
+      subjectRow(2, '2026-2027', quarters(80, 80, 80, 80)),
     ];
     expect(generalAverage(subjects)).toBe(77.5);
   });
 
   it('keeps one subject of two years apart and skips subjects without a result', () => {
     const subjects = [
-      { subjectId: 1, academicYear: '2025-2026', percentage: 70 },
-      { subjectId: 1, academicYear: '2026-2027', percentage: 90 },
-      { subjectId: 2, academicYear: '2026-2027', percentage: null },
+      subjectRow(1, '2025-2026', quarters(70)),
+      subjectRow(1, '2026-2027', quarters(90)),
+      subjectRow(2, '2026-2027', quarters()),
     ];
     expect(generalAverage(subjects)).toBe(80);
   });
 
   it('uses the graded class of a subject when its other class has no result yet', () => {
     const subjects = [
-      { subjectId: 1, academicYear: '2026-2027', percentage: null },
-      { subjectId: 1, academicYear: '2026-2027', percentage: 88 },
-      { subjectId: 2, academicYear: '2026-2027', percentage: 92 },
+      subjectRow(1, '2026-2027', quarters()),
+      subjectRow(1, '2026-2027', quarters(88)),
+      subjectRow(2, '2026-2027', quarters(92)),
     ];
     expect(generalAverage(subjects)).toBe(90);
   });
 
   it('is null with no subjects or none graded', () => {
     expect(generalAverage([])).toBeNull();
-    expect(generalAverage([{ subjectId: 1, academicYear: '2026-2027', percentage: null }])).toBeNull();
+    expect(generalAverage([subjectRow(1, '2026-2027', quarters())])).toBeNull();
   });
 });
 

@@ -1,13 +1,14 @@
 /**
  * Grades: roster-with-scores per assessment, bulk entry, flat reads and summaries.
- * A subject's result is its K-12 grade when the subject has a grading group (components weighted by the
- * group, transmuted to 60-100), else on points (SUM(score) / SUM(max_score) * 100 over graded assessments) or,
- * when the subject has grade weights, weighted per assessment type; a student's result over several subjects
- * is the mean of the subject results. The arithmetic lives in utils/grading.js.
+ * Each quarter of a subject is graded on its own: its K-12 grade when the subject has a grading group
+ * (components weighted by the group, transmuted to 60-100), else on points (SUM(score) / SUM(max_score) * 100
+ * over the quarter's graded assessments) or, when the subject has grade weights, weighted per assessment type.
+ * The subject's final grade is the average of its quarterly grades; a student's result over several subjects
+ * is the mean of the subjects' final grades. The arithmetic lives in utils/grading.js.
  */
 import { withTransaction } from '../../config/db.js';
 import { ApiError } from '../../utils/ApiError.js';
-import { generalAverageOf, percentOf, subjectResult, sumPoints } from '../../utils/grading.js';
+import { finalResult, generalAverageOf, percentOf, sumPoints } from '../../utils/grading.js';
 import { personRef } from '../../utils/shapes.js';
 import { assertAsSeen, assertOnRoster, changeOf, isEdited, remarksOf } from '../../utils/sheets.js';
 import * as access from '../access/access.service.js';
@@ -74,7 +75,7 @@ function groupRows(rows, keyOf) {
   return groups;
 }
 
-/** Counts and points of a group of per-type rows. */
+/** Counts and points of a group of per-quarter, per-type rows. */
 const totalsOf = (rows) => ({
   assessmentsGraded: rows.reduce((sum, row) => sum + row.assessmentsGraded, 0),
   totalScore: sumPoints(rows.map((row) => row.totalScore)),
@@ -82,10 +83,11 @@ const totalsOf = (rows) => ({
 });
 
 /**
- * Folds the per-type rows of repo.summarizeGrades into summary rows:
- *   classSubject  one row per class-subject: its result (`method` k12, points or weighted; for K-12 the
- *                 transmuted grade, with `initialGrade` and the `components`) and the rules used;
- *   student       one row per student: the result of their one class-subject, or the general average of
+ * Folds the per-quarter, per-type rows of repo.summarizeGrades into summary rows:
+ *   classSubject  one row per class-subject: its final grade, the average of its quarterly grades (`method`
+ *                 k12, points or weighted; each quarter graded on its own, for K-12 transmuted), with
+ *                 `quarters`, `initialGrade`, the `components` and the rules used;
+ *   student       one row per student: the final grade of their one class-subject, or the general average of
  *                 several (`average`), each subject counting once per academic year (utils/grading.js).
  * `rules` comes from allGradingRules; a subject in neither of its maps is graded on points.
  */
@@ -93,7 +95,7 @@ function foldSummary(rows, groupBy, rules) {
   const weightsOf = (subjectId) => rules.weights.get(subjectId) ?? null;
   const groupOf = (subjectId) => rules.groups.get(subjectId) ?? null;
   const classSubjectResult = (typeRows) =>
-    subjectResult(typeRows, weightsOf(typeRows[0].subjectId), groupOf(typeRows[0].subjectId));
+    finalResult(typeRows, weightsOf(typeRows[0].subjectId), groupOf(typeRows[0].subjectId));
 
   if (groupBy === 'student') {
     return [...groupRows(rows, (row) => row.studentId).values()].map((studentRows) => {
@@ -161,7 +163,8 @@ export async function summarizeStudentGradesUnscoped(studentId, academicYear) {
 
 /**
  * Each student's result in an academic year, within `scope` (a class scope fragment on cs.class_id, null for
- * all): the mean of their subject results, or their one subject's result (dashboards; no access check).
+ * all): the mean of their subjects' final grades, or their one subject's final grade (dashboards; no access
+ * check).
  * @returns {Promise<Map<number, number | null>>} studentId -> percentage
  */
 export async function studentResultsUnscoped(academicYear, scope) {

@@ -556,7 +556,7 @@ describe('assessments and grades', () => {
     assert.equal((await api.get('/api/v1/grades?limit=100').set(as(school.owner))).body.meta.total, 2);
   });
 
-  it('summarises points-weighted: SUM(score) / SUM(max) over graded assessments', async () => {
+  it('summarises a quarter on points: SUM(score) / SUM(max) over its graded assessments', async () => {
     const exam = (await newAssessment(school.owner, { title: 'Exam', type: 'exam', maxScore: 80 })).body.data;
     await putGrades(school.owner, exam.id, [{ studentId: school.s1.studentId, score: 40 }]);
     // s1: (17 + 40) / (20 + 80) = 57%, not the 67.5% mean of the two percentages

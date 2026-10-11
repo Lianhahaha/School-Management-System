@@ -22,7 +22,8 @@ const classRef = (row) => ({
 
 /**
  * Where a student stands for next year, judged on the school year of their last completed class (see
- * NEXT_CLASS_STANDINGS): every subject passed moves them up one grade level, 1-2 failed subjects need
+ * NEXT_CLASS_STANDINGS) by each subject's final grade, the average of its quarterly grades over the quarters
+ * graded (utils/grading.js subjectYearResults): every subject passed moves them up one grade level, 1-2 failed subjects need
  * remedial classes (an admin places them afterwards), 3 or more mean the same grade level again. A student
  * with no completed year, no grades in it, or whose next year has already passed is placed by an admin.
  * `classes` are the sections the student may pick: the grade level in the year after the completed one.
