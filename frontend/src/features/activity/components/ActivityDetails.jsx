@@ -6,7 +6,7 @@ import { describeWeights } from '../../../utils/grades';
 const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 
 /** Logged field names that read differently in the app. */
-const FIELD_LABELS = { term: 'Semester', gradingGroup: 'Grading' };
+const FIELD_LABELS = { term: 'Quarter', gradingGroup: 'Grading' };
 
 /** "guardianPhone" -> "Guardian phone". */
 const fieldLabel = (field) => {
@@ -16,7 +16,7 @@ const fieldLabel = (field) => {
 };
 
 /**
- * A logged value as text: blanks as a dash, timestamps in local time, statuses and semesters by name,
+ * A logged value as text: blanks as a dash, timestamps in local time, statuses and quarters by name,
  * weights as a list.
  */
 function formatValue(value, field) {

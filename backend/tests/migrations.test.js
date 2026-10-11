@@ -87,12 +87,13 @@ describe('database migrations', () => {
 
   it('upgrades a database created by an older schema.sql', async () => {
     await migrate();
-    const roleColumns = [
+    const enumColumns = [
       ['users', 'role'],
       ['activity_log', 'actor_role'],
+      ['assessments', 'term'],
     ];
     const definitions = () =>
-      Promise.all(roleColumns.map(([table, column]) => columnDefinition(table, column)));
+      Promise.all(enumColumns.map(([table, column]) => columnDefinition(table, column)));
     const current = await definitions();
     // Put back what the upgrades removed or added, and forget that they ran.
     await session.query(
@@ -102,6 +103,7 @@ describe('database migrations', () => {
     await session.query(
       "ALTER TABLE activity_log MODIFY COLUMN actor_role ENUM('admin','teacher','student') NULL",
     );
+    await session.query("ALTER TABLE assessments MODIFY COLUMN term ENUM('term1','term2','term3') NOT NULL");
     await session.query('ALTER TABLE subjects DROP COLUMN grading_group');
     await session.query(
       'ALTER TABLE enrollments ADD UNIQUE KEY uq_enrollments_student_class (student_id, class_id)',
@@ -119,7 +121,7 @@ describe('database migrations', () => {
     assert.equal(await hasIndex('enrollments', 'uq_enrollments_student_class'), false);
     assert.equal(await hasColumn('students', 'lrn'), true);
     assert.equal(await hasIndex('students', 'uq_students_lrn'), true);
-    assert.deepEqual(await definitions(), current, 'the role columns end up as schema.sql defines them');
+    assert.deepEqual(await definitions(), current, 'the ENUM columns end up as schema.sql defines them');
   });
 
   it('applies a changed schema.sql again, creating a table that is missing', async () => {

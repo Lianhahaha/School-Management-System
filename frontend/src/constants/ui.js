@@ -178,8 +178,15 @@ export const GRADE_DESCRIPTORS = Object.freeze([
   { min: 0, label: 'Did Not Meet Expectations', tone: 'oxblood' },
 ]);
 
-/** The API's terms as the school names them: two semesters and a summer term in each school year. */
-export const TERM_LABELS = Object.freeze({ term1: '1st Semester', term2: '2nd Semester', term3: 'Summer' });
+/** The API's terms as the school names them: the four DepEd quarters of each school year. */
+export const TERM_LABELS = Object.freeze({
+  term1: '1st Quarter',
+  term2: '2nd Quarter',
+  term3: '3rd Quarter',
+  term4: '4th Quarter',
+});
+/** The quarters where space is short (table headers, a list of quarterly grades): Q1 … Q4. */
+export const TERM_SHORT_LABELS = Object.freeze({ term1: 'Q1', term2: 'Q2', term3: 'Q3', term4: 'Q4' });
 export const TERM_OPTIONS = optionsOf(TERMS, TERM_LABELS);
 
 export const ANNOUNCEMENT_AUDIENCE_LABELS = Object.freeze({
@@ -324,7 +331,7 @@ export const UNIQUE_KEY_FIELDS = Object.freeze({
   },
   'assessments.uq_assessments_cs_term_title': {
     field: 'title',
-    message: 'An assessment with this title already exists for this semester',
+    message: 'An assessment with this title already exists for this quarter',
   },
   'fees.uq_fees_year_grade_name': {
     field: 'name',

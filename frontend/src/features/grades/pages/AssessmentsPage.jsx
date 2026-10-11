@@ -113,9 +113,9 @@ export default function AssessmentsPage() {
         <FilterBar onClear={list.hasActiveFilters ? list.clearFilters : undefined}>
           <SearchInput value={list.params.search} onChange={list.setSearch} placeholder="Search title" />
           <Select
-            aria-label="Semester"
+            aria-label="Quarter"
             options={TERM_OPTIONS}
-            placeholder="All semesters"
+            placeholder="All quarters"
             value={list.params.term}
             onChange={(event) => list.setFilter('term', event.target.value)}
             className="w-40"

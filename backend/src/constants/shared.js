@@ -82,7 +82,11 @@ export const REMEDIAL_MAX_FAILED = 2;
 /** The highest grade level (classes run from 1 to 12). */
 export const HIGHEST_GRADE_LEVEL = 12;
 
-export const TERMS = Object.freeze(['term1', 'term2', 'term3']);
+/**
+ * The grading periods of a school year: DepEd's four quarters, term1 = 1st Quarter … term4 = 4th Quarter.
+ * Each quarter is graded on its own; a subject's final grade is the average of its quarterly grades.
+ */
+export const TERMS = Object.freeze(['term1', 'term2', 'term3', 'term4']);
 
 export const ANNOUNCEMENT_AUDIENCES = Object.freeze(['all', 'students', 'teachers']);
 

@@ -17,9 +17,9 @@
  * What `add` builds, so every screen has something to show:
  *   1 admin, 6 teachers (one subject each), 32 students; this year three classes of 10 with a full weekly
  *   timetable, marks on every school day since August (today's lessons left to mark), K-12 graded subjects with
- *   1st-semester written work, projects and quarterly exams, a quiz waiting to be graded and upcoming
- *   midterms; last year's class with grades in all
- *   three periods (for the school-year picker); next year's empty class (to try End of school year); one
+ *   1st-quarter written work, projects and quarterly exams, a quiz waiting to be graded and upcoming
+ *   midterms; last year's class with grades in the 1st to 3rd Quarters (for the school-year picker; its 4th
+ *   Quarter has none); next year's empty class (to try End of school year); one
  *   transfer, one student without a class, one deactivated student; announcements (current, scheduled,
  *   expired, class-only), calendar holidays and events, and unread notifications.
  */
@@ -503,7 +503,7 @@ async function buildSchool({ admin, teachers, students }, conn) {
       ]);
     }
   };
-  // This year, 1st Semester: graded written work (quizzes, a test, an assignment), a performance task and the
+  // This year, 1st Quarter: graded written work (quizzes, a test, an assignment), a performance task and the
   // quarterly exam; a quiz still to grade; an upcoming midterm.
   const plan = [
     ['Quiz 1', 'quiz', 20, 17],
@@ -541,7 +541,7 @@ async function buildSchool({ admin, teachers, students }, conn) {
       );
     }
   }
-  // Last year: a quiz, a test, a project and an exam in each of the 1st Semester, 2nd Semester and Summer.
+  // Last year: a quiz, a test, a project and an exam in each of the 1st, 2nd and 3rd Quarters (none in the 4th).
   const pastTerms = [
     ['term1', `${FIRST - 1}-09-15`],
     ['term2', `${FIRST}-01-20`],
@@ -598,7 +598,7 @@ async function buildSchool({ admin, teachers, students }, conn) {
       [
         admin.id,
         '[Mock] Grade submission deadline',
-        'Please finish encoding 1st Semester quiz grades by Friday.',
+        'Please finish encoding 1st Quarter quiz grades by Friday.',
         'teachers',
         null,
         daysFromNow(-1),
@@ -876,7 +876,7 @@ async function remove() {
 
 /**
  * Gives an existing (real) student mock grades, so their own sign-in has something to show: a completed place
- * in last year's mock class with grades in all three periods, and "[Mock]" 1st-semester assessments with
+ * in last year's mock class with grades in the 1st to 3rd Quarters, and "[Mock]" 1st-quarter assessments with
  * grades in their current class. `remove` deletes all of it and leaves the account and its class as they were.
  */
 async function attach() {

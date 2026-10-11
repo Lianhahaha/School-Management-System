@@ -271,7 +271,7 @@ CREATE TABLE IF NOT EXISTS assessments (
   class_subject_id  INT UNSIGNED NOT NULL,
   title             VARCHAR(150) NOT NULL,
   type              ENUM('quiz','test','exam','assignment','project','other') NOT NULL,
-  term              ENUM('term1','term2','term3') NOT NULL,
+  term              ENUM('term1','term2','term3','term4') NOT NULL, -- DepEd quarters: term1 = 1st Quarter … term4 = 4th
   max_score         DECIMAL(6,2) NOT NULL COMMENT 'Exact decimal, never FLOAT. Grades are validated against it by the API',
   assessed_on       DATE         NOT NULL,
   created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

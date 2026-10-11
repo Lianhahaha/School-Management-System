@@ -61,4 +61,14 @@ export const UPGRADES = Object.freeze([
     apply: `ALTER TABLE activity_log
               MODIFY COLUMN actor_role ENUM('admin','teacher','student','assistant') NULL`,
   },
+  {
+    // DepEd quarters: the three grading periods become four. term1 to term3 keep their stored values (only
+    // their names in the app change, to the 1st to 3rd Quarter); term4 is appended for the 4th Quarter.
+    id: '2026-10-11-term4',
+    description: "add 'term4' to assessments.term",
+    needed: `SELECT 1 FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'assessments' AND COLUMN_NAME = 'term'
+                AND COLUMN_TYPE NOT LIKE '%term4%'`,
+    apply: `ALTER TABLE assessments MODIFY COLUMN term ENUM('term1','term2','term3','term4') NOT NULL`,
+  },
 ]);
