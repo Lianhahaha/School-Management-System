@@ -1,7 +1,6 @@
 import { AuthHeading } from '../../../components/layout/AuthHeading';
 import { Alert } from '../../../components/ui/Alert';
 import { TextLink } from '../../../components/ui/TextLink';
-import { DemoAccounts } from '../components/DemoAccounts';
 import { LoginForm } from '../components/LoginForm';
 import { useAuth } from '../hooks';
 import { useRegistrationClosed } from '../registrationClosed';
@@ -29,7 +28,6 @@ export default function LoginPage() {
           </p>
         )}
       </div>
-      <DemoAccounts />
     </>
   );
 }

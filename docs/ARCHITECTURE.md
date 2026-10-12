@@ -312,8 +312,6 @@ Behaviour that two pages share is written once. The attendance and grade sheets 
 
 Admissions follow the same rule: `features/admissions` has no list of its own: the Admissions page reads the students with the `admissionStatus` filter, and Admit opens the enroll dialog of `features/enrollments`.
 
-The sign-in page can list demo accounts, folded under the form, from the build variable `VITE_DEMO_ACCOUNTS` (read in `config/env.js`, shown by `features/auth/components/DemoAccounts.jsx`). Without the variable the page lists nothing; the live site gets it from a GitHub repository variable, so no password is in the repository.
-
 ## 8. Time and dates
 
 The school time zone (`APP_TIMEZONE`) decides what "today" means, MySQL connections run in UTC, `DATE` values travel as plain `YYYY-MM-DD` strings and times as `HH:MM`. The academic year starts in August (`ACADEMIC_YEAR_START_MONTH` in `constants/shared.js`, read by both sides): 2026-10-03 belongs to `2026-2027`, 2027-05-10 also does. Weekdays are ISO (1 = Monday … 7 = Sunday) everywhere.

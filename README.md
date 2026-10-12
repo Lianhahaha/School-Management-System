@@ -5,7 +5,7 @@
 
 Skole is a web-based school management system: student, teacher and administrator accounts, enrollment, classes and subjects, teacher assignment, attendance, grades, timetables, announcements and a separate dashboard for each role. Identity is handled by **Firebase Authentication**, all data lives in **MySQL**, and everything is exposed through a documented **REST API**.
 
-**Live demo:** <https://skoleph.web.app> (the sign-in page lists demo accounts under **Demo accounts for reviewers**). It runs on free tiers: the API would sleep after 15 idle minutes, so a scheduled check ([keep-awake.yml](.github/workflows/keep-awake.yml)) calls it every 10 minutes and keeps it awake (GitHub sometimes starts that check a few minutes late, so a short wait can still happen now and then), and the free MySQL service can be switched off after long inactivity. The local setup below needs none of that.
+**Live site:** <https://skoleph.web.app>. It runs on free tiers: the API would sleep after 15 idle minutes, so a scheduled check ([keep-awake.yml](.github/workflows/keep-awake.yml)) calls it every 10 minutes and keeps it awake (GitHub sometimes starts that check a few minutes late, so a short wait can still happen now and then), and the free MySQL service can be switched off after long inactivity. The local setup below needs none of that.
 
 Skole can be installed like an app: on Android, Chrome or Edge use the browser's install button or **Install app** in the account menu; on an iPhone use Share → **Add to Home Screen**.
 
@@ -113,7 +113,7 @@ Open <http://localhost:5173> and sign in with a demo account.
 
 ## Demo accounts
 
-These come from `npm run db:seed` on a local database. Every one gets the password in `SEED_PASSWORD` (`backend/.env`; [.env.example](backend/.env.example) has a starting value), so set your own before seeding. The live site no longer has the demo students (`student1` to `student8`); its sign-in page lists a mock school's accounts instead (see [Keeping the live site healthy](#keeping-the-live-site-healthy)), and new students register themselves at `/register`. A new administrator for an empty database comes from `npm run db:create-admin -- <email> <password>`.
+These come from `npm run db:seed` on a local database. Every one gets the password in `SEED_PASSWORD` (`backend/.env`; [.env.example](backend/.env.example) has a starting value), so set your own before seeding. The live site has none of them; new students register themselves at `/register`. A new administrator for an empty database comes from `npm run db:create-admin -- <email> <password>`.
 
 | Account | Name | Role and what to look at |
 |---|---|---|
@@ -262,7 +262,6 @@ Not required to run or review the project: everything above works on one machine
 - **Resetting the demo data.** The demo is shared, and some actions cannot be undone (a completed school year, a deleted account). To start over: `node --env-file=.env.cloud scripts/migrate.js --fresh --allow-remote-drop`, then `node --env-file=.env.cloud scripts/seed.js`. **This deletes every row in the hosted database.**
 - **Local work and live sign-ins.** While local development shares the Firebase project with the live site, seeding a local database resets the demo accounts' passwords and signs them out everywhere, the live site included. A second free Firebase project for local work (step 2 of the quick start, with its own `.env` values) keeps the two apart.
 - **Secrets.** `.env.cloud`, the service-account key and the CA certificate are git-ignored. Keep them out of synced folders (OneDrive, Dropbox) too. If the repository sits in one, keep the three files in a folder outside it (for example `%USERPROFILE%\.skole\`) and point at them with absolute paths: `--env-file` for `.env.cloud`, `FIREBASE_SERVICE_ACCOUNT_PATH` for the key and `DB_SSL_CA_PATH` for the certificate.
-- **Demo accounts.** The live sign-in page lists the mock school's sign-ins under **Demo accounts for reviewers**. They come from the GitHub repository variable `VITE_DEMO_ACCOUNTS`, which the release build reads; no password is in the repository. To take them off the site, delete the variable and re-run **Deploy frontend** in the Actions tab.
 - **Staying awake, and alerts.** [keep-awake.yml](.github/workflows/keep-awake.yml) calls the API's `/api/v1/health` and the website every 10 minutes. A run fails, and GitHub emails the repository owner, when either does not answer or the API reports its database down. Run it from the Actions tab to check the site at any time. Before a demo, also check in the Aiven console that the database is powered on.
 
 ### Before every live migration: back up

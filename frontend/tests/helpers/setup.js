@@ -9,7 +9,7 @@ import { cleanup } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
 
 vi.mock('../../src/config/env', () => ({
-  env: { firebase: {}, apiBaseUrl: '/api/v1', demoAccounts: null },
+  env: { firebase: {}, apiBaseUrl: '/api/v1' },
 }));
 
 vi.mock('../../src/config/firebase', () => ({ auth: { currentUser: null } }));

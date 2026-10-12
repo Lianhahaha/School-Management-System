@@ -48,15 +48,9 @@ full-page message instead of a blank screen.
 | -------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------ |
 | `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` | yes      | none                                                               |
 | `VITE_API_BASE_URL`                                                                                      | no       | `/api/v1` (goes through the Vite proxy, so no CORS in development) |
-| `VITE_DEMO_ACCOUNTS`                                                                                     | no       | none (the sign-in page lists no demo accounts)                     |
 
 The Firebase project must be the same one the backend's service account belongs to. In development a
 red banner appears when `GET /health` reports a different project id.
-
-`VITE_DEMO_ACCOUNTS` is for a public demo: one line of JSON with the accounts and the password they share
-(format in `.env.example`). `features/auth/components/DemoAccounts.jsx` lists them, folded under the sign-in
-form, as "Demo accounts for reviewers". A malformed value is logged in the console and ignored. The live site
-gets it from a GitHub repository variable read by `deploy-frontend.yml`; never commit a value.
 
 `src/constants/shared.js` is a byte-identical copy of `../backend/src/constants/shared.js` and must not be
 edited here; `npm run check:constants` in the backend verifies it. Labels, tones and option lists for its
@@ -73,7 +67,7 @@ Features may import another feature's `api.js`, `keys.js` (to refresh its cache 
 ```
 src/
   app/          App, router (every route), providers, route guards, pages/ (403, 404, route error)
-  config/       env validation (Firebase values, API base, demo accounts), Firebase client
+  config/       env validation (Firebase values, API base), Firebase client
   constants/    shared.js (backend copy), ui.js (labels, tones, options, error tables)
   lib/          apiClient, envelope, queryClient, queryKeys, liveRefresh, formErrors, validators, pagination,
                 toastBus, theme, installPrompt, serverWake
