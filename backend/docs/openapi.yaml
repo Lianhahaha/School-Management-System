@@ -779,7 +779,11 @@ paths:
         assessment) with that group's weights, transmuted to 60-100; `gradeWeights` sets how much each assessment
         type counts instead (whole percents adding up to 100, else 400). A subject is graded one way: setting
         either clears the other, and sending both non-null is a 400. Both null put the subject back on points.
-        Results change immediately, including past ones.
+        Results change immediately. Once the subject has grades from an earlier school year its method is
+        locked, because every result is computed from the method as it is now and a change would rewrite those
+        years' results, report cards, SF10s and promotion standings: a different group or different weights
+        answer 409 with `details.reason = grading_method_locked` and nothing is written (create a new subject
+        for a new method). Sending the method it already has is not a change.
       parameters:
         - $ref: '#/components/parameters/IdPath'
       requestBody:

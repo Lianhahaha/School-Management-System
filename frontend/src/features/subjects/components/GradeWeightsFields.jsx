@@ -106,7 +106,8 @@ function WeightInput({ type, register, error }) {
  * The grading part of the subject form: K-12 components (DepEd Order 8, s. 2015) with the subject's group,
  * on points (every point counts the same), or weighted by assessment type with a percent per type and a live
  * total that must reach 100. Changing the method, the group or a weight changes every result in the subject,
- * past ones included, which the hint says.
+ * which the hint says, and the API refuses it once the subject has grades from an earlier school year (the form
+ * shows that refusal like any other).
  *
  * @param {object} props
  * @param {import('react-hook-form').Control} props.control
@@ -121,9 +122,9 @@ export function GradeWeightsFields({ control, register, errors }) {
   const totalError = errors.weights?.message ?? errors.weights?.root?.message;
 
   const hint = {
-    k12: 'Written work, performance tasks and the quarterly assessment count with the group’s weights; the result is transmuted to 60–100 and 75 passes. Changes apply to every result in this subject, past ones too.',
+    k12: 'Written work, performance tasks and the quarterly assessment count with the group’s weights; the result is transmuted to 60–100 and 75 passes. Changes apply to every result in this subject; once it has grades from an earlier school year, its grading can’t change.',
     weighted:
-      'Each type counts with its share. A type set to 0 does not count. Changes apply to every result in this subject, past ones too.',
+      'Each type counts with its share. A type set to 0 does not count. Changes apply to every result in this subject; once it has grades from an earlier school year, its grading can’t change.',
     points:
       'A result is all points scored divided by all points possible, so a long exam counts more than a short quiz.',
   }[method];

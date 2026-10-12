@@ -2,9 +2,11 @@
  * The subject catalogue, with each subject's grade weights: how much every assessment type counts towards
  * a result in the subject (`gradeWeights`, type -> percent), or null when the subject is graded on points.
  */
+import { isDeepStrictEqual } from 'node:util';
 import { withTransaction } from '../../config/db.js';
 import { ASSESSMENT_TYPES } from '../../constants/shared.js';
 import { ApiError } from '../../utils/ApiError.js';
+import { currentAcademicYear } from '../../utils/dates.js';
 import { changedList, changesOf, record } from '../activity/activity.service.js';
 import * as repo from './subjects.repository.js';
 
@@ -76,8 +78,27 @@ export async function createSubject({ gradeWeights, ...body }) {
 }
 
 /**
+ * 409 grading_method_locked when the update changed how the subject is graded (its K-12 group or its weights)
+ * and it has grades from an earlier school year. Every result is computed from the subject's method as it is
+ * now, so a change would rewrite those years' results, report cards, SF10s and promotion standings; a new
+ * method needs a new subject. While its grades are all of the current school year (or it has none) the method
+ * can still change. `after` is the subject as stored by the update, so weights sent with zeros left out, or the
+ * same method sent again, are no change.
+ */
+async function assertGradingKept(before, after, conn) {
+  const unchanged =
+    before.gradingGroup === after.gradingGroup && isDeepStrictEqual(before.gradeWeights, after.gradeWeights);
+  if (unchanged || !(await repo.hasGradesBefore(before.id, currentAcademicYear(), conn))) return;
+  throw ApiError.conflict(
+    'this subject has grades from an earlier school year, so its grading method cannot change; create a new subject for a new method',
+    { reason: 'grading_method_locked' },
+  );
+}
+
+/**
  * `gradeWeights` replaces the subject's weights and `gradingGroup` its K-12 group; a subject is graded one way,
- * so setting either clears the other. Both null put it back on points.
+ * so setting either clears the other. Both null put it back on points. Neither may change once the subject has
+ * grades from an earlier school year (assertGradingKept).
  */
 export async function updateSubject(id, patch) {
   const before = await getSubject(id);
@@ -86,6 +107,9 @@ export async function updateSubject(id, patch) {
     await repo.updateSubject(id, fields, conn);
     if ('gradeWeights' in patch || patch.gradingGroup) {
       await repo.replaceGradeWeights(id, patch.gradingGroup ? null : patch.gradeWeights, conn);
+    }
+    if ('gradeWeights' in patch || 'gradingGroup' in patch) {
+      await assertGradingKept(before, await getSubject(id, conn), conn);
     }
   });
   const subject = await getSubject(id);

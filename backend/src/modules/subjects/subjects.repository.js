@@ -59,6 +59,21 @@ export async function updateSubject(id, fields, conn) {
   if (set) await run(`UPDATE subjects SET ${set.sql} WHERE id = ?`, [...set.params, id], conn);
 }
 
+/** True when the subject has a grade in a class of a school year before `academicYear` ('2026-2027'). */
+export async function hasGradesBefore(subjectId, academicYear, conn) {
+  const rows = await query(
+    `SELECT 1 AS found FROM grades g
+       JOIN assessments a ON a.id = g.assessment_id
+       JOIN class_subjects cs ON cs.id = a.class_subject_id
+       JOIN classes c ON c.id = cs.class_id
+      WHERE cs.subject_id = ? AND c.academic_year < ?
+      LIMIT 1`,
+    [subjectId, academicYear],
+    conn,
+  );
+  return rows.length > 0;
+}
+
 export async function deleteSubject(id, conn) {
   return (await run('DELETE FROM subjects WHERE id = ?', [id], conn)).affectedRows;
 }
