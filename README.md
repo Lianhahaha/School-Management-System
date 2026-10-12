@@ -5,7 +5,7 @@
 
 Skole is a web-based school management system: student, teacher and administrator accounts, enrollment, classes and subjects, teacher assignment, attendance, grades, timetables, announcements and a separate dashboard for each role. Identity is handled by **Firebase Authentication**, all data lives in **MySQL**, and everything is exposed through a documented **REST API**.
 
-**Live demo:** <https://skoleph.web.app> (the sign-in page lists demo accounts under **Demo accounts for reviewers**). It runs on free tiers: the API sleeps after 15 idle minutes, so the first request after a pause can take about a minute, and the free MySQL service can be switched off after long inactivity. The local setup below needs none of that.
+**Live demo:** <https://skoleph.web.app> (the sign-in page lists demo accounts under **Demo accounts for reviewers**). It runs on free tiers: the API would sleep after 15 idle minutes, so a scheduled check ([keep-awake.yml](.github/workflows/keep-awake.yml)) calls it every 10 minutes and keeps it awake (GitHub sometimes starts that check a few minutes late, so a short wait can still happen now and then), and the free MySQL service can be switched off after long inactivity. The local setup below needs none of that.
 
 Skole can be installed like an app: on Android, Chrome or Edge use the browser's install button or **Install app** in the account menu; on an iPhone use Share → **Add to Home Screen**.
 
@@ -87,7 +87,7 @@ Both `.env` files must belong to the **same** Firebase project.
 
 ```powershell
 cd ..\backend
-npm run doctor        # every line should be a green tick; it tells you what to fix otherwise
+npm run doctor        # green ticks, except "database missing" on a first run (the next line creates it); it says what to fix otherwise
 npm run db:migrate    # creates the database and the 19 tables
 npm run db:seed       # 13 demo accounts (Firebase + MySQL), subjects, classes, timetable, attendance, grades
 ```
@@ -126,7 +126,7 @@ These come from `npm run db:seed` on a local database. Every one gets the passwo
 | `student4@school.test` | Grace Kim | Student in Grade 10 - A who was transferred in from 10 - B (enrollment history) |
 | `student5@school.test` | Hiro Tanaka | Student in Grade 10 - B |
 
-`student1` to `student8` and `teacher1` to `teacher3` all exist; the full list is in [backend/scripts/seed.js](backend/scripts/seed.js). A new student can also register at `/register`; the account is a student with a pending application, and starts without a class until an admin admits it from Admissions (self-enrollment starts from their second school year, once there is a finished year to judge).
+`student1` to `student8` and `teacher1` to `teacher3` all exist; the full list is in [backend/scripts/seed.js](backend/scripts/seed.js). A new student can also register at `/register`: right after signing up they pick a section of the grade they applied for in the current school year and are enrolled at once (35 seats a section, 45 once every section of that grade has 35); Admin → Admissions keeps their documents checklist.
 
 ## Trying the API
 
@@ -258,13 +258,13 @@ Not required to run or review the project: everything above works on one machine
 ### Keeping the live site healthy
 
 - **Releases.** The frontend is released by GitHub Actions only after the backend tests pass for that commit ([deploy-frontend.yml](.github/workflows/deploy-frontend.yml)). Set Render to do the same: service → Settings → Build & Deploy → Auto-Deploy → **After CI Checks Pass**.
-- **Schema changes.** A change to an existing table goes into `schema.sql` (for new databases) and into [database/upgrades.js](backend/database/upgrades.js) under a new id (for existing ones). Each upgrade runs once and is recorded in `schema_migrations`. It must reach the hosted database before the code that needs it: set `MIGRATE_ON_START=true` on Render so every deploy migrates first, or run `node --env-file=<hosted env file> scripts/migrate.js` by hand. Back up first: [Before every live migration](#before-every-live-migration-back-up).
+- **Schema changes.** A change to an existing table goes into `schema.sql` (for new databases) and into [database/upgrades.js](backend/database/upgrades.js) under a new id (for existing ones). Each upgrade runs once and is recorded in `schema_migrations`. The live site migrates by hand only (`MIGRATE_ON_START` stays `false`), so a faulty upgrade can never stop a deploy halfway: back up and test-restore ([Before every live migration](#before-every-live-migration-back-up)), then run `node --env-file=<hosted env file> scripts/migrate.js`. An upgrade a new release needs runs before that release is pushed; one that removes what the running release still uses runs after it.
 - **Resetting the demo data.** The demo is shared, and some actions cannot be undone (a completed school year, a deleted account). To start over: `node --env-file=.env.cloud scripts/migrate.js --fresh --allow-remote-drop`, then `node --env-file=.env.cloud scripts/seed.js`. **This deletes every row in the hosted database.**
 - **Local work and live sign-ins.** While local development shares the Firebase project with the live site, seeding a local database resets the demo accounts' passwords and signs them out everywhere, the live site included. A second free Firebase project for local work (step 2 of the quick start, with its own `.env` values) keeps the two apart.
 - **Secrets.** `.env.cloud`, the service-account key and the CA certificate are git-ignored. Keep them out of synced folders (OneDrive, Dropbox) too. If the repository sits in one, keep the three files in a folder outside it (for example `%USERPROFILE%\.skole\`) and point at them with absolute paths: `--env-file` for `.env.cloud`, `FIREBASE_SERVICE_ACCOUNT_PATH` for the key and `DB_SSL_CA_PATH` for the certificate.
 - **Mock school for manual testing.** `node --env-file=.env.cloud scripts/mock-data.js add` (from `backend/`) fills the database with a tagged mock school: 39 sign-ins under `@mock.skole.test` (one admin, six teachers, students; the script prints the main ones and their password, which `MOCK_PASSWORD` can set), classes for last, this and next school year, timetables, attendance since August, grades in every period, announcements, calendar entries and notifications. `status` lists it, and `remove` deletes every mock row and sign-in, plus anything done to mock records while testing. Use `--env-file=.env` for the local database.
 - **Demo accounts.** The live sign-in page lists the mock school's sign-ins under **Demo accounts for reviewers**. They come from the GitHub repository variable `VITE_DEMO_ACCOUNTS`, which the release build reads; no password is in the repository. To take them off the site, delete the variable and re-run **Deploy frontend** in the Actions tab.
-- **Before a demo.** Open the API's `/api/v1/health` a minute ahead so the free server is awake, and check in the Aiven console that the database is powered on.
+- **Staying awake, and alerts.** [keep-awake.yml](.github/workflows/keep-awake.yml) calls the API's `/api/v1/health` and the website every 10 minutes. A run fails, and GitHub emails the repository owner, when either does not answer or the API reports its database down. Run it from the Actions tab to check the site at any time. Before a demo, also check in the Aiven console that the database is powered on.
 
 ### Before every live migration: back up
 
