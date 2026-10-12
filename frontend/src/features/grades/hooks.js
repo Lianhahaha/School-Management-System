@@ -23,9 +23,9 @@
  *   useSemesterSummaries(params, { enabled })
  *                                        a student's per-subject rows of one semester, or of both put
  *                                        together, each tagged with its semester (what generalAverage,
- *                                        subjectSemesters and wholeYearRows read); params: studentId ('me'),
+ *                                        subjectSemesters and subjectRows read); params: studentId ('me'),
  *                                        academicYear, semester
- *   useDeleteGrade()                     mutate(id) clears one grade (the caller raises the toast)
+ *   useDeleteGrade()                     mutate({ id, score, remarks }) clears one grade, refused (409) if it changed
  *   useRestoreGrade()                    mutate({ assessmentId, grade }) puts a cleared grade back (Undo)
  *
  * Mutations tagged [form] are silent (meta.silent): the form that sends them shows every error itself
@@ -121,7 +121,7 @@ const combineSemesterSummaries = (results) => ({
  * The per-subject rows (groupBy classSubject) of a school year's semester, or of both semesters put together
  * when `semester` is omitted, each row tagged with the semester it was fetched for (utils/grades
  * tagSemester). That tag is what the helpers that span rows read: a class-subject's grade of the whole year
- * (wholeYearRows), a subject taken in two classes (subjectSemesters) and the general average. They need the
+ * (subjectRows), a subject taken in two classes (subjectSemesters) and the general average. They need the
  * quarters of each semester, which only a request with `semester` returns, so the whole year is two requests.
  * Each is the request `useGradeSummary` makes for that semester, so choosing between a semester and the
  * whole year costs nothing the second time. Resolves { data (undefined until every request has arrived),
@@ -202,7 +202,11 @@ export function useSaveGrades() {
   });
 }
 
-/** Clears one grade. The caller raises the toast, because it knows the student and can offer Undo. */
+/**
+ * Clears one grade: mutate({ id, score, remarks }) with the values the sheet shows, so the API refuses it (409
+ * sheet_changed) when someone saved another score meanwhile. The caller raises the toast, because it knows the
+ * student and can offer Undo.
+ */
 export function useDeleteGrade() {
   const invalidateGrades = useInvalidateGrades();
   return useMutation({
