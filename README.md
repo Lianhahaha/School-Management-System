@@ -164,7 +164,7 @@ GitHub runs both on every push and pull request: the backend checks (lint, secre
 backend/
   database/    schema.sql (20 tables), upgrades.js (changes to existing tables), seed.sql (demo data)
   docs/        openapi.yaml, the spec behind /api/docs
-  scripts/     migrate, seed, create-admin, doctor, get-token, mock-data, check-constants, check-secrets
+  scripts/     migrate, seed, create-admin, doctor, get-token, mock-data, backup, restore, check-constants, check-secrets
   src/
     modules/   one folder per feature: routes → controller → service → repository (+ zod schemas)
     middleware/ config/ utils/ constants/
@@ -261,11 +261,41 @@ Not required to run or review the project: everything above works on one machine
 ### Keeping the live site healthy
 
 - **Releases.** The frontend is released by GitHub Actions only after the backend tests pass for that commit ([deploy-frontend.yml](.github/workflows/deploy-frontend.yml)). Set Render to do the same: service → Settings → Build & Deploy → Auto-Deploy → **After CI Checks Pass**.
-- **Schema changes.** A change to an existing table goes into `schema.sql` (for new databases) and into [database/upgrades.js](backend/database/upgrades.js) under a new id (for existing ones). Each upgrade runs once and is recorded in `schema_migrations`. It must reach the hosted database before the code that needs it: set `MIGRATE_ON_START=true` on Render so every deploy migrates first, or run `node --env-file=<hosted env file> scripts/migrate.js` by hand.
+- **Schema changes.** A change to an existing table goes into `schema.sql` (for new databases) and into [database/upgrades.js](backend/database/upgrades.js) under a new id (for existing ones). Each upgrade runs once and is recorded in `schema_migrations`. It must reach the hosted database before the code that needs it: set `MIGRATE_ON_START=true` on Render so every deploy migrates first, or run `node --env-file=<hosted env file> scripts/migrate.js` by hand. Back up first: [Before every live migration](#before-every-live-migration-back-up).
 - **Resetting the demo data.** The demo is shared, and some actions cannot be undone (a completed school year, a deleted account). To start over: `node --env-file=.env.cloud scripts/migrate.js --fresh --allow-remote-drop`, then `node --env-file=.env.cloud scripts/seed.js`. **This deletes every row in the hosted database.**
 - **Local work and live sign-ins.** While local development shares the Firebase project with the live site, seeding a local database resets the demo accounts' passwords and signs them out everywhere, the live site included. A second free Firebase project for local work (step 2 of the quick start, with its own `.env` values) keeps the two apart.
 - **Secrets.** `.env.cloud`, the service-account key and the CA certificate are git-ignored. Keep them out of synced folders (OneDrive, Dropbox) too. If the repository sits in one, keep the three files in a folder outside it (for example `%USERPROFILE%\.skole\`) and point at them with absolute paths: `--env-file` for `.env.cloud`, `FIREBASE_SERVICE_ACCOUNT_PATH` for the key and `DB_SSL_CA_PATH` for the certificate.
 - **Mock school for manual testing.** `node --env-file=.env.cloud scripts/mock-data.js add` (from `backend/`) fills the database with a tagged mock school: 39 sign-ins under `@mock.skole.test` (one admin, six teachers, students; the script prints the main ones and their password, which `MOCK_PASSWORD` can set), classes for last, this and next school year, timetables, attendance since August, grades in every period, announcements, calendar entries and notifications. `status` lists it, and `remove` deletes every mock row and sign-in, plus anything done to mock records while testing. Use `--env-file=.env` for the local database.
 - **Demo accounts.** The live sign-in page lists the mock school's sign-ins under **Demo accounts for reviewers**. They come from the GitHub repository variable `VITE_DEMO_ACCOUNTS`, which the release build reads; no password is in the repository. To take them off the site, delete the variable and re-run **Deploy frontend** in the Actions tab.
 - **Before a demo.** Open the API's `/api/v1/health` a minute ahead so the free server is awake, and check in the Aiven console that the database is powered on.
+
+### Before every live migration: back up
+
+A migration changes the hosted database in place, and MySQL cannot roll back an `ALTER TABLE`. Back it up first, from `backend/` (with `MIGRATE_ON_START=true` the deploy migrates by itself, so do it before pushing a commit that changes `schema.sql` or `upgrades.js`):
+
+```powershell
+node --env-file=<hosted env file> scripts/backup.js
+```
+
+It only reads, in one consistent read-only snapshot, and writes `<DB_NAME>-<UTC time>.sql` to `%USERPROFILE%\.skole\backups\`. A folder can be given as the last argument, but never one inside the repository: the file holds every student's personal data. Check that it restores, into a local test database (a `DB_NAME` set in the shell wins over the env file's):
+
+```powershell
+$env:DB_NAME = 'school_management_test_restore'
+node --env-file=.env scripts/restore.js <path to the .sql file>     # prints the same tables and rows as the backup
+Remove-Item Env:DB_NAME
+node --env-file=<hosted env file> scripts/migrate.js
+```
+
+If the migration fails or leaves the database wrong, suspend the API on Render and put the backup back. This drops the database and loads the file, so the database's name must be typed again:
+
+```powershell
+node --env-file=<hosted env file> scripts/restore.js <path to the .sql file> --yes-overwrite=<hosted DB_NAME>
+```
+
+The file is plain SQL, so the mysql client loads it too, into a new empty database (forward slashes in the path; add `--ssl-ca=<CA file>` for the hosted database):
+
+```powershell
+mysql -h <host> -P <port> -u <user> -p -e "CREATE DATABASE <new database> DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+mysql -h <host> -P <port> -u <user> -p --default-character-set=utf8mb4 <new database> -e "source <path to the .sql file>"
+```
 
