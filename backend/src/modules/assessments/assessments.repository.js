@@ -16,12 +16,16 @@ export const ASSESSMENT_SORT_MAP = {
 /**
  * Sub-select of an assessment's roster: the students in its class on the assessment date plus anyone already
  * graded, so a grade stays correctable after its student left. Correlated to the assessment `a` and its
- * class-subject `cs` of the enclosing query.
+ * class-subject `cs` of the enclosing query. `among` limits it to the students `IN (?)` (bound twice), so a
+ * query about a few students does not build the whole roster of every assessment first.
+ * @param {{ among?: boolean }} [options]
  */
-export const ROSTER_STUDENT_IDS = `SELECT e.student_id FROM enrollments e
-   WHERE ${enrolledInClassOn('cs.class_id', 'a.assessed_on')}
+export const rosterStudentIds = ({ among = false } = {}) => `SELECT e.student_id FROM enrollments e
+   WHERE ${enrolledInClassOn('cs.class_id', 'a.assessed_on')}${among ? ' AND e.student_id IN (?)' : ''}
   UNION
-  SELECT g.student_id FROM grades g WHERE g.assessment_id = a.id`;
+  SELECT g.student_id FROM grades g WHERE g.assessment_id = a.id${among ? ' AND g.student_id IN (?)' : ''}`;
+
+export const ROSTER_STUDENT_IDS = rosterStudentIds();
 
 // Every graded student is on the roster, so graded < enrolled means a roster student still lacks a grade.
 const GRADED_COUNT = '(SELECT COUNT(*) FROM grades g WHERE g.assessment_id = a.id)';

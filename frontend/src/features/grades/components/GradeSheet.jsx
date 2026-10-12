@@ -59,9 +59,10 @@ function focusNextScore(event) {
 }
 
 /**
- * The roster of one assessment with a score field per student. A blank score means "not graded":
- * only rows that have a score are saved. Clearing a recorded grade is a separate action because a
- * save cannot unset a score. Mount it with a key of the assessment so another sheet starts fresh.
+ * The roster of one assessment with a score field per student. Only rows that have a score are saved; a
+ * blank one stays without a score, which the student's results count as 0 once the assessment has any score
+ * (the DepEd class record rule). Clearing a recorded grade is a separate action because a save cannot unset a
+ * score. Mount it with a key of the assessment so another sheet starts fresh.
  *
  * @param {object} props
  * @param {object} props.roster GET /assessments/:id/grades data ({ assessment, records })
@@ -187,7 +188,7 @@ export function GradeSheet({ roster, canSave, onReload }) {
       <Card
         padded={false}
         title="Grade sheet"
-        description="Leave a score blank to keep the student ungraded."
+        description="A blank score counts as 0 once the assessment has scores."
         actions={
           <span title={canSave ? undefined : SAVE_BLOCKED_HINT}>
             <Button

@@ -4,7 +4,7 @@
 import { query, run } from '../../config/db.js';
 import { selectPage } from '../../utils/pagination.js';
 import { WhereBuilder, joinClassSubject } from '../../utils/sql.js';
-import { ROSTER_STUDENT_IDS } from '../assessments/assessments.repository.js';
+import { ROSTER_STUDENT_IDS, rosterStudentIds } from '../assessments/assessments.repository.js';
 
 export const GRADE_SORT_MAP = { assessedOn: 'a.assessed_on', score: 'g.score', createdAt: 'g.created_at' };
 
@@ -21,7 +21,7 @@ const FROM = `FROM grades g
   JOIN users u ON u.id = s.user_id
   JOIN users gu ON gu.id = g.graded_by`;
 
-/** Filters shared by the flat list and the summary. */
+/** Filters of the flat list. */
 function filtersToWhere(filters, scope) {
   return new WhereBuilder()
     .addIf(filters.studentId, 'g.student_id = ?')
@@ -59,31 +59,75 @@ export function findRecentGrades(studentId, limit) {
   );
 }
 
-const TOTALS = `COUNT(g.id) AS assessments_graded, SUM(g.score) AS total_score, SUM(a.max_score) AS total_max_score`;
+/**
+ * What a result counts: every (assessment, student) pair below, the student's score or 0 for a blank one, and
+ * the assessment's max score. `assessments_graded` counts the scores actually recorded.
+ */
+const TOTALS = `COUNT(g.id) AS assessments_graded, SUM(COALESCE(g.score, 0)) AS total_score,
+  SUM(a.max_score) AS total_max_score`;
 
 /**
- * Graded points per class-subject (default) or per student and class-subject, split by semester, quarter
- * (term) and assessment type, so the service can grade each quarter with the subject's rules and average the
- * quarters into semesters and the semesters into the school year (utils/grading.js).
+ * The (assessment, student) pairs a result counts, a blank score as 0 (the DepEd class record rule), so a
+ * missed exam lowers a result instead of leaving it out: each assessment that has been given (someone in its
+ * class-subject has a score for it) with every student on its roster, that is in its class on its date or
+ * already graded (rosterStudentIds). An assessment nobody has a score for yet stays out, and so does one dated
+ * before a transferee joined the class or after a student left it. `studentIds` limits the pairs to those
+ * students inside the roster sub-select, so one student's summary does not build every class's roster.
+ * @param {number[] | undefined} studentIds
+ * @returns {{ sql: string, params: unknown[] }}
  */
-export function summarizeGrades({ groupBy = 'classSubject', ...filters }, scope) {
-  const where = filtersToWhere(filters, scope);
+function countedPairs(studentIds) {
+  const among = studentIds !== undefined;
+  return {
+    sql: `FROM assessments a
+      ${joinClassSubject('a')}
+      CROSS JOIN LATERAL (${rosterStudentIds({ among })}) counted
+      JOIN students s ON s.id = counted.student_id
+      JOIN users u ON u.id = s.user_id
+      LEFT JOIN grades g ON g.assessment_id = a.id AND g.student_id = counted.student_id`,
+    params: among ? [studentIds, studentIds] : [],
+  };
+}
+
+/**
+ * Points per class-subject (default) or per student and class-subject, split by semester, quarter (term) and
+ * assessment type, so the service can grade each quarter with the subject's rules and average the quarters
+ * into semesters and the semesters into the school year (utils/grading.js). Built on countedPairs: a blank
+ * score counts 0 once its assessment has been given. `studentId` (the API filter) or `studentIds` (several,
+ * for the dashboards) limits it to those students; an empty `studentIds` matches nothing.
+ */
+export async function summarizeGrades(
+  { groupBy = 'classSubject', studentId, studentIds, ...filters },
+  scope,
+) {
+  const students = studentIds ?? (studentId === undefined ? undefined : [studentId]);
+  if (students?.length === 0) return [];
+  const from = countedPairs(students);
+  const where = new WhereBuilder()
+    .add('EXISTS (SELECT 1 FROM grades given WHERE given.assessment_id = a.id)')
+    .addIf(filters.classSubjectId, 'a.class_subject_id = ?')
+    .addIf(filters.classId, 'cs.class_id = ?')
+    .addIf(filters.academicYear, 'c.academic_year = ?')
+    .addIf(filters.semester, 'a.semester = ?')
+    .addIf(filters.term, 'a.term = ?')
+    .addScope(scope);
+  const params = [...from.params, ...where.params];
   if (groupBy === 'student') {
     return query(
       `SELECT s.id AS student_id, CONCAT(u.first_name, ' ', u.last_name) AS label, cs.id AS class_subject_id,
-              cs.subject_id, c.academic_year, a.semester, a.term, a.type, ${TOTALS} ${FROM} ${where.sql}
+              cs.subject_id, c.academic_year, a.semester, a.term, a.type, ${TOTALS} ${from.sql} ${where.sql}
         GROUP BY s.id, u.first_name, u.last_name, cs.id, cs.subject_id, c.academic_year, a.semester, a.term, a.type
         ORDER BY u.last_name, u.first_name, s.id, cs.id`,
-      where.params,
+      params,
     );
   }
   return query(
     `SELECT cs.id AS class_subject_id, cs.subject_id, sub.name AS subject_name, c.name AS class_name,
             c.academic_year, CONCAT(c.name, ' - ', sub.name) AS label, a.semester, a.term, a.type, ${TOTALS}
-       ${FROM} ${where.sql}
+       ${from.sql} ${where.sql}
       GROUP BY cs.id, cs.subject_id, c.name, c.academic_year, sub.name, a.semester, a.term, a.type
       ORDER BY c.academic_year DESC, c.name, sub.name, cs.id`,
-    where.params,
+    params,
   );
 }
 

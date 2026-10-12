@@ -2,11 +2,13 @@
  * Grades: roster-with-scores per assessment, bulk entry, flat reads and summaries.
  * Each quarter of a subject is graded on its own: its K-12 grade when the subject has a grading group
  * (components weighted by the group, transmuted to 60-100), else on points (SUM(score) / SUM(max_score) * 100
- * over the quarter's graded assessments) or, when the subject has grade weights, weighted per assessment type.
- * A semester's grade is the average of its quarterly grades and the school year's grade the average of the
- * semester grades that exist; a student's result over several subjects is the mean of the subjects' grades
- * for the scope (a semester when filtered by it, the year otherwise). The arithmetic lives in
- * utils/grading.js.
+ * over the quarter's given assessments) or, when the subject has grade weights, weighted per assessment type.
+ * An assessment counts for a student once it has been given (someone in the class-subject has a score for
+ * it) and the student was in the class on its date; a blank score then counts 0 (the DepEd class record
+ * rule; repo.summarizeGrades). A semester's grade is the average of its quarterly grades and the school
+ * year's grade the average of the semester grades that exist; a student's result over several subjects is the
+ * mean of the subjects' grades for the scope (a semester when filtered by it, the year otherwise). The
+ * arithmetic lives in utils/grading.js.
  */
 import { withTransaction } from '../../config/db.js';
 import { ApiError } from '../../utils/ApiError.js';

@@ -2,16 +2,19 @@
  * Grade arithmetic: the one place that turns scores into a percentage, a subject result and an average.
  *
  *   one grade        score / maxScore * 100
- *   quarterly grade  a subject's result over the graded assessments of one quarter (subjectResult):
+ *   quarterly grade  a subject's result over the given assessments of one quarter (subjectResult). An
+ *                    assessment counts for a student once it has been given (someone in the class-subject has
+ *                    a score for it) and the student was in the class on its date; a blank score then counts
+ *                    0, as on a DepEd class record (the grade summary query builds these totals):
  *                    K-12 (the subject has a grading group, DepEd Order 8 s. 2015): each component's points
  *                    percentage (written work, performance tasks, quarterly assessment) times the group's
  *                    weight gives the quarter's initial grade, transmuted to the 60-100 scale (75 passes);
- *                    components with nothing graded yet in the quarter are left out and the other weights
+ *                    components with nothing given yet in the quarter are left out and the other weights
  *                    scaled up;
- *                    on points (default): SUM(score) / SUM(maxScore) * 100 over the quarter's graded assessments;
+ *                    on points (default): SUM(score) / SUM(maxScore) * 100 over the quarter's given assessments;
  *                    weighted (the subject has weights per assessment type): each type's points percentage
- *                    times its weight, divided by the weights of the types that have grades, so a type with
- *                    nothing graded yet neither helps nor hurts. Types weighted 0 do not count.
+ *                    times its weight, divided by the weights of the types that have assessments, so a type
+ *                    with nothing given yet neither helps nor hurts. Types weighted 0 do not count.
  *   semester grade   the average of the quarterly grades of one semester (finalResult, finalGradeOf), as DepEd
  *                    Order 8 s. 2015 computes a learning area's final grade, over the quarters that have a
  *                    grade: until all four are graded it is the average so far. A K-12 grade is a whole number
@@ -110,7 +113,7 @@ const methodOf = (weights, group) => (group ? 'k12' : weights ? 'weighted' : 'po
  * methods); `components` is only set for K-12.
  *
  * @param {Array<{ type: string, totalScore: number, totalMaxScore: number, assessmentsGraded?: number }>} typeTotals
- *   graded points per type, one row per type
+ *   points per type over the given assessments (a blank score 0), one row per type
  * @param {Record<string, number> | null} weights percent per type (adding up to 100), or null for points
  * @param {string | null} [group] K-12 grading group (constants/shared GRADING_GROUPS); wins over `weights`
  * @returns {{ percentage: number | null, initialGrade: number | null, method: 'k12' | 'points' | 'weighted',
@@ -167,13 +170,13 @@ export function finalGradeOf(grades, method) {
  * (subjectQuarters); the API leaves it out of its rows.
  * `initialGrade` is, for K-12, the initial grade of the one quarter graded (the figure transmuted to
  * `percentage`), and null once several quarters are averaged (each was transmuted on its own); for the other
- * methods it is the grade again. `components` (K-12) are the component percentages over every graded
+ * methods it is the grade again. `components` (K-12) are the component percentages over every given
  * assessment of the scope: what the student scored in each, and the working of `initialGrade` while one
  * quarter is graded.
  *
  * @param {Array<{ semester: string, term: string, type: string, totalScore: number, totalMaxScore: number,
- *   assessmentsGraded?: number }>} typeTotals graded points per semester (constants/shared SEMESTERS), quarter
- *   (`term`, TERMS) and assessment type
+ *   assessmentsGraded?: number }>} typeTotals points per semester (constants/shared SEMESTERS), quarter
+ *   (`term`, TERMS) and assessment type, over the given assessments (a blank score 0)
  * @param {Record<string, number> | null} weights percent per type, or null
  * @param {string | null} [group] K-12 grading group; wins over `weights`
  * @param {string | null} [semester] the semester the grade is scoped to; null for the school year

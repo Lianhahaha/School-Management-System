@@ -101,9 +101,10 @@ describe('semesters', () => {
       [school.s1, 100],
       [school.s2, 40],
     ]);
-    // csA2: s1 only, 1st Semester Q1 90.
+    // csA2: 1st Semester Q1 only, s1 90 and s2 70 (a blank score would count 0).
     await gradeSheet(await newAssessment(csA2.id, { title: 'Exam', semester: 'sem1', term: 'term1' }), [
       [school.s1, 90],
+      [school.s2, 70],
     ]);
   });
 
@@ -319,7 +320,8 @@ describe('semesters', () => {
 
     it('flags a student on the year grade in the at-risk list, not on the mean of the quarters', async () => {
       const { students } = (await get('/api/v1/dashboard', school.admin)).atRisk;
-      // s2: semesters 100 and 40 make 70, below the line, although the four quarters average 85.
+      // s2: csA's semesters 100 and 40 make 70, below the line, although its four quarters average 85; with
+      // csA2's 70 the general average is 70 (on the quarters it would be 77.5 and pass).
       const s2 = students.find((student) => student.studentId === school.s2.studentId);
       assert.deepEqual([s2.reasons, s2.gradeAverage], [['grades'], 70]);
       // s1: 80 and 90 make a general average of 85; the old quarter rule gave 70 for csA and flagged them.

@@ -1770,8 +1770,12 @@ paths:
         Roles: any authenticated user (teachers: class-subjects they can see; students: their own grades only,
         and not grouped by student).
 
-        Aggregate over graded assessments only. `groupBy=classSubject` (default) returns one row per
-        class-subject, `groupBy=student` one row per student (403 for students).
+        Aggregate over the given assessments: an assessment counts once someone in its class-subject has a
+        score for it, for every student who was in the class on its date (or is already graded), and a blank
+        score counts as 0 (the DepEd class record rule). An assessment nobody has a score for yet does not
+        count, nor does one dated before a student joined the class or after they left it.
+        `groupBy=classSubject` (default) returns one row per class-subject, `groupBy=student` one row per
+        student (403 for students).
 
         A school year has two semesters (`semester`: `sem1`, `sem2`), each with its own four quarters
         (`term`). Each quarter of a subject is graded on its own. A subject with a grading group
@@ -3950,12 +3954,15 @@ components:
           example: Grade 7 - A - Biology
         assessmentsGraded:
           type: integer
+          description: The scores recorded; a blank score of a given assessment is counted as 0 but not here.
           example: 4
         totalScore:
           type: number
+          description: The points scored over the given assessments, a blank score counting 0.
           example: 140
         totalMaxScore:
           type: number
+          description: The max scores of the given assessments, blank ones included.
           example: 160
         percentage:
           type: number
@@ -3972,7 +3979,7 @@ components:
           description: |
             Present with `groupBy=classSubject` and the `semester` filter; the grade of each quarter of that
             semester, graded on its own by the subject's method (for K-12 the quarter's transmuted grade), null
-            for a quarter with nothing graded (or left out by the `term` filter).
+            for a quarter with nothing given (or left out by the `term` filter).
           required: [term1, term2, term3, term4]
           properties:
             term1: { type: number, nullable: true, example: 88 }
@@ -3983,7 +3990,7 @@ components:
           type: object
           description: |
             Present with `groupBy=classSubject` and no `semester` filter; the grade of each semester (the
-            average of its quarterly grades), null for a semester with nothing graded. `percentage` is their
+            average of its quarterly grades), null for a semester with nothing given. `percentage` is their
             average over the semesters that have one.
           required: [sem1, sem2]
           properties:

@@ -28,6 +28,30 @@ describe('students enrolling themselves for next year (DepEd promotion)', () => 
   let grade12;
   let pastSubjects;
   let sections;
+  let sectionCount = 0;
+
+  /** Last year's class with every past subject, its class-subjects in `subjects`. */
+  async function lastYearClass(name, gradeLevel) {
+    const klass = await makeClass(admin, { name, gradeLevel, academicYear: lastYear });
+    klass.subjects = [];
+    for (const subject of pastSubjects) {
+      klass.subjects.push(
+        await assignTeacher(admin, {
+          classId: klass.id,
+          subjectId: subject.id,
+          teacherId: teacher.teacherId,
+        }),
+      );
+    }
+    return klass;
+  }
+
+  /**
+   * A section of its own for each student: a blank score counts 0 once an assessment has been given, so a
+   * classmate's exams would count against the student.
+   */
+  const ownSection = (gradeLevel = 4) =>
+    lastYearClass(`Grade ${gradeLevel} - S${(sectionCount += 1)}`, gradeLevel);
 
   /** A completed Grade `klass` year with one result per subject: scores out of 10, null = not graded. */
   async function studentWith(klass, classSubjects, scores) {
@@ -71,25 +95,10 @@ describe('students enrolling themselves for next year (DepEd promotion)', () => 
     await resetWorld();
     admin = await makeUser('admin');
     teacher = await makeUser('teacher');
-    const assignAll = async (klass) => {
-      const assigned = [];
-      for (const subject of pastSubjects) {
-        assigned.push(
-          await assignTeacher(admin, {
-            classId: klass.id,
-            subjectId: subject.id,
-            teacherId: teacher.teacherId,
-          }),
-        );
-      }
-      return assigned;
-    };
     pastSubjects = [];
     for (let i = 0; i < 4; i += 1) pastSubjects.push(await makeSubject(admin));
-    grade4 = await makeClass(admin, { name: 'Grade 4 - A', gradeLevel: 4, academicYear: lastYear });
-    grade4.subjects = await assignAll(grade4);
-    grade12 = await makeClass(admin, { name: 'Grade 12 - A', gradeLevel: 12, academicYear: lastYear });
-    grade12.subjects = await assignAll(grade12);
+    grade4 = await lastYearClass('Grade 4 - A', 4);
+    grade12 = await lastYearClass('Grade 12 - A', 12);
     sections = {
       g5a: await makeClass(admin, { name: 'Grade 5 - A', gradeLevel: 5, academicYear: thisYear }),
       g5b: await makeClass(admin, { name: 'Grade 5 - B', gradeLevel: 5, academicYear: thisYear }),
@@ -140,7 +149,8 @@ describe('students enrolling themselves for next year (DepEd promotion)', () => 
   });
 
   it('sends a student who failed one or two subjects to remedial classes, without self-enrollment', async () => {
-    const student = await studentWith(grade4, grade4.subjects, [9, 6, 7, 8]);
+    const section = await ownSection();
+    const student = await studentWith(section, section.subjects, [9, 6, 7, 8]);
     const result = await standing(student);
     assert.equal(result.status, 'remedial');
     assert.deepEqual(
@@ -159,7 +169,8 @@ describe('students enrolling themselves for next year (DepEd promotion)', () => 
   it('judges each subject on the average of its quarterly grades', async () => {
     // Subjects 2 to 4 pass with 9/10. Subject 1 has a 1st Quarter exam of 95/100 and a 2nd Quarter quiz of
     // 2/10: (95 + 20) / 2 = 57.5 fails, although the year's points (97 / 110 = 88.18) would pass.
-    const student = await studentWith(grade4, grade4.subjects, [null, 9, 9, 9]);
+    const section = await ownSection();
+    const student = await studentWith(section, section.subjects, [null, 9, 9, 9]);
     for (const [term, type, maxScore, score, day] of [
       ['term1', 'exam', 100, 95, 30],
       ['term2', 'quiz', 10, 2, 120],
@@ -168,7 +179,7 @@ describe('students enrolling themselves for next year (DepEd promotion)', () => 
         .post('/api/v1/assessments')
         .set(as(teacher))
         .send({
-          classSubjectId: grade4.subjects[0].id,
+          classSubjectId: section.subjects[0].id,
           title: `${term} ${type} ${student.studentId}`,
           type,
           term,
@@ -195,7 +206,8 @@ describe('students enrolling themselves for next year (DepEd promotion)', () => 
     // Subjects 2 to 4 pass with 9/10. Subject 1: the 1st Quarter to the 3rd Quarter of the 1st Semester each
     // 10/10 (semester grade 100) and the 1st Quarter of the 2nd Semester 4/10 (semester grade 40). The year
     // is (100 + 40) / 2 = 70 and fails; the average of the four quarters, 85, would have passed.
-    const student = await studentWith(grade4, grade4.subjects, [null, 9, 9, 9]);
+    const section = await ownSection();
+    const student = await studentWith(section, section.subjects, [null, 9, 9, 9]);
     for (const [semester, term, score, day] of [
       ['sem1', 'term1', 10, 20],
       ['sem1', 'term2', 10, 50],
@@ -206,7 +218,7 @@ describe('students enrolling themselves for next year (DepEd promotion)', () => 
         .post('/api/v1/assessments')
         .set(as(teacher))
         .send({
-          classSubjectId: grade4.subjects[0].id,
+          classSubjectId: section.subjects[0].id,
           title: `${semester} ${term} ${student.studentId}`,
           type: 'exam',
           semester,
@@ -231,7 +243,8 @@ describe('students enrolling themselves for next year (DepEd promotion)', () => 
   });
 
   it('keeps a student who failed three or more subjects in the same grade level', async () => {
-    const student = await studentWith(grade4, grade4.subjects, [6, 5, 7, 9]);
+    const section = await ownSection();
+    const student = await studentWith(section, section.subjects, [6, 5, 7, 9]);
     const result = await standing(student);
     assert.equal(result.status, 'retained');
     assert.equal(result.failedSubjects.length, 3);
@@ -247,17 +260,19 @@ describe('students enrolling themselves for next year (DepEd promotion)', () => 
   it('leaves the placement to an admin when there is nothing to judge', async () => {
     const fresh = await makeUser('student');
     assert.equal((await standing(fresh)).status, 'needs_placement');
-    const ungraded = await studentWith(grade4, grade4.subjects, [null, null, null, null]);
+    const section = await ownSection();
+    const ungraded = await studentWith(section, section.subjects, [null, null, null, null]);
     const result = await standing(ungraded);
     assert.equal(result.status, 'needs_placement');
-    assert.equal(result.lastClass.id, grade4.id);
+    assert.equal(result.lastClass.id, section.id);
     const res = await enrollIn(fresh, sections.g5a.id);
     assert.equal(res.status, 409);
     assert.equal(res.body.error.details.standing, 'needs_placement');
   });
 
   it('counts only graded subjects and finishes a student who passed the highest grade level', async () => {
-    const partly = await studentWith(grade4, grade4.subjects, [8, null, null, 9]);
+    const section = await ownSection();
+    const partly = await studentWith(section, section.subjects, [8, null, null, 9]);
     assert.equal((await standing(partly)).status, 'promoted');
     const graduate = await studentWith(grade12, grade12.subjects, [9, 9, 9, 9]);
     const result = await standing(graduate);
@@ -283,7 +298,8 @@ describe('students enrolling themselves for next year (DepEd promotion)', () => 
       [sections.g5a.id],
     );
     await fillClass(sections.g5a.id, 35 - enrolled);
-    const student = await studentWith(grade4, grade4.subjects, [9, 9, 9, 9]);
+    const section = await ownSection();
+    const student = await studentWith(section, section.subjects, [9, 9, 9, 9]);
     const offered = await standing(student);
     assert.equal(offered.status, 'promoted');
     const seatsOf = (name) => offered.classes.find((klass) => klass.name === name);

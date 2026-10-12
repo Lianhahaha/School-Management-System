@@ -18,6 +18,7 @@ const today = todayYmd();
 
 describe('dashboard: students who need attention', () => {
   let school;
+  let quiz;
   const atRisk = async (who) => {
     const res = await api.get('/api/v1/dashboard').set(as(who));
     assert.equal(res.status, 200, JSON.stringify(res.body));
@@ -60,7 +61,7 @@ describe('dashboard: students who need attention', () => {
       assert.equal(res.status, 200, JSON.stringify(res.body));
     }
     // s1 scores 10 / 20 (50 %), s2 19 / 20 (95 %).
-    const quiz = (
+    quiz = (
       await api
         .post('/api/v1/assessments')
         .set(as(school.owner))
@@ -116,11 +117,16 @@ describe('dashboard: students who need attention', () => {
   });
 
   it('needs enough attendance marks before judging attendance', async () => {
-    // s3 joins classA and is absent once: 1 mark is not enough to flag anyone.
+    // s3 joins classA and is absent once: 1 mark is not enough to flag anyone. s3 joined on the quiz's day,
+    // so the quiz counts for them too: a passing score keeps the grades out of it.
     await api
       .post('/api/v1/enrollments')
       .set(as(school.admin))
       .send({ studentId: school.s3.studentId, classId: school.classA.id });
+    await api
+      .put(`/api/v1/assessments/${quiz.id}/grades`)
+      .set(as(school.owner))
+      .send({ grades: [{ studentId: school.s3.studentId, score: 18 }] });
     await api
       .put('/api/v1/attendance/sheet')
       .set(as(school.owner))

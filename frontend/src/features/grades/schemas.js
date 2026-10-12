@@ -59,9 +59,9 @@ export const assessmentDefaults = (assessment, classSubjectId = '') => {
 };
 
 /**
- * Grade sheet form: one row per student of the roster. A blank score means "not graded yet" and the
- * row is not sent (see toSaveGradesPayload). The upper bound depends on the assessment, hence a function.
- * Two blanks would be lost silently, so they are errors instead: a saved score that was erased (a save
+ * Grade sheet form: one row per student of the roster. A blank score is not sent (see toSaveGradesPayload):
+ * the student has no score, which their results count as 0 once the assessment has any score. The upper
+ * bound depends on the assessment, hence a function. Two blanks would be lost silently, so they are errors instead: a saved score that was erased (a save
  * cannot unset a grade; the row's Clear action does) and remarks typed for a student without a score.
  * @param {number} assessmentMaxScore the assessment's maxScore
  * @param {Array<{ gradeId: number|null }>} [savedRecords] the roster as saved, in the same order as `rows`

@@ -131,9 +131,13 @@ describe('dashboard', () => {
     assert.equal(data.upcomingAssessments[0].title, 'Quiz 1');
     assert.equal(data.recentAnnouncements[0].title, 'Welcome');
 
+    // The classmate has no score on Quiz 1, which s1's score makes given: the blank counts 0.
     const classmate = await dashboard(school.s2);
     assert.equal(classmate.attendanceSummary.rate, 0);
-    assert.deepEqual(classmate.gradeSummary, []);
+    assert.deepEqual(
+      classmate.gradeSummary.map((row) => [row.assessmentsGraded, row.percentage]),
+      [[0, 0]],
+    );
   });
 
   it('builds a safe student payload when there is no active enrollment', async () => {
