@@ -122,13 +122,21 @@ export function useDeleteUser() {
   const invalidateAccounts = useInvalidateAccounts();
   const toast = useToast();
   return useMutation({
-    mutationFn: (/** @type {{ id: number, firstName: string, lastName: string }} */ user) =>
+    mutationFn: (/** @type {{ id: number, firstName: string, lastName: string, email?: string }} */ user) =>
       deleteUser(user.id),
     meta: { silent: true },
-    onSuccess: (_, user) => {
+    onSuccess: ({ signInRemoved }, user) => {
       // A declined (or never used) student assistant's request goes with the account.
       invalidateAccounts(assistantRequestKeys.all);
-      toast.success(`${fullName(user)} deleted`);
+      // The account is gone either way. A sign-in left behind keeps its email from signing up again, and
+      // the account cannot be deleted a second time to retry, so the admin is told whom to ask.
+      if (signInRemoved === false) {
+        toast.warning(
+          `${fullName(user)} deleted, but their sign-in could not be removed, so ${user.email ?? 'their email'} cannot be used to sign up again until it is. Contact the developer to remove the sign-in.`,
+        );
+      } else {
+        toast.success(`${fullName(user)} deleted`);
+      }
     },
   });
 }

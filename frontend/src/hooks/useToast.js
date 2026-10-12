@@ -5,6 +5,7 @@ import { toastBus } from '../lib/toastBus';
  *   const toast = useToast();
  *   toast.success('Liam Cruz enrolled in Grade 7 - A'); // name the object that changed
  *   toast.info('Signed out');
+ *   toast.warning('Ana Cruz deleted, but her sign-in could not be removed ...'); // done, with a problem left
  *   toast.success('Grade cleared', { action: { label: 'Undo', onClick: restore } });
  *   toast.error(apiError); // shows error.message (plus code and request id in development)
  *

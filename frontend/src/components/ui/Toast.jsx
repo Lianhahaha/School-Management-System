@@ -3,7 +3,9 @@ import { createPortal } from 'react-dom';
 import { toastBus } from '../../lib/toastBus';
 import { Alert } from './Alert';
 
-const DURATION_MS = { success: 4000, info: 4000, error: 8000 };
+const DURATION_MS = { success: 4000, info: 4000, error: 8000, warning: 12000 };
+/** Toasts announced assertively (role="alert"): errors, and warnings about something left to fix. */
+const isUrgent = (toast) => toast.tone === 'error' || toast.tone === 'warning';
 /** A toast with a button (Undo) stays long enough to reach it with the keyboard. */
 const ACTION_DURATION_MS = 10000;
 const MAX_VISIBLE = 5;
@@ -67,10 +69,10 @@ function useTopDialog() {
 
 /**
  * Renders the toasts raised through `useToast()` / `toastBus` (success and info for 4 s, errors for 8 s,
- * a toast with an action button such as Undo for 10 s).
- * Two live regions are always present: errors are announced assertively (role="alert"), everything
- * else politely (role="status"). Mount it once, near the root. While a modal dialog is open the toasts are
- * rendered inside it, so they stay visible and clickable above its backdrop.
+ * a toast with an action button such as Undo for 10 s, warnings for 12 s).
+ * Two live regions are always present: errors and warnings are announced assertively (role="alert"),
+ * everything else politely (role="status"). Mount it once, near the root. While a modal dialog is open the
+ * toasts are rendered inside it, so they stay visible and clickable above its backdrop.
  */
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
@@ -83,9 +85,9 @@ export function ToastProvider({ children }) {
   const topDialog = useTopDialog();
   const dismiss = useCallback((id) => setToasts((current) => current.filter((toast) => toast.id !== id)), []);
 
-  const renderToasts = (isError) =>
+  const renderToasts = (urgent) =>
     toasts
-      .filter((toast) => (toast.tone === 'error') === isError)
+      .filter((toast) => isUrgent(toast) === urgent)
       .map((toast) => <ToastItem key={toast.id} toast={toast} onDismiss={dismiss} />);
 
   return (

@@ -287,11 +287,21 @@ async function insertWithFreshNumber(insert, profile) {
   }
 }
 
-/** Best effort: a leftover Firebase user without a MySQL row cannot sign in (403 USER_NOT_REGISTERED). */
+/**
+ * Best effort: a leftover Firebase user without a MySQL row cannot sign in (403 USER_NOT_REGISTERED), but it
+ * keeps its email from signing up (409 email_in_use). Resolves true once the user is gone, a user that was
+ * already gone included, and false when Firebase refused or could not be reached (logged with `message`).
+ * @returns {Promise<boolean>}
+ */
 async function deleteFirebaseUserOrLog(uid, message) {
-  await firebase
-    .deleteUser(uid)
-    .catch((cleanupError) => logger.error(message, { uid, cleanupError: String(cleanupError) }));
+  try {
+    await firebase.deleteUser(uid);
+    return true;
+  } catch (cleanupError) {
+    if (cleanupError?.code === 'auth/user-not-found') return true;
+    logger.error(message, { uid, cleanupError: String(cleanupError) });
+    return false;
+  }
 }
 
 /** Inside `conn`'s transaction: 409 when taking admin `id` out of the active admins would leave none. */
@@ -382,6 +392,12 @@ const hasHistoryConflict = (options) =>
  * the backstop when a record is added concurrently. MySQL (profile + users row, one transaction)
  * first, then the Firebase user. The office's note about the account's sign-up is resolved, as
  * enrolling the student or deciding the request would have.
+ * When the Firebase user cannot be deleted the account is still deleted (its rows are gone, so the request
+ * cannot be repeated) and the answer says `signInRemoved: false`, as the activity log does: the leftover
+ * sign-in grants nothing, but its email cannot sign up again (409 email_in_use) until someone removes it in
+ * Firebase. The office can still create an account with it outside local development (createFirebaseUser
+ * replaces a Firebase user linked to no account).
+ * @returns {Promise<{ id: number, signInRemoved: boolean }>}
  */
 export async function deleteUser(actor, id) {
   if (actor.id === id) throw ApiError.forbidden('self', 'you cannot delete your own account');
@@ -410,7 +426,7 @@ export async function deleteUser(actor, id) {
     throw error;
   }
 
-  await deleteFirebaseUserOrLog(
+  const signInRemoved = await deleteFirebaseUserOrLog(
     target.firebaseUid,
     'could not delete the Firebase user of a deleted account',
   );
@@ -420,8 +436,10 @@ export async function deleteUser(actor, id) {
   await record({
     action: 'user.delete',
     entityId: id,
-    summary: `Deleted the unused ${target.role} account of ${nameOf(target)} (${target.email})`,
-    details: { email: target.email, role: target.role },
+    summary: `Deleted the unused ${target.role} account of ${nameOf(target)} (${target.email})${
+      signInRemoved ? '' : '; its sign-in could not be removed'
+    }`,
+    details: { email: target.email, role: target.role, signInRemoved },
   });
-  return { id };
+  return { id, signInRemoved };
 }

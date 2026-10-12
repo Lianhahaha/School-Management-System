@@ -41,6 +41,12 @@ export const toastBus = {
    * @param {ToastOptions} [options]
    */
   info: (message, { action } = {}) => publish('info', message, undefined, action),
+  /**
+   * Something that went through but left a problem the user must know about (an account deleted whose
+   * sign-in could not be removed): announced at once, like an error, and shown longer.
+   * @param {string} message
+   */
+  warning: (message) => publish('warning', message),
   /** @param {Error|string} error an ApiError (its message is shown) or a plain message */
   error(error) {
     if (typeof error === 'string') return publish('error', error);

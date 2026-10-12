@@ -567,7 +567,7 @@ describe('account deletion', () => {
       const user = await makeUser(role);
       const res = await remove(user);
       assert.equal(res.status, 200, role);
-      assert.deepEqual(res.body.data, { id: user.id });
+      assert.deepEqual(res.body.data, { id: user.id, signInRemoved: true });
       assert.equal((await api.get(`/api/v1/users/${user.id}`).set(as(admin))).status, 404);
       if (user.studentId) {
         assert.equal((await api.get(`/api/v1/students/${user.studentId}`).set(as(admin))).status, 404);
@@ -584,6 +584,61 @@ describe('account deletion', () => {
         .set(as(admin))
         .send({ role, email: user.email, password: 'Password123!', firstName: 'New', lastName: 'Person' });
       assert.equal(again.status, 201);
+    }
+  });
+
+  it('still deletes the account when its sign-in cannot be removed, and says so', async () => {
+    const student = await makeUser('student');
+    const logged = mock.method(logger, 'error', () => {});
+    const deleteSignIn = mock.method(firebase, 'deleteUser', async () => {
+      throw firebaseError('auth/internal-error', 'An internal error has occurred.');
+    });
+    let res;
+    try {
+      res = await remove(student);
+    } finally {
+      mock.restoreAll();
+    }
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.deepEqual(res.body.data, { id: student.id, signInRemoved: false });
+    assert.equal(deleteSignIn.mock.callCount(), 1);
+    assert.equal(logged.mock.callCount(), 1);
+    assert.equal((await api.get(`/api/v1/users/${student.id}`).set(as(admin))).status, 404);
+
+    // The sign-in is left behind, so the email cannot sign up again (POST /auth/register's own code path).
+    assert.ok(firebaseUsers().some((entry) => entry.uid === student.firebaseUid));
+    await assert.rejects(
+      createUserAccount(
+        {
+          role: 'student',
+          email: student.email,
+          password: 'Password123!',
+          firstName: 'Signs',
+          lastName: 'Again',
+          profile: {},
+          application: { gradeLevel: 7 },
+        },
+        { trusted: false },
+      ),
+      (error) => error.details?.reason === 'email_in_use',
+    );
+    const log = await api.get('/api/v1/activity?area=accounts').set(as(admin));
+    const entry = log.body.data.find((row) => row.action === 'user.delete' && row.entityId === student.id);
+    assert.equal(entry.details.signInRemoved, false);
+    assert.match(entry.summary, /its sign-in could not be removed$/);
+  });
+
+  it('counts a sign-in that is already gone as removed', async () => {
+    const teacher = await makeUser('teacher');
+    await firebase.deleteUser(teacher.firebaseUid);
+    const logged = mock.method(logger, 'error', () => {});
+    try {
+      const res = await remove(teacher);
+      assert.equal(res.status, 200, JSON.stringify(res.body));
+      assert.deepEqual(res.body.data, { id: teacher.id, signInRemoved: true });
+      assert.equal(logged.mock.callCount(), 0);
+    } finally {
+      mock.restoreAll();
     }
   });
 

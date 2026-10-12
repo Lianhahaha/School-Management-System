@@ -396,7 +396,8 @@ paths:
         Roles: admin (not on their own account).
 
         Permanently removes an account created by mistake: the role profile and the account in one
-        transaction, then the Firebase user. The email becomes free again. An account that anything refers
+        transaction, then the Firebase user. The email becomes free again (unless the Firebase user stays,
+        see below). An account that anything refers
         to (enrollments, attendance, grades, class-subject assignments, homeroom classes, announcements it
         wrote, attendance or grades it entered, student assistant requests it approved or declined) is kept;
         deactivate it instead. A student's application and a student assistant's own request (a declined one
@@ -406,10 +407,42 @@ paths:
         Refused with `403` (`details.reason = self`) when the target is the caller, with `409`
         (`details.reason = has_history`) when the account has school records, and with `409`
         (`details.reason = last_admin`) when it would leave no active administrator.
+
+        When the Firebase user cannot be deleted (Firebase refused or could not be reached) the account is
+        still deleted and the answer is `200` with `signInRemoved: false`, also kept in the activity log.
+        The leftover sign-in grants nothing (no account here), but its email cannot sign up again through
+        `POST /auth/register` (`409`, `details.reason = email_in_use`) until it is removed in Firebase; the
+        delete cannot be repeated, as the account is gone. Outside local development the office can still
+        create an account with that email (`POST /users` replaces a Firebase user linked to no account).
       parameters:
         - $ref: '#/components/parameters/IdPath'
       responses:
-        '200': { $ref: '#/components/responses/Deleted' }
+        '200':
+          description: The account was deleted.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [id, signInRemoved]
+                        properties:
+                          id:
+                            $ref: '#/components/schemas/Id'
+                          signInRemoved:
+                            type: boolean
+                            description: >-
+                              False when the Firebase user could not be deleted: its email stays blocked
+                              for sign-up until it is removed in Firebase. A Firebase user that was
+                              already gone counts as removed.
+              example:
+                success: true
+                data: { id: 42, signInRemoved: true }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }

@@ -12,10 +12,11 @@ const REFUSALS = {
 
 /**
  * Confirms and deletes an account. The dialog stays open while the request runs and shows the
- * server's refusal (records exist, own account, last administrator) until the admin cancels.
+ * server's refusal (records exist, own account, last administrator) until the admin cancels. When the
+ * account went but its sign-in could not be removed, useDeleteUser warns with a toast naming the email.
  *
  * @param {object} props
- * @param {{ id: number, firstName: string, lastName: string }} props.user the account (USER id)
+ * @param {{ id: number, firstName: string, lastName: string, email?: string }} props.user the account (USER id)
  * @param {boolean} props.open
  * @param {() => void} props.onCancel
  * @param {() => void} props.onDeleted called after the account is gone
