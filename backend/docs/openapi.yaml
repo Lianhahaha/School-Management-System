@@ -4856,21 +4856,30 @@ components:
         gradeSummary:
           type: array
           description: >
-            One row per subject and class of the school year, `percentage` its final grade so far (the average
-            of its quarterly grades, as in `GET /grades/summary`): a student who changed class mid-year has a row
-            for each class a subject was graded in.
+            One row per subject of the school year, `percentage` its grade of the year so far (the average of
+            its semester grades, each the average of its quarterly grades, as in `GET /grades/summary`). A
+            subject a student who changed class mid-year took in two classes is one row: the quarters of both
+            classes are put together per semester and quarter, the rule of the general average, the SF10 and
+            the promotion check. Ordered by `className`, then subject.
           items:
             type: object
-            required: [classSubjectId, subjectName, className, assessmentsGraded, percentage]
+            required: [subjectId, subjectName, className, classSubjectIds, assessmentsGraded, percentage]
             properties:
-              classSubjectId:
+              subjectId:
                 $ref: '#/components/schemas/Id'
               subjectName:
                 type: string
               className:
                 type: string
+                description: The classes the subject was taken in, joined by " / " (`Grade 10 - A / Grade 10 - B`).
+              classSubjectIds:
+                type: array
+                description: The class-subjects the row puts together, one per class.
+                items:
+                  $ref: '#/components/schemas/Id'
               assessmentsGraded:
                 type: integer
+                description: Scores recorded in the subject, over all its classes.
               percentage:
                 type: number
                 nullable: true
@@ -6969,9 +6978,10 @@ components:
                     rate: 0.9583
                   gradeSummary:
                     - {
-                        classSubjectId: 12,
+                        subjectId: 3,
                         subjectName: Biology,
                         className: Grade 10 - A,
+                        classSubjectIds: [12],
                         assessmentsGraded: 4,
                         percentage: 87.5,
                       }

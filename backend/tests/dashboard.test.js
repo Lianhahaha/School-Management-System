@@ -10,7 +10,18 @@ import {
   todayIsoWeekday,
   todayYmd,
 } from '../src/utils/dates.js';
-import { api, as, buildSchool, closeWorld, fillClass, makeUser, resetWorld } from './helpers/harness.js';
+import {
+  api,
+  as,
+  assignTeacher,
+  buildSchool,
+  closeWorld,
+  fillClass,
+  makeClass,
+  makeSubject,
+  makeUser,
+  resetWorld,
+} from './helpers/harness.js';
 
 after(closeWorld);
 
@@ -318,5 +329,81 @@ describe('the school day of one dashboard request', () => {
     assert.equal(attendanceToday.date, sunday);
     assert.equal(attendanceToday.lessonsScheduled, 0, "no lessons on Sunday, and not Monday's either");
     assert.deepEqual(attendanceToday.unmarkedLessons, []);
+  });
+});
+
+describe("the student dashboard's grades of a student who changed class", () => {
+  it('shows a subject taken in both classes once, with the grade of both together', async () => {
+    await resetWorld();
+    const admin = await makeUser('admin');
+    const teacher = await makeUser('teacher');
+    const student = await makeUser('student');
+    const tenA = await makeClass(admin, { name: 'Grade 10 - A' });
+    const tenB = await makeClass(admin, { name: 'Grade 10 - B' });
+    const [math, science] = [
+      await makeSubject(admin, { name: 'Math' }),
+      await makeSubject(admin, { name: 'Science' }),
+    ];
+    const lesson = (klass, subject) =>
+      assignTeacher(admin, { classId: klass.id, subjectId: subject.id, teacherId: teacher.teacherId });
+    const [mathA, mathB, scienceA] = [
+      await lesson(tenA, math),
+      await lesson(tenB, math),
+      await lesson(tenA, science),
+    ];
+    // In 10-B for the first 40 days of the school year, then in 10-A.
+    const yearStart = academicYearStart(currentAcademicYear());
+    const moveOn = addDaysYmd(yearStart, 40);
+    await run(
+      `INSERT INTO enrollments (student_id, class_id, status, enrolled_on, left_on)
+       VALUES (?, ?, 'transferred', ?, ?), (?, ?, 'active', ?, NULL)`,
+      [student.studentId, tenB.id, yearStart, moveOn, student.studentId, tenA.id, moveOn],
+    );
+    const exam = async (classSubject, term, daysIn, score) => {
+      const created = await api
+        .post('/api/v1/assessments')
+        .set(as(admin))
+        .send({
+          classSubjectId: classSubject.id,
+          title: `Exam ${term}`,
+          type: 'exam',
+          maxScore: 100,
+          semester: 'sem1',
+          term,
+          assessedOn: addDaysYmd(yearStart, daysIn),
+        });
+      assert.equal(created.status, 201, JSON.stringify(created.body));
+      const graded = await api
+        .put(`/api/v1/assessments/${created.body.data.id}/grades`)
+        .set(as(admin))
+        .send({ grades: [{ studentId: student.studentId, score }] });
+      assert.equal(graded.status, 200, JSON.stringify(graded.body));
+    };
+    // Math: Q1 80 in 10-B, Q2 91 in 10-A. Science only in 10-A: Q2 70.
+    await exam(mathB, 'term1', 10, 80);
+    await exam(mathA, 'term2', 45, 91);
+    await exam(scienceA, 'term2', 45, 70);
+
+    const res = await api.get('/api/v1/dashboard').set(as(student));
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    // One Math row, not 80 in 10-B and 91 in 10-A: the 1st Semester's quarters together, (80 + 91) / 2.
+    assert.deepEqual(res.body.data.gradeSummary, [
+      {
+        subjectId: science.id,
+        subjectName: 'Science',
+        className: 'Grade 10 - A',
+        classSubjectIds: [scienceA.id],
+        assessmentsGraded: 1,
+        percentage: 70,
+      },
+      {
+        subjectId: math.id,
+        subjectName: 'Math',
+        className: 'Grade 10 - A / Grade 10 - B',
+        classSubjectIds: [mathA.id, mathB.id],
+        assessmentsGraded: 2,
+        percentage: 85.5,
+      },
+    ]);
   });
 });

@@ -6,6 +6,7 @@
  * through their services; only true aggregates live in dashboard.repository.
  */
 import { academicYearOf, academicYearStart, isoWeekdayOf, todayYmd } from '../../utils/dates.js';
+import { subjectFinalGrade } from '../../utils/grading.js';
 import * as access from '../access/access.service.js';
 import { recentAnnouncements } from '../announcements/announcements.service.js';
 import {
@@ -39,6 +40,35 @@ function schoolDay() {
 }
 
 const unique = (values) => [...new Set(values)];
+
+/**
+ * A student's grade summary of one school year, one row per subject, from their class-subject summary rows
+ * of that year (summarizeStudentGradesUnscoped). A subject taken in two classes (the student changed class)
+ * is one row: its quarters of both classes put together per semester and quarter (utils/grading
+ * subjectFinalGrade), the grade My grades, the general average, the SF10 and the promotion check give it, so
+ * the dashboard never shows it twice with two different results. `className` names the classes it was taken
+ * in ('Grade 10 - A / Grade 10 - B') and `assessmentsGraded` counts the scores of all of them. The rows are
+ * of one school year, so the subject alone is the key. In My grades' order: class, then subject.
+ */
+function subjectGradeSummary(rows) {
+  const bySubject = new Map();
+  for (const row of rows) bySubject.set(row.subjectId, [...(bySubject.get(row.subjectId) ?? []), row]);
+  return [...bySubject.values()]
+    .map((group) => ({
+      subjectId: group[0].subjectId,
+      subjectName: group[0].subjectName,
+      className: unique(group.map((row) => row.className)).join(' / '),
+      classSubjectIds: group.map((row) => row.classSubjectId),
+      assessmentsGraded: group.reduce((sum, row) => sum + row.assessmentsGraded, 0),
+      percentage: subjectFinalGrade(group),
+    }))
+    .sort(
+      (a, b) =>
+        a.className.localeCompare(b.className) ||
+        a.subjectName.localeCompare(b.subjectName) ||
+        a.subjectId - b.subjectId,
+    );
+}
 
 /**
  * Today's timetable periods (`slots`) that take attendance, and the set of class-subjects marked today. A
@@ -237,7 +267,7 @@ async function studentDashboard(user) {
   }
 
   // One round of queries for the rest, the attendance summary included.
-  const [attendance, slots, gradeSummary, recent, upcoming] = await Promise.all([
+  const [attendance, slots, gradeRows, recent, upcoming] = await Promise.all([
     attendanceOfYear,
     holiday || !isClassOfThisYear ? [] : findSlotsUnscoped({ classId, dayOfWeek: weekday }),
     summarizeStudentGradesUnscoped(user.studentId, year),
@@ -264,13 +294,7 @@ async function studentDashboard(user) {
       room: slot.room,
     })),
     attendanceSummary,
-    gradeSummary: gradeSummary.map((row) => ({
-      classSubjectId: row.classSubjectId,
-      subjectName: row.subjectName,
-      className: row.className,
-      assessmentsGraded: row.assessmentsGraded,
-      percentage: row.percentage,
-    })),
+    gradeSummary: subjectGradeSummary(gradeRows),
     recentGrades: recent.map((grade) => ({
       gradeId: grade.id,
       assessmentId: grade.assessmentId,

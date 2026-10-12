@@ -6,16 +6,17 @@ import { formatResult, resultWidth } from '../../../utils/grades';
 
 /**
  * One row per subject with its grade of the school year so far, the average of its semesters' grades (each the
- * average of its quarterly grades), as a bar (payload `gradeSummary`).
- * A subject graded in two classes this year (the student changed class) shows each class's result, named.
+ * average of its quarterly grades), as a bar (payload `gradeSummary`). A subject taken in two classes this
+ * year (the student changed class) is one row from the API, both classes' quarters put together as My
+ * grades shows it. Two different subjects that share a name are told apart by their classes.
  */
 export function StudentGradeSummaryCard({ subjects }) {
-  const timesTaken = new Map();
+  const timesNamed = new Map();
   for (const subject of subjects) {
-    timesTaken.set(subject.subjectName, (timesTaken.get(subject.subjectName) ?? 0) + 1);
+    timesNamed.set(subject.subjectName, (timesNamed.get(subject.subjectName) ?? 0) + 1);
   }
   const labelOf = (subject) =>
-    timesTaken.get(subject.subjectName) > 1 && subject.className
+    timesNamed.get(subject.subjectName) > 1 && subject.className
       ? `${subject.subjectName} · ${subject.className}`
       : subject.subjectName;
   return (
@@ -35,7 +36,7 @@ export function StudentGradeSummaryCard({ subjects }) {
       ) : (
         <ul className="space-y-4">
           {subjects.map((subject) => (
-            <li key={subject.classSubjectId}>
+            <li key={subject.subjectId}>
               <div className="flex items-baseline justify-between gap-3 text-sm">
                 <span className="font-medium text-gray-900">{labelOf(subject)}</span>
                 <span className="text-gray-700 tabular-nums">{formatResult(subject.percentage)}</span>

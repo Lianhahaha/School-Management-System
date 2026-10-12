@@ -335,11 +335,11 @@ describe('semesters', () => {
 
     it("uses the year grade on the student's dashboard", async () => {
       const dashboard = await get('/api/v1/dashboard', school.s1);
-      const byLesson = Object.fromEntries(
-        dashboard.gradeSummary.map((row) => [row.classSubjectId, row.percentage]),
+      const bySubject = Object.fromEntries(
+        dashboard.gradeSummary.map((row) => [row.subjectId, row.percentage]),
       );
-      assert.equal(byLesson[school.csA.id], 80);
-      assert.equal(byLesson[csA2.id], 90);
+      assert.equal(bySubject[school.csA.subjectId], 80);
+      assert.equal(bySubject[csA2.subjectId], 90);
     });
 
     it('flags a student on the year grade in the at-risk list, not on the mean of the quarters', async () => {
