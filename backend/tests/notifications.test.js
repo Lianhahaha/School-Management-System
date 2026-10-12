@@ -160,7 +160,7 @@ describe('notifications', () => {
     assert.equal(firstSignUp.isRead, false, 'other sign-ups stay unread');
   });
 
-  it("marks the office's sign-up notes read when the unused account is deleted", async () => {
+  it("deletes the office's sign-up notes when the unused account is deleted", async () => {
     const otherAdmin = await makeUser('admin');
     const register = (fields) =>
       api.post('/api/v1/auth/register').send({ password: 'Password123!', lastName: 'Gone', ...fields });
@@ -185,11 +185,9 @@ describe('notifications', () => {
       const res = await api.delete(`/api/v1/users/${account.id}`).set(as(school.admin));
       assert.equal(res.status, 200, JSON.stringify(res.body));
     }
+    // Their links would open records that are gone.
     for (const who of [school.admin, otherAdmin]) {
-      assert.deepEqual(
-        (await notesOf(who)).map((note) => note.isRead),
-        [true, true],
-      );
+      assert.deepEqual(await notesOf(who), []);
     }
   });
 

@@ -55,6 +55,11 @@ export async function markReadByLink(type, links) {
   );
 }
 
+/** Deletes every recipient's notifications of `type` that open one of `links`. */
+export async function deleteByLink(type, links, conn) {
+  await run('DELETE FROM notifications WHERE type = ? AND link IN (?)', [type, links], conn);
+}
+
 export async function deleteForUser(userId, conn) {
   await run('DELETE FROM notifications WHERE user_id = ?', [userId], conn);
 }

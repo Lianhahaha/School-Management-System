@@ -414,6 +414,9 @@ export async function deleteUser(actor, id) {
       // Nor is a sign-up request: a declined (or never used) student assistant account can still go.
       if (target.role === 'assistant') await assistantRequests.deleteForUser(id, conn);
       await notifications.deleteForUser(id, conn);
+      // The office's notes about the sign-up would open a record that is gone.
+      if (studentId) await notifications.deleteSignupNotes({ studentId }, conn);
+      if (target.role === 'assistant') await notifications.deleteSignupNotes({ userId: id }, conn);
       await announcements.deleteReadsOfUser(id, conn);
       if (!(await repo.deleteUser(id, conn))) throw ApiError.notFound('user', id);
     });
@@ -426,9 +429,6 @@ export async function deleteUser(actor, id) {
     target.firebaseUid,
     'could not delete the Firebase user of a deleted account',
   );
-  // Nothing is left for the office to do about the sign-up, and the note's link opens a record that is gone.
-  if (studentId) await notifications.resolveSignups([studentId]);
-  if (target.role === 'assistant') await notifications.resolveAssistantSignup(id);
   await record({
     action: 'user.delete',
     entityId: id,

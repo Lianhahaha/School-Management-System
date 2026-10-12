@@ -8,7 +8,8 @@
  *   assistant their sign-up approved or declined
  *   office    (admins and approved student assistants) a student signed up on their own and sent an
  *             application (marked read for all of them once the student is enrolled, since nothing is left to
- *             do), a student assistant signed up (marked read once the request is approved or declined)
+ *             do), a student assistant signed up (marked read once the request is approved or declined); both are
+ *             deleted with the account if it is deleted unused
  */
 import { logger } from '../../utils/logger.js';
 import { currentUser } from '../../utils/requestContext.js';
@@ -119,3 +120,10 @@ export async function markRead(user, ids) {
 
 /** Deletes the notifications of an account being deleted (inside its transaction). */
 export const deleteForUser = (userId, conn) => repo.deleteForUser(userId, conn);
+
+/**
+ * Deletes the office's sign-up notes about an account being deleted (inside its transaction): their links
+ * open a record that is gone. `studentId` for a student, `userId` for a student assistant.
+ */
+export const deleteSignupNotes = ({ studentId, userId }, conn) =>
+  repo.deleteByLink('signup', [studentId ? signupLink(studentId) : assistantSignupLink(userId)], conn);
