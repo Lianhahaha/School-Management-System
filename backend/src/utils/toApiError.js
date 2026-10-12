@@ -1,7 +1,6 @@
 /**
- * toApiError — turns any thrown value into an ApiError. Used by the error handler for every response,
- * and by code that reports a failure inside a successful response (an import row) without leaking the
- * underlying driver or Firebase message.
+ * toApiError — turns any thrown value into an ApiError. Used by the error handler for every response, so
+ * the client never sees the underlying driver or Firebase message.
  *
  * Decision order: ApiError -> zod error -> body-parser error -> undecodable URL -> Firebase error
  * -> MySQL error -> 500.

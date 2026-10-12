@@ -3,7 +3,7 @@
  * first request after that waits up to a minute while it starts. apiClient runs every request through
  * `trackSlow`; while at least one has been waiting longer than SLOW_AFTER_MS and the server has not answered
  * anything for AWAKE_FOR_MS, `isWaking()` is true and ServerWakeNotice explains the wait. A slow request to a
- * server that answered a moment ago (a large import, say) is just slow, so it shows no notice.
+ * server that answered a moment ago (ending a school year, say) is just slow, so it shows no notice.
  */
 const SLOW_AFTER_MS = 4000;
 /** A server that answered this recently is awake (the host puts it to sleep after 15 idle minutes). */

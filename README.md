@@ -22,10 +22,10 @@ Skole can be installed like an app: on Android, Chrome or Edge use the browser's
 
 | Required feature | Where to see it | How to check it |
 |---|---|---|
-| Student, teacher and admin accounts | Admin → Users (create any role, deactivate, delete an unused account); students can also self-register on the sign-up page; Admin → Students → Import creates up to 200 students from a CSV file (template included), each checked before anything is created and each given their own temporary password, listed in a file to download | Create a teacher as admin, then sign in as that teacher in a private window |
+| Student, teacher and admin accounts | Admin → Users (create any role, deactivate, delete an unused account); students can also self-register on the sign-up page | Create a teacher as admin, then sign in as that teacher in a private window |
 | Firebase Authentication | Sign in / sign up / forgot password; the API verifies the Firebase ID token on every request | Register, sign out, sign in and reload: the session survives; a wrong password shows a generic error |
 | MySQL database | 20 tables with 25 foreign keys, 17 unique keys, 21 checks and two generated columns: [backend/database/schema.sql](backend/database/schema.sql) | `npm run db:migrate` creates them; the ER diagram is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#5-data-model) |
-| Backend REST API | 87 endpoints under `/api/v1`, one JSON envelope, one error catalogue | Swagger UI "Try it out" with a token ([Trying the API](#trying-the-api)) |
+| Backend REST API | 86 endpoints under `/api/v1`, one JSON envelope, one error catalogue | Swagger UI "Try it out" with a token ([Trying the API](#trying-the-api)) |
 | Student enrollment and profiles | Admin → Students (enroll, transfer, profile, history); students edit their own contact details; at the end of a school year, Admin → Classes → a class → Students → **End of school year** closes the year for all or some students and enrolls them in next year's class in one step; after that a student enrolls themselves from their dashboard in a section of the next grade level if they passed every subject, of the same grade level if they failed three or more, and waits for the school office after remedial classes if they failed one or two (DepEd promotion rules) | Enroll a new student, try to enroll them in a second class (409), transfer them |
 | Subjects and class management | Admin → Subjects, Classes | Create a class for `2026-2027`; `2026/2027` is refused (400); deleting a subject in use is refused (409) |
 | Teacher assignment | Class detail → Subjects & Teachers | Assign a subject to Grade 10 - A with `teacher1`; assigning it again is refused (409); `teacher1` sees it under My classes |
@@ -51,7 +51,7 @@ Beyond the brief, kept small and built on the same API:
 | Light and dark themes | Switch in the top bar (and on the sign-in page); the choice is remembered on the device, and the system setting is followed until you pick one |
 | Search everywhere | Admins press Ctrl+K (⌘K on a Mac) to find a student, teacher, class or subject from any page |
 | CSV and printing | Lists of grades and attendance download as CSV; report cards and timetables print cleanly |
-| LRN and DepEd school forms | A student can have a 12-digit LRN (Learner Reference Number), unique, set at sign-up, by an admin, in the CSV import or on the profile, and found by search. SF1 (class → Students), SF2 for a month (class → Attendance) and SF10 (student → Grades) download as CSV for Excel; the printed report card (SF9) shows the LRN |
+| LRN and DepEd school forms | A student can have a 12-digit LRN (Learner Reference Number), unique, set at sign-up, by an admin or on the profile, and found by search. SF1 (class → Students), SF2 for a month (class → Attendance) and SF10 (student → Grades) download as CSV for Excel; the printed report card (SF9) shows the LRN |
 | Install as an app | See above: the browser's install button, or Add to Home Screen on an iPhone |
 | Student assistant sign-up | Student assistants sign up themselves (nobody creates one as an account); until an admin, or an approved assistant, approves the request (`/assistant-requests`) the account can only read and edit its own details, and a declined applicant reads the reason |
 
@@ -154,7 +154,7 @@ npm run typecheck      # TypeScript checks the JSDoc types of the .js logic file
 npm run check          # lint + type check + unit tests + production build
 ```
 
-The backend tests use a separate `school_management_test` database and an in-memory fake of Firebase, so they never touch your real data or your Firebase project. The frontend tests in `frontend/tests` cover grade arithmetic, form rules, CSV import and export, and dates; one of them runs the same scores through the backend's and the frontend's grading code and expects the same results.
+The backend tests use a separate `school_management_test` database and an in-memory fake of Firebase, so they never touch your real data or your Firebase project. The frontend tests in `frontend/tests` cover grade arithmetic, form rules, CSV export, and dates; one of them runs the same scores through the backend's and the frontend's grading code and expects the same results.
 
 GitHub runs both on every push and pull request: the backend checks (lint, secrets check, `npm test` against MySQL 8) in [backend-tests.yml](.github/workflows/backend-tests.yml) and the frontend checks (lint, type check, unit tests, build) in [frontend-checks.yml](.github/workflows/frontend-checks.yml); results are in the **Actions** tab. Every push to `main` also deploys the frontend once the backend tests pass ([deploy-frontend.yml](.github/workflows/deploy-frontend.yml), which runs the frontend lint and tests again first); Render deploys the API on its own.
 
@@ -185,7 +185,7 @@ A bug is found by following one path: the URL names the route file, the route na
 
 These are deliberate choices, not oversights. The reasons are in [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md#14-implementation-notes-where-the-built-code-deliberately-differs-from-the-plan).
 
-- **Email addresses are not verified before first use.** A student who registers can sign in straight away, so the demo works without a mailbox. Accounts created by an admin, the CSV import or the seed are marked verified. An admin can delete an account that was registered by mistake and has no history.
+- **Email addresses are not verified before first use.** A student who registers can sign in straight away, so the demo works without a mailbox. Accounts created by an admin or the seed are marked verified. An admin can delete an account that was registered by mistake and has no history.
 - **Deactivation takes effect on the next request.** The API reads the account from MySQL on every request, so a deactivated user is refused at once, even though their Firebase token stays valid for up to an hour.
 - **Attendance rate = (present + late) / all marks.** An excused absence counts as a missed lesson; the status keeps the reason on record.
 - **A subject's grade follows DepEd Order No. 8, s. 2015 unless an admin chooses otherwise.** Quizzes, tests and assignments count as written work, projects as performance tasks and exams as the quarterly assessment. A component with nothing graded yet is left out until it has grades, so a result early in a quarter is not dragged down by an exam that has not happened.
@@ -196,7 +196,6 @@ These are deliberate choices, not oversights. The reasons are in [docs/PROJECT_P
 - **Students only enroll themselves into what their last finished year allows.** The server works out the standing again on every self-enrollment, so a student cannot pick another grade level or a section that was not offered. A student with no finished year, no grades in it, or 1–2 failed subjects is placed by the school office; a new student who just signed up picks a section of the grade applied for, this school year. A full section refuses them; the seats are counted under a lock on the grade's sections, so two students cannot take the last seat.
 - **End of school year closes enrollments on the day it runs.** Run it after the last school day: from that day the students leave the class's attendance and grade sheets (earlier days stay editable) and appear in next year's class. A completed enrollment cannot be reopened, so the action is refused for a year that has not started. Keeping students in this year's class while already placed in next year's would need a "planned" enrollment status, which is a schema change.
 - **Two people editing one sheet do not overwrite each other.** When an attendance or grade sheet changed since it was loaded, the second save is refused (409 `sheet_changed`) and the page offers a reload.
-- **Imported students get a random temporary password each**, shown once in a file to download; nothing in the request sets a shared password.
 - **Fees are a ledger, not a payment system.** The school office records what it receives (cash, bank or other, with the OR number); there is no online payment, invoice or discount. A payment is never edited: a wrong one is removed, which the activity log keeps, and recorded again.
 - **Admission documents are a checklist, not uploads.** The office ticks off the papers it has seen. Storing the files would need Firebase Cloud Storage, which needs the paid Blaze plan.
 - **Local development shares the Firebase project with the live site.** Outside production the API never deletes a Firebase user it does not know, because it may be a live user.
@@ -212,7 +211,7 @@ Known limits, accepted for this project:
 - **Some 403s show that an id exists.** On a few endpoints a 403 comes where a 404 would hide the record; ids are sequential and reveal no data.
 - **Past years' classes still take subjects and timetable periods.** Only enrollment refuses a past year.
 - **The Firebase display name is set once,** when the account is created. The app shows names from MySQL only.
-- **Students who registered before admissions existed have no application.** Like students an admin created or imported, one who has no class yet is listed among the students without a class and is placed from Admin → Students.
+- **Students who registered before admissions existed have no application.** Like students an admin created, one who has no class yet is listed among the students without a class and is placed from Admin → Students.
 
 ## Troubleshooting
 

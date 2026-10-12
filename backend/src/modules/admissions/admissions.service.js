@@ -4,7 +4,7 @@
  * student picks a section of the grade applied for themselves (promotion.service, standing `new`), and
  * enrolling the student in a class, by themselves or by the office, admits them (enrollments.service marks the
  * application admitted inside its own transaction). `declined` remains only on applications declined before
- * students picked their class. Students created by an admin or an import have no application. Applications are
+ * students picked their class. Students created by an admin have no application. Applications are
  * read as part of the student shape (`admission`).
  */
 import { ApiError } from '../../utils/ApiError.js';

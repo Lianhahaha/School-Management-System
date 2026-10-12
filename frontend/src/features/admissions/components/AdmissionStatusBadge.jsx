@@ -3,7 +3,7 @@ import { ADMISSION_STATUS_LABELS } from '../../../constants/ui';
 
 /**
  * Where an application stands, as a tag: "Waiting to pick a class" while pending, "Admitted · Grade 7 - A"
- * once enrolled. Renders nothing for a student without an application (created by an admin or an import), nor
+ * once enrolled. Renders nothing for a student without an application (created by an admin), nor
  * for one declined in the past (nothing declines an application any more).
  *
  * @param {object} props

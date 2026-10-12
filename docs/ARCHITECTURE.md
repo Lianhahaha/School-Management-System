@@ -1,6 +1,6 @@
 # Architecture
 
-How the School Management System is put together, in the order a request meets it. The reasoning behind each choice is in [PROJECT_PLAN.md](PROJECT_PLAN.md) (decisions D1–D42).
+How the School Management System is put together, in the order a request meets it. The reasoning behind each choice is in [PROJECT_PLAN.md](PROJECT_PLAN.md) (decisions D1–D44).
 
 ## 1. The big picture
 
@@ -267,7 +267,7 @@ erDiagram
     }
 ```
 
-`activity_log` has no foreign keys on purpose: it copies the actor's name and role, so an entry outlives the rows it mentions. `fees` has none either: a student owes the fees of their class's grade level in that school year plus the every-grade ones, matched on `academic_year` and `grade_level`, and a payment counts towards a school year, not a fee. Students created by an admin or an import have no `admissions` row. Besides these 21 tables there is one bookkeeping table outside `schema.sql`, `schema_migrations`, created by `config/migrations.js` (see schema changes below).
+`activity_log` has no foreign keys on purpose: it copies the actor's name and role, so an entry outlives the rows it mentions. `fees` has none either: a student owes the fees of their class's grade level in that school year plus the every-grade ones, matched on `academic_year` and `grade_level`, and a payment counts towards a school year, not a fee. Students created by an admin have no `admissions` row. Besides these 21 tables there is one bookkeeping table outside `schema.sql`, `schema_migrations`, created by `config/migrations.js` (see schema changes below).
 
 Rules the database itself enforces (not just the API):
 
@@ -295,7 +295,6 @@ The assistant (`assistant`) is a student assistant who takes everyday office wor
 |---|---|---|---|---|
 | Accounts: create (never a student assistant: they sign up), edit name and phone | Y | student accounts only | N | N |
 | Accounts: list and read, (de)activate, delete an unused one | Y | N | N | N |
-| Import students from CSV | Y | Y | N | N |
 | Own identity and contact fields (`/auth/me`) | Y | Y | Y | Y |
 | Students: list and read | Y | Y | own (visible classes) | own (self) |
 | Students: edit profile (LRN included) | Y | Y | N | N |
@@ -349,6 +348,6 @@ The school time zone (`APP_TIMEZONE`) decides what "today" means, MySQL connecti
 
 `npm test` in `backend/` runs the shared-constants check and the API test suite against a separate `school_management_test` database. Firebase is replaced by an in-memory fake, so the suite needs MySQL but no Firebase project and no network. The tests exercise the real Express app through HTTP (supertest) and cover role gates, scoping, validation, conflicts, the all-or-nothing bulk writes, the migrations and the seed script itself.
 
-`npm test` in `frontend/` runs the Vitest unit tests in `frontend/tests` in plain Node, with no browser, database or Firebase project: grade arithmetic, form schemas, CSV import and export, dates and school years. One of them (`grading-agreement.test.js`) runs one table of scores through `backend/src/utils/grading.js` and the frontend's `src/utils/grades.js` and expects the same numbers, so a change to the rounding, the averaging or the passing grade on one side fails until the other side follows.
+`npm test` in `frontend/` runs the Vitest unit tests in `frontend/tests` in plain Node, with no browser, database or Firebase project: grade arithmetic, form schemas, CSV export, dates and school years. One of them (`grading-agreement.test.js`) runs one table of scores through `backend/src/utils/grading.js` and the frontend's `src/utils/grades.js` and expects the same numbers, so a change to the rounding, the averaging or the passing grade on one side fails until the other side follows.
 
 GitHub Actions runs both suites on every push and pull request: `backend-tests.yml` (lint, secrets check, `npm test` against MySQL 8) and `frontend-checks.yml` (lint, a TypeScript check of the JSDoc types in the `.js` logic files, unit tests, build). `deploy-frontend.yml` releases the frontend from `main` only after the backend tests pass, and runs the frontend lint and tests again before it builds.

@@ -1,6 +1,5 @@
 /**
- * CSV in the browser: read and parse an uploaded file (readTextFile, parseCsvRecords), and build text from
- * rows and hand it to the user as a download (export).
+ * CSV in the browser: build text from rows and hand it to the user as a download (export).
  * Spreadsheets (Excel, Google Sheets, Numbers) open the file directly; a byte-order mark makes Excel
  * read it as UTF-8, so names with accents survive.
  *
@@ -53,81 +52,6 @@ export function toCsv(columns, rows) {
     lines.push(columns.map((column) => (column.text ? textCell : cell)(column.value(row))).join(','));
   }
   return lines.join('\r\n');
-}
-
-/**
- * Parses CSV text (RFC 4180: quoted cells may hold commas, line breaks and doubled quotes) into records.
- * Each record keeps the file line it starts on (1 = first line), so problems can point at the spreadsheet
- * row even when blank rows or multi-line cells come before it. A byte-order mark is dropped, CRLF and LF
- * both end a row, and rows whose cells are all blank are left out. A quote opens a quoted cell only at
- * the start of a cell; elsewhere it is kept as a character (Juan "JJ" Cruz). Semicolon-separated files (a
- * common European Excel export) are read too, when the first line has semicolons and no commas.
- * @param {string} text
- * @returns {Array<{ line: number, cells: string[] }>}
- */
-export function parseCsvRecords(text) {
-  const source = text.replace(/^\uFEFF/, '');
-  const firstLine = source.slice(0, source.search(/\r?\n|$/));
-  const separator = firstLine.includes(';') && !firstLine.includes(',') ? ';' : ',';
-  const records = [];
-  let line = 1;
-  let recordLine = 1;
-  let cells = [];
-  let value = '';
-  let inQuotes = false;
-  let cellStart = true;
-  for (let i = 0; i < source.length; i += 1) {
-    const char = source[i];
-    if (inQuotes) {
-      if (char === '"' && source[i + 1] === '"') {
-        value += '"';
-        i += 1;
-      } else if (char === '"') {
-        inQuotes = false;
-      } else {
-        if (char === '\n' || (char === '\r' && source[i + 1] !== '\n')) line += 1;
-        value += char;
-      }
-    } else if (char === '"' && cellStart) {
-      inQuotes = true;
-      cellStart = false;
-    } else if (char === separator) {
-      cells.push(value);
-      value = '';
-      cellStart = true;
-    } else if (char === '\n' || char === '\r') {
-      if (char === '\r' && source[i + 1] === '\n') i += 1;
-      cells.push(value);
-      records.push({ line: recordLine, cells });
-      line += 1;
-      recordLine = line;
-      cells = [];
-      value = '';
-      cellStart = true;
-    } else {
-      value += char;
-      cellStart = false;
-    }
-  }
-  cells.push(value);
-  records.push({ line: recordLine, cells });
-  return records.filter((record) => record.cells.some((text) => text.trim() !== ''));
-}
-
-/**
- * Reads the bytes of an uploaded text file. UTF-8 first; a file that is not valid UTF-8 is read as
- * Windows-1252, the encoding Excel's plain "CSV (Comma delimited)" uses on Windows, so names such as
- * Pe\u00F1a or Ni\u00F1o survive either way.
- * @param {File} file
- * @returns {Promise<string>}
- */
-export async function readTextFile(file) {
-  const bytes = await file.arrayBuffer();
-  try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-  } catch {
-    return new TextDecoder('windows-1252').decode(bytes);
-  }
 }
 
 /** "Algebra Quiz 1 / Grade 10" -> "algebra-quiz-1-grade-10", for file names. Accents drop: "Niño" -> "nino". */

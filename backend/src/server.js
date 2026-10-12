@@ -98,7 +98,7 @@ async function start() {
       await closePool().catch(() => {});
       process.exit(exitCode);
     });
-    // Requests in flight (an import, the end of a school year) get time to finish; hosts wait about 30 s.
+    // Requests in flight (the end of a school year) get time to finish; hosts wait about 30 s.
     setTimeout(() => process.exit(1), 25_000).unref();
   };
   process.on('SIGINT', () => shutdown('SIGINT'));

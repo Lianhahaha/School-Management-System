@@ -27,7 +27,7 @@ export const accountFields = {
 };
 
 /**
- * Optional personal details of a student (public registration, admin-created and imported students). The LRN
+ * Optional personal details of a student (public registration and admin-created students). The LRN
  * may be null: DepEd issues it later for a learner who has none yet.
  */
 export const studentDetailFields = {

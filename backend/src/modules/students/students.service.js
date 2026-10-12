@@ -10,7 +10,7 @@ import * as access from '../access/access.service.js';
 import { changedList, changesOf, nameOf, record } from '../activity/activity.service.js';
 import * as repo from './students.repository.js';
 
-/** The application a self-registered student sent (admissions), or null for one created by an admin or an import. */
+/** The application a self-registered student sent (admissions), or null for one created by an admin. */
 const toAdmission = (row) =>
   row.admissionStatus
     ? {

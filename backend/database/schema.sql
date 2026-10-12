@@ -457,7 +457,7 @@ CREATE TABLE IF NOT EXISTS announcement_reads (
 -- 18. admissions — the application sent with a self-registration: the grade
 --     applied for, the documents the school office has received, and the
 --     outcome. One row per applicant (1:1 with students); students created by
---     an admin or an import have none. Enrolling the student in a class admits
+--     an admin have none. Enrolling the student in a class admits
 --     them (same transaction); a declined applicant keeps the account and reads
 --     the reason. Deleting an (unused) account deletes this row first.
 --     Since students pick their own class, nothing sets 'declined' any more: the

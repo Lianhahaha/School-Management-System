@@ -1,4 +1,3 @@
-import { FileUp } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { PageHeader } from '../../../components/layout/PageHeader';
@@ -24,7 +23,6 @@ import { ClassSelect } from '../../classes/components/ClassSelect';
 import { EnrollStudentsModal } from '../../enrollments/components/EnrollStudentsModal';
 import { UserFormModal } from '../../users/components/UserFormModal';
 import { UserStatusBadge } from '../../users/components/UserStatusBadge';
-import { ImportStudentsModal } from '../components/ImportStudentsModal';
 import { SchoolYearFilter } from '../components/SchoolYearFilter';
 import { StudentClassButton, StudentClassModals } from '../components/StudentClassModals';
 import { UNENROLLED_STUDENTS_PARAMS, useStudents } from '../hooks';
@@ -48,7 +46,6 @@ export default function StudentsListPage() {
   // The student assistant's dashboard shortcut (?new=1): they add students here, not on the Users page.
   useOpenFromLink(createModal.open);
   const enrollModal = useDisclosure();
-  const importModal = useDisclosure();
   const [classTarget, setClassTarget] = useState(null);
 
   const columns = [
@@ -106,9 +103,6 @@ export default function StudentsListPage() {
         description="All registered students and their current class"
         actions={
           <>
-            <Button variant="secondary" icon={FileUp} onClick={importModal.open}>
-              Import
-            </Button>
             <Button variant="secondary" onClick={enrollModal.open}>
               Enroll several
             </Button>
@@ -202,7 +196,6 @@ export default function StudentsListPage() {
 
       <UserFormModal open={createModal.isOpen} onClose={createModal.close} lockedRole="student" />
       <StudentClassModals student={classTarget} onClose={() => setClassTarget(null)} />
-      <ImportStudentsModal open={importModal.isOpen} onClose={importModal.close} />
       <EnrollStudentsModal open={enrollModal.isOpen} onClose={enrollModal.close} />
     </>
   );

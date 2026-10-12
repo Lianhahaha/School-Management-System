@@ -1,76 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fetchAllPages, parseCsvRecords, readTextFile, slugify, toCsv } from '../src/lib/csv';
-
-const cellsOf = (text) => parseCsvRecords(text).map((record) => record.cells);
-
-describe('parseCsvRecords', () => {
-  it('splits rows and cells and numbers each record by its file line', () => {
-    expect(parseCsvRecords('a,b\n1,2\n3,4')).toEqual([
-      { line: 1, cells: ['a', 'b'] },
-      { line: 2, cells: ['1', '2'] },
-      { line: 3, cells: ['3', '4'] },
-    ]);
-  });
-
-  it('ends a row at CRLF, LF or a lone CR, and ignores the newline at the end of the file', () => {
-    expect(cellsOf('a,b\r\n1,2\r3,4\n5,6\r\n')).toEqual([
-      ['a', 'b'],
-      ['1', '2'],
-      ['3', '4'],
-      ['5', '6'],
-    ]);
-  });
-
-  it('reads quoted cells holding commas, doubled quotes and line breaks', () => {
-    const text = 'name,note\n"Cruz, Juan","He said ""hi"""\n"Santos","line one\r\nline two"';
-    expect(cellsOf(text)).toEqual([
-      ['name', 'note'],
-      ['Cruz, Juan', 'He said "hi"'],
-      ['Santos', 'line one\r\nline two'],
-    ]);
-  });
-
-  it('counts the lines of multi-line cells and blank rows, so problems point at the spreadsheet row', () => {
-    const text = 'name,note\n"A","two\nlines"\n\n,,\n  ,\nB,x';
-    expect(parseCsvRecords(text)).toEqual([
-      { line: 1, cells: ['name', 'note'] },
-      { line: 2, cells: ['A', 'two\nlines'] },
-      { line: 7, cells: ['B', 'x'] },
-    ]);
-  });
-
-  it('keeps a quote that is not at the start of a cell as a character', () => {
-    expect(cellsOf('Juan "JJ" Cruz,5')).toEqual([['Juan "JJ" Cruz', '5']]);
-  });
-
-  it('drops a byte-order mark and keeps spaces inside cells', () => {
-    expect(cellsOf('﻿Email, First name \nx@y.ph, Ana ')).toEqual([
-      ['Email', ' First name '],
-      ['x@y.ph', ' Ana '],
-    ]);
-  });
-
-  it('reads semicolon-separated files when the first line has semicolons and no commas', () => {
-    expect(cellsOf('Email;Last name\nana@x.ph;Cruz, Jr.')).toEqual([
-      ['Email', 'Last name'],
-      ['ana@x.ph', 'Cruz, Jr.'],
-    ]);
-    // With a comma on the first line, commas separate and semicolons are text.
-    expect(cellsOf('a;b,c\n1;2,3')).toEqual([
-      ['a;b', 'c'],
-      ['1;2', '3'],
-    ]);
-  });
-
-  it('gives no records for empty or blank text', () => {
-    expect(parseCsvRecords('')).toEqual([]);
-    expect(parseCsvRecords('﻿\r\n \n,')).toEqual([]);
-  });
-
-  it('keeps the rest of the file in a cell whose quote is never closed', () => {
-    expect(cellsOf('a,"b\nc,d')).toEqual([['a', 'b\nc,d']]);
-  });
-});
+import { fetchAllPages, slugify, toCsv } from '../src/lib/csv';
 
 describe('toCsv', () => {
   const column = (header) => ({ header, value: (row) => row[header] });
@@ -130,29 +59,6 @@ describe('toCsv', () => {
       '12 34',
       '="1365"',
     ]);
-  });
-
-  it('reads back exactly what it wrote', () => {
-    const rows = [
-      { name: 'Peña, María "Mia"', note: 'first line\r\nsecond line', score: 92.25 },
-      { name: 'Niño', note: '', score: 0 },
-    ];
-    const columns = [column('name'), column('note'), column('score')];
-    expect(cellsOf(toCsv(columns, rows))).toEqual([
-      ['name', 'note', 'score'],
-      ['Peña, María "Mia"', 'first line\r\nsecond line', '92.25'],
-      ['Niño', '', '0'],
-    ]);
-  });
-});
-
-describe('readTextFile', () => {
-  it('reads UTF-8, and falls back to Windows-1252 for a file that is not valid UTF-8', async () => {
-    const utf8 = new File([new TextEncoder().encode('Peña,Niño')], 'utf8.csv');
-    expect(await readTextFile(utf8)).toBe('Peña,Niño');
-    // Excel's plain "CSV (Comma delimited)" on Windows writes ñ as the single byte 0xF1.
-    const ansi = new File([new Uint8Array([0x50, 0x65, 0xf1, 0x61])], 'ansi.csv');
-    expect(await readTextFile(ansi)).toBe('Peña');
   });
 });
 

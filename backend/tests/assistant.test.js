@@ -152,14 +152,6 @@ describe('student assistant', () => {
     assert.equal(await isActive(school.admin), true);
   });
 
-  it('imports students from a spreadsheet', async () => {
-    const res = await send('post', '/imports/students', {
-      rows: [{ line: 2, email: 'imported.by.office@school.test', firstName: 'Ina', lastName: 'Ramos' }],
-    });
-    expectStatus(res, 201);
-    assert.equal(res.body.data.results[0].status, 'created');
-  });
-
   it('is told about a new application, ticks its documents off and places the student', async () => {
     const signUp = await api.post('/api/v1/auth/register').send({
       email: 'applicant@school.test',

@@ -9,10 +9,6 @@
  *   useStudent(id)                    one student ('me' for the signed-in student); includes currentEnrollment
  *                                     and `admission` (the application of a self-registered student, or null)
  *   useUpdateStudent() [form]         mutate({ id, body }) the office; body from changedFields(values, dirtyFields)
- *   useImportStudents() [form]        mutateAsync(body) checks (dryRun) or creates imported students; the
- *                                     import dialog shows every outcome itself. Imported students can be put in
- *                                     a class, so it refreshes what an enrollment does too: the attendance
- *                                     sheets, grade rosters, fee statements and the bell
  *
  * Mutations tagged [form] are silent (meta.silent): the form that sends them shows every error itself
  * (applyServerErrors + FormRootError). Every other mutation raises an error toast.
@@ -23,14 +19,11 @@ import { useToast } from '../../hooks/useToast';
 import { fetchAllPages } from '../../lib/csv';
 import { fullName } from '../../utils/names';
 import { attendanceKeys } from '../attendance/keys';
-import { classKeys } from '../classes/keys';
 import { dashboardKeys } from '../dashboard/keys';
 import { enrollmentKeys } from '../enrollments/keys';
-import { feeKeys } from '../fees/keys';
 import { gradeKeys } from '../grades/keys';
-import { notificationKeys } from '../notifications/keys';
 import { userKeys } from '../users/keys';
-import { getStudent, importStudents, listStudents, updateStudent } from './api';
+import { getStudent, listStudents, updateStudent } from './api';
 import { studentKeys } from './keys';
 
 /**
@@ -86,30 +79,6 @@ export function useUpdateStudent() {
         dashboardKeys.all,
       );
       toast.success(`${fullName(student)} updated`);
-    },
-  });
-}
-
-export function useImportStudents() {
-  const invalidate = useInvalidate();
-  return useMutation({
-    mutationFn: importStudents,
-    meta: { silent: true },
-    onSuccess: (report) => {
-      if (report.dryRun) return;
-      // A row with a class enrolls the student the way the Enroll dialog does: the sheets and rosters of that
-      // class list them, their statement has its grade's fees, and the enrollment posts bell notes.
-      invalidate(
-        studentKeys.all,
-        userKeys.all,
-        enrollmentKeys.all,
-        classKeys.all,
-        attendanceKeys.all,
-        gradeKeys.all,
-        feeKeys.all,
-        notificationKeys.all,
-        dashboardKeys.all,
-      );
     },
   });
 }

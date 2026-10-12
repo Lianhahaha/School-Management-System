@@ -131,7 +131,7 @@ const emailInUse = (message = 'this email is already in use; contact an administ
  * lock (withAccountLock) and has checked that no MySQL row uses the email. An existing Firebase user with it
  * is never reused: anyone can create a Firebase user with the public web key and keep its ID token, and
  * reusing that uid would hand them the new account. Public registration refuses it (409). Trusted callers
- * (the office, import) replace it with a fresh user, but only when it is linked to no account here (an
+ * (the office) replace it with a fresh user, but only when it is linked to no account here (an
  * account whose email was changed in Firebase keeps its sign-in) and only outside local development, where
  * the Firebase project is usually shared with the live site and the user may be a live account. Under the
  * lock it cannot be the user of a sign-up of the same email that is still saving its rows.
@@ -163,7 +163,7 @@ const isGeneratedNumberCollision = (error, profile) =>
 
 /**
  * Runs `work(conn)` while the session of `conn` holds the account lock of `email`, so creations of one email
- * (a public sign-up, the office, an import) run one after another: none can replace the Firebase user that
+ * (a public sign-up, the office) run one after another: none can replace the Firebase user that
  * another has just created and not yet saved, and the second finds the first's account (409). Every query of
  * `work` goes through `conn`. 503 (busy) when another creation of the email holds the lock past the wait.
  */
@@ -192,8 +192,8 @@ function withAccountLock(email, work) {
  * @param {{ email: string, password: string, role: 'admin'|'teacher'|'student'|'assistant',
  *           firstName: string, lastName: string, phone?: string, profile?: object,
  *           application?: { gradeLevel: number, previousSchool?: string|null } }} input
- *   `application` is sent by public registration only: office-created and imported students have none
- * @param {{ trusted: boolean, firebaseUid?: string }} options trusted = the office, import or seed;
+ *   `application` is sent by public registration only: office-created students have none
+ * @param {{ trusted: boolean, firebaseUid?: string }} options trusted = the office or seed;
  *   firebaseUid links an existing Firebase user instead of creating one (the seed's demo accounts only)
  */
 export async function createUserAccount(input, { trusted, firebaseUid }) {

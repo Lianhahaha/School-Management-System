@@ -23,7 +23,6 @@ import { enrollmentsRoutes } from './modules/enrollments/enrollments.routes.js';
 import { feesRoutes, paymentsRoutes } from './modules/fees/fees.routes.js';
 import { assessmentGradesRoutes, gradesRoutes } from './modules/grades/grades.routes.js';
 import { healthRoutes } from './modules/health/health.routes.js';
-import { importsRoutes } from './modules/imports/imports.routes.js';
 import { notificationsRoutes } from './modules/notifications/notifications.routes.js';
 import { schedulesRoutes } from './modules/schedules/schedules.routes.js';
 import { studentsRoutes } from './modules/students/students.routes.js';
@@ -37,7 +36,6 @@ apiRouter.use('/health', healthRoutes);
 apiRouter.use('/auth', authRoutes);
 
 apiRouter.use('/users', authenticate, usersRoutes);
-apiRouter.use('/imports', authenticate, importsRoutes);
 apiRouter.use('/students', authenticate, studentsRoutes);
 apiRouter.use('/admissions', authenticate, admissionsRoutes);
 apiRouter.use('/teachers', authenticate, teachersRoutes);
