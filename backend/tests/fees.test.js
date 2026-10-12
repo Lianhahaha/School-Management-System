@@ -1,8 +1,14 @@
 import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
-import { pool } from '../src/config/db.js';
-import { addDaysYmd, currentAcademicYear, nextAcademicYear, todayYmd } from '../src/utils/dates.js';
+import { pool, run } from '../src/config/db.js';
+import {
+  academicYearStart,
+  addDaysYmd,
+  currentAcademicYear,
+  nextAcademicYear,
+  todayYmd,
+} from '../src/utils/dates.js';
 import { api, as, buildSchool, closeWorld, makeUser, resetWorld } from './helpers/harness.js';
 import { openSession } from './helpers/locks.js';
 
@@ -194,16 +200,53 @@ describe('fees', () => {
       12500.2,
       'summed in centavos, so 20500.5 - 8000.3 has no floating-point tail',
     );
+  });
 
-    const noClass = (await statement(school.admin, school.s3.studentId)).body.data;
+  it('charges nothing for a school year the student had no class in, and still lists their payments', async () => {
+    const { admin, s3 } = school;
+    // s3 has never had a class: no fees at all this year, not even the every-grade ones.
+    const noClass = (await statement(admin, s3.studentId)).body.data;
     assert.equal(noClass.class, null);
+    assert.deepEqual([noClass.fees, noClass.totalFees, noClass.balance], [[], 0, 0]);
+    const paid = await pay(admin, { studentId: s3.studentId, amount: 3000, receiptNumber: 'OR-0006' });
+    assert.equal(paid.status, 201);
+    const refund = (await statement(admin, s3.studentId)).body.data;
     assert.deepEqual(
-      noClass.fees.map((fee) => fee.name),
-      ['Miscellaneous'],
-      'without a class only the every-grade fees apply',
+      refund.payments.map((payment) => payment.receiptNumber),
+      ['OR-0006'],
     );
-    await pay(school.admin, { studentId: school.s3.studentId, amount: 3000, receiptNumber: 'OR-0005' });
-    assert.equal((await statement(school.admin, school.s3.studentId)).body.data.balance, -499.5, 'overpaid');
+    assert.deepEqual(
+      [refund.totalFees, refund.totalPaid, refund.balance],
+      [0, 3000, -3000],
+      'money to give back',
+    );
+
+    // A placement undone on the day it was made (closed the day it began) is no class either.
+    const placed = await makeUser('student');
+    await run(
+      "INSERT INTO enrollments (student_id, class_id, status, enrolled_on, left_on) VALUES (?, ?, 'withdrawn', ?, ?)",
+      [placed.studentId, school.classA.id, today, today],
+    );
+    const undone = (await statement(admin, placed.studentId)).body.data;
+    assert.deepEqual([undone.class, undone.totalFees], [null, 0]);
+
+    // A student who finished last school year in a class owes last year's fees, but none for this one.
+    const lastYear = `${Number(year.slice(0, 4)) - 1}-${year.slice(0, 4)}`;
+    const graduate = await makeUser('student');
+    const oldClass = await api
+      .post('/api/v1/classes')
+      .set(as(admin))
+      .send({ name: 'Grade 12 - Old', gradeLevel: 12, academicYear: lastYear });
+    assert.equal(oldClass.status, 201, JSON.stringify(oldClass.body));
+    await run(
+      "INSERT INTO enrollments (student_id, class_id, status, enrolled_on, left_on) VALUES (?, ?, 'completed', ?, ?)",
+      [graduate.studentId, oldClass.body.data.id, academicYearStart(lastYear), academicYearStart(year)],
+    );
+    await addFee(admin, { academicYear: lastYear, name: 'Graduation', amount: 1500 });
+    const finished = (await statement(admin, graduate.studentId, lastYear)).body.data;
+    assert.deepEqual([finished.class?.gradeLevel, finished.totalFees], [12, 1500]);
+    const thisYear = (await statement(admin, graduate.studentId)).body.data;
+    assert.deepEqual([thisYear.class, thisYear.fees, thisYear.totalFees], [null, [], 0]);
   });
 
   it('refuses a used receipt number and a future date; removing a payment changes the balance', async () => {

@@ -11,7 +11,7 @@ export const FEE_SORT_MAP = { name: 'f.name', amount: 'f.amount', gradeLevel: 'f
 
 const FEE_COLUMNS = 'f.id, f.academic_year, f.grade_level, f.name, f.amount, f.created_at, f.updated_at';
 
-/** The fees a student of `gradeLevel` pays: that grade's and the every-grade ones (only those for null). */
+/** The fees a student of `gradeLevel` pays: that grade's and the every-grade ones. */
 const APPLIES_TO_GRADE = '(f.grade_level IS NULL OR f.grade_level = ?)';
 
 export async function findFeeById(id) {
@@ -61,14 +61,15 @@ export async function deleteFee(id) {
 /**
  * The student (null when there is none) with the class they were in last during `academicYear`, whatever
  * the enrollment's status (a student who moved class mid-year counts in the second one); the class columns
- * are null when they had none that year.
+ * are null when they had none that year. An enrollment closed on the day it began (a placement undone) is
+ * no class: by the roster rule the student was never in it.
  */
 export async function findStudentClassInYear(studentId, academicYear) {
   const rows = await query(
     `SELECT s.id AS student_id, c.id AS class_id, c.name AS class_name, c.grade_level
        FROM students s
        LEFT JOIN (enrollments e JOIN classes c ON c.id = e.class_id AND c.academic_year = ?)
-         ON e.student_id = s.id
+         ON e.student_id = s.id AND (e.left_on IS NULL OR e.left_on > e.enrolled_on)
       WHERE s.id = ?
       ORDER BY e.enrolled_on DESC, e.id DESC
       LIMIT 1`,
@@ -77,7 +78,7 @@ export async function findStudentClassInYear(studentId, academicYear) {
   return rows[0] ?? null;
 }
 
-/** The fees of `academicYear` that a student of `gradeLevel` (null: no class) pays, by name. */
+/** The fees of `academicYear` that a student in a class of `gradeLevel` pays, by name. */
 export function findFeesFor(academicYear, gradeLevel) {
   return query(
     `SELECT f.id, f.grade_level, f.name, f.amount FROM fees f

@@ -2,7 +2,8 @@
  * Fees and payments. Administrators set what the school charges in each school year (a fee for one grade
  * level or for every grade); the office (admins and student assistants) records what students pay, with the
  * official receipt (OR) number. A student's statement for a year lists the fees of their class's grade plus
- * the every-grade ones, their payments and the balance, which is negative when they paid more than the fees.
+ * the every-grade ones (none in a year they had no class), their payments and the balance, which is negative
+ * when they paid more than the fees.
  * The office reads any statement and a student reads their own; teachers have no access. A payment is never
  * edited: a mistake is removed by an admin (logged) and recorded again.
  */
@@ -108,16 +109,18 @@ export async function deleteFee(id) {
 
 /**
  * A student's fees, payments and balance for one school year. The grade comes from the class they were in
- * last that year; without one, only the every-grade fees apply. `studentId` may be `me`; a student asking
- * for someone else is a 403. The totals are added up from the very rows listed, so a payment recorded while
- * the statement is read can never be in one and missing from the other.
+ * last that year. A student without a class that year (graduated or withdrawn before it, not admitted yet) is
+ * charged nothing for it, the every-grade fees included; their payments towards it are still listed, so a
+ * payment made anyway shows as money to give back. `studentId` may be `me`; a student asking for someone else
+ * is a 403. The totals are added up from the very rows listed, so a payment recorded while the statement is
+ * read can never be in one and missing from the other.
  */
 export async function getStatement(user, { studentId, academicYear }) {
   const id = scopedStudentId(user, resolveMe(user, studentId, 'student'));
   const student = ApiError.assertFound(await repo.findStudentClassInYear(id, academicYear), 'student', id);
   const gradeLevel = student.gradeLevel ?? null;
   const [fees, payments] = await Promise.all([
-    repo.findFeesFor(academicYear, gradeLevel),
+    student.classId ? repo.findFeesFor(academicYear, gradeLevel) : [],
     repo.findPayments(id, academicYear),
   ]);
   const [feeCentavos, paidCentavos] = [centavosOf(fees), centavosOf(payments)];

@@ -2437,8 +2437,10 @@ paths:
 
         The fees the student owes for `academicYear`, their payments towards that year (latest first) and
         the totals. The grade level comes from the class the student was in last during that year, whatever
-        the enrollment's status; without a class that year, only the every-grade fees apply (`class` is
-        null). `totalFees` and `totalPaid` add up exactly the `fees` and `payments` listed (to the centavo);
+        the enrollment's status (one closed on the day it began does not count). A student without a class
+        that year (graduated or withdrawn before it, not admitted yet; `class` is null) owes nothing for it:
+        `fees` is empty and `totalFees` is 0, the every-grade fees included, while their payments towards
+        that year are still listed (a negative balance is money to give back). `totalFees` and `totalPaid` add up exactly the `fees` and `payments` listed (to the centavo);
         `balance` is `totalFees - totalPaid`, negative when the student paid more than the fees. A student passes `studentId=me` (another student's id is a 403); `me` from an admin or
         an assistant is a 400. Teachers get a 403.
       parameters:
@@ -4320,7 +4322,7 @@ components:
         class:
           type: object
           nullable: true
-          description: The class the student was in last during the year; null when they had none.
+          description: The class the student was in last during the year; null when they had none (then no fees apply).
           required: [id, name, gradeLevel]
           properties:
             id:
@@ -4333,7 +4335,7 @@ components:
               example: 7
         fees:
           type: array
-          description: The fees of the class's grade and the every-grade ones, by name.
+          description: The fees of the class's grade and the every-grade ones, by name; empty without a class.
           items:
             type: object
             required: [id, name, gradeLevel, amount]

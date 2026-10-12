@@ -60,11 +60,11 @@ function BalanceTile({ balance, totalFees }) {
   );
 }
 
-/** Why these fees: the class's grade plus the every-grade fees, or the every-grade fees alone. */
+/** Why these fees: the class's grade plus the every-grade fees, or none without a class that year. */
 function describeClass(schoolClass) {
   return schoolClass
     ? `${schoolClass.name}: the Grade ${schoolClass.gradeLevel} fees and the fees for all grades.`
-    : 'Not in a class this school year, so only the fees for all grades apply.';
+    : 'Not in a class this school year, so no fees apply.';
 }
 
 /**
@@ -164,7 +164,12 @@ export function FeeStatement({ studentId, academicYear }) {
           columns={FEE_COLUMNS}
           rows={data.fees}
           isFetching={statement.isFetching}
-          emptyState={<EmptyState icon={Receipt} title="No fees set for this school year" />}
+          emptyState={
+            <EmptyState
+              icon={Receipt}
+              title={data.class ? 'No fees set for this school year' : 'No fees to pay'}
+            />
+          }
         />
       </Card>
 
