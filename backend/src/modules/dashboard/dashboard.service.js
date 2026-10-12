@@ -38,33 +38,55 @@ function schoolDay() {
   return { today, weekday: isoWeekdayOf(today), year: academicYearOf(today) };
 }
 
+const unique = (values) => [...new Set(values)];
+
 /**
- * Today's lessons school-wide as attendance sheets: one per class-subject on the timetable today (two periods
- * of one subject share a sheet), at its first start time, with whether it is marked. None on a holiday.
+ * Today's timetable periods (`slots`) that take attendance, and the set of class-subjects marked today. A
+ * period of a class nobody is in today is left out, unless its sheet already has marks: that sheet has nobody
+ * to mark, so it could never be saved and would stay "not marked yet" all day.
  */
-async function lessonsToday({ today, weekday, year }, holiday) {
-  if (holiday) return [];
+async function periodsToMark(slots, today) {
+  const [marked, classesWithStudents] = await Promise.all([
+    markedClassSubjectIdsUnscoped(unique(slots.map((slot) => slot.classSubjectId)), today),
+    repo.findClassIdsWithStudentsOn(unique(slots.map((slot) => slot.classSubject.classId)), today),
+  ]);
+  const periods = slots.filter(
+    (slot) => marked.has(slot.classSubjectId) || classesWithStudents.has(slot.classSubject.classId),
+  );
+  return { periods, marked };
+}
+
+/**
+ * Today's attendance to mark school-wide (none on a holiday): how many of today's timetable periods take
+ * attendance and how many of them are marked (see periodsToMark), the unit the teacher's dashboard counts
+ * too, and the sheets still to mark: one per class-subject (two periods of one subject share a sheet), at its
+ * first start time.
+ */
+async function attendanceToMark({ today, weekday, year }, holiday) {
+  if (holiday) return { lessonsScheduled: 0, lessonsMarked: 0, unmarkedLessons: [] };
   const slots = await findSlotsUnscoped({ dayOfWeek: weekday, academicYear: year });
+  const { periods, marked } = await periodsToMark(slots, today);
   const firstSlots = new Map();
-  for (const slot of slots) {
+  for (const slot of periods) {
+    if (marked.has(slot.classSubjectId)) continue;
     const seen = firstSlots.get(slot.classSubjectId);
     if (!seen || slot.startTime < seen.startTime) firstSlots.set(slot.classSubjectId, slot);
   }
-  const lessons = [...firstSlots.values()].sort((a, b) => a.startTime.localeCompare(b.startTime));
-  const marked = await markedClassSubjectIdsUnscoped(
-    lessons.map((slot) => slot.classSubjectId),
-    today,
-  );
-  return lessons.map((slot) => ({
-    classSubjectId: slot.classSubjectId,
-    classId: slot.classSubject.classId,
-    className: slot.classSubject.className,
-    subjectName: slot.classSubject.subjectName,
-    teacher: slot.classSubject.teacher,
-    startTime: slot.startTime,
-    endTime: slot.endTime,
-    marked: marked.has(slot.classSubjectId),
-  }));
+  return {
+    lessonsScheduled: periods.length,
+    lessonsMarked: periods.filter((slot) => marked.has(slot.classSubjectId)).length,
+    unmarkedLessons: [...firstSlots.values()]
+      .sort((a, b) => a.startTime.localeCompare(b.startTime))
+      .map((slot) => ({
+        classSubjectId: slot.classSubjectId,
+        classId: slot.classSubject.classId,
+        className: slot.classSubject.className,
+        subjectName: slot.classSubject.subjectName,
+        teacher: slot.classSubject.teacher,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+      })),
+  };
 }
 
 async function adminDashboard(user) {
@@ -81,7 +103,7 @@ async function adminDashboard(user) {
       upcomingEvents(),
       holidayOn(today),
     ]);
-  const lessons = await lessonsToday(day, holiday);
+  const toMark = await attendanceToMark(day, holiday);
   return {
     role: 'admin',
     holidayToday: holiday,
@@ -95,15 +117,7 @@ async function adminDashboard(user) {
       activeEnrollments: counts.activeEnrollments,
       unenrolledStudents: counts.unenrolledStudents,
     },
-    attendanceToday: {
-      date: today,
-      ...attendance,
-      lessonsScheduled: lessons.length,
-      lessonsMarked: lessons.filter((lesson) => lesson.marked).length,
-      unmarkedLessons: lessons
-        .filter((lesson) => !lesson.marked)
-        .map(({ marked: _marked, ...lesson }) => lesson),
-    },
+    attendanceToday: { date: today, ...attendance, ...toMark },
     enrollmentsByGrade: enrollmentsByGrade.map((row) => ({
       gradeLevel: row.gradeLevel,
       students: row.students,
@@ -130,13 +144,10 @@ async function teacherDashboard(user) {
       upcomingEvents(),
       holidayOn(today),
     ]);
-  // A school holiday has no lessons: nothing to teach or mark, so today's list stays empty.
-  const slots = holiday ? [] : timetabled;
-  const marked = await markedClassSubjectIdsUnscoped(
-    slots.map((slot) => slot.classSubjectId),
-    today,
-  );
-  const todaySchedule = slots.map((slot) => ({
+  // A school holiday has no lessons: nothing to teach or mark, so today's list stays empty. Neither does a
+  // class nobody is in today (see periodsToMark).
+  const { periods, marked } = await periodsToMark(holiday ? [] : timetabled, today);
+  const todaySchedule = periods.map((slot) => ({
     scheduleId: slot.id,
     classSubjectId: slot.classSubjectId,
     className: slot.classSubject.className,

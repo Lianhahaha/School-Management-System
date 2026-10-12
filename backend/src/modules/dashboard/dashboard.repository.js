@@ -4,6 +4,7 @@
  */
 import { query } from '../../config/db.js';
 import { WhereBuilder } from '../../utils/sql.js';
+import { enrolledInClassOn } from '../access/access.repository.js';
 import { WITHOUT_A_CLASS } from '../students/students.repository.js';
 
 /**
@@ -32,6 +33,20 @@ export async function findAdminCounts(academicYear) {
     [academicYear, academicYear, academicYear],
   );
   return rows[0];
+}
+
+/**
+ * Set of the ids among `classIds` that have at least one student on `ymd`, by the roster rule of every dated
+ * sheet (access.repository's enrolledInClassOn).
+ */
+export async function findClassIdsWithStudentsOn(classIds, ymd) {
+  if (!classIds.length) return new Set();
+  const rows = await query(
+    `SELECT c.id FROM classes c
+      WHERE c.id IN (?) AND EXISTS (SELECT 1 FROM enrollments e WHERE ${enrolledInClassOn('c.id', '?')})`,
+    [classIds, ymd, ymd],
+  );
+  return new Set(rows.map((row) => row.id));
 }
 
 export function findEnrollmentsByGrade() {

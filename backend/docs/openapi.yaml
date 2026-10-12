@@ -4538,8 +4538,10 @@ components:
                 `GET /students?hasActiveEnrollment=false&isActive=true`).
         attendanceToday:
           description: >-
-            Attendance counts of today across the whole school, and today's lessons as sheets to mark: one per
-            class-subject on the timetable today (periods of one subject share a sheet); none on a holiday.
+            Attendance counts of today across the whole school, how many of today's timetable periods are
+            marked, and the sheets still to mark: one per class-subject (periods of one subject share a sheet);
+            none on a holiday. A period of a class nobody is enrolled in today takes no attendance and is left
+            out of all three, unless its sheet already has marks.
           allOf:
             - $ref: '#/components/schemas/AttendanceSummary'
             - type: object
@@ -4549,11 +4551,15 @@ components:
                   $ref: '#/components/schemas/DateYmd'
                 lessonsScheduled:
                   type: integer
+                  description: >-
+                    Today's timetable periods that take attendance (a double period counts twice), the unit of
+                    the teacher's `sessionsScheduled`.
                 lessonsMarked:
                   type: integer
+                  description: Those of today's periods whose sheet is marked.
                 unmarkedLessons:
                   type: array
-                  description: Lessons of today without attendance yet, by first start time.
+                  description: Sheets of today without attendance yet, one per class-subject, by first start time.
                   items:
                     type: object
                     required: [classSubjectId, classId, className, subjectName, teacher, startTime, endTime]
@@ -4673,7 +4679,9 @@ components:
                 type: integer
         todaySchedule:
           type: array
-          description: Lessons of today in the current academic year; empty on a school holiday.
+          description: >-
+            Periods of today in the current academic year; empty on a school holiday. A period of a class nobody
+            is enrolled in today is left out (nothing to teach or mark), unless its sheet already has marks.
           items:
             type: object
             required:
@@ -4703,8 +4711,10 @@ components:
           properties:
             sessionsScheduled:
               type: integer
+              description: The periods of `todaySchedule` (a double period counts twice).
             sessionsMarked:
               type: integer
+              description: Those periods whose sheet is marked.
         pendingGrading:
           type: array
           description: >-

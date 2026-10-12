@@ -10,7 +10,7 @@ import {
   todayIsoWeekday,
   todayYmd,
 } from '../src/utils/dates.js';
-import { api, as, buildSchool, closeWorld, makeUser, resetWorld } from './helpers/harness.js';
+import { api, as, buildSchool, closeWorld, fillClass, makeUser, resetWorld } from './helpers/harness.js';
 
 after(closeWorld);
 
@@ -194,6 +194,16 @@ describe('dashboard', () => {
     });
     assert.equal(slotB.status, 201, JSON.stringify(slotB.body));
     try {
+      // Nobody is in class B yet: its sheet has nobody to mark, so it is not waiting to be marked.
+      const empty = (await dashboard(school.admin)).attendanceToday;
+      assert.deepEqual([empty.lessonsScheduled, empty.lessonsMarked, empty.unmarkedLessons], [1, 1, []]);
+      assert.deepEqual((await dashboard(school.other)).todaySchedule, []);
+      assert.deepEqual((await dashboard(school.other)).attendanceToday, {
+        sessionsScheduled: 0,
+        sessionsMarked: 0,
+      });
+
+      await fillClass(school.classB.id, 1);
       const now = (await dashboard(school.admin)).attendanceToday;
       assert.equal(now.lessonsScheduled, 2);
       assert.equal(now.lessonsMarked, 1);
@@ -201,8 +211,31 @@ describe('dashboard', () => {
         now.unmarkedLessons.map((lesson) => [lesson.classSubjectId, lesson.startTime, lesson.teacher.id]),
         [[school.csB.id, '10:00', school.other.teacherId]],
       );
+      assert.deepEqual(
+        (await dashboard(school.other)).todaySchedule.map((period) => period.classSubjectId),
+        [school.csB.id],
+      );
     } finally {
       await api.delete(`/api/v1/schedules/${slotB.body.data.id}`).set(as(school.admin));
+    }
+  });
+
+  it('counts timetable periods marked on both dashboards, a double period as two', async () => {
+    const second = await api.post('/api/v1/schedules').set(as(school.admin)).send({
+      classSubjectId: school.csA.id,
+      dayOfWeek: todayIsoWeekday(),
+      startTime: '09:00',
+      endTime: '10:00',
+      room: 'R1',
+    });
+    assert.equal(second.status, 201, JSON.stringify(second.body));
+    try {
+      const admin = (await dashboard(school.admin)).attendanceToday;
+      const teacher = (await dashboard(school.owner)).attendanceToday;
+      assert.deepEqual([admin.lessonsScheduled, admin.lessonsMarked], [2, 2], 'two periods, one sheet');
+      assert.deepEqual(teacher, { sessionsScheduled: 2, sessionsMarked: 2 });
+    } finally {
+      await api.delete(`/api/v1/schedules/${second.body.data.id}`).set(as(school.admin));
     }
   });
 
