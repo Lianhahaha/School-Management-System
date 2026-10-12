@@ -1159,8 +1159,11 @@ paths:
         One transaction closes the active enrollment as `transferred` (left today) and opens a new enrollment in
         the target class from today, so on that date the student belongs to the target class. Returns the new
         enrollment. 409 with `details.reason = no_active_enrollment` when the student is not enrolled (use
-        `POST /enrollments`), or `same_class` when the target is the current class. The target class follows
-        the rules of `POST /enrollments` (400 `invalid_reference` or `past_academic_year`).
+        `POST /enrollments`), `same_class` when the target is the current class, or `different_academic_year`
+        (with `details.academicYear` of the target and `activeAcademicYear`) when the target class belongs to
+        another school year than the active enrollment: `POST /enrollments/complete` moves students on to the
+        next year. The target class follows the rules of `POST /enrollments` (400 `invalid_reference` or
+        `past_academic_year`).
       requestBody:
         required: true
         content:

@@ -228,12 +228,15 @@ export async function enrollMany({ classId, studentIds }) {
   return { classId, created: ids.length, enrollments };
 }
 
-/** Move a student to another class: close the active row as `transferred`, then open the new one. */
+/**
+ * Move a student to another class of the same school year: close the active row as `transferred`, then open
+ * the new one.
+ */
 export async function transfer({ studentId, classId }) {
   let fromClass;
   const id = await enrollingTransaction([studentId], async (conn) => {
     await assertEnrollable([studentId], conn);
-    await assertEnrollableClass(classId, conn);
+    const target = await assertEnrollableClass(classId, conn);
     const active = await repo.findActiveByStudent(studentId, conn);
     if (!active) {
       throw ApiError.conflict('student has no active enrollment; enroll them instead', {
@@ -242,6 +245,19 @@ export async function transfer({ studentId, classId }) {
     }
     if (active.classId === classId) {
       throw ApiError.conflict('student is already enrolled in this class', { reason: 'same_class', classId });
+    }
+    // A year left as `transferred` never counts as completed, so the student's results would not decide
+    // where they go next: moving on to another year is the end of the school year (completeYear).
+    if (target.academicYear !== active.academicYear) {
+      throw ApiError.conflict(
+        'a transfer stays in the same school year; use End of school year to move a student to the next one',
+        {
+          reason: 'different_academic_year',
+          classId,
+          academicYear: target.academicYear,
+          activeAcademicYear: active.academicYear,
+        },
+      );
     }
     // One date for both rows: the student leaves the old class and joins the new one on the same day.
     const today = todayYmd();

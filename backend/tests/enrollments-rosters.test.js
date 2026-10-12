@@ -67,6 +67,28 @@ describe('enrollment into past, current and future academic years', () => {
     assert.equal(nextYear.class.academicYear, yearLabel(1));
   });
 
+  it('transfers within one school year only (409 different_academic_year)', async () => {
+    const student = await makeUser('student');
+    const current = await enrollStudent(admin, {
+      studentId: student.studentId,
+      classId: (await makeClass(admin)).id,
+    });
+    const nextYear = await makeClass(admin, { academicYear: yearLabel(1) });
+    const res = await api
+      .post('/api/v1/enrollments/transfer')
+      .set(as(admin))
+      .send({ studentId: student.studentId, classId: nextYear.id });
+    assert.equal(res.status, 409);
+    assert.equal(res.body.error.details.reason, 'different_academic_year');
+    assert.equal(res.body.error.details.academicYear, yearLabel(1));
+    assert.equal(res.body.error.details.activeAcademicYear, currentAcademicYear());
+    const history = await api.get(`/api/v1/enrollments?studentId=${student.studentId}`).set(as(admin));
+    assert.deepEqual(
+      history.body.data.map((row) => [row.id, row.status]),
+      [[current.id, 'active']],
+    );
+  });
+
   it('bulk-enrolls the largest allowed batch and returns every enrollment', async () => {
     const klass = await makeClass(admin);
     const students = [];
