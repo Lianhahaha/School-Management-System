@@ -188,6 +188,23 @@ describe('fetchAllPages', () => {
     expect(noCount).toHaveBeenCalledTimes(1);
   });
 
+  // Page 1 was read, then a row was saved ahead of it: row 2 slid onto page 2 and is read again there.
+  it('keeps a row once when a write between two pages repeats it on the next', async () => {
+    const pages = [
+      [{ id: 1 }, { id: 2 }],
+      [{ id: 2, note: 'again' }, { id: 3 }],
+    ];
+    const fetchPage = vi.fn(async ({ page }) => pageOf(pages[page - 1], 4, 2));
+    expect(await fetchAllPages(fetchPage, {})).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
+  });
+
+  it('keeps every row without an id', async () => {
+    const fetchPage = vi.fn(async () =>
+      pageOf([{ name: 'a' }, { name: 'a' }, { id: null }, { id: null }], 4, 1),
+    );
+    expect(await fetchAllPages(fetchPage, {})).toHaveLength(4);
+  });
+
   it('refuses a list longer than 200 pages instead of returning part of it', async () => {
     const fetchPage = vi.fn(async () => pageOf(['a'], 20001, 201));
     await expect(fetchAllPages(fetchPage, {})).rejects.toThrow('20001 rows are too many for one file');
