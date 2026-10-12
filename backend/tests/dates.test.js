@@ -1,6 +1,9 @@
 import './helpers/setup.js';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
 import { describe, it } from 'node:test';
+import { pathToFileURL } from 'node:url';
 import { ACADEMIC_YEAR_START_MONTH, FIRST_SEMESTER_MONTHS, SEMESTERS } from '../src/constants/shared.js';
 import { academicYearOf, currentSemester, semesterOf, todayYmd } from '../src/utils/dates.js';
 
@@ -48,5 +51,38 @@ describe('semesterOf', () => {
     assert.equal(currentSemester(new Date('2027-01-01T00:00:00Z')), 'sem2');
     assert.equal(semesterOf(), semesterOf(todayYmd()));
     assert.equal(currentSemester(), semesterOf(todayYmd()));
+  });
+});
+
+describe('the school time zone (APP_TIMEZONE)', () => {
+  const envModule = pathToFileURL(path.join(import.meta.dirname, '..', 'src', 'config', 'env.js')).href;
+
+  /** APP_TIMEZONE as config/env.js reads it in a fresh process on a machine in UTC (like Render's). */
+  function appTimeZoneWith(value) {
+    const { APP_TIMEZONE: _ignored, ...inherited } = process.env;
+    const result = spawnSync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '-e',
+        `const { env } = await import(${JSON.stringify(envModule)}); process.stdout.write(env.APP_TIMEZONE);`,
+      ],
+      {
+        env: { ...inherited, TZ: 'UTC', ...(value !== undefined && { APP_TIMEZONE: value }) },
+        encoding: 'utf8',
+      },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout;
+  }
+
+  it("is Asia/Manila when not set, not the machine's zone", () => {
+    assert.equal(appTimeZoneWith(undefined), 'Asia/Manila');
+    assert.equal(appTimeZoneWith(''), 'Asia/Manila', 'an empty value in .env means not set');
+  });
+
+  it('takes the zone it is given', () => {
+    assert.equal(appTimeZoneWith('Europe/Berlin'), 'Europe/Berlin');
+    assert.equal(appTimeZoneWith('UTC'), 'UTC');
   });
 });

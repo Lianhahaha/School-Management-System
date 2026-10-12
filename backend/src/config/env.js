@@ -14,7 +14,11 @@ const backendRoot = path.resolve(import.meta.dirname, '..', '..');
 
 const boolString = z.enum(['true', 'false']).transform((value) => value === 'true');
 
-const machineTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+/**
+ * The school's zone when APP_TIMEZONE is not set. Not the machine's: a host such as Render runs in UTC, where
+ * "today" would begin eight hours after it does at the school.
+ */
+const DEFAULT_TIME_ZONE = 'Asia/Manila';
 /** Any zone the runtime can format in. Intl.supportedValuesOf lists canonical ids only and misses aliases such as Asia/Kolkata. */
 const isSupportedTimeZone = (tz) => {
   try {
@@ -44,7 +48,7 @@ const schema = z.object({
     .string()
     .trim()
     .optional()
-    .transform((value) => value || machineTimeZone())
+    .transform((value) => value || DEFAULT_TIME_ZONE)
     .refine(isSupportedTimeZone, {
       error: 'must be a valid IANA time zone such as Asia/Manila or Europe/Berlin',
     }),
