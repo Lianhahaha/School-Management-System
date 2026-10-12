@@ -1,9 +1,11 @@
 /**
  * GET /dashboard: one payload per role, discriminated by `role` (student assistants get the admin's).
- * "Today" and the current academic year come from the school's time zone. Data owned by other modules is
- * fetched through their services; only true aggregates live in dashboard.repository.
+ * "Today" and the current academic year come from the school's time zone. Each request reads the clock once
+ * (`schoolDay`): today's weekday and school year are worked out from that one date, so a request running
+ * across midnight never mixes Sunday's date with Monday's lessons. Data owned by other modules is fetched
+ * through their services; only true aggregates live in dashboard.repository.
  */
-import { academicYearStart, currentAcademicYear, todayIsoWeekday, todayYmd } from '../../utils/dates.js';
+import { academicYearOf, academicYearStart, isoWeekdayOf, todayYmd } from '../../utils/dates.js';
 import * as access from '../access/access.service.js';
 import { recentAnnouncements } from '../announcements/announcements.service.js';
 import {
@@ -30,16 +32,19 @@ const toAnnouncementBrief = (a) => ({
 
 const briefAnnouncements = async (user) => (await recentAnnouncements(user, 5)).map(toAnnouncementBrief);
 
+/** Today in the school's time zone, read from the clock once, with its ISO weekday and school year. */
+function schoolDay() {
+  const today = todayYmd();
+  return { today, weekday: isoWeekdayOf(today), year: academicYearOf(today) };
+}
+
 /**
  * Today's lessons school-wide as attendance sheets: one per class-subject on the timetable today (two periods
  * of one subject share a sheet), at its first start time, with whether it is marked. None on a holiday.
  */
-async function lessonsToday(today, holiday) {
+async function lessonsToday({ today, weekday, year }, holiday) {
   if (holiday) return [];
-  const slots = await findSlotsUnscoped({
-    dayOfWeek: todayIsoWeekday(),
-    academicYear: currentAcademicYear(),
-  });
+  const slots = await findSlotsUnscoped({ dayOfWeek: weekday, academicYear: year });
   const firstSlots = new Map();
   for (const slot of slots) {
     const seen = firstSlots.get(slot.classSubjectId);
@@ -63,10 +68,11 @@ async function lessonsToday(today, holiday) {
 }
 
 async function adminDashboard(user) {
-  const today = todayYmd();
+  const day = schoolDay();
+  const { today } = day;
   const [counts, attendance, enrollmentsByGrade, upcoming, announcements, atRisk, events, holiday] =
     await Promise.all([
-      repo.findAdminCounts(currentAcademicYear()),
+      repo.findAdminCounts(day.year),
       summarizeAttendanceUnscoped({ dateFrom: today, dateTo: today }),
       repo.findEnrollmentsByGrade(),
       upcomingAssessmentsUnscoped({ days: 7, limit: 10 }),
@@ -75,7 +81,7 @@ async function adminDashboard(user) {
       upcomingEvents(),
       holidayOn(today),
     ]);
-  const lessons = await lessonsToday(today, holiday);
+  const lessons = await lessonsToday(day, holiday);
   return {
     role: 'admin',
     holidayToday: holiday,
@@ -110,15 +116,14 @@ async function adminDashboard(user) {
 }
 
 async function teacherDashboard(user) {
-  const today = todayYmd();
-  const year = currentAcademicYear();
+  const { today, weekday, year } = schoolDay();
   const teacherId = user.teacherId;
   const [teacher, classSubjects, homeroom, timetabled, pending, announcements, atRisk, events, holiday] =
     await Promise.all([
       getTeacher(user, teacherId),
       repo.findTeacherClassSubjects(teacherId, year),
       listClasses(user, { page: 1, limit: 100, homeroomTeacherId: teacherId, academicYear: year }),
-      findSlotsUnscoped({ teacherId, dayOfWeek: todayIsoWeekday(), academicYear: year }),
+      findSlotsUnscoped({ teacherId, dayOfWeek: weekday, academicYear: year }),
       pendingGradingUnscoped(teacherId, year),
       briefAnnouncements(user),
       atRiskStudents(user),
@@ -177,7 +182,7 @@ async function teacherDashboard(user) {
 }
 
 async function studentDashboard(user) {
-  const today = todayYmd();
+  const { today, weekday, year: thisYear } = schoolDay();
   const classId = user.activeClassId;
   const [student, klass, announcements, events, holiday] = await Promise.all([
     getStudent(user, user.studentId),
@@ -200,7 +205,6 @@ async function studentDashboard(user) {
   };
   // The school year the figures cover: the class's, unless the student is already placed in next year's
   // class; that year has not started, so its dates would run backwards and its timetable is not today's.
-  const thisYear = currentAcademicYear();
   const year = klass && klass.academicYear <= thisYear ? klass.academicYear : thisYear;
   const isClassOfThisYear = klass?.academicYear === thisYear;
   const dateFrom = academicYearStart(year);
@@ -224,7 +228,7 @@ async function studentDashboard(user) {
   // One round of queries for the rest, the attendance summary included.
   const [attendance, slots, gradeSummary, recent, upcoming] = await Promise.all([
     attendanceOfYear,
-    holiday || !isClassOfThisYear ? [] : findSlotsUnscoped({ classId, dayOfWeek: todayIsoWeekday() }),
+    holiday || !isClassOfThisYear ? [] : findSlotsUnscoped({ classId, dayOfWeek: weekday }),
     summarizeStudentGradesUnscoped(user.studentId, year),
     recentGradesUnscoped(user.studentId, 5),
     upcomingAssessmentsUnscoped({ classId, days: 7, limit: 5 }),

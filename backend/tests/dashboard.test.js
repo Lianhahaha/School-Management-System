@@ -1,7 +1,15 @@
 import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
-import { currentAcademicYear, todayIsoWeekday, todayYmd } from '../src/utils/dates.js';
+import { pool, run } from '../src/config/db.js';
+import {
+  academicYearStart,
+  addDaysYmd,
+  currentAcademicYear,
+  isoWeekdayOf,
+  todayIsoWeekday,
+  todayYmd,
+} from '../src/utils/dates.js';
 import { api, as, buildSchool, closeWorld, makeUser, resetWorld } from './helpers/harness.js';
 
 after(closeWorld);
@@ -233,5 +241,49 @@ describe('dashboard', () => {
     assert.equal((await dashboard(admin)).counts.unenrolledStudents, 1);
     assert.deepEqual((await dashboard(teacher)).classSubjects, []);
     assert.equal((await dashboard(student)).currentEnrollment, null);
+  });
+});
+
+describe('the school day of one dashboard request', () => {
+  let school;
+  // A Sunday in the middle of this school's first semester, and the Monday after it.
+  const year = currentAcademicYear();
+  const october = `${year.slice(0, 4)}-10-01`;
+  const sunday = addDaysYmd(october, 7 - isoWeekdayOf(october));
+  const monday = addDaysYmd(sunday, 1);
+
+  before(async () => {
+    await resetWorld();
+    school = await buildSchool();
+    // In the class since the school year began, so the class has students on the days below.
+    await run('UPDATE enrollments SET enrolled_on = ?', [academicYearStart(year)]);
+    const slot = await api.post('/api/v1/schedules').set(as(school.admin)).send({
+      classSubjectId: school.csA.id,
+      dayOfWeek: 1,
+      startTime: '08:00',
+      endTime: '09:00',
+    });
+    assert.equal(slot.status, 201, JSON.stringify(slot.body));
+  });
+
+  it("keeps Sunday's date and Sunday's lessons when the clock passes midnight mid-request", async (t) => {
+    t.mock.timers.enable({ apis: ['Date'], now: Date.parse(`${monday}T08:30:00Z`) });
+    const onMonday = (await api.get('/api/v1/dashboard').set(as(school.admin))).body.data;
+    assert.equal(onMonday.attendanceToday.date, monday);
+    assert.equal(onMonday.attendanceToday.lessonsScheduled, 1, "Monday's lesson");
+
+    t.mock.timers.setTime(Date.parse(`${sunday}T23:59:59.999Z`));
+    // The clock reaches Monday while the dashboard is already being put together for Sunday.
+    const realQuery = pool.query;
+    t.mock.method(pool, 'query', function (sql, ...rest) {
+      if (typeof sql === 'string' && sql.includes('AS unenrolled_students')) t.mock.timers.tick(1);
+      return realQuery.call(this, sql, ...rest);
+    });
+    const res = await api.get('/api/v1/dashboard').set(as(school.admin));
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    const { attendanceToday } = res.body.data;
+    assert.equal(attendanceToday.date, sunday);
+    assert.equal(attendanceToday.lessonsScheduled, 0, "no lessons on Sunday, and not Monday's either");
+    assert.deepEqual(attendanceToday.unmarkedLessons, []);
   });
 });
