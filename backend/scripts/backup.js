@@ -157,6 +157,14 @@ async function backup(folder) {
   try {
     // TIMESTAMP columns (if any) are read and written in UTC, so the copy does not depend on time zones.
     await conn.query("SET SESSION time_zone = '+00:00'");
+    // Table definitions with `backticks`, which every server reads: a server running with ANSI_QUOTES (the
+    // live one on Aiven runs in ANSI mode, which includes it) writes "double quotes" in SHOW CREATE TABLE,
+    // which a server without it, like a local MySQL, refuses to load. Both ANSI and ANSI_QUOTES go, or ANSI
+    // would bring the quotes back. Only this session's mode changes.
+    await conn.query(
+      `SET SESSION sql_mode = TRIM(BOTH ',' FROM
+         REPLACE(REPLACE(CONCAT(',', @@SESSION.sql_mode, ','), ',ANSI_QUOTES,', ','), ',ANSI,', ','))`,
+    );
     await conn.query('SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ');
     await conn.query('START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY');
     await assertOnlyTables(conn);
