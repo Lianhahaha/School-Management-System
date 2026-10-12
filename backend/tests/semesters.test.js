@@ -2,7 +2,7 @@ import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import { run } from '../src/config/db.js';
-import { academicYearStart, addDaysYmd, currentAcademicYear } from '../src/utils/dates.js';
+import { academicYearStart, addDaysYmd, currentAcademicYear, semesterOf } from '../src/utils/dates.js';
 import {
   api,
   as,
@@ -109,14 +109,38 @@ describe('semesters', () => {
   });
 
   describe('assessments', () => {
-    it('default to the 1st Semester, take the 2nd and refuse any other', async () => {
-      const plain = await newAssessment(
+    it('default to the semester of their date, take either one and refuse any other', async () => {
+      const yearStart = academicYearStart(currentAcademicYear());
+      const inFirst = await newAssessment(
         school.csB.id,
-        { title: 'No semester given', term: 'term1' },
+        { title: 'No semester, in October', term: 'term1', assessedOn: addDaysYmd(yearStart, 70) },
         school.other,
       );
-      assert.equal(plain.semester, 'sem1');
-      assert.equal(plain.term, 'term1');
+      assert.deepEqual([inFirst.semester, inFirst.term], ['sem1', 'term1']);
+      // A date in January is in the 2nd Semester; the default no longer puts it in the 1st.
+      const inSecond = await newAssessment(
+        school.csB.id,
+        { title: 'No semester, in January', term: 'term1', assessedOn: addDaysYmd(yearStart, 160) },
+        school.other,
+      );
+      assert.equal(inSecond.semester, 'sem2');
+      const today = await newAssessment(
+        school.csB.id,
+        { title: 'No semester, no date', term: 'term1' },
+        school.other,
+      );
+      assert.equal(today.semester, semesterOf(today.assessedOn));
+      const named = await newAssessment(
+        school.csB.id,
+        {
+          title: 'A January make-up for the 1st',
+          semester: 'sem1',
+          term: 'term4',
+          assessedOn: addDaysYmd(yearStart, 165),
+        },
+        school.other,
+      );
+      assert.equal(named.semester, 'sem1', 'a semester sent is kept whatever the date');
       const later = await newAssessment(
         school.csB.id,
         { title: 'In the 2nd', semester: 'sem2', term: 'term2' },
@@ -138,7 +162,7 @@ describe('semesters', () => {
     it('can be moved to the other semester, and say so in the activity log', async () => {
       const quiz = await newAssessment(
         school.csB.id,
-        { title: 'Moves', type: 'quiz', maxScore: 10, term: 'term3' },
+        { title: 'Moves', type: 'quiz', maxScore: 10, semester: 'sem1', term: 'term3' },
         school.other,
       );
       const moved = await api

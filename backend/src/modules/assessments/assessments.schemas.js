@@ -32,8 +32,8 @@ export const createAssessmentBody = z.strictObject({
   classSubjectId: id,
   title,
   type,
-  /** Defaults to the 1st Semester, so a caller that knows only the quarter keeps working. */
-  semester: semester.default('sem1'),
+  /** Defaults to the semester `assessedOn` falls in (the service): a caller may send only the quarter. */
+  semester: semester.optional(),
   term,
   maxScore,
   assessedOn: dateStr.optional(),

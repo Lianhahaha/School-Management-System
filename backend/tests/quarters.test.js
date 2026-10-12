@@ -8,7 +8,7 @@ after(closeWorld);
 /**
  * The four quarters of a semester through the API: each quarter of a subject is graded on its own and a
  * semester's grade is the average of the quarterly grades (DepEd Order 8 s. 2015); the school year's grade is
- * the average of the semesters', so with every assessment in the 1st Semester (the default) it is that
+ * the average of the semesters', so with every assessment in the 1st Semester (named on each) it is that
  * semester's. Every figure built on a subject's grade (the summary, the student dashboard, a teacher's
  * results per student, the at-risk list) uses it. The numbers are chosen so the old whole-year rule gives a
  * different answer. The semesters themselves are in semesters.test.js.
@@ -22,7 +22,7 @@ describe('quarters and the final grade', () => {
     const res = await api
       .post('/api/v1/assessments')
       .set(as(school.owner))
-      .send({ classSubjectId: school.csA.id, ...body });
+      .send({ classSubjectId: school.csA.id, semester: 'sem1', ...body });
     assert.equal(res.status, 201, JSON.stringify(res.body));
     return res.body.data;
   };

@@ -1645,7 +1645,8 @@ paths:
       description: |
         Roles: admin, teacher (only the teacher assigned to the class-subject).
 
-        `assessedOn` defaults to today and `semester` to `sem1`; `term` is the quarter within the semester. A
+        `assessedOn` defaults to today and `semester` to the semester `assessedOn` falls in (`sem1` from August
+        to December, `sem2` from January to July); `term` is the quarter within the semester. A
         title that is already used for the same class-subject, semester and quarter is a 409
         (`details.key = assessments.uq_assessments_cs_period_title`): the same title may be used again in the
         other semester or another quarter.
@@ -4829,6 +4830,8 @@ components:
                 type: integer
               percentage:
                 type: number
+                nullable: true
+                description: Null while nothing that counts has a grade (a weighted subject graded only in types weighted 0).
         recentGrades:
           type: array
           description: Newest grades, at most 5.
@@ -5547,8 +5550,7 @@ components:
         semester:
           allOf:
             - $ref: '#/components/schemas/Semester'
-          default: sem1
-          description: Defaults to the 1st Semester.
+          description: Defaults to the semester `assessedOn` falls in.
         term:
           $ref: '#/components/schemas/Term'
         maxScore:

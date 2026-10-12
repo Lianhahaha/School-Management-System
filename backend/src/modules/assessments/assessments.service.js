@@ -1,6 +1,6 @@
 import { withTransaction } from '../../config/db.js';
 import { ApiError } from '../../utils/ApiError.js';
-import { academicYearOf, addDaysYmd, todayYmd } from '../../utils/dates.js';
+import { academicYearOf, addDaysYmd, semesterOf, todayYmd } from '../../utils/dates.js';
 import { classSubjectRef } from '../../utils/shapes.js';
 import * as access from '../access/access.service.js';
 import { changedList, changesOf, record } from '../activity/activity.service.js';
@@ -72,12 +72,17 @@ function assertDateInClassYear(date, academicYear, defaulted = false) {
   );
 }
 
+/**
+ * `assessedOn` defaults to today and `semester` to the semester that date falls in: a quiz given in January
+ * without a semester belongs to the 2nd, not to the 1st.
+ */
 export async function createAssessment(user, body) {
   await access.assertCanManageClassSubject(user, body.classSubjectId);
   const { academicYear } = await getClassSubjectRefUnscoped(body.classSubjectId);
   const assessedOn = body.assessedOn ?? todayYmd();
   assertDateInClassYear(assessedOn, academicYear, !body.assessedOn);
-  const id = await repo.insertAssessment({ ...body, assessedOn });
+  const semester = body.semester ?? semesterOf(assessedOn);
+  const id = await repo.insertAssessment({ ...body, assessedOn, semester });
   const assessment = toAssessmentShape(await repo.findAssessmentById(id));
   await record({
     action: 'assessment.create',
