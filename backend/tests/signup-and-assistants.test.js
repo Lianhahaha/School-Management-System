@@ -421,6 +421,31 @@ describe('sign-up: students pick their class, student assistants wait for approv
       assert.equal(remaining, 0);
     });
 
+    it('leaves a deactivated applicant out of the pending requests and their count', async () => {
+      const waiting = await signUpAssistant();
+      const deactivated = await signUpAssistant();
+      const pendingIds = async () =>
+        (await requests(admin, '&status=pending')).map((request) => request.userId);
+      // The nav badge reads the total of this query.
+      const pendingTotal = async () =>
+        (await api.get('/api/v1/assistant-requests?status=pending&limit=1').set(as(admin))).body.meta.total;
+      assert.ok((await pendingIds()).includes(deactivated.id));
+      const before = await pendingTotal();
+
+      const res = await api
+        .patch(`/api/v1/users/${deactivated.id}/status`)
+        .set(as(admin))
+        .send({ isActive: false });
+      expectStatus(res, 200);
+      const ids = await pendingIds();
+      assert.ok(ids.includes(waiting.id));
+      assert.ok(!ids.includes(deactivated.id));
+      assert.equal(await pendingTotal(), before - 1);
+      // Still listed among all requests, with the account shown as deactivated.
+      const listed = (await requests(admin)).find((request) => request.userId === deactivated.id);
+      assert.deepEqual([listed.status, listed.isActive], ['pending', false]);
+    });
+
     it('keeps the account of whoever decided a request (it is history)', async () => {
       const decider = await makeUser('admin');
       const applicant = await signUpAssistant();

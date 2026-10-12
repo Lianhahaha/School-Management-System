@@ -38,6 +38,9 @@ export function listRequests(listQuery) {
       'u.email',
     ])
     .addIf(listQuery.status, 'ar.status = ?');
+  // A deactivated applicant waits for nothing: the pending list and its count (the nav badge) leave them out,
+  // as the dashboard's unenrolled count leaves out deactivated students.
+  if (listQuery.status === 'pending') where.add('u.is_active = 1');
   return selectPage({
     select: COLUMNS,
     from: FROM,

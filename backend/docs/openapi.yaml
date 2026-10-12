@@ -2572,7 +2572,9 @@ paths:
         - $ref: '#/components/parameters/SortOrder'
         - name: status
           in: query
-          description: Only requests with this status.
+          description: >-
+            Only requests with this status. `pending` leaves out applicants whose account is deactivated:
+            nothing waits on them.
           schema:
             $ref: '#/components/schemas/AssistantRequestStatus'
       responses:
