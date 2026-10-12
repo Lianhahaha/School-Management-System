@@ -166,7 +166,8 @@ paths:
         Limited per IP address and 15 minutes to 30 successful registrations, and separately to 150 rejected
         attempts (400, 409): one class registering from a school network is not locked out by typos, while a
         script cannot probe thousands of addresses. An email that is taken in any way (a school account, a
-        sign-in without one) gets the same 409, `details.reason = email_in_use`.
+        sign-in without one) gets the same 409, `details.reason = email_in_use`. Creations of one email run
+        one after another: a 503 (`details.reason = busy`) when another one holds it longer than 10 seconds.
       security: []
       requestBody:
         required: true
@@ -204,6 +205,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
   /auth/me:
     get:
       tags: [auth]
@@ -293,6 +295,8 @@ paths:
         generated when omitted; `admissionDate` and `hireDate` default to today.
         A Firebase user with the same email but no school account is deleted and replaced by a new one, so
         whoever created it (anyone can, with the public web key) cannot sign in to the new account.
+        Creations of one email (also a sign-up of it at the same moment) run one after another: the later one
+        gets the 409, or a 503 (`details.reason = busy`) when the first takes longer than 10 seconds.
         Returns the same shape as `GET /auth/me`.
       requestBody:
         required: true
@@ -341,6 +345,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '409': { $ref: '#/components/responses/Conflict' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
   /users/{id}:
     get:
       tags: [users]

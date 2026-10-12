@@ -4,6 +4,7 @@ import { after, before, beforeEach, describe, it, mock } from 'node:test';
 import { pool, query } from '../src/config/db.js';
 import { firebase } from '../src/config/firebase.js';
 import { REGISTER_FAILED_LIMIT } from '../src/modules/auth/auth.routes.js';
+import { createUserAccount } from '../src/modules/users/users.service.js';
 import { logger } from '../src/utils/logger.js';
 import { FAKE_PROJECT_ID, bearer, firebaseUsers } from './helpers/fakeFirebase.js';
 import { currentAcademicYear } from '../src/utils/dates.js';
@@ -19,7 +20,7 @@ import {
   makeUser,
   resetWorld,
 } from './helpers/harness.js';
-import { openSession, waitForLockWaits } from './helpers/locks.js';
+import { openSession, waitForLockWaits, waitForNamedLockWaits } from './helpers/locks.js';
 
 after(closeWorld); // once per file: every suite shares the pool
 
@@ -363,6 +364,62 @@ describe('user administration', () => {
       firebaseUsers().some((user) => user.email === 'stray@school.test'),
       false,
     );
+  });
+
+  it('makes an office create wait for a sign-up of the same email that is still saving', async () => {
+    const admin = await makeUser('admin');
+    const email = 'same.time@school.test';
+    const realCreate = firebase.createUser;
+    let reachFirebase;
+    let openGate;
+    const reachedFirebase = new Promise((resolve) => (reachFirebase = resolve));
+    const gate = new Promise((resolve) => (openGate = resolve));
+    // The sign-up's Firebase user exists, but its rows wait for the gate; any later create is a plain one.
+    firebase.createUser = async (properties) => {
+      firebase.createUser = realCreate;
+      const created = await realCreate(properties);
+      reachFirebase();
+      await gate;
+      return created;
+    };
+    let signUp;
+    let office;
+    try {
+      // POST /auth/register's own code path (the suite above used up its rate limit).
+      signUp = createUserAccount(
+        {
+          role: 'student',
+          email,
+          password: 'Password123!',
+          firstName: 'Early',
+          lastName: 'Bird',
+          profile: {},
+          application: { gradeLevel: 7 },
+        },
+        { trusted: false },
+      );
+      await Promise.race([
+        reachedFirebase,
+        signUp.then(() => assert.fail('the sign-up finished before creating its Firebase user')),
+      ]);
+      office = api
+        .post('/api/v1/users')
+        .set(as(admin))
+        .send({ role: 'teacher', email, password: 'Password123!', firstName: 'Office', lastName: 'Copy' })
+        .then((res) => res);
+      await waitForNamedLockWaits(1);
+    } finally {
+      firebase.createUser = realCreate;
+      openGate();
+    }
+    const student = await signUp;
+    const refused = await office;
+    assert.equal(refused.status, 409);
+    assert.equal(refused.body.error.details.key, 'users.uq_users_email');
+    // The office did not replace the sign-up's Firebase user: the new student signs in.
+    const me = await api.get('/api/v1/auth/me').set('Authorization', bearer(student.firebaseUid));
+    assert.equal(me.status, 200);
+    assert.equal(me.body.data.id, student.id);
   });
 
   it('never replaces a Firebase user that is linked to another account (email changed in Firebase)', async () => {

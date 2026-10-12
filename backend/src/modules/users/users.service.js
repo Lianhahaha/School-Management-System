@@ -5,7 +5,7 @@
  * Student assistants are never created by the office: they sign up themselves and wait for approval
  * (assistantRequests).
  */
-import { withTransaction } from '../../config/db.js';
+import { inTransaction, withLockedSession, withTransaction } from '../../config/db.js';
 import { env } from '../../config/env.js';
 import { firebase } from '../../config/firebase.js';
 import { ApiError } from '../../utils/ApiError.js';
@@ -127,21 +127,20 @@ const emailInUse = (message = 'this email is already in use; contact an administ
   ApiError.conflict(message, { key: 'users.uq_users_email', reason: 'email_in_use' });
 
 /**
- * Creates the Firebase account of a new person and returns its uid. The caller has checked that no
- * MySQL row uses the email. An existing Firebase user with it is never reused: anyone can create a
- * Firebase user with the public web key and keep its ID token, and reusing that uid would hand them
- * the new account. Public registration refuses it (409). Trusted callers (the office, import) replace it
- * with a fresh user, but only when it is linked to no account here (an account whose email was changed
- * in Firebase keeps its sign-in) and only outside local development, where the Firebase project is
- * usually shared with the live site and the user may be a live account.
+ * Creates the Firebase account of a new person and returns its uid. The caller holds the email's account
+ * lock (withAccountLock) and has checked that no MySQL row uses the email. An existing Firebase user with it
+ * is never reused: anyone can create a Firebase user with the public web key and keep its ID token, and
+ * reusing that uid would hand them the new account. Public registration refuses it (409). Trusted callers
+ * (the office, import) replace it with a fresh user, but only when it is linked to no account here (an
+ * account whose email was changed in Firebase keeps its sign-in) and only outside local development, where
+ * the Firebase project is usually shared with the live site and the user may be a live account. Under the
+ * lock it cannot be the user of a sign-up of the same email that is still saving its rows.
  */
-async function createFirebaseUser({ email, password, displayName }, trusted) {
+async function createFirebaseUser({ email, password, displayName }, trusted, conn) {
   const existing = await findFirebaseUserByEmail(email);
   if (existing) {
     if (!trusted) throw emailInUse();
-    // Re-checked right before the delete: a concurrent create of the same email may have just linked this uid.
-    if (await repo.findUserByEmail(email)) throw emailAlreadyRegistered();
-    if (await repo.findUserByFirebaseUid(existing.uid)) {
+    if (await repo.findUserByFirebaseUid(existing.uid, conn)) {
       throw emailInUse('this email signs in to another school account; contact an administrator');
     }
     if (!env.replacesUnlinkedFirebaseUsers) {
@@ -163,7 +162,21 @@ const isGeneratedNumberCollision = (error, profile) =>
   !profile?.employeeNumber;
 
 /**
- * Create a person in Firebase Authentication and MySQL.
+ * Runs `work(conn)` while the session of `conn` holds the account lock of `email`, so creations of one email
+ * (a public sign-up, the office, an import) run one after another: none can replace the Firebase user that
+ * another has just created and not yet saved, and the second finds the first's account (409). Every query of
+ * `work` goes through `conn`. 503 (busy) when another creation of the email holds the lock past the wait.
+ */
+function withAccountLock(email, work) {
+  const acquire = async (conn) => {
+    if (!(await repo.acquireAccountLock(email, conn))) throw ApiError.busy();
+  };
+  return withLockedSession(acquire, (conn) => repo.releaseAccountLock(email, conn), work);
+}
+
+/**
+ * Create a person in Firebase Authentication and MySQL, holding the email's account lock (withAccountLock)
+ * from the first check to the commit.
  *
  *   1. email already in MySQL        -> 409 CONFLICT (key users.uq_users_email)
  *   2. Firebase account for the email -> see createFirebaseUser
@@ -185,37 +198,39 @@ const isGeneratedNumberCollision = (error, profile) =>
  */
 export async function createUserAccount(input, { trusted, firebaseUid }) {
   const email = input.email.toLowerCase();
-  if (await repo.findUserByEmail(email)) throw emailAlreadyRegistered();
+  const userId = await withAccountLock(email, async (conn) => {
+    if (await repo.findUserByEmail(email, conn)) throw emailAlreadyRegistered();
 
-  const uid =
-    firebaseUid ??
-    (await createFirebaseUser(
-      { email, password: input.password, displayName: `${input.firstName} ${input.lastName}` },
-      trusted,
-    ));
+    const uid =
+      firebaseUid ??
+      (await createFirebaseUser(
+        { email, password: input.password, displayName: `${input.firstName} ${input.lastName}` },
+        trusted,
+        conn,
+      ));
 
-  const insertAll = () =>
-    withTransaction(async (conn) => {
-      const userId = await repo.insertUser({ ...input, email, firebaseUid: uid }, conn);
-      if (input.role === 'student') {
-        const studentId = await studentsService.createProfile(userId, input.profile, conn);
-        if (input.application) await admissions.createApplication(studentId, input.application, conn);
-      }
-      if (input.role === 'teacher') await teachersService.createProfile(userId, input.profile, conn);
-      if (input.role === 'assistant') await assistantRequests.createRequest(userId, conn);
-      return userId;
-    });
+    const insertAll = () =>
+      inTransaction(conn, async () => {
+        const id = await repo.insertUser({ ...input, email, firebaseUid: uid }, conn);
+        if (input.role === 'student') {
+          const studentId = await studentsService.createProfile(id, input.profile, conn);
+          if (input.application) await admissions.createApplication(studentId, input.application, conn);
+        }
+        if (input.role === 'teacher') await teachersService.createProfile(id, input.profile, conn);
+        if (input.role === 'assistant') await assistantRequests.createRequest(id, conn);
+        return id;
+      });
 
-  // Only a failed MySQL write removes the Firebase user: once the rows are committed, the account exists,
-  // and an error while reading it back must not leave a row whose Firebase user is gone.
-  let userId;
-  try {
-    userId = await insertWithFreshNumber(insertAll, input.profile);
-  } catch (error) {
-    // A linked (pre-existing) Firebase user is not this call's to remove.
-    if (!firebaseUid) await deleteFirebaseUserOrLog(uid, 'could not delete Firebase user after a failure');
-    throw error;
-  }
+    // Only a failed MySQL write removes the Firebase user: once the rows are committed, the account exists,
+    // and an error while reading it back must not leave a row whose Firebase user is gone.
+    try {
+      return await insertWithFreshNumber(insertAll, input.profile);
+    } catch (error) {
+      // A linked (pre-existing) Firebase user is not this call's to remove.
+      if (!firebaseUid) await deleteFirebaseUserOrLog(uid, 'could not delete Firebase user after a failure');
+      throw error;
+    }
+  });
   const account = await getAccount(userId);
   const details = { email, role: input.role };
   if (trusted) {

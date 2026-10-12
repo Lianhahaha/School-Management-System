@@ -30,7 +30,7 @@ MySQL 8  ── users, profiles, classes, attendance, grades, …  (all data and
 
 Per request, `authenticate` does: verify the ID token → find the `users` row by `firebase_uid` → reject unknown users (`USER_NOT_REGISTERED`) and inactive users (`ACCOUNT_DISABLED`) → attach `{ id, role, studentId, teacherId, activeClassId }` to the request. Role gates (`authorize('admin', 'teacher')`) sit next to each route; row-level rules (a teacher only grades their own class-subjects, a student only reads their own records) are in `modules/access`.
 
-Accounts have exactly one creation path, `createUserAccount`: it creates (or, for trusted callers, adopts) the Firebase user, writes the `users` + profile rows in one transaction, and deletes the Firebase user again if MySQL fails, so the two systems never drift. Public self-registration only ever creates students, each with a pending application (an `admissions` row) written in the same transaction.
+Accounts have exactly one creation path, `createUserAccount`: it creates (or, for trusted callers, adopts) the Firebase user, writes the `users` + profile rows in one transaction, and deletes the Firebase user again if MySQL fails, so the two systems never drift. Creations of one e-mail run one after another under a named lock, so one cannot replace the Firebase user of another that is still saving its rows. Public self-registration only ever creates students, each with a pending application (an `admissions` row) written in the same transaction.
 
 ## 3. Backend layers
 

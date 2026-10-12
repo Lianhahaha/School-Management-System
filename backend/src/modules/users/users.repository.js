@@ -51,6 +51,25 @@ export async function findUserByFirebaseUid(firebaseUid, conn) {
   );
 }
 
+// Named locks are server-wide, so the name carries the schema to keep two databases independent; it is hashed
+// to stay within the 64 characters MySQL allows, whatever the length of the email.
+const ACCOUNT_LOCK = `CONCAT('account:', SHA1(CONCAT(DATABASE(), ':', ?)))`;
+const ACCOUNT_LOCK_WAIT_SECONDS = 10;
+
+/** Takes the named lock of one email for the session of `conn`; false when another session holds it past the wait. */
+export async function acquireAccountLock(email, conn) {
+  const [{ acquired }] = await query(
+    `SELECT GET_LOCK(${ACCOUNT_LOCK}, ?) AS acquired`,
+    [email, ACCOUNT_LOCK_WAIT_SECONDS],
+    conn,
+  );
+  return acquired === 1;
+}
+
+export async function releaseAccountLock(email, conn) {
+  await query(`SELECT RELEASE_LOCK(${ACCOUNT_LOCK}) AS released`, [email], conn);
+}
+
 /** Row-locks the account until `conn`'s transaction ends (status changes and the checks that guard them). */
 export async function lockUser(id, conn) {
   await query('SELECT id FROM users WHERE id = ? FOR UPDATE', [id], conn);

@@ -31,3 +31,22 @@ export async function waitForLockWaits(count) {
   }
   throw new Error(`timed out waiting for ${count} transaction(s) to block on a lock`);
 }
+
+/**
+ * Resolves once `count` sessions on the test database wait for a named lock (GET_LOCK); fails after about
+ * 5 seconds. Named locks are server-wide, so the waiting sessions are told apart by their current database.
+ */
+export async function waitForNamedLockWaits(count) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const [{ waiting }] = await query(
+      `SELECT COUNT(*) AS waiting
+         FROM performance_schema.metadata_locks ml
+         JOIN performance_schema.threads th ON th.thread_id = ml.owner_thread_id
+        WHERE ml.object_type = 'USER LEVEL LOCK' AND ml.lock_status = 'PENDING'
+          AND th.processlist_db = DATABASE()`,
+    );
+    if (waiting >= count) return;
+    await delay(50);
+  }
+  throw new Error(`timed out waiting for ${count} session(s) to block on a named lock`);
+}
