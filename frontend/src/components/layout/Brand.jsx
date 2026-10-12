@@ -25,7 +25,9 @@ export function Brand({ className, wordmarkClassName }) {
         />
         <rect x="9" y="8.5" width="14" height="2.6" rx="1.3" className="fill-gray-50" />
       </svg>
-      <span className={cx('text-xl font-semibold tracking-[-0.03em] text-gray-900', wordmarkClassName)}>{APP_NAME}</span>
+      <span className={cx('text-xl font-semibold tracking-[-0.03em] text-gray-900', wordmarkClassName)}>
+        {APP_NAME}
+      </span>
     </div>
   );
 }
