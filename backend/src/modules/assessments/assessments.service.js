@@ -151,7 +151,10 @@ export async function deleteAssessment(user, id) {
   return { id };
 }
 
-/** Upcoming assessments within `days` from today, optionally for one class (dashboards; no access check). */
+/**
+ * Upcoming assessments within `days` from today, optionally for one class (dashboards; no access check). One
+ * that already has a score is given, so it is left out even when dated today.
+ */
 export async function upcomingAssessmentsUnscoped({ classId, days = 7, limit = 10 }) {
   const today = todayYmd();
   const rows = await repo.findUpcoming({ classId, from: today, to: addDaysYmd(today, days), limit });

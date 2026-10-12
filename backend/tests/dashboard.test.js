@@ -97,10 +97,8 @@ describe('dashboard', () => {
     assert.equal(data.attendanceToday.present, 1);
     assert.equal(data.attendanceToday.rate, 0.5);
     assert.deepEqual(data.enrollmentsByGrade, [{ gradeLevel: 10, students: 2 }]);
-    assert.deepEqual(
-      data.upcomingAssessments.map((a) => a.title),
-      ['Quiz 1'],
-    );
+    // Quiz 1 is today's, but s1's score makes it given: it is no longer upcoming.
+    assert.deepEqual(data.upcomingAssessments, []);
     assert.deepEqual(
       data.recentAnnouncements.map((a) => a.title),
       ['Welcome'],
@@ -147,7 +145,7 @@ describe('dashboard', () => {
     assert.equal(data.gradeSummary[0].percentage, 75);
     assert.equal(data.recentGrades[0].score, 15);
     assert.equal(data.recentGrades[0].maxScore, 20);
-    assert.equal(data.upcomingAssessments[0].title, 'Quiz 1');
+    assert.deepEqual(data.upcomingAssessments, []);
     assert.equal(data.recentAnnouncements[0].title, 'Welcome');
 
     // The classmate has no score on Quiz 1, which s1's score makes given: the blank counts 0.
@@ -168,6 +166,29 @@ describe('dashboard', () => {
     assert.deepEqual(data.upcomingAssessments, []);
     assert.equal(data.attendanceSummary.total, 0);
     assert.equal(data.attendanceSummary.rate, null);
+  });
+
+  it('lists an assessment as upcoming until it has a score', async () => {
+    const quiz2 = (
+      await api
+        .post('/api/v1/assessments')
+        .set(as(school.owner))
+        .send({ classSubjectId: school.csA.id, title: 'Quiz 2', type: 'quiz', term: 'term1', maxScore: 10 })
+    ).body.data;
+    for (const who of [school.admin, school.s1, school.s2]) {
+      assert.deepEqual(
+        (await dashboard(who)).upcomingAssessments.map((a) => a.title),
+        ['Quiz 2'],
+      );
+    }
+
+    await api
+      .put(`/api/v1/assessments/${quiz2.id}/grades`)
+      .set(as(school.owner))
+      .send({ grades: [{ studentId: school.s2.studentId, score: 8 }] });
+    for (const who of [school.admin, school.s1, school.s2]) {
+      assert.deepEqual((await dashboard(who)).upcomingAssessments, []);
+    }
   });
 
   it("keeps this year's figures for a student already placed in next year's class", async () => {

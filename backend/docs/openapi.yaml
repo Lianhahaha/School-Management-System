@@ -4325,7 +4325,7 @@ components:
                 type: integer
         upcomingAssessments:
           type: array
-          description: Assessments in the next 7 days, at most 10.
+          description: Assessments from today to 7 days ahead that have no score yet, at most 10.
           items:
             $ref: '#/components/schemas/UpcomingAssessment'
         recentAnnouncements:
@@ -4622,7 +4622,7 @@ components:
                 $ref: '#/components/schemas/DateYmd'
         upcomingAssessments:
           type: array
-          description: Assessments of the class in the next 7 days, at most 5.
+          description: Assessments of the class from today to 7 days ahead that have no score yet, at most 5.
           items:
             $ref: '#/components/schemas/UpcomingAssessment'
         recentAnnouncements:

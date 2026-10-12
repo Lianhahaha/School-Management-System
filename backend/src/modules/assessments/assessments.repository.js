@@ -63,10 +63,14 @@ export function listAssessments(listQuery, scope) {
   });
 }
 
-/** Assessments dated within [from, to], soonest first (dashboards). `classId` limits them to one class. */
+/**
+ * Assessments dated within [from, to] and not given yet (no score recorded), soonest first (dashboards).
+ * `classId` limits them to one class.
+ */
 export function findUpcoming({ classId, from, to, limit }) {
   const where = new WhereBuilder()
     .add('a.assessed_on >= ? AND a.assessed_on <= ?', from, to)
+    .add('NOT EXISTS (SELECT 1 FROM grades g WHERE g.assessment_id = a.id)')
     .addIf(classId, 'cs.class_id = ?');
   return query(
     `SELECT a.id, a.title, a.type, a.assessed_on, c.name AS class_name, sub.name AS subject_name
