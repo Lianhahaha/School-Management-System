@@ -20,7 +20,8 @@ function FigureValue({ value, isBelow }) {
   );
 }
 
-const attendanceOf = (student) => formatPercent(student.attendance.rate);
+// `attendance` is null for a student flagged for grades before any period of theirs was marked: a dash.
+const attendanceOf = (student) => formatPercent(student.attendance?.rate ?? null);
 const averageOf = (student) => formatResult(student.gradeAverage);
 const isBelow = (student, reason) => student.reasons.includes(reason);
 
