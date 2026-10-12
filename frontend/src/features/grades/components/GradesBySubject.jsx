@@ -114,7 +114,8 @@ export function GradesBySubject({
         graded={grades.data.length}
         upcoming={withUpcoming && upcoming.data ? upcomingItems.length : null}
       />
-      <div className="grid items-start gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
+      {/* Side by side only where the table keeps its room (with the sidebar, from 1280px); stacked below. */}
+      <div className="grid items-start gap-4 xl:grid-cols-[16rem_minmax(0,1fr)]">
         <SubjectResultList
           subjects={subjects}
           selectedId={selected.classSubjectId}

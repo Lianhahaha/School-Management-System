@@ -15,7 +15,7 @@ import { GradeDescriptor } from './GradeDescriptor';
 export function SubjectResultList({ subjects, selectedId, onSelect, teacherOf }) {
   return (
     <nav aria-label="Subjects">
-      <ul className="grid gap-1.5">
+      <ul className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-1">
         {subjects.map((subject) => {
           const selected = subject.classSubjectId === selectedId;
           return (
@@ -25,14 +25,16 @@ export function SubjectResultList({ subjects, selectedId, onSelect, teacherOf })
                 onClick={() => onSelect(subject.classSubjectId)}
                 aria-current={selected ? 'true' : undefined}
                 className={cx(
-                  'grid w-full gap-y-1 rounded-tile bg-surface px-4 py-3 text-left shadow-card transition-colors hover:bg-gray-50',
+                  'grid w-full grid-cols-1 gap-y-1 rounded-tile bg-surface px-4 py-3 text-left shadow-card transition-colors hover:bg-gray-50',
                   selected && 'ring-2 ring-gray-900 ring-inset',
                 )}
               >
                 {/* Two separate lines, so a long descriptor never narrows the subject's name above it; the
                     descriptor moves under the teacher when they don't fit side by side. */}
                 <span className="flex items-center justify-between gap-3">
-                  <span className="truncate text-sm font-semibold text-gray-900">{subject.subjectName}</span>
+                  <span className="min-w-0 truncate text-sm font-semibold text-gray-900">
+                    {subject.subjectName}
+                  </span>
                   <span className="shrink-0 text-lg font-semibold text-gray-900 tabular-nums">
                     {formatResult(subject.percentage)}
                   </span>
