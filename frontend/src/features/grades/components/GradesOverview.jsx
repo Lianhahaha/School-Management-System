@@ -19,8 +19,8 @@ function Figure({ label, children, note }) {
  * attention, and how many assessments are graded.
  *
  * @param {object} props
- * @param {Array<{ subjectName: string, percentage: number | null }>} props.subjects one row per class-subject of
- *   the period (a semester's summary rows, or the whole year's, see wholeYearRows)
+ * @param {Array<{ subjectName: string, percentage: number | null }>} props.subjects one row per subject of the
+ *   period (utils/grades subjectRows: a subject taken in two classes counts once, as in the general average)
  * @param {number | null} props.average the general average of the period (utils/grades generalAverage)
  * @param {number} props.graded how many grades the period has
  * @param {number | null} props.upcoming assessments still ahead in the current class, or null for a past period

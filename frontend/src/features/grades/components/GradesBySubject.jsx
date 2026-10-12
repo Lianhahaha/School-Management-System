@@ -5,7 +5,7 @@ import { ErrorState } from '../../../components/ui/ErrorState';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { PAGINATION } from '../../../constants/shared';
 import { todayYmd } from '../../../utils/date';
-import { generalAverage, groupBy, wholeYearRows } from '../../../utils/grades';
+import { generalAverage, subjectRows } from '../../../utils/grades';
 import { fullName } from '../../../utils/names';
 import { NotEnrolledState, NotInClassNote } from '../../enrollments/components/NotEnrolledState';
 import { useAllGrades, useAssessments, useSemesterSummaries } from '../hooks';
@@ -15,14 +15,15 @@ import { SubjectResultList } from './SubjectResultList';
 import { SubjectScores } from './SubjectScores';
 
 /** The id of a subject's row in the grades table, to scroll to it. */
-const rowIdOf = (classSubjectId) => `quarter-grades-${classSubjectId}`;
+const rowIdOf = (subject) => `quarter-grades-${subject.subjectId}`;
 
 /**
  * The signed-in student's grades of one school year, or of one semester of it: an overview (general average,
  * subjects passed, those below 75), the subjects as a list on the left and, on the right, one table of every
  * subject's grades with the general average (the four quarters and the final grade of a semester; the 1st and
  * 2nd Semester and the final grade of the whole year), then the scores of the chosen subject. Choosing a
- * subject marks its row in the table. The chosen subject lives in the URL (`subject`, a class-subject id) and
+ * subject marks its row in the table. A subject taken in two classes of the year (the student changed class)
+ * is one subject, with the scores of both. The chosen subject lives in the URL (`subject`, a subject id) and
  * falls back to the first one.
  * Grades come from every page of GET /grades, results from GET /grades/summary: one request with the semester,
  * or one for each semester for the whole year, which is put together from them (see useSemesterSummaries).
@@ -72,33 +73,33 @@ export function GradesBySubject({
     );
   }
 
-  // The summary rows are tagged with their semester: a semester's are the rows, with their quarters; the
-  // whole year's are one row per class-subject with its semesters. The general average is read off the tagged
-  // rows either way, so a subject taken in two classes counts once with the quarters of both.
-  const subjects = semester ? summary.data : wholeYearRows(summary.data);
+  // The summary rows are tagged with their semester. A subject is one row, with its quarters (a semester) or
+  // its semesters (the whole year), and a subject taken in two classes puts the quarters of both together, as
+  // the general average read off the same tagged rows does.
+  const subjects = subjectRows(summary.data);
   const average = generalAverage(summary.data);
-  const gradesBySubject = groupBy(grades.data, (grade) => grade.assessment.classSubjectId);
+  // A subject's grades, newest first, from every class it was taken in.
+  const gradesOf = (subject) =>
+    grades.data.filter((grade) => subject.classSubjectIds.includes(grade.assessment.classSubjectId));
   const upcomingItems = withUpcoming ? (upcoming.data?.items ?? []) : [];
   const wanted = Number(searchParams.get('subject'));
-  const selected = subjects.find((subject) => subject.classSubjectId === wanted) ?? subjects[0];
+  const selected = subjects.find((subject) => subject.subjectId === wanted) ?? subjects[0];
   // The teacher who graded the subject's latest result; the API has no per-subject teacher for students.
-  const teacherOf = (classSubjectId) => {
-    const latest = gradesBySubject.get(classSubjectId)?.[0];
+  const teacherOf = (subject) => {
+    const latest = gradesOf(subject)[0];
     return latest?.gradedBy ? fullName(latest.gradedBy) : '';
   };
   // replace: picking a subject is not a new page, so Back leaves My grades. The page scrolls to the subject's
   // row only when it is out of sight (below the list on narrow screens).
-  const select = (classSubjectId) => {
+  const select = (subject) => {
     setSearchParams(
       (params) => {
-        params.set('subject', String(classSubjectId));
+        params.set('subject', String(subject.subjectId));
         return params;
       },
       { replace: true },
     );
-    document
-      .getElementById(rowIdOf(classSubjectId))
-      ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    document.getElementById(rowIdOf(subject))?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   };
 
   return (
@@ -118,7 +119,7 @@ export function GradesBySubject({
       <div className="grid items-start gap-4 xl:grid-cols-[16rem_minmax(0,1fr)]">
         <SubjectResultList
           subjects={subjects}
-          selectedId={selected.classSubjectId}
+          selectedKey={selected.key}
           onSelect={select}
           teacherOf={teacherOf}
         />
@@ -128,13 +129,15 @@ export function GradesBySubject({
             average={average}
             academicYear={academicYear}
             semester={semester}
-            selectedId={selected.classSubjectId}
+            selectedKey={selected.key}
             rowIdOf={rowIdOf}
           />
           <SubjectScores
             subjectName={selected.subjectName}
-            grades={gradesBySubject.get(selected.classSubjectId) ?? []}
-            next={upcomingItems.find((assessment) => assessment.classSubjectId === selected.classSubjectId)}
+            grades={gradesOf(selected)}
+            next={upcomingItems.find((assessment) =>
+              selected.classSubjectIds.includes(assessment.classSubjectId),
+            )}
           />
         </div>
       </div>

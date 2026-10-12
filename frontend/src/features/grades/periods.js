@@ -59,7 +59,8 @@ export const periodTitle = (academicYear, semester) =>
 /**
  * The grade columns of a period, between the subject and its final grade: the four quarters of a semester,
  * or the two semesters of the whole year. Each reads its grade off a summary row of that period, which has
- * `quarters` (fetched with the semester) or `semesters` (a row of wholeYearRows); null when it has none.
+ * `quarters` (a semester's) or `semesters` (the whole year's; see utils/grades subjectRows); null when it has
+ * none.
  * @param {string} semester 'sem1', 'sem2' or '' for the whole year
  * @returns {Array<{ key: string, header: string,
  *   gradeOf: (row: { quarters?: Record<string, number|null>, semesters?: Record<string, number|null> }) => number | null }>}

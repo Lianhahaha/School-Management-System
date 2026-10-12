@@ -7,22 +7,23 @@ import { GradeDescriptor } from './GradeDescriptor';
  * outlined in ink and announced with aria-current.
  *
  * @param {object} props
- * @param {Array<{ classSubjectId: number, subjectName: string, percentage: number | null }>} props.subjects
- * @param {number} props.selectedId classSubjectId of the subject shown
- * @param {(classSubjectId: number) => void} props.onSelect
- * @param {(classSubjectId: number) => string} props.teacherOf the teacher's name, or ''
+ * @template {{ key: string, subjectName: string, percentage: number | null }} S
+ * @param {S[]} props.subjects one per subject (utils/grades subjectRows)
+ * @param {string} props.selectedKey `key` of the subject shown
+ * @param {(subject: S) => void} props.onSelect
+ * @param {(subject: S) => string} props.teacherOf the teacher's name, or ''
  */
-export function SubjectResultList({ subjects, selectedId, onSelect, teacherOf }) {
+export function SubjectResultList({ subjects, selectedKey, onSelect, teacherOf }) {
   return (
     <nav aria-label="Subjects">
       <ul className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-1">
         {subjects.map((subject) => {
-          const selected = subject.classSubjectId === selectedId;
+          const selected = subject.key === selectedKey;
           return (
-            <li key={subject.classSubjectId}>
+            <li key={subject.key}>
               <button
                 type="button"
-                onClick={() => onSelect(subject.classSubjectId)}
+                onClick={() => onSelect(subject)}
                 aria-current={selected ? 'true' : undefined}
                 className={cx(
                   'grid w-full grid-cols-1 gap-y-1 rounded-tile bg-surface px-4 py-3 text-left shadow-card transition-colors hover:bg-gray-50',
@@ -40,7 +41,7 @@ export function SubjectResultList({ subjects, selectedId, onSelect, teacherOf })
                   </span>
                 </span>
                 <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <span className="text-xs text-gray-600">{teacherOf(subject.classSubjectId)}</span>
+                  <span className="text-xs text-gray-600">{teacherOf(subject)}</span>
                   {subject.percentage !== null ? (
                     <GradeDescriptor result={subject.percentage} className="ml-auto" />
                   ) : (

@@ -27,16 +27,17 @@ function Grade({ result }) {
  * marked with an ink bar and aria-current.
  *
  * @param {object} props
- * @param {Array<{ classSubjectId: number, subjectName: string, percentage: number | null,
- *   quarters?: Record<string, number | null>, semesters?: Record<string, number | null> }>} props.subjects one
- *   row per class-subject: the summary rows of a semester (`quarters`), or wholeYearRows (`semesters`)
+ * @template {{ key: string, subjectName: string, percentage: number | null,
+ *   quarters?: Record<string, number | null>, semesters?: Record<string, number | null> }} S
+ * @param {S[]} props.subjects one row per subject (utils/grades subjectRows): its quarters for a semester, its
+ *   semesters for the whole year
  * @param {number | null} props.average the general average of the same period
  * @param {string} props.academicYear
  * @param {string} [props.semester] 'sem1' or 'sem2' for one semester; omit for the whole year
- * @param {number} props.selectedId classSubjectId of the chosen subject
- * @param {(classSubjectId: number) => string} props.rowIdOf the id of a subject's row, for the page to scroll to
+ * @param {string} props.selectedKey `key` of the chosen subject
+ * @param {(subject: S) => string} props.rowIdOf the id of a subject's row, for the page to scroll to
  */
-export function QuarterGradesTable({ subjects, average, academicYear, semester = '', selectedId, rowIdOf }) {
+export function QuarterGradesTable({ subjects, average, academicYear, semester = '', selectedKey, rowIdOf }) {
   const columns = gradeColumnsOf(semester);
   const title = semester ? 'Grades by quarter' : 'Grades by semester';
   const period = periodTitle(academicYear, semester);
@@ -63,11 +64,11 @@ export function QuarterGradesTable({ subjects, average, academicYear, semester =
           </THead>
           <TBody>
             {subjects.map((subject) => {
-              const selected = subject.classSubjectId === selectedId;
+              const selected = subject.key === selectedKey;
               return (
                 <Tr
-                  key={subject.classSubjectId}
-                  id={rowIdOf(subject.classSubjectId)}
+                  key={subject.key}
+                  id={rowIdOf(subject)}
                   aria-current={selected ? 'true' : undefined}
                   className={cx('scroll-m-4', selected && 'bg-gray-50')}
                 >

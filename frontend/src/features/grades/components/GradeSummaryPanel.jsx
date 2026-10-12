@@ -12,35 +12,44 @@ import {
   gradedQuarters,
   gradedSemesters,
   resultWidth,
-  wholeYearRows,
+  subjectQuarters,
+  subjectRows,
 } from '../../../utils/grades';
 import { useSemesterSummaries } from '../hooks';
 import { GradeDescriptor } from './GradeDescriptor';
 
 /**
  * How the result was reached: the semester grades it averages once both semesters have one, else the one
- * semester that has it: the quarterly grades it averages once more than one quarter is graded, or that
- * quarter's K-12 initial grade, the subject's weights, or its points.
- * @param {ReturnType<typeof wholeYearRows>[number]} subject
+ * semester that has it: the quarterly grades it averages once more than one quarter is graded (those of both
+ * classes together for a student who changed class), or that quarter's K-12 initial grade, the subject's
+ * weights, or its points.
+ * @param {ReturnType<typeof subjectRows>[number]} subject
  */
 function resultBasis(subject) {
   const graded = `${subject.rows.reduce((sum, row) => sum + row.assessmentsGraded, 0)} graded`;
   if (gradedSemesters(subject).length > 1) return `Average of ${describeSemesters(subject)} · ${graded}`;
-  const row = subject.rows.find((candidate) => candidate.percentage !== null) ?? subject.rows[0];
-  const semester = SEMESTER_LABELS[row.semester];
-  if (gradedQuarters(row).length > 1) return `${semester} · Average of ${describeQuarters(row)} · ${graded}`;
-  if (row.method === 'k12')
-    return `${semester} · Initial grade ${formatResult(row.initialGrade)} · ${graded}`;
-  if (row.method === 'weighted') return `${semester} · ${describeGrading(row)} · ${graded}`;
-  return `${semester} · ${formatScore(row.totalScore, row.totalMaxScore)} points · ${graded}`;
+  const semester = gradedSemesters(subject)[0] ?? subject.rows[0].semester;
+  const ofSemester = subject.rows.filter((row) => row.semester === semester);
+  const label = SEMESTER_LABELS[semester];
+  const together = { quarters: subjectQuarters(ofSemester) };
+  if (ofSemester.length > 1 && gradedQuarters(together).length) {
+    const average = gradedQuarters(together).length > 1 ? 'Average of ' : '';
+    return `${label} · ${average}${describeQuarters(together)} · ${graded}`;
+  }
+  const row = ofSemester.find((candidate) => candidate.percentage !== null) ?? ofSemester[0];
+  if (gradedQuarters(row).length > 1) return `${label} · Average of ${describeQuarters(row)} · ${graded}`;
+  if (row.method === 'k12') return `${label} · Initial grade ${formatResult(row.initialGrade)} · ${graded}`;
+  if (row.method === 'weighted') return `${label} · ${describeGrading(row)} · ${graded}`;
+  return `${label} · ${formatScore(row.totalScore, row.totalMaxScore)} points · ${graded}`;
 }
 
 /**
- * Grades of one student: a card per class-subject (newest academic year first) with its grade, its DepEd
- * descriptor and a bar: the school year's, or the semester's with `semester`. Each quarter is graded on its
- * own, by K-12 components (transmuted to 60-100), on points (sum of scores / sum of max scores) or with the
- * subject's weights per assessment type; a semester's grade is the average of its quarterly grades and the
- * year's the average of its semesters'. The card says how it was reached.
+ * Grades of one student: a card per subject and school year (newest first; a subject taken in two classes of
+ * the year is one card, its classes named together) with its grade, its DepEd descriptor and a bar: the school
+ * year's, or the semester's with `semester`. Each quarter is graded on its own, by K-12 components (transmuted
+ * to 60-100), on points (sum of scores / sum of max scores) or with the subject's weights per assessment type;
+ * a semester's grade is the average of its quarterly grades and the year's the average of its semesters'. The
+ * card says how it was reached.
  * Fetches its own data, so the admin's student page and the student's own pages use the same panel.
  *
  * @param {object} props
@@ -63,8 +72,8 @@ export function GradeSummaryPanel({ studentId, academicYear, semester, enabled =
 
   return (
     <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {wholeYearRows(data).map((subject) => (
-        <li key={subject.classSubjectId}>
+      {subjectRows(data).map((subject) => (
+        <li key={subject.key}>
           <Card className="h-full">
             <h3 className="text-sm font-semibold text-gray-900">{subject.subjectName}</h3>
             <p className="text-xs text-gray-600">

@@ -19,9 +19,9 @@ import {
   resultWidth,
   subjectFinalGrade,
   subjectQuarters,
+  subjectRows,
   subjectSemesters,
   tagSemester,
-  wholeYearRows,
 } from '../src/utils/grades';
 
 describe('groupBy', () => {
@@ -257,7 +257,7 @@ describe('tagSemester', () => {
   });
 });
 
-describe('wholeYearRows', () => {
+describe('subjectRows', () => {
   /** A tagged summary row of one class-subject in one semester. */
   const classSubjectRow = (classSubjectId, semester, quarterGrades, extra = {}) => ({
     classSubjectId,
@@ -277,23 +277,29 @@ describe('wholeYearRows', () => {
   it("puts a class-subject's two semesters in one row with its grade of the year", () => {
     // 1st Semester Q1 60, Q2 80, Q3 100 (80); 2nd Semester Q1 90. The year is (80 + 90) / 2, not the mean of the
     // four quarters.
-    const [row] = wholeYearRows([
+    const [row] = subjectRows([
       classSubjectRow(1, 'sem1', quarters(60, 80, 100)),
       classSubjectRow(1, 'sem2', quarters(90)),
     ]);
     expect(row.semesters).toEqual({ sem1: 80, sem2: 90 });
     expect(row.percentage).toBe(85);
-    expect(row).toMatchObject({ classSubjectId: 1, subjectName: 'Subject 1', className: '10-A' });
+    expect(row).toMatchObject({
+      key: '1:2026-2027',
+      subjectId: 1,
+      classSubjectIds: [1],
+      subjectName: 'Subject 1',
+      className: '10-A',
+    });
   });
 
   it('leaves a semester the class-subject has no row in null, and the year is the other semester', () => {
-    const [row] = wholeYearRows([classSubjectRow(1, 'sem2', quarters(88, 90))]);
+    const [row] = subjectRows([classSubjectRow(1, 'sem2', quarters(88, 90))]);
     expect(row.semesters).toEqual({ sem1: null, sem2: 89 });
     expect(row.percentage).toBe(89);
   });
 
   it('rounds a K-12 grade to a whole number at each step', () => {
-    const [row] = wholeYearRows([
+    const [row] = subjectRows([
       classSubjectRow(1, 'sem1', quarters(88, 89), { method: 'k12' }),
       classSubjectRow(1, 'sem2', quarters(80), { method: 'k12' }),
     ]);
@@ -301,29 +307,67 @@ describe('wholeYearRows', () => {
     expect(row.percentage).toBe(85); // 84.5 rounds half up
   });
 
-  it('has one row per class-subject: a subject taken in two classes keeps a row for each', () => {
-    const rows = wholeYearRows([
+  it('puts a subject taken in two classes of the year into one row, as the general average counts it', () => {
+    // 10-A in the 1st Quarter (70), then 10-B (2nd Quarter 90, 2nd Semester 80). Apart, 10-A read 70 Failed
+    // and 10-B 85 Passed; together the 1st Semester is (70 + 90) / 2 = 80 and the year 80.
+    const tagged = [
       classSubjectRow(1, 'sem1', quarters(70), { subjectId: 5, className: '10-A' }),
       classSubjectRow(2, 'sem1', quarters(null, 90), { subjectId: 5, className: '10-B' }),
       classSubjectRow(2, 'sem2', quarters(80), { subjectId: 5, className: '10-B' }),
+    ];
+    const rows = subjectRows(tagged);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      key: '5:2026-2027',
+      subjectId: 5,
+      classSubjectIds: [1, 2],
+      className: '10-A / 10-B',
+      semesters: { sem1: 80, sem2: 80 },
+      percentage: 80,
+    });
+    expect(rows[0].rows).toEqual(tagged);
+    expect(rows[0].percentage).toBe(generalAverage(tagged));
+    expect(remarksOf(rows[0].percentage)).toBe('Passed');
+  });
+
+  it("puts the quarters of a semester's two classes together, a quarter graded in both averaged", () => {
+    // The report card's case: Math (10-B) 73 Failed and Math (10-A) 87 Passed for one semester.
+    const [row] = subjectRows([
+      classSubjectRow(1, 'sem1', quarters(87, 90), { subjectId: 5, subjectName: 'Math', className: '10-A' }),
+      classSubjectRow(2, 'sem1', quarters(null, 70, 76), {
+        subjectId: 5,
+        subjectName: 'Math',
+        className: '10-B',
+      }),
     ]);
-    expect(rows.map((row) => [row.classSubjectId, row.percentage])).toEqual([
-      [1, 70],
-      [2, 85],
+    expect(row.quarters).toEqual(quarters(87, 80, 76));
+    expect(row.semesters).toEqual({ sem1: 81, sem2: null });
+    expect(row.percentage).toBe(81);
+    expect(row.className).toBe('10-A / 10-B');
+  });
+
+  it('names a class once when the subject has a row in each semester there', () => {
+    const [row] = subjectRows([
+      classSubjectRow(1, 'sem1', quarters(80), { className: '10-A' }),
+      classSubjectRow(1, 'sem2', quarters(90), { className: '10-A' }),
     ]);
-    // The general average counts the subject once, with the quarters of both classes together per semester:
-    // 1st Semester (70 + 90) / 2 = 80, 2nd Semester 80, so 80 (not the mean of the two rows, 77.5).
-    expect(
-      generalAverage([
-        classSubjectRow(1, 'sem1', quarters(70), { subjectId: 5 }),
-        classSubjectRow(2, 'sem1', quarters(null, 90), { subjectId: 5 }),
-        classSubjectRow(2, 'sem2', quarters(80), { subjectId: 5 }),
-      ]),
-    ).toBe(80);
+    expect(row.className).toBe('10-A');
+    expect(row.classSubjectIds).toEqual([1]);
+  });
+
+  it('keeps the same subject of two school years apart', () => {
+    const rows = subjectRows([
+      classSubjectRow(1, 'sem1', quarters(80), { subjectId: 5, academicYear: '2026-2027' }),
+      classSubjectRow(2, 'sem1', quarters(70), { subjectId: 5, academicYear: '2025-2026' }),
+    ]);
+    expect(rows.map((row) => [row.key, row.percentage])).toEqual([
+      ['5:2026-2027', 80],
+      ['5:2025-2026', 70],
+    ]);
   });
 
   it("is in the API's order, whichever semester a class-subject first appears in", () => {
-    const rows = wholeYearRows([
+    const rows = subjectRows([
       classSubjectRow(7, 'sem1', quarters(80), { subjectName: 'Math', className: '10-B' }),
       classSubjectRow(8, 'sem1', quarters(80), { subjectName: 'Science', className: '10-A' }),
       classSubjectRow(9, 'sem2', quarters(80), { subjectName: 'English', className: '10-A' }),
@@ -341,18 +385,24 @@ describe('wholeYearRows', () => {
     ]);
   });
 
-  it('keeps the rows a class-subject was put together from, and drops what belongs to one semester', () => {
+  it('keeps the rows a subject was put together from, and drops what belongs to one semester', () => {
     const first = classSubjectRow(1, 'sem1', quarters(80));
     const second = classSubjectRow(1, 'sem2', quarters(90));
-    const [row] = wholeYearRows([first, second]);
+    const [row] = subjectRows([first, second]);
     expect(row.rows).toEqual([first, second]);
     expect(row).not.toHaveProperty('quarters');
     expect(row).not.toHaveProperty('semester');
     expect(row).not.toHaveProperty('assessmentsGraded');
   });
 
+  it("gives the rows of one semester that semester's quarters and grade", () => {
+    const [row] = subjectRows([classSubjectRow(1, 'sem2', quarters(88, 89), { method: 'k12' })]);
+    expect(row.quarters).toEqual(quarters(88, 89));
+    expect(row.percentage).toBe(89); // 88.5 rounds half up
+  });
+
   it('is empty without rows', () => {
-    expect(wholeYearRows([])).toEqual([]);
+    expect(subjectRows([])).toEqual([]);
   });
 });
 

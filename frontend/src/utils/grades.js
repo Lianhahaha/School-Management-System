@@ -16,7 +16,7 @@ import { formatPercent, formatScore } from './format';
  * Quarterly grades and each class-subject's grade of a semester or of the year always come from
  * `GET /grades/summary` (K-12 components, points or the subject's weights) and are never recomputed here;
  * only what spans several summary rows is derived from them: a subject's grade over two classes of a year
- * (subjectSemesters, subjectFinalGrade) and the general average.
+ * (subjectSemesters, subjectFinalGrade, subjectRows) and the general average.
  * @template T
  * @param {T[]} rows
  * @param {(row: T) => *} keyFn
@@ -195,34 +195,45 @@ export function generalAverage(subjects) {
 export const tagSemester = (rows, semester) => rows.map((row) => ({ ...row, semester }));
 
 /**
- * One row per class-subject for the whole school year from its tagged rows of both semesters (the rows of
- * `GET /grades/summary?groupBy=classSubject&semester=sem1` and `...=sem2`, as GradesBySubject and the report
- * card fetch them): its `semesters` ({ sem1: 88, sem2: null }) and its year grade in `percentage`, by
- * subjectSemesters and subjectFinalGrade, so they are the API's own numbers, and in the API's order (school
- * year newest first, class, subject). A semester the class-subject has no row in is null. Only what a whole
- * year can say is kept (no `quarters`, `initialGrade` or points, which belong to one semester), and `rows`,
- * the semester rows it was put together from, for what needs them (the quarters, the points). One semester's
- * rows alone give the rows of that semester, with its grade.
+ * One row per subject and school year from summary rows tagged with their semester (the rows of
+ * `GET /grades/summary?groupBy=classSubject&semester=`, one request per semester, see tagSemester), as a
+ * student's grades are shown: My grades, the report card and the grade cards. A subject taken in two classes of
+ * one year (the student changed class) is one row, its quarters put together per semester and quarter as the
+ * general average and the SF10 do (subjectQuarters, subjectSemesters, subjectFinalGrade), so it never reads
+ * Failed in one class and Passed in the other while the general average counts it once. Each row has
+ *   key              'subjectId:academicYear', unique among the rows
+ *   classSubjectIds  the class-subjects it was put together from, in the order of the rows
+ *   className        their classes, 'Grade 10 - A / Grade 10 - B'
+ *   semesters        each semester's grade, { sem1: 88, sem2: null }: null for a semester with no row or no
+ *                    graded quarter
+ *   quarters         the quarterly grades, only when every row is of one semester (the rows of a semester)
+ *   percentage       the grade of the rows' period: the semester's, or the school year's
+ *   rows             the summary rows it was put together from, for what needs them (the points, the count)
+ * and the subject's id, name, school year and grading (method, gradingGroup, gradeWeights). With one class
+ * every figure is the API's own. In the API's order: school year newest first, then class, then subject.
  * @template {{ classSubjectId: number, subjectId: number, subjectName: string, className: string,
  *   academicYear: string, method: string, gradingGroup?: string | null, gradeWeights?: object | null,
  *   semester: string, quarters: Record<string, number|null> }} T
  * @param {T[]} rows tagged with their semester
  */
-export function wholeYearRows(rows) {
-  return [...groupBy(rows, (row) => row.classSubjectId).values()]
-    .map((group) => {
-      const { classSubjectId, subjectId, subjectName, className, academicYear, method } = group[0];
+export function subjectRows(rows) {
+  return [...groupBy(rows, (row) => `${row.subjectId}:${row.academicYear}`).entries()]
+    .map(([key, group]) => {
+      const { subjectId, subjectName, academicYear, method } = group[0];
       const { gradingGroup = null, gradeWeights = null } = group[0];
+      const oneSemester = new Set(group.map((row) => row.semester)).size === 1;
       return {
-        classSubjectId,
+        key,
         subjectId,
         subjectName,
-        className,
         academicYear,
         method,
         gradingGroup,
         gradeWeights,
+        classSubjectIds: [...new Set(group.map((row) => row.classSubjectId))],
+        className: [...new Set(group.map((row) => row.className))].join(' / '),
         semesters: subjectSemesters(group),
+        ...(oneSemester && { quarters: subjectQuarters(group) }),
         percentage: subjectFinalGrade(group),
         rows: group,
       };
@@ -232,7 +243,7 @@ export function wholeYearRows(rows) {
         b.academicYear.localeCompare(a.academicYear) ||
         a.className.localeCompare(b.className) ||
         a.subjectName.localeCompare(b.subjectName) ||
-        a.classSubjectId - b.classSubjectId,
+        a.subjectId - b.subjectId,
     );
 }
 

@@ -28,8 +28,8 @@ import {
   passMarkOf,
   subjectFinalGrade,
   subjectQuarters,
+  subjectRows,
   subjectSemesters,
-  wholeYearRows,
 } from '../src/utils/grades';
 
 /**
@@ -343,9 +343,10 @@ describe('frontend and API agree on grades', () => {
     ).toBe(true);
   });
 
-  it("gives each class-subject's whole-year row the semester and year grades of the API's own result", () => {
-    // The whole-year My grades and report card fetch both semesters' summaries and put them together per
-    // class-subject (wholeYearRows) instead of asking the API for the year, which would carry no quarters.
+  it("gives each subject's row the quarterly, semester and year grades the API merges for it", () => {
+    // My grades, the report card and the grade cards fetch each semester's summary and put the rows together
+    // per subject and school year (subjectRows) instead of asking the API for the year, which would carry no
+    // quarters: a subject taken in two classes is one row, graded as the general average grades it.
     const rows = CLASS_SUBJECTS.flatMap((classSubject, index) =>
       SEMESTERS.filter((semester) => gradesOf(classSubject, semester).length).map((semester) => {
         const { percentage, method, quarters } = apiSemesterResult(classSubject, semester);
@@ -362,16 +363,32 @@ describe('frontend and API agree on grades', () => {
         };
       }),
     );
-    const yearRows = wholeYearRows(rows);
-    expect(yearRows).toHaveLength(CLASS_SUBJECTS.filter((classSubject) => classSubject.grades.length).length);
+    const backend = groupBy(backendRows, (row) => `${row.subjectId}:${row.academicYear}`);
+    const yearRows = subjectRows(rows);
+    expect(yearRows.map((row) => row.key).sort()).toEqual([...backend.keys()].sort());
     for (const row of yearRows) {
-      const [classSubject, result] = yearResults[row.classSubjectId];
-      expect(row.semesters, classSubject.name).toEqual(result.semesters);
-      expect(row.percentage, classSubject.name).toBe(result.percentage);
+      expect(row.semesters, row.key).toEqual(api.subjectSemesters(backend.get(row.key)));
+      expect(row.percentage, row.key).toBe(api.subjectFinalGrade(backend.get(row.key)));
     }
-    // Some class-subject has one semester only, and one has both: the two shapes of a year row.
+    // Math of 2026-2027 was taken in two classes: one row, with both classes named.
+    const math = yearRows.find((row) => row.key === '1:2026-2027');
+    expect(math.classSubjectIds).toHaveLength(2);
+    expect(math.className).toBe('Math, 10-A / Math, 10-B after the class change');
+    // Some subject has one semester only, and one has both: the two shapes of a year row.
     expect(yearRows.some((row) => row.semesters.sem2 === null)).toBe(true);
     expect(yearRows.some((row) => row.semesters.sem1 !== null && row.semesters.sem2 !== null)).toBe(true);
+
+    // The rows of one semester alone: each subject's quarters and semester grade, as the API merges them.
+    for (const semester of SEMESTERS) {
+      for (const row of subjectRows(rows.filter((candidate) => candidate.semester === semester))) {
+        expect(row.quarters, `${row.key} ${semester}`).toEqual(
+          api.subjectQuarters(backend.get(row.key), semester),
+        );
+        expect(row.percentage, `${row.key} ${semester}`).toBe(
+          api.subjectSemesters(backend.get(row.key))[semester],
+        );
+      }
+    }
   });
 
   it('computes the same general average over every method, per year, per semester and overall', () => {

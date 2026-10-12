@@ -10,7 +10,7 @@ import {
   formatResult,
   generalAverage,
   remarksOf,
-  wholeYearRows,
+  subjectRows,
 } from '../../../utils/grades';
 import { fullName } from '../../../utils/names';
 import { useSemesterSummaries } from '../hooks';
@@ -55,7 +55,8 @@ export function PrintReportCardButton({ studentId, academicYear, semester }) {
  * year, as on the SF1), which class, school year and period, per subject the grade of each quarter of a
  * semester and its final grade (their average), or of each semester of the whole year and the final grade
  * (their average), with Passed / Failed, and the general average (the mean of the subject grades) with its
- * DepEd descriptor. Notes explain the K-12 grading and the final grade and list any weighted subjects. It is
+ * DepEd descriptor. A subject taken in two classes of the year is one line, its classes named together
+ * ('Grade 10 - A / Grade 10 - B'). Notes explain the K-12 grading and the final grade and list any weighted subjects. It is
  * mounted at the end of <body> (a portal) and shown only when printing, in plain black on white whatever the
  * screen theme; the app itself is hidden then (see `.print-only` in index.css). Printed (Ctrl+P) before its
  * grades have arrived, it says so in place of the table instead of "No grades recorded".
@@ -70,10 +71,11 @@ export function PrintReportCardButton({ studentId, academicYear, semester }) {
  */
 export function ReportCard({ student, studentId, academicYear, className, semester }) {
   const summary = useReportCardSummaries({ studentId, academicYear, semester });
-  // The summaries are tagged with their semester: a semester's rows are the subjects, with their quarters; the
-  // whole year's are one row per class-subject with its semesters. The average comes from the tagged rows.
+  // The summaries are tagged with their semester. A subject is one line, with its quarters (a semester) or its
+  // semesters (the whole year), the classes of a student who changed class put together as the general
+  // average puts them, which comes from the same tagged rows.
   const rows = summary.data ?? [];
-  const subjects = semester ? rows : wholeYearRows(rows);
+  const subjects = subjectRows(rows);
   const average = generalAverage(rows);
   const weighted = subjects.filter((subject) => subject.method === 'weighted');
   const hasK12 = subjects.some((subject) => subject.method === 'k12');
@@ -124,7 +126,7 @@ export function ReportCard({ student, studentId, academicYear, className, semest
         </thead>
         <tbody>
           {subjects.map((subject) => (
-            <tr key={subject.classSubjectId} className="border-b border-black/30">
+            <tr key={subject.key} className="border-b border-black/30">
               <td className="py-1.5 pr-3">{subject.subjectName}</td>
               <td className="py-1.5 pr-3">{subject.className}</td>
               {gradeColumns.map((column) => (
@@ -180,7 +182,7 @@ export function ReportCard({ student, studentId, academicYear, className, semest
           <p className="font-semibold">Weighted subjects</p>
           <ul>
             {weighted.map((subject) => (
-              <li key={subject.classSubjectId}>
+              <li key={subject.key}>
                 {subject.subjectName}: {describeWeights(subject.gradeWeights)}
               </li>
             ))}
