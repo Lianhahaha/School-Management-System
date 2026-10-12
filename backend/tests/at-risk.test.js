@@ -1,7 +1,8 @@
 import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
-import { todayYmd } from '../src/utils/dates.js';
+import { run } from '../src/config/db.js';
+import { academicYearStart, addDaysYmd, currentAcademicYear, todayYmd } from '../src/utils/dates.js';
 import {
   api,
   as,
@@ -140,5 +141,64 @@ describe('dashboard: students who need attention', () => {
       data.students.some((student) => student.studentId === school.s3.studentId),
       false,
     );
+  });
+});
+
+describe("a teacher's at-risk list and a student who changed class", () => {
+  let school;
+  let moved;
+  const yearStart = academicYearStart(currentAcademicYear());
+  const atRiskEntry = async (who) => {
+    const res = await api.get('/api/v1/dashboard').set(as(who));
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    return res.body.data.atRisk.students.find((student) => student.studentId === moved.studentId);
+  };
+  const examIn = async (classSubject, teacher, daysIn, score) => {
+    const res = await api
+      .post('/api/v1/assessments')
+      .set(as(teacher))
+      .send({
+        classSubjectId: classSubject.id,
+        title: `Exam ${daysIn}`,
+        type: 'exam',
+        term: 'term1',
+        maxScore: 100,
+        assessedOn: addDaysYmd(yearStart, daysIn),
+      });
+    assert.equal(res.status, 201, JSON.stringify(res.body));
+    const saved = await api
+      .put(`/api/v1/assessments/${res.body.data.id}/grades`)
+      .set(as(teacher))
+      .send({ grades: [{ studentId: moved.studentId, score }] });
+    assert.equal(saved.status, 200, JSON.stringify(saved.body));
+  };
+
+  before(async () => {
+    await resetWorld();
+    school = await buildSchool();
+    moved = school.s3;
+    // 40 days in classB (csB, taught by `other`), then classA (csA, taught by `owner`): 20 in classB's
+    // subject, 90 in classA's, a general average of 55.
+    const moveOn = addDaysYmd(yearStart, 40);
+    await run(
+      `INSERT INTO enrollments (student_id, class_id, status, enrolled_on, left_on)
+       VALUES (?, ?, 'transferred', ?, ?), (?, ?, 'active', ?, NULL)`,
+      [moved.studentId, school.classB.id, yearStart, moveOn, moved.studentId, school.classA.id, moveOn],
+    );
+    await examIn(school.csB, school.other, 10, 20);
+    await examIn(school.csA, school.owner, 50, 90);
+  });
+
+  it('judges the student on the whole year, the class they left included, as the office does', async () => {
+    const office = await atRiskEntry(school.admin);
+    assert.deepEqual([office.reasons, office.gradeAverage], [['grades'], 55]);
+    // The new class's teacher sees the same figure; within their own classes it would be 90 and pass.
+    const teacher = await atRiskEntry(school.owner);
+    assert.deepEqual(
+      [teacher.reasons, teacher.gradeAverage, teacher.className],
+      [['grades'], 55, school.classA.name],
+    );
+    // The old class's teacher no longer has the student.
+    assert.equal(await atRiskEntry(school.other), undefined);
   });
 });

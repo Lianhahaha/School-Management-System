@@ -178,13 +178,16 @@ export async function summarizeStudentGradesUnscoped(studentId, academicYear) {
 }
 
 /**
- * Each student's result in an academic year, within `scope` (a class scope fragment on cs.class_id, null for
- * all): the mean of their subjects' school year grades (each the average of its semester grades), or their
- * one subject's year grade (dashboards; no access check).
+ * The result in an academic year of each of these students, over every class of that year (a student who
+ * changed class keeps the grades of the first one, whoever teaches it): the mean of their subjects' school
+ * year grades (each the average of its semester grades), or their one subject's year grade. The caller picks
+ * the students (dashboards; no access check).
+ * @param {string} academicYear
+ * @param {number[]} studentIds
  * @returns {Promise<Map<number, number | null>>} studentId -> percentage
  */
-export async function studentResultsUnscoped(academicYear, scope) {
-  const rows = await summarize({ groupBy: 'student', academicYear }, scope);
+export async function studentResultsUnscoped(academicYear, studentIds) {
+  const rows = await summarize({ groupBy: 'student', academicYear, studentIds }, null);
   return new Map(rows.map((row) => [row.studentId, row.percentage]));
 }
 

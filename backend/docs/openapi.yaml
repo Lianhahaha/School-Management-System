@@ -4367,8 +4367,10 @@ components:
         Students enrolled this academic year, in the classes the caller can see (all classes for an admin or
         an assistant; the classes a teacher teaches or leads), whose attendance rate is below
         `attendanceRateBelow` after at least `minAttendanceMarks` marks, or whose general average (the mean of their subjects' final grades so far, see
-        `GET /grades/summary`) is below `gradeAverageBelow`. Both figures cover the current academic year in those
-        classes. Worst first: two reasons before one, then the furthest below its line.
+        `GET /grades/summary`) is below `gradeAverageBelow`. Both figures cover the current academic year: the
+        attendance rate counts the marks in those classes, the general average every class of the year, so a
+        teacher sees the figure the office sees for a student who changed class. Worst first: two reasons
+        before one, then the furthest below its line.
       required: [attendanceRateBelow, minAttendanceMarks, gradeAverageBelow, total, students]
       properties:
         attendanceRateBelow:

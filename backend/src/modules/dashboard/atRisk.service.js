@@ -31,19 +31,28 @@ const shortfall = (student) =>
 /**
  * Students enrolled this academic year in the classes the user can see (every class for the office, the
  * classes a teacher teaches or leads) whose attendance or general average is below the AT_RISK lines. Both
- * figures cover the current academic year within the same classes; the general average is the mean of the
- * subjects' school year grades so far, each the average of its semester grades, a semester's the average of
- * its quarterly grades (grades.service, utils/grading.js).
+ * figures cover the current academic year. Attendance counts the marks within the same classes; the general
+ * average is the student's whole year, every class included, so a teacher sees the figure the office sees (a
+ * student who changed class keeps the grades of the class they left): the mean of the subjects' school year
+ * grades so far, each the average of its semester grades, a semester's the average of its quarterly grades
+ * (grades.service, utils/grading.js).
  */
 export async function atRiskStudents(user) {
   const year = currentAcademicYear();
+  // The scope picks the students; their results are then read whole.
+  const enrolled = repo.findEnrolledStudents(year, access.classScope(user, 'e.class_id'));
   const [students, attendance, results] = await Promise.all([
-    repo.findEnrolledStudents(year, access.classScope(user, 'e.class_id')),
+    enrolled,
     summarizeAttendanceUnscoped(
       { groupBy: 'student', dateFrom: academicYearStart(year), dateTo: todayYmd() },
       access.classScope(user, 'cs.class_id'),
     ),
-    studentResultsUnscoped(year, access.classScope(user, 'cs.class_id')),
+    enrolled.then((rows) =>
+      studentResultsUnscoped(
+        year,
+        rows.map((row) => row.studentId),
+      ),
+    ),
   ]);
   const attendanceOf = new Map(attendance.map((row) => [row.studentId, row]));
 
