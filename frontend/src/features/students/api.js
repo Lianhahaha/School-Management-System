@@ -4,7 +4,9 @@ import { toData, toPage } from '../../lib/envelope';
 /**
  * The office and teachers (teachers see their visible classes). params: page, limit, search, sortBy,
  * sortOrder, classId, gradeLevel, gender, isActive, hasActiveEnrollment (false includes pending applicants and
- * leaves out applications declined in the past), admissionStatus.
+ * leaves out applications declined in the past), admissionStatus, enrolledFrom and enrolledTo (both, with
+ * classId: the class's students on any day of that range, those who have left it since included, instead of
+ * its students now).
  */
 export const listStudents = (params) => api.get('/students', { params }).then(toPage);
 

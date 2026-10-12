@@ -5,6 +5,7 @@
 import { query, run } from '../../config/db.js';
 import { selectPage } from '../../utils/pagination.js';
 import { WhereBuilder, buildSet } from '../../utils/sql.js';
+import { enrolledInClassBetween } from '../access/access.repository.js';
 
 export const STUDENT_SORT_MAP = {
   lastName: 'u.last_name',
@@ -44,8 +45,15 @@ export async function findStudentByUserId(userId) {
   return (await query(`SELECT ${COLUMNS} ${FROM} WHERE s.user_id = ?`, [userId]))[0] ?? null;
 }
 
-/** @param {{ sql: string, params: unknown[] } | null} scope extra WHERE fragment (teacher visibility) or null */
+/**
+ * With `enrolledFrom` and `enrolledTo` (the schema requires `classId` with them), `classId` matches the students
+ * in that class on any day of the range, those who have left it since included (a month's SF2); otherwise the
+ * students in it now. The subquery's own `e` (any enrollment, closed ones too) hides the active one of the
+ * outer query, which still feeds the other filters and the current class of each row.
+ * @param {{ sql: string, params: unknown[] } | null} scope extra WHERE fragment (teacher visibility) or null
+ */
 export function listStudents(listQuery, scope) {
+  const overRange = listQuery.enrolledFrom !== undefined;
   const where = new WhereBuilder()
     .addSearch(listQuery.search, [
       'u.first_name',
@@ -55,7 +63,7 @@ export function listStudents(listQuery, scope) {
       's.lrn',
       'u.email',
     ])
-    .addIf(listQuery.classId, 'e.class_id = ?')
+    .addIf(overRange ? undefined : listQuery.classId, 'e.class_id = ?')
     .addIf(listQuery.gradeLevel, 'c.grade_level = ?')
     .addIf(listQuery.gender, 's.gender = ?')
     .addIf(listQuery.isActive, 'u.is_active = ?')
@@ -63,6 +71,14 @@ export function listStudents(listQuery, scope) {
     .addScope(scope);
   if (listQuery.hasActiveEnrollment !== undefined) {
     where.add(listQuery.hasActiveEnrollment ? 'e.id IS NOT NULL' : WITHOUT_A_CLASS);
+  }
+  if (overRange) {
+    where.add(
+      `EXISTS (SELECT 1 FROM enrollments e WHERE e.student_id = s.id AND ${enrolledInClassBetween('?', '?', '?')})`,
+      listQuery.classId,
+      listQuery.enrolledFrom,
+      listQuery.enrolledTo,
+    );
   }
   return selectPage({
     select: COLUMNS,

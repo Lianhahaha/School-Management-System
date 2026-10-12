@@ -9,8 +9,10 @@ import { sf2Sheet } from '../csv';
 
 /**
  * A month of the class's school year and "Download SF2": the DepEd daily attendance report of the class for
- * that month (see sf2Sheet), from its roster and every lesson's marks per student and day. It opens on the
- * current month, or on the nearest month of a school year that is over or has not started.
+ * that month (see sf2Sheet), from every lesson's marks per student and day and the class's roster of that
+ * month: everyone in the class on a day of it, those who left since with their LRN and sex, not who is in it
+ * today (a student who joined later is left out, and a past school year's class keeps its learners). It opens
+ * on the current month, or on the nearest month of a school year that is over or has not started.
  *
  * @param {object} props
  * @param {{ id: number, name: string, academicYear: string }} props.schoolClass
@@ -38,7 +40,11 @@ export function Sf2Download({ schoolClass }) {
         fileName={`SF2 ${schoolClass.name} ${month.label}`}
         getRows={async () => {
           const [roster, dayRows] = await Promise.all([
-            fetchAllPages(listStudents, { classId: schoolClass.id }),
+            fetchAllPages(listStudents, {
+              classId: schoolClass.id,
+              enrolledFrom: month.dateFrom,
+              enrolledTo: month.dateTo,
+            }),
             getAttendanceSummary({
               classId: schoolClass.id,
               groupBy: 'studentDay',

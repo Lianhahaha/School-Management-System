@@ -95,7 +95,11 @@ export const deleteProfile = (userId, conn) => repo.deleteStudentByUserId(userId
 
 export async function listStudents(user, listQuery) {
   if (listQuery.classId !== undefined) await access.assertCanViewClass(user, listQuery.classId);
-  const { rows, meta } = await repo.listStudents(listQuery, access.classScope(user, 'e.class_id'));
+  // A class's students over a date range come from that class alone, checked just above; the scope on the
+  // active enrollment would leave out everyone who has left the class since.
+  const overRange = listQuery.enrolledFrom !== undefined;
+  const scope = overRange ? null : access.classScope(user, 'e.class_id');
+  const { rows, meta } = await repo.listStudents(listQuery, scope);
   return { data: rows.map(toStudentShape), meta };
 }
 

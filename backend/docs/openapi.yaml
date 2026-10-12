@@ -509,6 +509,13 @@ paths:
         applicants (who pick a section themselves, or the office places them) are included, applications
         declined in the past are left out; `admissionStatus` lists applicants by status. A `classId` the
         teacher cannot see is a 403.
+
+        `classId` lists the class's students now. With `enrolledFrom` and `enrolledTo` as well (both, or
+        neither; never without `classId`: 400) it lists the students who were in the class on at least one
+        day of that range, by the roster rule of the attendance sheets (enrolled on or before the day, not
+        yet left), those who have left the class since included: the roster of a month's SF2, also of a past
+        school year's class. The other filters and each row's `currentEnrollment` keep describing the
+        student's class now.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Limit'
@@ -540,6 +547,18 @@ paths:
           description: Only self-registered students whose application has this status.
           schema:
             $ref: '#/components/schemas/AdmissionStatus'
+        - name: enrolledFrom
+          in: query
+          description: >-
+            With `classId` and `enrolledTo`: first day of the range the students were in the class (included).
+          schema:
+            $ref: '#/components/schemas/DateYmd'
+        - name: enrolledTo
+          in: query
+          description: >-
+            With `classId` and `enrolledFrom`: last day of the range (included); not before `enrolledFrom`.
+          schema:
+            $ref: '#/components/schemas/DateYmd'
       responses:
         '200': { $ref: '#/components/responses/StudentListResponse' }
         '400': { $ref: '#/components/responses/BadRequest' }
