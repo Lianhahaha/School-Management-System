@@ -4584,10 +4584,15 @@ components:
                   description: Those of today's periods whose sheet is marked.
                 unmarkedLessons:
                   type: array
-                  description: Sheets of today without attendance yet, one per class-subject, by first start time.
+                  description: >-
+                    Sheets of today without attendance yet, one per class-subject, by first start time:
+                    `startTime` and `endTime` are those of its first period, `periods` all its periods of today
+                    (one sheet marks them all), so a client can count the unmarked periods that have started
+                    and those still to come in the unit of `lessonsScheduled`.
                   items:
                     type: object
-                    required: [classSubjectId, classId, className, subjectName, teacher, startTime, endTime]
+                    required:
+                      [classSubjectId, classId, className, subjectName, teacher, startTime, endTime, periods]
                     properties:
                       classSubjectId:
                         $ref: '#/components/schemas/Id'
@@ -4603,6 +4608,17 @@ components:
                         $ref: '#/components/schemas/TimeHm'
                       endTime:
                         $ref: '#/components/schemas/TimeHm'
+                      periods:
+                        type: array
+                        description: The sheet's timetable periods of today, by start time; at least one.
+                        items:
+                          type: object
+                          required: [startTime, endTime]
+                          properties:
+                            startTime:
+                              $ref: '#/components/schemas/TimeHm'
+                            endTime:
+                              $ref: '#/components/schemas/TimeHm'
         enrollmentsByGrade:
           type: array
           items:

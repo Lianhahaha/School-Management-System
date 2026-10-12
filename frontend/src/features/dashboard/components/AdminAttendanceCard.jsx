@@ -8,12 +8,12 @@ import { formatDate } from '../../../utils/date';
 import { countOf } from '../../../utils/format';
 import { fullName } from '../../../utils/names';
 import { can } from '../../../utils/roles';
-import { timeToMinutes } from '../../../utils/schedule';
+import { unmarkedPeriodsNow } from '../../../utils/schedule';
 import { useAuth } from '../../auth/hooks';
 import { AttendanceOverview } from './AttendanceOverview';
 import { PeriodTime } from './PeriodTime';
 
-/** How many lessons still to mark are listed; the rest are counted. */
+/** How many sheets still to mark are listed; the periods of the rest are counted. */
 const LIST_LIMIT = 5;
 
 /** One lesson without attendance yet, linking to its sheet for today. */
@@ -43,20 +43,21 @@ function UnmarkedLesson({ lesson, date }) {
 }
 
 /**
- * School-wide attendance today (payload `attendanceToday`): how many of today's lessons are marked, the ones
- * that started without being marked (each opens its sheet), then the rate ring and status counts once marks
- * exist. On a school holiday (`holiday`, payload `holidayToday`) there is nothing to mark, so the card says
- * so and drops its link. A student assistant reads the sheets but does not mark them, so their link says
- * View.
+ * School-wide attendance today (payload `attendanceToday`): how many of today's periods are marked, the
+ * sheets that started without being marked (each opens its sheet), then the rate ring and status counts once
+ * marks exist. Every number on the card counts timetable periods, a double period as two: the periods of the
+ * sheets not listed and those that have not started yet are counted from each sheet's `periods`
+ * (unmarkedPeriodsNow). On a school holiday (`holiday`, payload `holidayToday`) there is nothing to mark, so
+ * the card says so and drops its link. A student assistant reads the sheets but does not mark them, so their
+ * link says View.
  */
 export function AdminAttendanceCard({ attendance, holiday }) {
   const { role } = useAuth();
   const minutesNow = useMinutesNow();
   const { lessonsScheduled, lessonsMarked, unmarkedLessons, date } = attendance;
   const isHoliday = Boolean(holiday) && attendance.total === 0;
-  // Only lessons that have started can be overdue; later ones are just counted.
-  const overdue = unmarkedLessons.filter((lesson) => timeToMinutes(lesson.startTime) <= minutesNow);
-  const later = unmarkedLessons.length - overdue.length;
+  // Only sheets that have started can be overdue; periods still to come are just counted.
+  const { listed, morePeriods, laterPeriods } = unmarkedPeriodsNow(unmarkedLessons, minutesNow, LIST_LIMIT);
   const isDone = lessonsScheduled > 0 && lessonsMarked >= lessonsScheduled;
 
   let body;
@@ -95,22 +96,22 @@ export function AdminAttendanceCard({ attendance, holiday }) {
             </div>
           </div>
         )}
-        {overdue.length > 0 && (
+        {listed.length > 0 && (
           <div>
             <h3 className="mb-1 text-sm font-semibold text-gray-900">Not marked yet</h3>
             <ul>
-              {overdue.slice(0, LIST_LIMIT).map((lesson) => (
+              {listed.map((lesson) => (
                 <UnmarkedLesson key={lesson.classSubjectId} lesson={lesson} date={date} />
               ))}
             </ul>
-            {overdue.length > LIST_LIMIT && (
-              <p className="mt-1 text-xs text-gray-600">
-                and {countOf(overdue.length - LIST_LIMIT, 'more period')}
-              </p>
+            {morePeriods > 0 && (
+              <p className="mt-1 text-xs text-gray-600">and {countOf(morePeriods, 'more period')}</p>
             )}
           </div>
         )}
-        {later > 0 && <p className="text-xs text-gray-600">{`${countOf(later, 'period')} later today.`}</p>}
+        {laterPeriods > 0 && (
+          <p className="text-xs text-gray-600">{`${countOf(laterPeriods, 'period')} later today.`}</p>
+        )}
         {isDone && <p className="text-xs text-green-700">Every period today is marked.</p>}
         {attendance.total > 0 && <AttendanceOverview summary={attendance} />}
       </div>

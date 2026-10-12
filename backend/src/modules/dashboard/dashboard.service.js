@@ -86,36 +86,43 @@ async function periodsToMark(slots, today) {
   return { periods, marked };
 }
 
+const byStartTime = (a, b) => a.startTime.localeCompare(b.startTime);
+
 /**
  * Today's attendance to mark school-wide (none on a holiday): how many of today's timetable periods take
  * attendance and how many of them are marked (see periodsToMark), the unit the teacher's dashboard counts
  * too, and the sheets still to mark: one per class-subject (two periods of one subject share a sheet), at its
- * first start time.
+ * first start time, with all its `periods` of today. The admin's card counts those periods against the clock
+ * ("2 periods later today"), so every figure on it is in periods like the marked count.
  */
 async function attendanceToMark({ today, weekday, year }, holiday) {
   if (holiday) return { lessonsScheduled: 0, lessonsMarked: 0, unmarkedLessons: [] };
   const slots = await findSlotsUnscoped({ dayOfWeek: weekday, academicYear: year });
   const { periods, marked } = await periodsToMark(slots, today);
-  const firstSlots = new Map();
+  const unmarked = new Map(); // classSubjectId -> its periods of today
   for (const slot of periods) {
     if (marked.has(slot.classSubjectId)) continue;
-    const seen = firstSlots.get(slot.classSubjectId);
-    if (!seen || slot.startTime < seen.startTime) firstSlots.set(slot.classSubjectId, slot);
+    unmarked.set(slot.classSubjectId, [...(unmarked.get(slot.classSubjectId) ?? []), slot]);
   }
   return {
     lessonsScheduled: periods.length,
     lessonsMarked: periods.filter((slot) => marked.has(slot.classSubjectId)).length,
-    unmarkedLessons: [...firstSlots.values()]
-      .sort((a, b) => a.startTime.localeCompare(b.startTime))
-      .map((slot) => ({
-        classSubjectId: slot.classSubjectId,
-        classId: slot.classSubject.classId,
-        className: slot.classSubject.className,
-        subjectName: slot.classSubject.subjectName,
-        teacher: slot.classSubject.teacher,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-      })),
+    unmarkedLessons: [...unmarked.values()]
+      .map((sheetSlots) => sheetSlots.sort(byStartTime))
+      .sort((a, b) => byStartTime(a[0], b[0]))
+      .map((sheetSlots) => {
+        const [first] = sheetSlots;
+        return {
+          classSubjectId: first.classSubjectId,
+          classId: first.classSubject.classId,
+          className: first.classSubject.className,
+          subjectName: first.classSubject.subjectName,
+          teacher: first.classSubject.teacher,
+          startTime: first.startTime,
+          endTime: first.endTime,
+          periods: sheetSlots.map(({ startTime, endTime }) => ({ startTime, endTime })),
+        };
+      }),
   };
 }
 

@@ -250,6 +250,52 @@ describe('dashboard', () => {
     }
   });
 
+  it('gives each sheet still to mark its periods of today, so the admin card counts periods', async () => {
+    // Class B has a student since the test above; its subject has two periods today, the later one added first.
+    const slotIds = [];
+    try {
+      for (const [startTime, endTime] of [
+        ['13:00', '14:00'],
+        ['10:00', '11:00'],
+      ]) {
+        const slot = await api.post('/api/v1/schedules').set(as(school.admin)).send({
+          classSubjectId: school.csB.id,
+          dayOfWeek: todayIsoWeekday(),
+          startTime,
+          endTime,
+          room: 'R2',
+        });
+        assert.equal(slot.status, 201, JSON.stringify(slot.body));
+        slotIds.push(slot.body.data.id);
+      }
+      const { lessonsScheduled, lessonsMarked, unmarkedLessons } = (await dashboard(school.admin))
+        .attendanceToday;
+      assert.deepEqual([lessonsScheduled, lessonsMarked], [3, 1]);
+      assert.deepEqual(
+        unmarkedLessons.map(({ classSubjectId, startTime, endTime, periods }) => ({
+          classSubjectId,
+          startTime,
+          endTime,
+          periods,
+        })),
+        [
+          {
+            classSubjectId: school.csB.id,
+            startTime: '10:00',
+            endTime: '11:00',
+            periods: [
+              { startTime: '10:00', endTime: '11:00' },
+              { startTime: '13:00', endTime: '14:00' },
+            ],
+          },
+        ],
+        'one sheet, its two periods by start time',
+      );
+    } finally {
+      for (const id of slotIds) await api.delete(`/api/v1/schedules/${id}`).set(as(school.admin));
+    }
+  });
+
   it("empties today's lessons on a school holiday and names it", async () => {
     for (const who of [school.admin, school.owner, school.s1]) {
       assert.equal((await dashboard(who)).holidayToday, null);

@@ -81,3 +81,27 @@ export function lessonToMark(periods, minutesNow) {
   const running = started.find((period) => minutesNow < timeToMinutes(period.endTime));
   return running ?? started.at(-1) ?? unmarked[0] ?? null;
 }
+
+/**
+ * The admin dashboard's sheets still to mark today (`attendanceToday.unmarkedLessons`, one per class-subject
+ * at its first period, with all its `periods` of today) against the clock, every count in timetable periods
+ * like the card's "3 of 8 periods marked" (a double period is two):
+ *   listed       the first `listLimit` sheets whose first period has started, one line each
+ *   morePeriods  the started periods of the other started sheets ("and 2 more periods")
+ *   laterPeriods the periods of any of these sheets that have not started yet ("2 periods later today")
+ * One sheet marks all its periods, so a sheet that has started can still have a period later today.
+ * @param {Array<{ startTime: string, periods: Array<{ startTime: string }> }>} unmarkedLessons
+ * @param {number} minutesNow minutes since midnight
+ * @param {number} listLimit
+ */
+export function unmarkedPeriodsNow(unmarkedLessons, minutesNow, listLimit) {
+  const hasStarted = (item) => timeToMinutes(item.startTime) <= minutesNow;
+  const overdue = unmarkedLessons.filter(hasStarted);
+  const startedPeriods = overdue.slice(listLimit).flatMap((lesson) => lesson.periods.filter(hasStarted));
+  const laterPeriods = unmarkedLessons.flatMap((lesson) => lesson.periods.filter((p) => !hasStarted(p)));
+  return {
+    listed: overdue.slice(0, listLimit),
+    morePeriods: startedPeriods.length,
+    laterPeriods: laterPeriods.length,
+  };
+}
