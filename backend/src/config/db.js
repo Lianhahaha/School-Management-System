@@ -79,11 +79,23 @@ export const pool = mysql.createPool({
 /** A SELECT that runs longer than this is stopped by MySQL (ER_QUERY_TIMEOUT, answered as a retryable 503). */
 const MAX_SELECT_MS = 15_000;
 
+/**
+ * The SQL mode of every connection: MySQL 8's default, the one the tests run with and schema.sql was
+ * validated in. Set here, not left to the server, because servers differ: the live one on Aiven runs in ANSI
+ * mode, where "double quotes" name a column and || joins strings, so a query could pass every test and still
+ * fail or mean something else in production.
+ */
+const SQL_MODE =
+  'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+
 pool.on('connection', (connection) => {
   // A callback, so a failure is logged instead of surfacing as an unhandled 'error' event.
-  connection.query(`SET time_zone = '+00:00', max_execution_time = ${MAX_SELECT_MS}`, (error) => {
-    if (error) logger.error('could not set the session settings', { error: String(error) });
-  });
+  connection.query(
+    `SET time_zone = '+00:00', max_execution_time = ${MAX_SELECT_MS}, sql_mode = '${SQL_MODE}'`,
+    (error) => {
+      if (error) logger.error('could not set the session settings', { error: String(error) });
+    },
+  );
 });
 
 /**
