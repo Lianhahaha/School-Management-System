@@ -4,7 +4,9 @@ import { describe, it } from 'node:test';
 import { buildSet } from '../src/utils/sql.js';
 import {
   dateStr,
+  dayOfWeek,
   email,
+  gradeLevel,
   id,
   isoDateTime,
   name,
@@ -19,6 +21,28 @@ describe('shared validation rules', () => {
     assert.equal(id.parse('12'), 12);
     for (const bad of [true, [5], '0x10', '1e3', ' 5', 0, 1.5]) {
       assert.equal(id.safeParse(bad).success, false, JSON.stringify(bad));
+    }
+  });
+
+  it('takes a grade level or a weekday the same way, with one plain message', () => {
+    assert.equal(gradeLevel.parse(12), 12);
+    assert.equal(gradeLevel.parse('7'), 7);
+    assert.equal(dayOfWeek.parse('1'), 1);
+    for (const bad of [undefined, null, '', 'ten', true, [5], '0x0A', '1e1', 0, 13, 7.5]) {
+      const result = gradeLevel.safeParse(bad);
+      assert.equal(result.success, false, JSON.stringify(bad));
+      assert.deepEqual(
+        result.error.issues.map((issue) => issue.message),
+        ['expected a grade level from 1 to 12'],
+        JSON.stringify(bad),
+      );
+    }
+    for (const bad of [undefined, 'monday', true, 0, 8]) {
+      assert.deepEqual(
+        dayOfWeek.safeParse(bad).error.issues.map((issue) => issue.message),
+        ['expected a day from 1 (Monday) to 7 (Sunday)'],
+        JSON.stringify(bad),
+      );
     }
   });
 

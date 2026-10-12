@@ -28,11 +28,18 @@ import { todayYmd } from '../dates.js';
 const MAX_ID = 4_294_967_295;
 
 /**
- * A positive whole-number id: a JSON number, or a string of digits (path and query values are always text).
- * Unlike z.coerce it refuses true, [5], '0x10' and '1e3'.
+ * A string of digits becomes its number (path and query values are always text); anything else is left for
+ * z.number to judge. Unlike z.coerce, true, [5], '0x10', '1e3' and a missing value stay non-numbers.
  */
+const digitsToNumber = (value) => (typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value);
+
+/** A whole number from `min` to `max`, as a JSON number or a string of digits; `error` is its one message. */
+const wholeNumber = (min, max, error) =>
+  z.preprocess(digitsToNumber, z.number({ error }).int({ error }).min(min, { error }).max(max, { error }));
+
+/** A positive whole-number id: a JSON number, or a string of digits. */
 export const id = z.preprocess(
-  (value) => (typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value),
+  digitsToNumber,
   z
     .number({ error: 'expected a whole-number id' })
     .int()
@@ -150,9 +157,13 @@ export const subjectCode = z.string().trim().toUpperCase().regex(SUBJECT_CODE_RE
   error: 'expected 2-20 characters: letters, digits or dashes',
 });
 
-export const gradeLevel = z.coerce.number().int().min(1).max(HIGHEST_GRADE_LEVEL);
+export const gradeLevel = wholeNumber(
+  1,
+  HIGHEST_GRADE_LEVEL,
+  `expected a grade level from 1 to ${HIGHEST_GRADE_LEVEL}`,
+);
 
-export const dayOfWeek = z.coerce.number().int().min(1).max(7);
+export const dayOfWeek = wholeNumber(1, 7, 'expected a day from 1 (Monday) to 7 (Sunday)');
 
 export const score = z.number().min(0).multipleOf(0.01);
 
