@@ -168,7 +168,7 @@ MySQL 8.0, InnoDB, `utf8mb4_unicode_ci`, snake_case, `id INT UNSIGNED AUTO_INCRE
 | `grades` | one score per student per assessment; `remarks`, `graded_by` | `UNIQUE(assessment_id, student_id)`; CHECK `score >= 0`; `score <= max_score` checked by the service in the same transaction |
 | `announcements` | `author_id`, `title`, `body`, `audience`, optional `class_id`, `published_at`, `expires_at` | CHECK `expires_at > published_at`; visibility = audience matches role AND (no class OR my class) |
 
-Added after the plan (section 14): `subject_grade_weights`, `calendar_events`, `activity_log`, `notifications`, `announcement_reads`, `admissions`.
+Added after the plan (section 14): `subject_grade_weights`, `calendar_events`, `activity_log`, `notifications`, `announcement_reads`, `admissions`, `assistant_requests`.
 
 Shared enum values (section 11) are the only values these ENUM columns accept.
 
@@ -249,7 +249,7 @@ school-management-system/
 │   ├── .env.example
 │   ├── firebase-service-account.json   # git-ignored; downloaded from the Firebase console
 │   ├── database/
-│   │   ├── schema.sql              # the 20 tables (idempotent; scripts/migrate.js creates the database)
+│   │   ├── schema.sql              # the 19 tables (idempotent; scripts/migrate.js creates the database)
 │   │   ├── upgrades.js             # changes to existing tables, each run once by src/config/migrations.js
 │   │   └── seed.sql                # non-user demo data, ids resolved by natural keys, dates relative to today
 │   ├── docs/

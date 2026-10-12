@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config';
 
 /**
- * Unit tests of the frontend's pure modules: grade arithmetic, form rules, CSV import and export, dates.
+ * Unit tests of the frontend's pure modules: grade arithmetic, form rules, paging through lists, dates.
  * Nothing under test touches the DOM, so the tests run in plain Node without jsdom, and the React and
  * Tailwind plugins of vite.config.js are left out (Vitest reads this file instead of that one).
  *

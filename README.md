@@ -24,7 +24,7 @@ Skole can be installed like an app: on Android, Chrome or Edge use the browser's
 |---|---|---|
 | Student, teacher and admin accounts | Admin → Users (create any role, deactivate, delete an unused account); students can also self-register on the sign-up page | Create a teacher as admin, then sign in as that teacher in a private window |
 | Firebase Authentication | Sign in / sign up / forgot password; the API verifies the Firebase ID token on every request | Register, sign out, sign in and reload: the session survives; a wrong password shows a generic error |
-| MySQL database | 20 tables with 25 foreign keys, 17 unique keys, 21 checks and two generated columns: [backend/database/schema.sql](backend/database/schema.sql) | `npm run db:migrate` creates them; the ER diagram is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#5-data-model) |
+| MySQL database | 19 tables with 25 foreign keys, 15 unique keys, 18 checks and one generated column: [backend/database/schema.sql](backend/database/schema.sql) | `npm run db:migrate` creates them; the ER diagram is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#5-data-model) |
 | Backend REST API | 79 endpoints under `/api/v1`, one JSON envelope, one error catalogue | Swagger UI "Try it out" with a token ([Trying the API](#trying-the-api)) |
 | Student enrollment and profiles | Admin → Students (enroll, transfer, profile, history); students edit their own contact details; at the end of a school year, Admin → Classes → a class → Students → **End of school year** closes the year for all or some students and enrolls them in next year's class in one step; after that a student enrolls themselves from their dashboard in a section of the next grade level if they passed every subject, of the same grade level if they failed three or more, and waits for the school office after remedial classes if they failed one or two (DepEd promotion rules) | Enroll a new student, try to enroll them in a second class (409), transfer them |
 | Subjects and class management | Admin → Subjects, Classes | Create a class for `2026-2027`; `2026/2027` is refused (400); deleting a subject in use is refused (409) |
@@ -88,7 +88,7 @@ Both `.env` files must belong to the **same** Firebase project.
 ```powershell
 cd ..\backend
 npm run doctor        # every line should be a green tick; it tells you what to fix otherwise
-npm run db:migrate    # creates the database and the 20 tables
+npm run db:migrate    # creates the database and the 19 tables
 npm run db:seed       # 13 demo accounts (Firebase + MySQL), subjects, classes, timetable, attendance, grades
 ```
 
@@ -161,7 +161,7 @@ GitHub runs both on every push and pull request: the backend checks (lint, secre
 
 ```
 backend/
-  database/    schema.sql (20 tables), upgrades.js (changes to existing tables), seed.sql (demo data)
+  database/    schema.sql (19 tables), upgrades.js (changes to existing tables), seed.sql (demo data)
   docs/        openapi.yaml, the spec behind /api/docs
   scripts/     migrate, seed, create-admin, doctor, get-token, mock-data, backup, restore, check-constants, check-secrets
   src/

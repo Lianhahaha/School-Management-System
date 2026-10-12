@@ -246,7 +246,7 @@ erDiagram
     }
 ```
 
-`activity_log` has no foreign keys on purpose: it copies the actor's name and role, so an entry outlives the rows it mentions. Students created by an admin have no `admissions` row. Besides these 21 tables there is one bookkeeping table outside `schema.sql`, `schema_migrations`, created by `config/migrations.js` (see schema changes below).
+`activity_log` has no foreign keys on purpose: it copies the actor's name and role, so an entry outlives the rows it mentions. Students created by an admin have no `admissions` row. Besides these 19 tables there is one bookkeeping table outside `schema.sql`, `schema_migrations`, created by `config/migrations.js` (see schema changes below).
 
 Rules the database itself enforces (not just the API):
 

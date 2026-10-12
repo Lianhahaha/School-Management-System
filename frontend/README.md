@@ -31,8 +31,8 @@ npm run format           # Prettier (with the Tailwind class sorter)
 npm run check            # lint + typecheck + test + build
 ```
 
-The tests cover grade arithmetic (quarters, semesters and the school year), form schemas, CSV import and
-export, dates, school years and the periods a school year is shown as.
+The tests cover grade arithmetic (quarters, semesters and the school year), form schemas, reading a whole
+list page by page, dates, school years and the periods a school year is shown as.
 `tests/grading-agreement.test.js` runs one table of scores through `../backend/src/utils/grading.js` and
 `src/utils/grades.js` and expects the same numbers, so the frontend and the API compute grades alike. GitHub
 runs lint, typecheck, test and build on every push and pull request (`.github/workflows/frontend-checks.yml`).
@@ -73,7 +73,7 @@ src/
   app/          App, router (every route), providers, route guards, pages/ (403, 404, route error)
   config/       env validation (Firebase values, API base, demo accounts), Firebase client
   constants/    shared.js (backend copy), ui.js (labels, tones, options, error tables)
-  lib/          apiClient, envelope, queryClient, queryKeys, liveRefresh, formErrors, validators, csv,
+  lib/          apiClient, envelope, queryClient, queryKeys, liveRefresh, formErrors, validators, pagination,
                 toastBus, theme, installPrompt, serverWake
   utils/        date, schedule, roles, names, format, grades, forms, listParams, cx
   hooks/        useListParams, useDebounce, useDisclosure, useConfirm, useDiscardConfirm, useToast,
