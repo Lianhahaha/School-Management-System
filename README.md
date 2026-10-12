@@ -20,6 +20,8 @@ Skole can be installed like an app: on Android, Chrome or Edge use the browser's
 
 ## What it does
 
+Every check below starts from the administrator you create in step 4 of the [quick start](#quick-start-windows-0), with the teachers, students, classes and subjects it needs added from the app.
+
 | Required feature | Where to see it | How to check it |
 |---|---|---|
 | Student, teacher and admin accounts | Admin → Users (create any role, deactivate, delete an unused account); students can also self-register on the sign-up page | Create a teacher as admin, then sign in as that teacher in a private window |
@@ -28,12 +30,12 @@ Skole can be installed like an app: on Android, Chrome or Edge use the browser's
 | Backend REST API | 79 endpoints under `/api/v1`, one JSON envelope, one error catalogue | Swagger UI "Try it out" with a token ([Trying the API](#trying-the-api)) |
 | Student enrollment and profiles | Admin → Students (enroll, transfer, profile, history); students edit their own contact details; at the end of a school year, Admin → Classes → a class → Students → **End of school year** closes the year for all or some students and enrolls them in next year's class in one step; after that a student enrolls themselves from their dashboard in a section of the next grade level if they passed every subject, of the same grade level if they failed three or more, and waits for the school office after remedial classes if they failed one or two (DepEd promotion rules) | Enroll a new student, try to enroll them in a second class (409), transfer them |
 | Subjects and class management | Admin → Subjects, Classes | Create a class for `2026-2027`; `2026/2027` is refused (400); deleting a subject in use is refused (409) |
-| Teacher assignment | Class detail → Subjects & Teachers | Assign a subject to Grade 10 - A with `teacher1`; assigning it again is refused (409); `teacher1` sees it under My classes |
+| Teacher assignment | Class detail → Subjects & Teachers | Assign a subject to a class with a teacher you created; assigning it again is refused (409); that teacher sees it under My classes |
 | Attendance tracking | Teachers mark the students of each lesson, day by day; students see their own percentage, one school year at a time (earlier years too); a week-by-week rate chart for each class, lesson and student | Mark a lesson, save again with one change (no duplicate error); saving another teacher's lesson through the API answers 403 |
 | Grade management | Assessments with a maximum score, grade sheets, per-subject results for students; each assessment belongs to a semester (1st or 2nd) and to one of that semester's four quarters (1st to 4th Quarter); subjects are graded the DepEd K-12 way by default (written work, performance tasks and the quarterly assessment, transmuted to 60–100, 75 passes, with descriptors from Outstanding to Did Not Meet Expectations), or on points, or weighted by assessment type (Admin → Subjects), each quarter on its own, a semester's grade is the average of its quarterly grades and the school year's grade the average of the two semesters'; a score-spread chart on every grade sheet and each student's results over time per subject; students pick a school year and semester ("AY 2026-2027 · 1st Semester", or the whole year) and see one table: each subject's Q1–Q4 and final grade (or, for the whole year, both semesters and the final), with the general average below; they can print the report card of the period they picked | Create "Quiz 1" with a maximum of 20: 25 is refused, 18 is saved, and the student sees 18/20 |
 | Class schedules | Weekly timetables per class, teacher and student, with clash detection (class, teacher, room) | Add a slot that overlaps the same class, teacher and room: three separate conflicts; an adjacent slot is accepted |
-| Announcements | School-wide or per class, per audience, with publish and expiry dates; a "New" label until the reader marks one, or all, as read | Admin posts to teachers, a teacher posts to Grade 10 - A: a student in 10 - B sees neither |
-| Separate dashboards | Admin, teacher and student each get their own content, not three skins of one page; admins and teachers see the students who need attention (attendance under 80 % or an average under 75 %) | Sign in as each demo account |
+| Announcements | School-wide or per class, per audience, with publish and expiry dates; a "New" label until the reader marks one, or all, as read | Admin posts to teachers, a teacher posts to one of their classes: a student of another class sees neither |
+| Separate dashboards | Admin, teacher and student each get their own content, not three skins of one page; admins and teachers see the students who need attention (attendance under 80 % or an average under 75 %) | Sign in as the admin, then as a teacher and a student you created |
 | Search and filtering | Every list: search, whitelisted sorting, pagination and filters, kept in the URL | Change `search`, `sortBy` or `page` in the address bar; `sortBy=evil` answers 400 |
 | Role-based access control | Route guards in the UI, `authorize` + ownership rules in the API (the API is the enforcement point); four roles: admin, teacher, student and the student assistant (`assistant`), who takes the office's everyday work off the admin (enrollment, student records and accounts, classes, the timetable, announcements) while the admin keeps what cannot be undone, grades and attendance, and every account that is not a student's; who may do what: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#6-roles-and-what-they-can-do) | As a student, open `/admin/users` (403 page); `GET /users` with a student token answers 403 |
 | API documentation | Swagger UI at <http://localhost:3000/api/docs>, the raw spec at `/api/docs/openapi.json` | Authorize with a token and call `GET /students` |
@@ -83,16 +85,16 @@ Copy-Item .env.example .env        # paste the four Firebase web values from ste
 
 Both `.env` files must belong to the **same** Firebase project.
 
-### 4. Check, create the database, load demo data
+### 4. Check, create the database and the first administrator
 
 ```powershell
 cd ..\backend
 npm run doctor        # green ticks, except "database missing" on a first run (the next line creates it); it says what to fix otherwise
-npm run db:migrate    # creates the database and the 19 tables
-npm run db:seed       # 13 demo accounts (Firebase + MySQL), subjects, classes, timetable, attendance, grades
+npm run db:migrate    # creates the database and the 19 tables, empty
+npm run db:create-admin -- you@example.com "a-strong-password"   # your first administrator (Firebase + MySQL)
 ```
 
-`npm run db:reset` drops the database and does both steps again. `db:seed` is safe to run twice.
+Administrators cannot sign up on the public page, so the first one comes from `db:create-admin`: e-mail, password (8+ characters), then first and last name (optional). `npm run db:reset` drops the local database and creates it again, empty; run `db:create-admin` again after it.
 
 ### 5. Run
 
@@ -109,24 +111,7 @@ cd backend;  npm run dev
 cd frontend; npm run dev
 ```
 
-Open <http://localhost:5173> and sign in with a demo account.
-
-## Demo accounts
-
-These come from `npm run db:seed` on a local database. Every one gets the password in `SEED_PASSWORD` (`backend/.env`; [.env.example](backend/.env.example) has a starting value), so set your own before seeding. The live site has none of them; new students register themselves at `/register`. A new administrator for an empty database comes from `npm run db:create-admin -- <email> <password>`.
-
-| Account | Name | Role and what to look at |
-|---|---|---|
-| `admin@school.test` | Amara Johnson | Admin: school-wide counts, users, students, admissions, classes, subjects, timetable, all announcements |
-| `admin2@school.test` | Noah Bennett | Second admin, so you can safely deactivate an admin and see the effect |
-| `teacher1@school.test` | Alice Morgan | Teacher: Maths and Computer Science, homeroom of Grade 10 - A; today's lessons, pending grading |
-| `teacher2@school.test` | Brian Chen | Teacher: English and History |
-| `teacher3@school.test` | Carla Diaz | Teacher: Science, homeroom of Grade 10 - B |
-| `student1@school.test` | Daniel Okafor | Student in Grade 10 - A: timetable, attendance, grades, class announcements |
-| `student4@school.test` | Grace Kim | Student in Grade 10 - A who was transferred in from 10 - B (enrollment history) |
-| `student5@school.test` | Hiro Tanaka | Student in Grade 10 - B |
-
-`student1` to `student8` and `teacher1` to `teacher3` all exist; the full list is in [backend/scripts/seed.js](backend/scripts/seed.js). A new student can also register at `/register`: right after signing up they pick a section of the grade they applied for in the current school year and are enrolled at once (35 seats a section, 45 once every section of that grade has 35); Admin → Admissions keeps their documents checklist.
+Open <http://localhost:5173> and sign in as the administrator from step 4. The school starts empty: add the teachers (Admin → Users), the subjects, the classes for the current school year and their subjects and teachers, then the timetable. Students are created under Admin → Users or register themselves at `/register`: right after signing up they pick a section of the grade they applied for in the current school year and are enrolled at once (35 seats a section, 45 once every section of that grade has 35); Admin → Admissions keeps their documents checklist.
 
 ## Trying the API
 
@@ -134,7 +119,7 @@ Open <http://localhost:3000/api/docs>, then:
 
 ```powershell
 cd backend
-npm run token --silent -- teacher1@school.test     # prints a Firebase ID token (valid 1 hour)
+npm run token --silent -- you@example.com "a-strong-password"     # prints a Firebase ID token (valid 1 hour) for any account
 ```
 
 Click **Authorize** in Swagger UI, paste the token, and call any endpoint. The same token works with curl: `curl -H "Authorization: Bearer <token>" http://localhost:3000/api/v1/dashboard`.
@@ -161,9 +146,9 @@ GitHub runs both on every push and pull request: the backend checks (lint, secre
 
 ```
 backend/
-  database/    schema.sql (19 tables), upgrades.js (changes to existing tables), seed.sql (demo data)
+  database/    schema.sql (19 tables), upgrades.js (changes to existing tables)
   docs/        openapi.yaml, the spec behind /api/docs
-  scripts/     migrate, seed, create-admin, doctor, get-token, backup, restore, check-constants, check-secrets
+  scripts/     migrate, create-admin, doctor, get-token, backup, restore, check-constants, check-secrets
   src/
     modules/   one folder per feature: routes → controller → service → repository (+ zod schemas)
     middleware/ config/ utils/ constants/
@@ -184,7 +169,7 @@ A bug is found by following one path: the URL names the route file, the route na
 
 These are deliberate choices, not oversights. The reasons are in [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md#14-implementation-notes-where-the-built-code-deliberately-differs-from-the-plan).
 
-- **Email addresses are not verified before first use.** A student who registers can sign in straight away, so the demo works without a mailbox. Accounts created by an admin or the seed are marked verified. An admin can delete an account that was registered by mistake and has no history.
+- **Email addresses are not verified before first use.** A student who registers can sign in straight away, without confirming a mailbox first. Accounts created by an admin or by `db:create-admin` are marked verified. An admin can delete an account that was registered by mistake and has no history.
 - **Deactivation takes effect on the next request.** The API reads the account from MySQL on every request, so a deactivated user is refused at once, even though their Firebase token stays valid for up to an hour.
 - **Attendance rate = (present + late) / all marks.** An excused absence counts as a missed lesson; the status keeps the reason on record.
 - **A subject's grade follows DepEd Order No. 8, s. 2015 unless an admin chooses otherwise.** Quizzes, tests and assignments count as written work, projects as performance tasks and exams as the quarterly assessment. A component with nothing graded yet is left out until it has grades, so a result early in a quarter is not dragged down by an exam that has not happened.
@@ -220,7 +205,7 @@ Known limits, accepted for this project:
 | `Firebase service account file not found` | Save the key from Firebase console → Service accounts as `backend/firebase-service-account.json`. |
 | Every request returns 401 / "token audience" | `frontend/.env` and the service account belong to different Firebase projects. `npm run doctor` shows both ids. |
 | `auth/operation-not-allowed` on sign-in | Enable Email/Password under Authentication → Sign-in method. |
-| Signed in, but the API answers `USER_NOT_REGISTERED` | The Firebase user has no row in MySQL (it was created in the console). Run `npm run db:seed`, register from the app, or create the user from Admin → Users. |
+| Signed in, but the API answers `USER_NOT_REGISTERED` | The Firebase user has no row in MySQL (it was created in the console). Register from the app, or create the user from Admin → Users (`npm run db:create-admin` for the first administrator). |
 | `ACCOUNT_DISABLED` | An admin deactivated the account; reactivate it from Admin → Users. |
 | Creating a user answers "already has a sign-in in the shared Firebase project" | Local development shares the Firebase project with the live site, so an email that signs in there is left alone. Use another email, or create the account on the live site. |
 | `EADDRINUSE` on 3000 or 5173 | Another process holds the port. Stop it, or move the API: in PowerShell `$env:PORT='3001'; $env:API_PORT='3001'; npm run dev` (`API_PORT` points the frontend's proxy at the same port). |
@@ -238,13 +223,13 @@ Not required to run or review the project: everything above works on one machine
 | API | [Render](https://render.com/docs/free) web service from `render.yaml` | sleeps after 15 idle minutes (the next request takes about a minute), 750 free hours a month |
 | Frontend | Firebase Hosting (Spark plan) from `firebase.json` | static files only |
 
-1. **Database.** Create the Aiven MySQL service on the Free plan, download its CA certificate to `backend/database-ca.pem`, and put its connection details in a git-ignored `backend/.env.cloud` (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_SSL=true`, `DB_SSL_CA_PATH=./database-ca.pem`, and a `SEED_PASSWORD` of your own: the seed refuses a hosted database without one). Then:
+1. **Database.** Create the Aiven MySQL service on the Free plan, download its CA certificate to `backend/database-ca.pem`, and put its connection details in a git-ignored `backend/.env.cloud` (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_SSL=true`, `DB_SSL_CA_PATH=./database-ca.pem`). Then create the tables and the first administrator:
    ```powershell
    cd backend
    node --env-file=.env.cloud scripts/migrate.js
-   node --env-file=.env.cloud scripts/seed.js
+   node --env-file=.env --env-file=.env.cloud scripts/create-admin.js you@example.com "a-strong-password"
    ```
-   Any database that shares the Firebase project shares its logins. Seeding a second database links the demo accounts' existing Firebase users (it resets their password to `SEED_PASSWORD`), so both databases keep working. Outside production the API never deletes a Firebase user it does not know, because it may belong to the other database: creating an account for such an email answers 409 `email_in_use`.
+   Any database that shares the Firebase project shares its logins. Outside production the API never deletes a Firebase user it does not know, because it may belong to the other database: creating an account for such an email answers 409 `email_in_use`.
 2. **API.** In Render choose **New > Blueprint**, pick this repository, and enter the secret variables listed in `render.yaml` (database details, `DB_SSL_CA` as one line with a literal backslash and `n` for each line break, `FIREBASE_SERVICE_ACCOUNT_BASE64` = the service-account JSON base64-encoded, and `CORS_ORIGINS` = the frontend's address). Check `https://<service>.onrender.com/api/v1/health`.
 3. **Frontend.** Put `VITE_API_BASE_URL=https://<service>.onrender.com/api/v1` in `frontend/.env.production`, then:
    ```powershell
@@ -259,8 +244,7 @@ Not required to run or review the project: everything above works on one machine
 
 - **Releases.** The frontend is released by GitHub Actions only after the backend tests pass for that commit ([deploy-frontend.yml](.github/workflows/deploy-frontend.yml)). Set Render to do the same: service → Settings → Build & Deploy → Auto-Deploy → **After CI Checks Pass**.
 - **Schema changes.** A change to an existing table goes into `schema.sql` (for new databases) and into [database/upgrades.js](backend/database/upgrades.js) under a new id (for existing ones). Each upgrade runs once and is recorded in `schema_migrations`. The live site migrates by hand only (`MIGRATE_ON_START` stays `false`), so a faulty upgrade can never stop a deploy halfway: back up and test-restore ([Before every live migration](#before-every-live-migration-back-up)), then run `node --env-file=<hosted env file> scripts/migrate.js`. An upgrade a new release needs runs before that release is pushed; one that removes what the running release still uses runs after it.
-- **Resetting the demo data.** The demo is shared, and some actions cannot be undone (a completed school year, a deleted account). To start over: `node --env-file=.env.cloud scripts/migrate.js --fresh --allow-remote-drop`, then `node --env-file=.env.cloud scripts/seed.js`. **This deletes every row in the hosted database.**
-- **Local work and live sign-ins.** While local development shares the Firebase project with the live site, seeding a local database resets the demo accounts' passwords and signs them out everywhere, the live site included. A second free Firebase project for local work (step 2 of the quick start, with its own `.env` values) keeps the two apart.
+- **Local work and live sign-ins.** While local development shares the Firebase project with the live site, every account created locally is also a sign-in of the live site's Firebase project, and an email that already signs in there cannot get a local account. A second free Firebase project for local work (step 2 of the quick start, with its own `.env` values) keeps the two apart.
 - **Secrets.** `.env.cloud`, the service-account key and the CA certificate are git-ignored. Keep them out of synced folders (OneDrive, Dropbox) too. If the repository sits in one, keep the three files in a folder outside it (for example `%USERPROFILE%\.skole\`) and point at them with absolute paths: `--env-file` for `.env.cloud`, `FIREBASE_SERVICE_ACCOUNT_PATH` for the key and `DB_SSL_CA_PATH` for the certificate.
 - **Staying awake, and alerts.** [keep-awake.yml](.github/workflows/keep-awake.yml) calls the API's `/api/v1/health` and the website every 10 minutes. A run fails, and GitHub emails the repository owner, when either does not answer or the API reports its database down. Run it from the Actions tab to check the site at any time. Before a demo, also check in the Aiven console that the database is powered on.
 

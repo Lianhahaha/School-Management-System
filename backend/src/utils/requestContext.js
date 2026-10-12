@@ -1,7 +1,7 @@
 /**
  * Who is making the current request, available to any code the request runs (awaited or not) without
  * passing it down every call. `authenticate` opens the context; the activity log reads the actor from it.
- * Outside a request (scripts, seeds, tests calling services directly) there is no user.
+ * Outside a request (scripts, tests calling services directly) there is no user.
  */
 import { AsyncLocalStorage } from 'node:async_hooks';
 

@@ -14,7 +14,7 @@ info:
 
     Every operation except `GET /health` and `POST /auth/register` requires
     `Authorization: Bearer <Firebase ID token>`. Use **Authorize** and paste a token; in development
-    `npm run token --silent -- teacher1@school.test` (run in `backend/`) prints one for a demo account.
+    `npm run token --silent -- <email> <password>` (run in `backend/`) prints one for any account.
     The token only proves identity: the account must exist in the school database and be active.
 
     There are four roles: `admin`, `teacher`, `student` and `assistant`. An `assistant` is a student
@@ -2120,8 +2120,8 @@ paths:
 
         `search` matches the summary, the actor's name and the details (for example the names of the students
         in a grade save). `dateFrom` / `dateTo` are school days in the school's time zone. The actor is copied
-        into each entry, so entries outlive the accounts they mention; `actor` is null for the system (the seed
-        script).
+        into each entry, so entries outlive the accounts they mention; `actor` is null for the system (a script
+        such as create-admin).
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Limit'

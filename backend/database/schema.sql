@@ -390,7 +390,7 @@ CREATE TABLE IF NOT EXISTS calendar_events (
 --     a readable summary and the details (before / after values) as JSON.
 --     No foreign keys on purpose: the log outlives the rows it mentions, so
 --     the actor's name and role are copied in. actor_id NULL = the system
---     (seed script).
+--     (a script such as create-admin).
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS activity_log (
   id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

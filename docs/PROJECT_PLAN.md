@@ -15,8 +15,8 @@ Deliverable: a Git repository that a reviewer can clone and run on their own mac
 
 - `backend/` — Node.js + Express 5 REST API, MySQL 8 database, Firebase Admin SDK for token verification and account provisioning, Swagger UI at `/api/docs`.
 - `frontend/` — React + Vite single-page app with Firebase Authentication (email/password) and three separate role areas (`/admin`, `/teacher`, `/student`).
-- Seeded demo data (1 admin + 1 spare admin, 3 teachers, 8 students, 5 subjects, 2 classes, a full weekly timetable, two weeks of attendance, assessments with grades, announcements) so every dashboard has content on first login.
-- README with the exact zero-cost setup path, demo credentials, troubleshooting table.
+- A script that creates the first administrator (`npm run db:create-admin`); everything else (teachers, students, subjects, classes, the timetable) is added from the app.
+- README with the exact zero-cost setup path, how to create the first administrator, troubleshooting table.
 
 Hard constraints:
 
@@ -62,7 +62,7 @@ The 14 required features, where each one is in the app and how to check it, are 
 | Item | Verdict | Evidence |
 |---|---|---|
 | Firebase Spark plan, Email/Password provider | Free, no card ("No payment method needed"; 50K monthly active users) | firebase.google.com/pricing |
-| Firebase Admin SDK (`verifyIdToken`, `createUser`, `updateUser`, `revokeRefreshTokens`) and service-account key download | Free; only rate quotas (100 new accounts/hour/IP, far above the seed's 13) | firebase.google.com/docs/auth/limits |
+| Firebase Admin SDK (`verifyIdToken`, `createUser`, `updateUser`, `revokeRefreshTokens`) and service-account key download | Free; only rate quotas (100 new accounts/hour/IP, far above what one school office creates) | firebase.google.com/docs/auth/limits |
 | MySQL Community Server (local) | Free | already installed |
 | All npm packages above | Free, MIT/Apache licences | npm registry |
 | Optional later: Firebase Hosting (SPA), Render free web service (API, sleeps after 15 min), Aiven free MySQL or TiDB Cloud Starter | Free, no card | providers' pricing pages, 2026-10-03; the deployment is described in the README |
@@ -90,7 +90,7 @@ MySQL 8 (school_management)                    firebase-admin createUser / updat
 Principles:
 
 1. **Firebase answers "who are you"; MySQL answers "what are you here".** Identity (password, token) lives in Firebase. Role, active flag and all school data live in MySQL. Role is stored only in MySQL (no custom claims), is read on every request, and is immutable after account creation.
-2. **One code path for account creation** (`users.service.createUserAccount`): check MySQL for the email → reuse an existing Firebase user with that email when the caller is trusted (admin or seed), otherwise create one → insert `users` + profile row in one transaction → if MySQL fails and this call created the Firebase user, delete it. Public registration calls the same function with `role` forced to `student`.
+2. **One code path for account creation** (`users.service.createUserAccount`): check MySQL for the email → reuse an existing Firebase user with that email when the caller is trusted (the office or `create-admin`), otherwise create one → insert `users` + profile row in one transaction → if MySQL fails and this call created the Firebase user, delete it. Public registration calls the same function with `role` forced to `student`.
 3. **Deactivation, never deletion, of people with history** (an unused account can be deleted, section 14). `is_active = 0` in MySQL (checked on every request, so a still-valid token stops working immediately) → Firebase `updateUser({ disabled: true })` → `revokeRefreshTokens`. Reactivation reverses it.
 4. **`class_subjects` is the hub.** A teacher assignment *is* a row there; schedules, attendance and assessments reference it, never the class or teacher directly. Changing the teacher of a subject is a one-column update with all history intact.
 5. **The database enforces every invariant it can** (unique keys, CHECKs, FK RESTRICT, generated-column uniqueness for "one active enrollment"); the service layer enforces the cross-table rules (score ≤ max score, student enrolled in the lesson's class, timetable overlap) inside the same transaction.
@@ -124,16 +124,16 @@ Principles:
 | D20 | Error catalogue | Closed set: `VALIDATION_ERROR` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `USER_NOT_REGISTERED` 403, `ACCOUNT_DISABLED` 403, `NOT_FOUND` 404, `CONFLICT` 409, `SCHEDULE_CONFLICT` 409, `RATE_LIMITED` 429 (register endpoint only), `INTERNAL_ERROR` 500, `SERVICE_UNAVAILABLE` 503. Specific situations go in `details.reason` (`not_class_subject_owner`, `self_status_change`, `invalid_status_transition`, …) | Eleven codes are easy to keep identical on both sides; reasons are free to grow |
 | D21 | Role changes | Not supported in v1: deactivate and create a new account (email also immutable) | Removes the stale-role bug class and the two-system consistency problem |
 | D22 | Teacher deactivation | Refused with 409 (`details.reason = 'teacher_has_assignments'`) while the teacher has `class_subjects` or homeroom classes in the current academic year | Rosters must never show an inactive teacher |
-| D23 | Admin guards | Admin cannot change own status (403 `self_status_change`) or delete themselves (403 `self`). A last-admin guard locks the active admin rows inside the transaction and refuses (409 `last_admin`) any change that would leave none, so two admins deactivating each other at once cannot lock the school out; the seed ships a second admin | Lockout prevention |
+| D23 | Admin guards | Admin cannot change own status (403 `self_status_change`) or delete themselves (403 `self`). A last-admin guard locks the active admin rows inside the transaction and refuses (409 `last_admin`) any change that would leave none, so two admins deactivating each other at once cannot lock the school out | Lockout prevention |
 | D24 | Subjects | Hard delete allowed only when unused (409 otherwise) **and** `is_active` flag to retire a used subject (hidden from new assignments) | Both behaviours are expected by reviewers |
-| D25 | "Today" and the current academic year | Backend computes "today" and ISO weekday in `APP_TIMEZONE` (env; default = `Asia/Manila`, never the machine's zone, which is UTC on a host); current academic year = August rule (`ACADEMIC_YEAR_START_MONTH = 8` in `constants/shared.js`, the one value both sides read) in one helper used by dashboards, teacher visibility defaults, attendance date checks and the seed. Clients always send attendance dates explicitly | Without a "current year" rule, last year's timetable would appear in "today" |
+| D25 | "Today" and the current academic year | Backend computes "today" and ISO weekday in `APP_TIMEZONE` (env; default = `Asia/Manila`, never the machine's zone, which is UTC on a host); current academic year = August rule (`ACADEMIC_YEAR_START_MONTH = 8` in `constants/shared.js`, the one value both sides read) in one helper used by dashboards, teacher visibility defaults and attendance date checks. Clients always send attendance dates explicitly | Without a "current year" rule, last year's timetable would appear in "today" |
 | D26 | Shared constants | `backend/src/constants/shared.js` and `frontend/src/constants/shared.js` are byte-identical (pure ESM, no env, no React); `npm run check:constants` (backend) compares the two files and the ENUM lists parsed from `schema.sql` | Every enum is typed once per side and checked mechanically |
 | D27 | Helmet | `helmet()` with its Content-Security-Policy on every response except `/api/docs` | Swagger UI, the only HTML served, runs inline scripts the policy blocks; every other response keeps the full set of headers |
 | D28 | Body limit | `express.json({ limit: '1mb' })` | Bulk attendance/grade bodies up to 200 rows |
 | D29 | Public registration | `POST /auth/register` enabled by default (`ALLOW_PUBLIC_REGISTRATION=true`), rate limited per IP (30 sign-ups and 150 refused attempts per 15 minutes), body schema strict with no `role` field, role hard-coded to `student` | Lets the reviewer try the app without an admin; production would turn it off |
-| D30 | Seed demo accounts | `admin@school.test`, `admin2@school.test`, `teacher1..3@school.test`, `student1..8@school.test`, password from `SEED_PASSWORD` (`backend/.env`; required for a hosted database) | Obviously fake, valid syntax for Firebase |
-| D31 | Seeding mechanics | `npm run db:migrate` runs `schema.sql` through a dedicated `multipleStatements` connection (creates the database; no `mysql` CLI needed); `npm run db:seed` is a Node script: Firebase users + `users`/profile rows first (idempotent, re-links `firebase_uid` by email), then `seed.sql` for everything else (resolves ids by natural keys; refuses to run twice; `npm run db:reset` drops and rebuilds) | `mysql.exe` is not on PATH on Windows installs; a reviewer should never need it |
-| D32 | Transactions and pool | Repositories accept an optional trailing `conn`; `withTransaction(fn)` is the only place that calls `getConnection` and always releases in `finally`; `multipleStatements` only in the migrate/seed scripts | Prevents the "API hangs after 10 requests" class of bug |
+| D30 | First administrator | `npm run db:create-admin -- <email> <password> [firstName] [lastName]` creates one admin (Firebase user + `users` row) through `createUserAccount`; no demo or sample accounts ship with the code | Admins cannot sign up publicly, and a production database must start without fake people in it |
+| D31 | Database mechanics | `npm run db:migrate` runs `schema.sql` through a dedicated `multipleStatements` connection (creates the database; no `mysql` CLI needed); `npm run db:reset` drops the local database and migrates it again, empty | `mysql.exe` is not on PATH on Windows installs; a reviewer should never need it |
+| D32 | Transactions and pool | Repositories accept an optional trailing `conn`; `withTransaction(fn)` is the only place that calls `getConnection` and always releases in `finally`; `multipleStatements` only on the dedicated connections of the migrations and the restore script | Prevents the "API hangs after 10 requests" class of bug |
 | D33 | Validated input location | `validate()` writes to `req.validated = { params, query, body }`; nothing ever assigns to `req.query` | Express 5 getter |
 | D34 | Grade level | 1..12 in CHECK, zod and UI | |
 | D35 | Repository location | Any folder; GitHub is the backup. Inside OneDrive, pause syncing during `npm install` (README, Troubleshooting) | `node_modules` inside a synced folder can cause `EPERM`/`EBUSY` and watcher flakiness (section 13) |
@@ -241,24 +241,22 @@ Who may do what, and the named rule in `modules/access` behind each `own` cell: 
 school-management-system/
 ├── .gitignore                      # node_modules, dist, .env*, !.env.example, *firebase-service-account*.json, *firebase-adminsdk*.json, desktop.ini, *.log
 ├── .gitattributes                  # * text=auto
-├── README.md                       # feature matrix, setup ($0 path), demo accounts, project tour, decisions and known limits, troubleshooting
+├── README.md                       # feature matrix, setup ($0 path), first administrator, project tour, decisions and known limits, troubleshooting
 ├── docs/
 │   ├── PROJECT_PLAN.md             # this file
 │   └── ARCHITECTURE.md             # short reviewer-facing overview, ERD, role matrix
 ├── backend/
-│   ├── package.json                # "type": "module"; scripts: dev, start, test, lint, format, db:migrate, db:seed, db:create-admin, db:reset, check:constants, check:secrets, doctor, token
+│   ├── package.json                # "type": "module"; scripts: dev, start, test, lint, format, db:migrate, db:create-admin, db:reset, check:constants, check:secrets, doctor, token
 │   ├── .env.example
 │   ├── firebase-service-account.json   # git-ignored; downloaded from the Firebase console
 │   ├── database/
 │   │   ├── schema.sql              # the 19 tables (idempotent; scripts/migrate.js creates the database)
-│   │   ├── upgrades.js             # changes to existing tables, each run once by src/config/migrations.js
-│   │   └── seed.sql                # non-user demo data, ids resolved by natural keys, dates relative to today
+│   │   └── upgrades.js             # changes to existing tables, each run once by src/config/migrations.js
 │   ├── docs/
 │   │   └── openapi.yaml            # the API contract served at /api/docs
 │   ├── scripts/
 │   │   ├── migrate.js              # creates the database, then runs src/config/migrations.js (schema.sql + upgrades); --fresh drops first
-│   │   ├── seed.js                 # Firebase users + users/profile rows, then seed.sql
-│   │   ├── create-admin.js         # first administrator for a database without demo data
+│   │   ├── create-admin.js         # the first administrator of a new database
 │   │   ├── doctor.js               # env, service account, project-id parity with frontend/.env, DB reachable, tables present, ports free
 │   │   ├── check-constants.js      # shared.js byte-equality + schema.sql ENUM parity
 │   │   ├── check-secrets.js        # fails if a key or .env file would be committed
@@ -348,11 +346,11 @@ Baked into the implementation (not optional):
 - Ownership: every teacher write goes through `assertCanManageClassSubject`; every attendance/grade row is checked against the roster of that date (members on the day, plus anyone already marked); students never read by client-supplied ids outside their own.
 - Errors: central handler; duplicate keys → 409 with the key name; FK deletes → 409 "in use"; unknown routes return the envelope; stack traces only outside production; request id in header and logs.
 - Data: DATE as strings end to end; `decimalNumbers` so scores are numbers; ENUMs from shared constants; weekday ISO.
-- Admin safety: self-status and self-delete guards, a locked last-active-admin check; seed ships a second admin.
+- Admin safety: self-status and self-delete guards, a locked last-active-admin check.
 - Reproducibility: lockfiles committed, `npm install` in the README, `engines.node >= 22.22`, Node scripts only (no shell scripts), paths quoted, `127.0.0.1` everywhere.
 - Tests (`backend/tests`, run by `npm test`): health; auth middleware (401 missing/invalid token, 403 unregistered, 403 disabled); RBAC on three endpoints; register forces role `student` and compensates on MySQL failure; second active enrollment → 409; schedule conflicts (class, teacher, room, adjacent slot OK, self-update OK); list validation (`sortBy=evil` 400, `limit=1000` 400, `%` literal, `meta.total` under search); duplicate subject code → 409; `check:constants` passes; `openapi.yaml` parses and every path exists in the router.
 
-Pre-submission gate (in order): `npm test` (backend) → `npm run lint` and `npm run build` (frontend) → `check:secrets` → clean clone into a fresh folder with a brand-new Firebase project and database name, follow the README literally → Swagger sweep → the 14 manual checks of section 2 as each demo role → push → confirm on GitHub that `.env`, `node_modules` and the service account are absent and the README renders.
+Pre-submission gate (in order): `npm test` (backend) → `npm run lint` and `npm run build` (frontend) → `check:secrets` → clean clone into a fresh folder with a brand-new Firebase project and database name, follow the README literally → Swagger sweep → the 14 manual checks of section 2 as each role → push → confirm on GitHub that `.env`, `node_modules` and the service account are absent and the README renders.
 
 ---
 

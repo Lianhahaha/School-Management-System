@@ -318,7 +318,7 @@ The school time zone (`APP_TIMEZONE`) decides what "today" means, MySQL connecti
 
 ## 9. Testing
 
-`npm test` in `backend/` runs the shared-constants check and the API test suite against a separate `school_management_test` database. Firebase is replaced by an in-memory fake, so the suite needs MySQL but no Firebase project and no network. The tests exercise the real Express app through HTTP (supertest) and cover role gates, scoping, validation, conflicts, the all-or-nothing bulk writes, the migrations and the seed script itself.
+`npm test` in `backend/` runs the shared-constants check and the API test suite against a separate `school_management_test` database. Firebase is replaced by an in-memory fake, so the suite needs MySQL but no Firebase project and no network. The tests exercise the real Express app through HTTP (supertest) and cover role gates, scoping, validation, conflicts, the all-or-nothing bulk writes and the migrations.
 
 `npm test` in `frontend/` runs the Vitest unit tests in `frontend/tests` in plain Node, with no browser, database or Firebase project: grade arithmetic, form schemas, dates and school years. One of them (`grading-agreement.test.js`) runs one table of scores through `backend/src/utils/grading.js` and the frontend's `src/utils/grades.js` and expects the same numbers, so a change to the rounding, the averaging or the passing grade on one side fails until the other side follows.
 

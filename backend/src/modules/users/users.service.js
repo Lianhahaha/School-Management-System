@@ -193,21 +193,18 @@ function withAccountLock(email, work) {
  *           firstName: string, lastName: string, phone?: string, profile?: object,
  *           application?: { gradeLevel: number, previousSchool?: string|null } }} input
  *   `application` is sent by public registration only: office-created students have none
- * @param {{ trusted: boolean, firebaseUid?: string }} options trusted = the office or seed;
- *   firebaseUid links an existing Firebase user instead of creating one (the seed's demo accounts only)
+ * @param {{ trusted: boolean }} options trusted = the office, or the create-admin script
  */
-export async function createUserAccount(input, { trusted, firebaseUid }) {
+export async function createUserAccount(input, { trusted }) {
   const email = input.email.toLowerCase();
   const userId = await withAccountLock(email, async (conn) => {
     if (await repo.findUserByEmail(email, conn)) throw emailAlreadyRegistered();
 
-    const uid =
-      firebaseUid ??
-      (await createFirebaseUser(
-        { email, password: input.password, displayName: `${input.firstName} ${input.lastName}` },
-        trusted,
-        conn,
-      ));
+    const uid = await createFirebaseUser(
+      { email, password: input.password, displayName: `${input.firstName} ${input.lastName}` },
+      trusted,
+      conn,
+    );
 
     const insertAll = () =>
       inTransaction(conn, async () => {
@@ -226,8 +223,7 @@ export async function createUserAccount(input, { trusted, firebaseUid }) {
     try {
       return await insertWithFreshNumber(insertAll, input.profile);
     } catch (error) {
-      // A linked (pre-existing) Firebase user is not this call's to remove.
-      if (!firebaseUid) await deleteFirebaseUserOrLog(uid, 'could not delete Firebase user after a failure');
+      await deleteFirebaseUserOrLog(uid, 'could not delete Firebase user after a failure');
       throw error;
     }
   });

@@ -163,8 +163,3 @@ export async function hasHistory(id, conn) {
 export async function deleteUser(id, conn) {
   return (await run('DELETE FROM users WHERE id = ?', [id], conn)).affectedRows > 0;
 }
-
-/** Point an existing users row at a (new) Firebase account; used by the seed after a Firebase project change. */
-export async function relinkFirebaseUid(id, firebaseUid, conn) {
-  await run('UPDATE users SET firebase_uid = ? WHERE id = ?', [firebaseUid, id], conn);
-}

@@ -1,6 +1,6 @@
 /**
  * The activity log: who changed what and when. Services call `record` after a change succeeded; the actor is
- * the signed-in user of the request (utils/requestContext), or "System" outside a request (the seed script).
+ * the signed-in user of the request (utils/requestContext), or "System" outside a request (a script such as create-admin).
  *
  * Recording is best effort on purpose: the change has already happened, so a failed log write is reported in
  * the server log and never turns a successful request into an error.

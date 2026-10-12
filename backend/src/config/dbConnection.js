@@ -1,6 +1,6 @@
 /**
  * Connection settings shared by the API pool and every script that opens its own connection
- * (migrate, seed, doctor, tests), so a hosted MySQL that requires TLS works the same everywhere.
+ * (migrate, doctor, backup, restore, tests), so a hosted MySQL that requires TLS works the same everywhere.
  */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';

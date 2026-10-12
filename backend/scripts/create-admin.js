@@ -1,8 +1,8 @@
 /**
- * create-admin.js — creates one administrator (Firebase account + MySQL row), for a database with no
- * demo data. Administrators cannot sign up on the public page, so the first one comes from here.
+ * create-admin.js — creates one administrator (Firebase account + MySQL row), such as the first one of a
+ * new database. Administrators cannot sign up on the public page, so the first one comes from here.
  *
- *   npm run db:create-admin -- admin@example.com "A strong password" Amara Johnson
+ *   npm run db:create-admin -- you@example.com "a-strong-password" Jane Cruz
  *
  * The arguments are e-mail, password (8+ characters), first name and last name (both optional).
  * Run it against the cloud database with `node --env-file=.env --env-file=.env.cloud scripts/create-admin.js ...`.

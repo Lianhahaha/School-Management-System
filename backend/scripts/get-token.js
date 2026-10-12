@@ -2,20 +2,20 @@
  * get-token.js — signs in to Firebase with e-mail and password and prints an ID token, so the API can
  * be called from Swagger UI ("Authorize"), curl or Postman without the frontend.
  *
- *   npm run token --silent -- student1@school.test              password defaults to SEED_PASSWORD
- *   npm run token --silent -- admin@school.test "Other pass1"
+ *   npm run token --silent -- <email> <password>
  *
+ * Any account works: the administrator from `npm run db:create-admin`, or a user made in the app.
  * Only the token goes to stdout (usable as `$(npm run token --silent -- ...)`); messages go to stderr.
  * An ID token expires after one hour; run the command again for a new one.
  * Needs VITE_FIREBASE_API_KEY in frontend/.env.
  */
-import { env } from '../src/config/env.js';
 import { frontendEnvPath, readFrontendEnv } from './lib/frontendEnv.js';
 
 const SIGN_IN_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword';
 
 const REASONS = {
-  EMAIL_NOT_FOUND: 'No Firebase account for this e-mail. Run `npm run db:seed` or create the user first.',
+  EMAIL_NOT_FOUND:
+    'No Firebase account for this e-mail. Create the user first (`npm run db:create-admin`, or in the app).',
   INVALID_PASSWORD: 'Wrong password.',
   INVALID_LOGIN_CREDENTIALS: 'Wrong e-mail or password.',
   USER_DISABLED: 'This account is disabled in Firebase.',
@@ -30,8 +30,8 @@ function fail(message) {
   process.exit(1);
 }
 
-const [email, password = env.SEED_PASSWORD] = process.argv.slice(2);
-if (!email) fail('Usage: npm run token --silent -- <email> [password]');
+const [email, password] = process.argv.slice(2);
+if (!email || !password) fail('Usage: npm run token --silent -- <email> <password>');
 
 const frontendEnv = readFrontendEnv();
 if (!frontendEnv)
