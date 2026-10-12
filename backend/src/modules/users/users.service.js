@@ -287,9 +287,21 @@ async function assertNotLastActiveAdmin(id, conn) {
   }
 }
 
+/** Applies an account's status to its Firebase sign-in (ending its sessions on deactivation); 503 on failure. */
+async function applySignInStatus(firebaseUid, isActive) {
+  try {
+    await firebase.updateUser(firebaseUid, { disabled: !isActive });
+    if (!isActive) await firebase.revokeRefreshTokens(firebaseUid);
+  } catch (error) {
+    throw ApiError.unavailable('auth', { cause: error });
+  }
+}
+
 /**
- * Activate / deactivate. MySQL first (the middleware enforces it on the next request),
- * then Firebase (disabled flag, plus refresh-token revocation when deactivating).
+ * Activate / deactivate. The side that refuses the person goes first, so a failure in between never shows
+ * an account as active that cannot sign in: deactivating writes MySQL first (the middleware enforces it on
+ * the next request), then Firebase (disabled flag and refresh-token revocation); reactivating enables the
+ * Firebase sign-in first, then MySQL. A failed Firebase step answers 503; repeating the request finishes it.
  * Deactivating an admin re-checks the "last active admin" rule under row locks, so two admins
  * deactivating each other at the same moment cannot both succeed.
  */
@@ -297,6 +309,9 @@ export async function setStatus(actor, id, isActive) {
   if (actor.id === id)
     throw ApiError.forbidden('self_status_change', 'you cannot change your own account status');
   const target = await getAccount(id);
+
+  // Until MySQL says active the API still refuses the account: an enabled sign-in alone grants nothing.
+  if (isActive) await applySignInStatus(target.firebaseUid, true);
 
   await withTransaction(async (conn) => {
     // Status changes of one account run one after the other. Deactivating an admin locks every active
@@ -333,14 +348,9 @@ export async function setStatus(actor, id, isActive) {
     });
   }
 
-  // The sign-in follows. A deactivated account is already refused by the API (MySQL is checked on every
+  // A deactivation's sign-in follows. The account is already refused by the API (MySQL is checked on every
   // request); a failure here answers 503, and repeating the same request re-applies the Firebase step.
-  try {
-    await firebase.updateUser(target.firebaseUid, { disabled: !isActive });
-    if (!isActive) await firebase.revokeRefreshTokens(target.firebaseUid);
-  } catch (error) {
-    throw ApiError.unavailable('auth', { cause: error });
-  }
+  if (!isActive) await applySignInStatus(target.firebaseUid, false);
   return getAccount(id);
 }
 

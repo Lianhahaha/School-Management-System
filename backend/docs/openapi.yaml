@@ -459,9 +459,12 @@ paths:
       description: |
         Roles: admin (not on their own account).
 
-        Updates `isActive` in the database, then disables or enables the Firebase user; deactivating also
-        revokes its refresh tokens, so the user is locked out immediately. Deactivating a student withdraws
-        their active enrollment. The call is idempotent.
+        Deactivating updates `isActive` in the database, then disables the Firebase user and revokes its
+        refresh tokens, so the user is locked out immediately. Reactivating enables the Firebase user first,
+        then updates `isActive`, so an account never reads as active while it cannot sign in. Deactivating a
+        student withdraws their active enrollment. The call is idempotent: a `503` (`details.component =
+        auth`) means Firebase could not be reached (a reactivation then changed nothing; a deactivation is
+        already in force), and repeating the request finishes the job.
 
         Refused with `403` (`details.reason = self_status_change`) when the target is the caller, with
         `409` (`details.reason = teacher_has_assignments`) when a teacher still teaches a class-subject or is
@@ -485,6 +488,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
   /students:
     get:
       tags: [students]

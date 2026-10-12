@@ -427,6 +427,39 @@ describe('user administration', () => {
     assert.equal(firebaseUsers().find((user) => user.uid === student.firebaseUid).disabled, true);
   });
 
+  it('keeps an account inactive when Firebase cannot enable its sign-in; a retry reactivates it', async () => {
+    const admin = await makeUser('admin');
+    const student = await makeUser('student');
+    const reactivate = () =>
+      api.patch(`/api/v1/users/${student.id}/status`).set(as(admin)).send({ isActive: true });
+    await api.patch(`/api/v1/users/${student.id}/status`).set(as(admin)).send({ isActive: false });
+    const realUpdate = firebase.updateUser;
+    firebase.updateUser = async () => {
+      throw firebaseError('app/network-error', 'network down');
+    };
+    let res;
+    try {
+      res = await reactivate();
+    } finally {
+      firebase.updateUser = realUpdate;
+    }
+    assert.equal(res.status, 503);
+    assert.equal(res.body.error.details.component, 'auth');
+    // Shown as active it could not sign in: it stays inactive, and nothing is logged.
+    assert.equal((await api.get(`/api/v1/users/${student.id}`).set(as(admin))).body.data.isActive, false);
+    const logged = await query(
+      "SELECT COUNT(*) AS n FROM activity_log WHERE action = 'user.activate' AND entity_id = ?",
+      [student.id],
+    );
+    assert.equal(logged[0].n, 0);
+
+    const retry = await reactivate();
+    assert.equal(retry.status, 200);
+    assert.equal(retry.body.data.isActive, true);
+    assert.equal(firebaseUsers().find((user) => user.uid === student.firebaseUid).disabled, false);
+    assert.equal((await api.get('/api/v1/auth/me').set(as(student))).status, 200);
+  });
+
   it('refuses to change your own status (403 self_status_change)', async () => {
     const admin = await makeUser('admin');
     const self = await api.patch(`/api/v1/users/${admin.id}/status`).set(as(admin)).send({ isActive: false });
