@@ -14,12 +14,14 @@ import {
   DATE_REGEX,
   EMPLOYEE_NUMBER_REGEX,
   LRN_REGEX,
+  NAME_REGEX,
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
   PHONE_REGEX,
   STUDENT_NUMBER_REGEX,
   SUBJECT_CODE_REGEX,
   TIME_REGEX,
+  cleanText,
   isConsecutiveAcademicYear,
 } from '../constants/shared';
 import { todayYmd } from '../utils/date';
@@ -42,13 +44,16 @@ export const password = z
   .min(PASSWORD_MIN_LENGTH, `Password must be at least ${PASSWORD_MIN_LENGTH} characters`)
   .max(PASSWORD_MAX_LENGTH, `Password must be at most ${PASSWORD_MAX_LENGTH} characters`);
 
-/** Required person name (first name, last name, guardian name). */
+/**
+ * Required person name (first name, last name, guardian name), the API's rule: letters with spaces, periods,
+ * apostrophes and hyphens; invisible characters dropped and runs of spaces made one before the check.
+ */
 export const name = z
   .string()
-  .trim()
+  .overwrite((value) => cleanText(value))
   .min(1, 'This field is required')
   .max(100, 'Use 100 characters or fewer')
-  .refine((value) => /\p{L}/u.test(value), 'Use letters in a name');
+  .regex(NAME_REGEX, "Use letters only. Spaces, periods (.), apostrophes (') and hyphens (-) are fine.");
 
 /** Same rule as the API: digits with + ( ) - and spaces, at least 7 digits. */
 export const phone = z

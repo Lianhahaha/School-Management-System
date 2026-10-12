@@ -10,7 +10,7 @@
  * differ or when an ENUM column in database/schema.sql does not match.
  *
  * Rules for this file: pure ES module, no imports, no environment access,
- * no framework code. Values only, plus the two tiny helpers at the bottom.
+ * no framework code. Values only, plus the tiny helpers at the bottom.
  */
 
 /**
@@ -201,6 +201,12 @@ export const EMPLOYEE_NUMBER_REGEX = /^EMP-\d{4}-\d{4,}$/;
 export const LRN_REGEX = /^\d{12}$/;
 export const SUBJECT_CODE_REGEX = /^[A-Z0-9-]{2,20}$/;
 export const PHONE_REGEX = /^\+?[0-9()\-\s]{7,20}$/;
+/**
+ * A person's name: letters of any language with their accents, and the spaces, periods, apostrophes and
+ * hyphens names use ("Ma. Clara", "O'Brien", "Dela Cruz-Niño"), starting with a letter. No digits, emoji or
+ * other symbols.
+ */
+export const NAME_REGEX = /^[\p{L}\p{M}][\p{L}\p{M} .'’-]*$/u;
 
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 128;
@@ -235,4 +241,20 @@ export function isConsecutiveAcademicYear(value) {
 /** JavaScript `Date#getDay()` (0 = Sunday) → ISO weekday (1 = Monday … 7 = Sunday). */
 export function jsDayToIsoDay(jsDay) {
   return ((jsDay + 6) % 7) + 1;
+}
+
+/**
+ * Typed text without what nobody can see: control characters and format characters such as zero-width spaces
+ * or text-direction overrides, often pasted in by accident. One-line text also turns line breaks into spaces
+ * and every run of spaces into one; with `keepLines` line breaks stay (\r\n becomes \n). Tabs become spaces.
+ * Trimmed either way.
+ * @param {string} value
+ * @param {{ keepLines?: boolean }} [options]
+ */
+export function cleanText(value, { keepLines = false } = {}) {
+  const lines = value.replace(/\r\n?/g, '\n').replace(/\t/g, ' ');
+  const visible = lines.replace(/\p{Cf}/gu, '');
+  if (keepLines) return visible.replace(/[^\P{Cc}\n]/gu, '').trim();
+  const oneLine = visible.replace(/\p{Cc}/gu, ' ');
+  return oneLine.replace(/\s+/g, ' ').trim();
 }

@@ -10,6 +10,7 @@ import {
   as,
   closeWorld,
   fillClass,
+  lettersOf,
   makeAssistant,
   makeClass,
   makeUser,
@@ -43,7 +44,7 @@ describe('sign-up: students pick their class, student assistants wait for approv
       email: `signup${sequence}@school.test`,
       password: 'Password123!',
       firstName: 'Sign',
-      lastName: `Up${sequence}`,
+      lastName: `Up${lettersOf(sequence)}`,
     };
   };
   const register = (body) => api.post('/api/v1/auth/register').send(body);

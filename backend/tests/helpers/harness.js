@@ -24,6 +24,21 @@ export const closeWorld = shutdown;
 let sequence = 0;
 
 /**
+ * A count as letters, for unique names (a name takes no digits): 1 -> 'A', 26 -> 'Z', 27 -> 'AA', 28 -> 'AB'.
+ * @param {number} count 1 or more
+ */
+export function lettersOf(count) {
+  let rest = count;
+  let letters = '';
+  while (rest > 0) {
+    rest -= 1;
+    letters = String.fromCharCode(65 + (rest % 26)) + letters;
+    rest = Math.floor(rest / 26);
+  }
+  return letters;
+}
+
+/**
  * Creates an account of any role but `assistant` (see makeAssistant) and returns it with a ready-to-use
  * Authorization header.
  */
@@ -77,8 +92,8 @@ async function makeAccount(role, overrides) {
       email: `${role}${sequence}@school.test`,
       password: 'Password123!',
       role,
-      firstName: `First${sequence}`,
-      lastName: `Last${sequence}`,
+      firstName: `First${lettersOf(sequence)}`,
+      lastName: `Last${lettersOf(sequence)}`,
       // Students and teachers have a profile; admins and assistants have none.
       ...(role === 'student' || role === 'teacher' ? { profile: {} } : {}),
       ...overrides,

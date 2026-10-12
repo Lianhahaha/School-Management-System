@@ -9,6 +9,7 @@ import {
   as,
   buildSchool,
   closeWorld,
+  lettersOf,
   makeAssistant,
   makeSubject,
   makeUser,
@@ -46,7 +47,7 @@ describe('student assistant', () => {
       password: 'Password123!',
       role,
       firstName: 'Office',
-      lastName: `Made${sequence}`,
+      lastName: `Made${lettersOf(sequence)}`,
       ...overrides,
     };
   };

@@ -10,6 +10,7 @@ import {
   EMPLOYEE_NUMBER_REGEX,
   HIGHEST_GRADE_LEVEL,
   LRN_REGEX,
+  NAME_REGEX,
   PAGINATION,
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
@@ -18,6 +19,7 @@ import {
   STUDENT_NUMBER_REGEX,
   SUBJECT_CODE_REGEX,
   TIME_REGEX,
+  cleanText,
   isConsecutiveAcademicYear,
 } from '../../constants/shared.js';
 import { todayYmd } from '../dates.js';
@@ -105,18 +107,24 @@ export const capitalizeIfLowercase = (value) =>
     : value;
 
 /**
- * A person's name (first, last, guardian), stored with capitals even when typed in lower case. It must
- * contain a letter, so digits, punctuation or invisible characters alone are refused.
+ * A person's name (first, last, guardian): letters with the spaces, periods, apostrophes and hyphens names use
+ * (NAME_REGEX), so digits, emoji and symbols are refused. Invisible characters are dropped and runs of spaces
+ * become one before the check; stored with capitals even when typed in lower case.
  */
 export const name = z
   .string()
-  .trim()
+  .overwrite((value) => cleanText(value))
   .min(1, { error: 'required' })
   .max(100)
-  .refine((value) => /\p{L}/u.test(value), { error: 'must contain a letter' })
+  .regex(NAME_REGEX, { error: 'use letters only; spaces, periods, apostrophes and hyphens are allowed' })
   .transform(capitalizeIfLowercase);
 
-export const shortText = (max) => z.string().trim().max(max);
+/** Free text up to `max` characters, without invisible characters (line breaks kept), trimmed. */
+export const shortText = (max) =>
+  z
+    .string()
+    .overwrite((value) => cleanText(value, { keepLines: true }))
+    .max(max);
 
 /** Optional free text: trimmed, and blank becomes null, so an empty field is stored as "no value". */
 export const optionalText = (max) => shortText(max).transform((value) => value || null);

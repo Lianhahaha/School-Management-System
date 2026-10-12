@@ -3,7 +3,15 @@ import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import { run } from '../src/config/db.js';
 import { bearer } from './helpers/fakeFirebase.js';
-import { APPLICATION_FIELDS, api, as, buildSchool, closeWorld, resetWorld } from './helpers/harness.js';
+import {
+  APPLICATION_FIELDS,
+  api,
+  as,
+  buildSchool,
+  closeWorld,
+  lettersOf,
+  resetWorld,
+} from './helpers/harness.js';
 
 after(closeWorld);
 
@@ -18,7 +26,7 @@ describe('admissions', () => {
       email: `applicant${sequence}@school.test`,
       password: 'Password123!',
       firstName: 'Applicant',
-      lastName: `Number${sequence}`,
+      lastName: `Number${lettersOf(sequence)}`,
       ...APPLICATION_FIELDS,
       ...overrides,
     });
