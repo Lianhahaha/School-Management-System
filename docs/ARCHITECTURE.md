@@ -153,7 +153,7 @@ erDiagram
         int id PK
         varchar code UK
         boolean is_active
-        enum grading_group "languages | math_science | mapeh, null = points or weights"
+        enum grading_group "languages | math_science | mapeh | shs_core | shs_academic | shs_immersion | shs_tvl, null = points or weights"
     }
     subject_grade_weights {
         int subject_id PK,FK
@@ -283,7 +283,7 @@ Schema changes: `schema.sql` creates the tables of a new database (`CREATE TABLE
 
 Activity log: services call `activity.record()` after each successful change; the actor is read from the request context that `authenticate` opens (`utils/requestContext.js`), and a failed log write never fails the request.
 
-Results: each assessment belongs to a semester (`sem1`, `sem2`) and to one of that semester's four quarters (`term1`..`term4`), and each quarter of a subject is graded on its own. A subject with a grading group is graded on the DepEd K-12 components (written work, performance tasks, quarterly assessment; the quarter's weighted initial grade is transmuted to 60–100, 75 passes); a subject with grade weights per assessment type uses those; any other subject is graded on points (`SUM(score) / SUM(max_score)` over the quarter). A semester's grade is the average of its quarterly grades so far, the school year's grade the average of the semester grades that exist (a whole number for K-12 at each step), and a student's general average is the mean of their subjects' grades for the scope: the school year, or the semester a request names. The arithmetic is in `backend/src/utils/grading.js`.
+Results: each assessment belongs to a semester (`sem1`, `sem2`) and to one of that semester's four quarters (`term1`..`term4`), and each quarter of a subject is graded on its own. A subject with a grading group is graded on the DepEd K-12 components (written work, performance tasks, quarterly assessment, weighted by the group: three groups for Grades 1-10, four for Senior High; the quarter's weighted initial grade is transmuted to 60–100, 75 passes, and a subject is assigned only to classes of its group's grades); a subject with grade weights per assessment type uses those; any other subject is graded on points (`SUM(score) / SUM(max_score)` over the quarter). A semester's grade is the average of its quarterly grades so far, the school year's grade the average of the semester grades that exist (a whole number for K-12 at each step), and a student's general average is the mean of their subjects' grades for the scope: the school year, or the semester a request names. The arithmetic is in `backend/src/utils/grading.js`.
 
 ## 6. Roles and what they can do
 
