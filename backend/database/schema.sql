@@ -106,8 +106,10 @@ CREATE TABLE IF NOT EXISTS students (
 -- 4. subjects — master list, independent of year/class ("Mathematics").
 --    is_active lets an admin retire a subject that already has history
 --    (it cannot be hard-deleted once class_subjects reference it).
---    grading_group: K-12 subject group (component weights in constants/shared.js);
---    NULL = graded on points, or by the weights in subject_grade_weights.
+--    grading_group: K-12 subject group (component weights in constants/shared.js):
+--    languages, math_science, mapeh for Grades 1-10, the shs_ groups for Senior
+--    High (Grades 11-12); NULL = graded on points, or by the weights in
+--    subject_grade_weights.
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS subjects (
   id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -115,7 +117,7 @@ CREATE TABLE IF NOT EXISTS subjects (
   name           VARCHAR(100) NOT NULL,
   description    TEXT         NULL,
   is_active      BOOLEAN      NOT NULL DEFAULT TRUE COMMENT 'Stored as tinyint(1). 0 = retired, hidden from new assignments',
-  grading_group  ENUM('languages','math_science','mapeh') NULL COMMENT 'K-12 components group; NULL = points or custom weights',
+  grading_group  ENUM('languages','math_science','mapeh','shs_core','shs_academic','shs_immersion','shs_tvl') NULL COMMENT 'K-12 components group; NULL = points or custom weights',
   created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),

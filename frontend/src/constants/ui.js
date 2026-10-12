@@ -184,11 +184,18 @@ export const ASSESSMENT_TYPE_LABELS = Object.freeze({
 });
 export const ASSESSMENT_TYPE_OPTIONS = optionsOf(ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS);
 
-/** K-12 subject groups (DepEd Order 8, s. 2015) as an admin picks them for a subject. */
+/**
+ * K-12 subject groups (DepEd Order 8, s. 2015) as an admin picks them for a subject: the Grades 1-10 groups,
+ * then Senior High's (Grades 11-12), whose names say so wherever a group is shown.
+ */
 export const GRADING_GROUP_LABELS = Object.freeze({
   languages: 'Languages, AP, EsP',
   math_science: 'Math and Science',
   mapeh: 'MAPEH, EPP, TLE',
+  shs_core: 'Senior High – Core',
+  shs_academic: 'Senior High – Academic track',
+  shs_immersion: 'Senior High – Academic immersion, research',
+  shs_tvl: 'Senior High – TVL, Sports, Arts and Design',
 });
 
 /** The three K-12 grade components. */

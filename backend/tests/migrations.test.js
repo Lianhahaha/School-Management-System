@@ -11,6 +11,7 @@ after(shutdown);
 const UPGRADE_IDS = UPGRADES.map((upgrade) => upgrade.id);
 const SEMESTER_UPGRADE = '2026-10-11-assessments-semester';
 const PERIOD_KEY_UPGRADE = '2026-10-11-assessments-period-key';
+const SHS_GROUPS_UPGRADE = '2026-10-12-subjects-shs-groups';
 
 describe('database migrations', () => {
   let session;
@@ -126,6 +127,8 @@ describe('database migrations', () => {
       ['activity_log', 'actor_role'],
       ['assessments', 'term'],
       ['assessments', 'semester'],
+      // Re-added with the three Grades 1-10 groups, then given the Senior High ones by their own upgrade.
+      ['subjects', 'grading_group'],
     ];
     const definitions = () =>
       Promise.all(enumColumns.map(([table, column]) => columnDefinition(table, column)));
@@ -231,6 +234,70 @@ describe('database migrations', () => {
         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'assessments' AND REFERENCED_TABLE_NAME = 'class_subjects'`,
     );
     assert.equal(foreignKey?.CONSTRAINT_NAME, 'fk_assessments_class_subject', 'the foreign key stays');
+  });
+
+  it('appends the Senior High groups to the Grades 1-10 ones, keeping every subject in its group', async () => {
+    await migrate();
+    const current = await columnDefinition('subjects', 'grading_group');
+    // The column as upgrade 2026-10-08-subjects-grading-group made it, with a subject in each group it knew.
+    await session.query(
+      `ALTER TABLE subjects MODIFY COLUMN grading_group ENUM('languages','math_science','mapeh') NULL
+         COMMENT 'K-12 components group; NULL = points or custom weights'`,
+    );
+    await session.query(
+      `INSERT INTO subjects (code, name, grading_group) VALUES
+         ('ENG', 'English', 'languages'), ('MATH', 'Mathematics', 'math_science'),
+         ('MAPEH', 'MAPEH', 'mapeh'), ('HR', 'Homeroom', NULL)`,
+    );
+    const subjectsBefore = await rows('SELECT id, code, grading_group FROM subjects ORDER BY id');
+    assert.notEqual((await columnDefinition('subjects', 'grading_group')).COLUMN_TYPE, current.COLUMN_TYPE);
+    await session.query('DELETE FROM schema_migrations WHERE id = ?', [SHS_GROUPS_UPGRADE]);
+
+    const { changed, messages } = await migrate();
+
+    assert.deepEqual(changed, [SHS_GROUPS_UPGRADE]);
+    assert.deepEqual(messages, [
+      `Upgraded: add the Senior High groups to subjects.grading_group (${SHS_GROUPS_UPGRADE})`,
+    ]);
+    assert.deepEqual(
+      await columnDefinition('subjects', 'grading_group'),
+      current,
+      'the column ends up as schema.sql defines it: the same type, NULL, comment and place',
+    );
+    assert.deepEqual(await rows('SELECT id, code, grading_group FROM subjects ORDER BY id'), subjectsBefore);
+    for (const group of ['shs_core', 'shs_academic', 'shs_immersion', 'shs_tvl']) {
+      await session.query('INSERT INTO subjects (code, name, grading_group) VALUES (?, ?, ?)', [
+        group.toUpperCase().replace('_', '-'),
+        group,
+        group,
+      ]);
+    }
+
+    // Run again, the upgrade forgotten once more: it is recorded without running, as its change is in place.
+    await session.query('DELETE FROM schema_migrations WHERE id = ?', [SHS_GROUPS_UPGRADE]);
+    const again = await migrate();
+    assert.deepEqual(again.changed, [SHS_GROUPS_UPGRADE]);
+    assert.deepEqual(again.messages, []);
+    assert.deepEqual(await migrate(), { changed: [], messages: [] });
+  });
+
+  it('finds the Senior High upgrade needed while any one of its four groups is missing', async () => {
+    await migrate();
+    const { needed } = UPGRADES.find((upgrade) => upgrade.id === SHS_GROUPS_UPGRADE);
+    const seniorHigh = ['shs_core', 'shs_academic', 'shs_immersion', 'shs_tvl'];
+    assert.deepEqual(await rows(needed), [], 'not needed on a database built from schema.sql');
+    for (const missing of seniorHigh) {
+      const values = [
+        'languages',
+        'math_science',
+        'mapeh',
+        ...seniorHigh.filter((group) => group !== missing),
+      ];
+      await session.query(
+        `ALTER TABLE subjects MODIFY COLUMN grading_group ENUM(${values.map((value) => `'${value}'`).join(',')}) NULL`,
+      );
+      assert.equal((await rows(needed)).length, 1, `needed without ${missing}`);
+    }
   });
 
   it('applies a changed schema.sql again, creating a table that is missing', async () => {

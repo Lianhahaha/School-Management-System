@@ -93,4 +93,22 @@ export const UPGRADES = Object.freeze([
               DROP INDEX uq_assessments_cs_term_title,
               ADD UNIQUE KEY uq_assessments_cs_period_title (class_subject_id, semester, term, title)`,
   },
+  {
+    // Senior High grading (DepEd Order 8 s. 2015, Table 5): four groups appended to the Grades 1-10 ones.
+    // Values appended to an ENUM leave every stored value as it is, so MySQL only rewrites the table's
+    // definition; the rest of the column (NULL, its comment, its place after is_active) is restated unchanged.
+    // Needed while any of the four is missing. LOCATE matches the quoted value exactly, where LIKE would read
+    // `_` as a wildcard.
+    id: '2026-10-12-subjects-shs-groups',
+    description: 'add the Senior High groups to subjects.grading_group',
+    needed: `SELECT 1 FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'subjects' AND COLUMN_NAME = 'grading_group'
+                AND (LOCATE('''shs_core''', COLUMN_TYPE) = 0
+                  OR LOCATE('''shs_academic''', COLUMN_TYPE) = 0
+                  OR LOCATE('''shs_immersion''', COLUMN_TYPE) = 0
+                  OR LOCATE('''shs_tvl''', COLUMN_TYPE) = 0)`,
+    apply: `ALTER TABLE subjects MODIFY COLUMN grading_group
+              ENUM('languages','math_science','mapeh','shs_core','shs_academic','shs_immersion','shs_tvl') NULL
+              COMMENT 'K-12 components group; NULL = points or custom weights'`,
+  },
 ]);

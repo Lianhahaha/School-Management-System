@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { GRADING_GROUPS } from '../src/constants/shared';
+import { GRADING_GROUP_LABELS } from '../src/constants/ui';
 import {
   averageOf,
   describeGrading,
@@ -475,6 +477,23 @@ describe('how a subject is graded, in words', () => {
     expect(describeGrading({ gradingGroup: 'languages', gradeWeights: null })).toBe(
       'K-12 · Languages, AP, EsP (30 · 50 · 20)',
     );
+  });
+
+  it('names the Senior High groups as such, with their own weights', () => {
+    expect(describeGrading({ gradingGroup: 'shs_core', gradeWeights: null })).toBe(
+      'K-12 · Senior High – Core (25 · 50 · 25)',
+    );
+    expect(describeGrading({ gradingGroup: 'shs_academic', gradeWeights: null })).toBe(
+      'K-12 · Senior High – Academic track (25 · 45 · 30)',
+    );
+    expect(describeGrading({ gradingGroup: 'shs_immersion', gradeWeights: null })).toBe(
+      'K-12 · Senior High – Academic immersion, research (35 · 40 · 25)',
+    );
+    expect(describeGrading({ gradingGroup: 'shs_tvl', gradeWeights: null })).toBe(
+      'K-12 · Senior High – TVL, Sports, Arts and Design (20 · 60 · 20)',
+    );
+    // Every group has a name, so none reads "undefined".
+    expect(Object.keys(GRADING_GROUP_LABELS).sort()).toEqual([...GRADING_GROUPS].sort());
   });
 
   it('falls back to the weights, then to points', () => {

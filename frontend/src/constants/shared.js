@@ -45,8 +45,33 @@ export const ASSESSMENT_TYPES = Object.freeze(['quiz', 'test', 'exam', 'assignme
 /**
  * K-12 grading (DepEd Order 8, s. 2015). A subject in one of these groups is graded by three components,
  * each with the group's weight in percent; the weighted result (initial grade) is transmuted to 60-100.
+ * languages, math_science and mapeh are the groups of Grades 1-10 (the order's Table 4); the shs_ groups are
+ * Senior High's (Grades 11-12, Table 5): the core subjects (shs_core), the academic track's other subjects
+ * (shs_academic), the academic track's work immersion, research, business enterprise simulation, exhibit or
+ * performance (shs_immersion), and every subject of the TVL, sports and arts and design tracks, their work
+ * immersion included (shs_tvl).
  */
-export const GRADING_GROUPS = Object.freeze(['languages', 'math_science', 'mapeh']);
+export const GRADING_GROUPS = Object.freeze([
+  'languages',
+  'math_science',
+  'mapeh',
+  'shs_core',
+  'shs_academic',
+  'shs_immersion',
+  'shs_tvl',
+]);
+
+/**
+ * The Senior High groups of GRADING_GROUPS. DepEd weighs the components of Grades 11-12 differently from
+ * those of Grades 1-10, so a subject in one of these groups is taught in Grades 11-12 only and a subject in
+ * another group in Grades 1-10 only; a subject on points or on its own weights may be taught in any grade.
+ */
+export const SENIOR_HIGH_GRADING_GROUPS = Object.freeze([
+  'shs_core',
+  'shs_academic',
+  'shs_immersion',
+  'shs_tvl',
+]);
 
 export const GRADING_COMPONENTS = Object.freeze(['written', 'performance', 'quarterly']);
 
@@ -54,6 +79,10 @@ export const COMPONENT_WEIGHTS = Object.freeze({
   languages: Object.freeze({ written: 30, performance: 50, quarterly: 20 }),
   math_science: Object.freeze({ written: 40, performance: 40, quarterly: 20 }),
   mapeh: Object.freeze({ written: 20, performance: 60, quarterly: 20 }),
+  shs_core: Object.freeze({ written: 25, performance: 50, quarterly: 25 }),
+  shs_academic: Object.freeze({ written: 25, performance: 45, quarterly: 30 }),
+  shs_immersion: Object.freeze({ written: 35, performance: 40, quarterly: 25 }),
+  shs_tvl: Object.freeze({ written: 20, performance: 60, quarterly: 20 }),
 });
 
 /** The K-12 component each assessment type counts towards. */
@@ -91,6 +120,9 @@ export const REMEDIAL_MAX_FAILED = 2;
 
 /** The highest grade level (classes run from 1 to 12). */
 export const HIGHEST_GRADE_LEVEL = 12;
+
+/** The first grade level of Senior High School, which runs to HIGHEST_GRADE_LEVEL (Grades 11 and 12). */
+export const SENIOR_HIGH_FIRST_GRADE = 11;
 
 /**
  * The quarters of a semester: term1 = 1st Quarter … term4 = 4th Quarter. Every semester has its own four, so a

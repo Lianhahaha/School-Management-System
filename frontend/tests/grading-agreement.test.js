@@ -71,8 +71,9 @@ function typeTotalsOf(grades, { perQuarter = true } = {}) {
 }
 
 /**
- * One student's class-subjects over two school years, covering every grading method: K-12 in each grading
- * group (one with a component not graded yet), weighted (one with a weighted type not graded yet, and a
+ * One student's class-subjects over three school years, covering every grading method: K-12 in each grading
+ * group (one with a component not graded yet; the Senior High groups in the student's Grade 11 year),
+ * weighted (one with a weighted type not graded yet, and a
  * quarter graded only in a type weighted 0), on points, a subject with nothing graded, and Math taken in two
  * classes of one year (the student changed class in the 2nd Quarter of the 1st Semester, so that quarter has
  * grades in both, and the 2nd Semester's 1st Quarter too). The grades are spread over the quarters of both
@@ -183,6 +184,55 @@ const CLASS_SUBJECTS = [
     weights: null,
     grades: [grade('quiz', 70, 100, 'term1'), grade('exam', 61.5, 80, 'term3', 'sem2')],
   },
+  {
+    name: 'Oral Communication, Grade 11 core, both semesters',
+    subjectId: 8,
+    academicYear: '2027-2028',
+    group: 'shs_core',
+    weights: null,
+    grades: [
+      grade('quiz', 14, 20, 'term1'),
+      grade('project', 40, 50, 'term1'),
+      grade('exam', 30, 50, 'term1'),
+      grade('assignment', 17.5, 20, 'term2'),
+      grade('exam', 44, 50, 'term2'),
+      grade('test', 33, 40, 'term1', 'sem2'),
+      grade('project', 47, 50, 'term1', 'sem2'),
+    ],
+  },
+  {
+    name: 'Pre-Calculus, Grade 11 academic track, no performance task yet',
+    subjectId: 9,
+    academicYear: '2027-2028',
+    group: 'shs_academic',
+    weights: null,
+    grades: [grade('quiz', 9, 10, 'term1'), grade('exam', 27.5, 40, 'term1'), grade('quiz', 6, 10, 'term3')],
+  },
+  {
+    name: 'Work Immersion, Grade 11 academic track',
+    subjectId: 10,
+    academicYear: '2027-2028',
+    group: 'shs_immersion',
+    weights: null,
+    grades: [
+      grade('assignment', 8, 10, 'term1', 'sem2'),
+      grade('other', 88, 100, 'term1', 'sem2'),
+      grade('exam', 41, 50, 'term2', 'sem2'),
+    ],
+  },
+  {
+    name: 'Cookery, Grade 11 TVL, a gap quarter',
+    subjectId: 11,
+    academicYear: '2027-2028',
+    group: 'shs_tvl',
+    weights: null,
+    grades: [
+      grade('project', 36, 40, 'term1'),
+      grade('quiz', 13, 20, 'term1'),
+      grade('exam', 52, 60, 'term3'),
+      grade('project', 19, 20, 'term3'),
+    ],
+  },
 ];
 
 const gradesOf = (classSubject, semester) =>
@@ -264,6 +314,10 @@ describe('frontend and API agree on grades', () => {
     expect([...methods].sort()).toEqual(['k12', 'points', 'weighted']);
     const groups = new Set(CLASS_SUBJECTS.map((classSubject) => classSubject.group).filter(Boolean));
     expect([...groups].sort()).toEqual([...GRADING_GROUPS].sort());
+    // The Senior High weights are the ones applied: the core subject's 1st Quarter is written work 70,
+    // performance 80 and quarterly 60, an initial grade of 72.5 (25 / 50 / 25), transmuted to 82.
+    const core = CLASS_SUBJECTS.find((classSubject) => classSubject.group === 'shs_core');
+    expect(apiResult(core).periods.sem1.term1).toBe(82);
   });
 
   it('covers the period cases: the old rules disagreeing, a gap quarter and a semester without a grade', () => {
@@ -392,7 +446,7 @@ describe('frontend and API agree on grades', () => {
   });
 
   it('computes the same general average over every method, per year, per semester and overall', () => {
-    for (const year of ['2025-2026', '2026-2027']) {
+    for (const year of ['2025-2026', '2026-2027', '2027-2028']) {
       const rows = summaryRows.filter((row) => row.academicYear === year);
       const results = backendRows.filter((row) => row.academicYear === year);
       expect(generalAverage(rows), year).toBe(api.generalAverageOf(results));

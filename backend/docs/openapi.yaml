@@ -3008,10 +3008,15 @@ components:
       type: string
       description: |
         K-12 subject group (DepEd Order 8, s. 2015). Component weights written work / performance tasks /
-        quarterly assessment: languages (and Araling Panlipunan, EsP) 30/50/20, math_science 40/40/20,
-        mapeh (and EPP, TLE) 20/60/20. Quiz, test and assignment count as written work; project and other as
-        performance tasks; exam as quarterly assessment.
-      enum: [languages, math_science, mapeh]
+        quarterly assessment. Grades 1-10 (Table 4): languages (and Araling Panlipunan, EsP) 30/50/20,
+        math_science 40/40/20, mapeh (and EPP, TLE) 20/60/20. Senior High, Grades 11-12 (Table 5): shs_core
+        (core subjects) 25/50/25, shs_academic (academic track, all other subjects) 25/45/30, shs_immersion
+        (academic track work immersion, research, business enterprise simulation, exhibit, performance)
+        35/40/25, shs_tvl (TVL, sports, arts and design tracks, all subjects and their work immersion)
+        20/60/20. Quiz, test and assignment count as written work; project and other as performance tasks;
+        exam as quarterly assessment. The initial grade is transmuted to 60-100 by the same table in every
+        group.
+      enum: [languages, math_science, mapeh, shs_core, shs_academic, shs_immersion, shs_tvl]
     Semester:
       type: string
       description: |

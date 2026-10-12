@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  COMPONENT_WEIGHTS,
+  GRADING_COMPONENTS,
+  GRADING_GROUPS,
+  SENIOR_HIGH_GRADING_GROUPS,
+} from '../src/constants/shared.js';
+import {
   averageOf,
   finalGradeOf,
   finalResult,
@@ -391,5 +397,114 @@ describe('semesters and the school year grade', () => {
     const english = classResult(2, '2026-2027', 'points', quarters(), quarters(90));
     assert.equal(subjectFinalGrade([math]), 70);
     assert.equal(generalAverageOf([math, english]), 80); // (70 + 90) / 2
+  });
+});
+
+describe('Senior High grading groups (DepEd Order 8 s. 2015, Table 5)', () => {
+  /** One quarter's points per assessment type: written work, a performance task and the quarterly exam. */
+  const quarterOf = (written, performance, quarterly) => [
+    { type: 'quiz', totalScore: written, totalMaxScore: 100, assessmentsGraded: 1 },
+    { type: 'project', totalScore: performance, totalMaxScore: 100, assessmentsGraded: 1 },
+    { type: 'exam', totalScore: quarterly, totalMaxScore: 100, assessmentsGraded: 1 },
+  ];
+  const weightsOf = (result) => result.components.map((part) => part.weight);
+
+  it('weighs the components of each group as Table 5 does, and the Grades 1-10 groups as before', () => {
+    const table = {
+      languages: [30, 50, 20],
+      math_science: [40, 40, 20],
+      mapeh: [20, 60, 20],
+      shs_core: [25, 50, 25],
+      shs_academic: [25, 45, 30],
+      shs_immersion: [35, 40, 25],
+      shs_tvl: [20, 60, 20],
+    };
+    assert.deepEqual(Object.keys(COMPONENT_WEIGHTS), [...GRADING_GROUPS]);
+    for (const group of GRADING_GROUPS) {
+      const weights = GRADING_COMPONENTS.map((component) => COMPONENT_WEIGHTS[group][component]);
+      assert.deepEqual(weights, table[group], group);
+      assert.equal(
+        weights.reduce((sum, weight) => sum + weight, 0),
+        100,
+        `${group} adds up to 100`,
+      );
+      assert.deepEqual(weightsOf(subjectResult(quarterOf(80, 80, 80), null, group)), table[group], group);
+    }
+    assert.ok(SENIOR_HIGH_GRADING_GROUPS.every((group) => GRADING_GROUPS.includes(group)));
+    assert.deepEqual(
+      GRADING_GROUPS.filter((group) => group.startsWith('shs_')),
+      [...SENIOR_HIGH_GRADING_GROUPS],
+    );
+  });
+
+  it('grades a core subject: written 70, performance 80, quarterly 60 make 72.5, transmuted 82', () => {
+    // 70 * .25 + 80 * .50 + 60 * .25 = 17.5 + 40 + 15 = 72.5; 75 + floor((72.5 - 60) / 1.6) = 75 + 7 = 82.
+    const result = subjectResult(quarterOf(70, 80, 60), null, 'shs_core');
+    assert.equal(result.method, 'k12');
+    assert.equal(result.initialGrade, 72.5);
+    assert.equal(result.percentage, 82);
+  });
+
+  it('gives the same scores a different grade in each Senior High group', () => {
+    // Written 60, performance 90, quarterly 72:
+    //   core       60 * .25 + 90 * .50 + 72 * .25 = 15 + 45   + 18   = 78    -> 75 + floor(18 / 1.6)   = 86
+    //   academic   60 * .25 + 90 * .45 + 72 * .30 = 15 + 40.5 + 21.6 = 77.1  -> 75 + floor(17.1 / 1.6) = 85
+    //   immersion  60 * .35 + 90 * .40 + 72 * .25 = 21 + 36   + 18   = 75    -> 75 + floor(15 / 1.6)   = 84
+    //   TVL        60 * .20 + 90 * .60 + 72 * .20 = 12 + 54   + 14.4 = 80.4  -> 75 + floor(20.4 / 1.6) = 87
+    const expected = {
+      shs_core: [78, 86],
+      shs_academic: [77.1, 85],
+      shs_immersion: [75, 84],
+      shs_tvl: [80.4, 87],
+    };
+    for (const [group, [initialGrade, grade]] of Object.entries(expected)) {
+      const result = subjectResult(quarterOf(60, 90, 72), null, group);
+      assert.deepEqual([result.initialGrade, result.percentage], [initialGrade, grade], group);
+    }
+  });
+
+  it('adds up the points of a component before weighing it, and leaves out a component not given yet', () => {
+    // Work immersion, 1st Quarter: written work quiz 12/20 and assignment 18/30 (30/50 = 60), performance task
+    // 45/50 (90), no quarterly exam yet. (60 * 35 + 90 * 40) / 75 = 76, transmuted 75 + floor(16 / 1.6) = 85.
+    const rows = [
+      { type: 'quiz', totalScore: 12, totalMaxScore: 20, assessmentsGraded: 1 },
+      { type: 'assignment', totalScore: 18, totalMaxScore: 30, assessmentsGraded: 1 },
+      { type: 'project', totalScore: 45, totalMaxScore: 50, assessmentsGraded: 1 },
+    ];
+    const result = subjectResult(rows, null, 'shs_immersion');
+    assert.deepEqual(
+      result.components.map((part) => [part.component, part.weight, part.percentage, part.assessmentsGraded]),
+      [
+        ['written', 35, 60, 2],
+        ['performance', 40, 90, 1],
+        ['quarterly', 25, null, 0],
+      ],
+    );
+    assert.equal(result.initialGrade, 76);
+    assert.equal(result.percentage, 85);
+  });
+
+  it('averages the quarterly grades of a Senior High subject into its semester and year grades', () => {
+    // TVL. 1st Semester Q1: written 60, performance 90, quarterly 72 -> 87 (above); Q2: written 50,
+    // performance 70, quarterly 40 -> 10 + 42 + 8 = 60 -> 75. Semester (87 + 75) / 2 = 81. 2nd Semester Q1:
+    // all 100 -> 100. The year (81 + 100) / 2 = 90.5, a whole 91.
+    const tag = (semester, term) => (row) => ({ ...row, semester, term });
+    const rows = [
+      ...quarterOf(60, 90, 72).map(tag('sem1', 'term1')),
+      ...quarterOf(50, 70, 40).map(tag('sem1', 'term2')),
+      ...quarterOf(100, 100, 100).map(tag('sem2', 'term1')),
+    ];
+    const year = finalResult(rows, null, 'shs_tvl');
+    assert.deepEqual(year.periods, { sem1: quarters(87, 75), sem2: quarters(100) });
+    assert.deepEqual(year.semesters, { sem1: 81, sem2: 100 });
+    assert.equal(year.percentage, 91);
+    assert.equal(year.method, 'k12');
+  });
+
+  it('passes a Senior High subject from an initial grade of 60, as in Grades 1-10', () => {
+    for (const group of SENIOR_HIGH_GRADING_GROUPS) {
+      assert.equal(subjectResult(quarterOf(60, 60, 60), null, group).percentage, 75, group);
+      assert.equal(subjectResult(quarterOf(59.99, 59.99, 59.99), null, group).percentage, 74, group);
+    }
   });
 });
