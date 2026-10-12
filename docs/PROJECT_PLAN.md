@@ -262,7 +262,6 @@ school-management-system/
 │   │   ├── doctor.js               # env, service account, project-id parity with frontend/.env, DB reachable, tables present, ports free
 │   │   ├── check-constants.js      # shared.js byte-equality + schema.sql ENUM parity
 │   │   ├── check-secrets.js        # fails if a key or .env file would be committed
-│   │   ├── mock-data.js            # a tagged mock school for manual testing: add, status, remove
 │   │   └── get-token.js            # prints a Firebase ID token for Swagger "Authorize" (uses the public web API key)
 │   ├── tests/                      # node:test + supertest, app built with fake Firebase verifier
 │   └── src/
@@ -455,7 +454,6 @@ The code is the source of truth; `backend/docs/openapi.yaml` is checked against 
 - A school year has two semesters, each with its own four quarters (D43). `assessments.semester` (`sem1`, `sem2`) is added after `term` by upgrade `2026-10-11-assessments-semester`; every stored assessment becomes a 1st Semester one through the default and no row moves. The unique key becomes `uq_assessments_cs_period_title (class_subject_id, semester, term, title)` in one `ALTER` (upgrade `2026-10-11-assessments-period-key`), so the same title can be used in the other semester's quarter.
 - Grades: a semester's grade is the average of its graded quarters, the school year's the average of the semester grades that exist. `GET /grades/summary` rows carry `quarters` (that semester's) with the `semester` filter and `semesters` without it; `percentage` is the grade of that scope. Unfiltered rows no longer hold `quarters`, so a screen that shows the quarters of a year asks for each semester.
 - The general average, the at-risk list, the promotion check and the student dashboard use the year grade; an activity entry for a changed `term` now says "quarter" and one for `semester` says "semester".
-- The mock-data generator builds last year's classes with the 1st and 2nd Quarters of both semesters and this year's with the 1st Semester's 1st Quarter and part of the 2nd.
 - Not part of this change yet: the screens (assessment form pickers, My grades, the report card) still read the earlier shapes and need the semester pickers and a request per semester.
 
 **Sign-up (2026-10-11)**
@@ -465,7 +463,7 @@ The code is the source of truth; `backend/docs/openapi.yaml` is checked against 
 
 **Senior High grading (2026-10-12)**
 - Four Senior High groups join `subjects.grading_group` (D44). Existing databases get them from upgrade `2026-10-12-subjects-shs-groups`, an `ALTER TABLE subjects MODIFY COLUMN grading_group ENUM(...)` that appends the values and restates `NULL` and the comment: every stored group and the column's place stay as they are. The hosted database is migrated by hand (`npm run db:migrate`) before the code that uses the values is deployed.
-- `POST /class-subjects` and `PATCH /subjects/:id` refuse a group that does not fit the class's grade level (409 `grading_group_grade_mismatch`). Assignments made before the rule (for example the mock-data generator's Grades 1-10 subjects in "Grade 11 - A (Mock)", written by SQL) keep working, and their subjects stay editable as long as their group does not change.
+- `POST /class-subjects` and `PATCH /subjects/:id` refuse a group that does not fit the class's grade level (409 `grading_group_grade_mismatch`). Assignments made before the rule keep working, and their subjects stay editable as long as their group does not change.
 - The subject form offers the Grades 1-10 groups and the Senior High ones as two radio groups, with a hint on which Senior High group a subject takes.
 
 **Known limits (accepted for this project)** are listed with the design decisions in the [README](../README.md#design-decisions-and-known-limits).

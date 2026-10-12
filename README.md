@@ -163,7 +163,7 @@ GitHub runs both on every push and pull request: the backend checks (lint, secre
 backend/
   database/    schema.sql (19 tables), upgrades.js (changes to existing tables), seed.sql (demo data)
   docs/        openapi.yaml, the spec behind /api/docs
-  scripts/     migrate, seed, create-admin, doctor, get-token, mock-data, backup, restore, check-constants, check-secrets
+  scripts/     migrate, seed, create-admin, doctor, get-token, backup, restore, check-constants, check-secrets
   src/
     modules/   one folder per feature: routes → controller → service → repository (+ zod schemas)
     middleware/ config/ utils/ constants/
@@ -262,7 +262,6 @@ Not required to run or review the project: everything above works on one machine
 - **Resetting the demo data.** The demo is shared, and some actions cannot be undone (a completed school year, a deleted account). To start over: `node --env-file=.env.cloud scripts/migrate.js --fresh --allow-remote-drop`, then `node --env-file=.env.cloud scripts/seed.js`. **This deletes every row in the hosted database.**
 - **Local work and live sign-ins.** While local development shares the Firebase project with the live site, seeding a local database resets the demo accounts' passwords and signs them out everywhere, the live site included. A second free Firebase project for local work (step 2 of the quick start, with its own `.env` values) keeps the two apart.
 - **Secrets.** `.env.cloud`, the service-account key and the CA certificate are git-ignored. Keep them out of synced folders (OneDrive, Dropbox) too. If the repository sits in one, keep the three files in a folder outside it (for example `%USERPROFILE%\.skole\`) and point at them with absolute paths: `--env-file` for `.env.cloud`, `FIREBASE_SERVICE_ACCOUNT_PATH` for the key and `DB_SSL_CA_PATH` for the certificate.
-- **Mock school for manual testing.** `node --env-file=.env.cloud scripts/mock-data.js add` (from `backend/`) fills the database with a tagged mock school: 39 sign-ins under `@mock.skole.test` (one admin, six teachers, students; the script prints the main ones and their password, which `MOCK_PASSWORD` can set), classes for last, this and next school year, timetables, attendance since August, grades in every period, announcements, calendar entries and notifications. `status` lists it, and `remove` deletes every mock row and sign-in, plus anything done to mock records while testing. Use `--env-file=.env` for the local database.
 - **Demo accounts.** The live sign-in page lists the mock school's sign-ins under **Demo accounts for reviewers**. They come from the GitHub repository variable `VITE_DEMO_ACCOUNTS`, which the release build reads; no password is in the repository. To take them off the site, delete the variable and re-run **Deploy frontend** in the Actions tab.
 - **Staying awake, and alerts.** [keep-awake.yml](.github/workflows/keep-awake.yml) calls the API's `/api/v1/health` and the website every 10 minutes. A run fails, and GitHub emails the repository owner, when either does not answer or the API reports its database down. Run it from the Actions tab to check the site at any time. Before a demo, also check in the Aiven console that the database is powered on.
 
