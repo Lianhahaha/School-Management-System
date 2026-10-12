@@ -1,7 +1,6 @@
 import { useParams } from 'react-router';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageSkeleton } from '../../../components/layout/PageSkeleton';
-import { Badge } from '../../../components/ui/Badge';
 import { ExportCsvButton } from '../../../components/ui/ExportCsvButton';
 import { ErrorState } from '../../../components/ui/ErrorState';
 import { ASSESSMENT_TYPE_LABELS } from '../../../constants/ui';
@@ -51,11 +50,12 @@ export default function GradeSheetPage() {
           { label: title },
         ]}
         actions={
-          <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
-            <Badge tone="gray">{ASSESSMENT_TYPE_LABELS[type]}</Badge>
-            <Badge tone="gray">{formatPeriod(semester, term)}</Badge>
-            <time dateTime={assessedOn}>{formatDate(assessedOn)}</time>
-            <span>Max score {formatScore(maxScore)}</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-band-ink/85">
+            {/* One line in the band's light ink, readable on its dark red. */}
+            <p>
+              {ASSESSMENT_TYPE_LABELS[type]} · {formatPeriod(semester, term)} ·{' '}
+              <time dateTime={assessedOn}>{formatDate(assessedOn)}</time> · Max score {formatScore(maxScore)}
+            </p>
             <ExportCsvButton
               size="sm"
               fileName={`grades ${className} ${subjectName} ${title}`}
