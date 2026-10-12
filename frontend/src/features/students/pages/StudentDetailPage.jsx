@@ -8,6 +8,7 @@ import { Card } from '../../../components/ui/Card';
 import { ExportCsvButton } from '../../../components/ui/ExportCsvButton';
 import { Tabs } from '../../../components/ui/Tabs';
 import { PAGINATION, SEMESTERS } from '../../../constants/shared';
+import { academicYearToDate } from '../../../utils/date';
 import { tagSemester } from '../../../utils/grades';
 import { fullName } from '../../../utils/names';
 import { AdmissionStatusBadge } from '../../admissions/components/AdmissionStatusBadge';
@@ -104,7 +105,14 @@ export default function StudentDetailPage() {
           {
             id: 'attendance',
             label: 'Attendance',
-            content: <AttendanceSummaryPanel studentId={student.id} />,
+            // This school year so far (the class's year, or the current one without a class): the period the
+            // Overview tile that opens this tab counts, so the two show the same rate.
+            content: (
+              <AttendanceSummaryPanel
+                studentId={student.id}
+                {...academicYearToDate(student.currentEnrollment?.academicYear)}
+              />
+            ),
           },
           {
             id: 'grades',

@@ -2,7 +2,7 @@ import { Award, ClipboardList, Users } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { DescriptionList } from '../../../components/ui/DescriptionList';
 import { StatTile } from '../../../components/ui/StatTile';
-import { academicYearStart, currentAcademicYear, todayYmd } from '../../../utils/date';
+import { academicYearToDate, currentAcademicYear } from '../../../utils/date';
 import { countOf, formatPercent } from '../../../utils/format';
 import { formatResult, generalAverage } from '../../../utils/grades';
 import { ApplicationCard } from '../../admissions/components/ApplicationCard';
@@ -31,13 +31,8 @@ const waitingHint = (query, what) => (query.isError ? `Couldn't load the ${what}
 export function StudentOverview({ student, onOpenTab }) {
   const enrollment = student.currentEnrollment;
   const academicYear = enrollment?.academicYear ?? currentAcademicYear();
-  const yearStart = academicYearStart(academicYear);
-  const today = todayYmd();
-  const attendance = useAttendanceSummary({
-    studentId: student.id,
-    dateFrom: yearStart <= today ? yearStart : today,
-    dateTo: today,
-  });
+  // The same dates as the Attendance tab the tile opens (StudentDetailPage).
+  const attendance = useAttendanceSummary({ studentId: student.id, ...academicYearToDate(academicYear) });
   // Both semesters of the year, tagged: the year's general average puts the semesters (and a subject's two
   // classes) together exactly as the API does.
   const grades = useSemesterSummaries({ studentId: student.id, academicYear });

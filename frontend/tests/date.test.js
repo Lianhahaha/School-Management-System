@@ -4,6 +4,7 @@ import {
   academicYearEnd,
   academicYearMonths,
   academicYearStart,
+  academicYearToDate,
   addDaysYmd,
   ageOn,
   currentAcademicYear,
@@ -136,6 +137,15 @@ describe('today and the current academic year', () => {
     expect(currentAcademicYear()).toBe('2026-2027');
     vi.setSystemTime(new Date(2027, 0, 15));
     expect(currentAcademicYear()).toBe('2026-2027');
+  });
+
+  it('gives a school year so far as summary dates, the current one by default', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 12));
+    expect(academicYearToDate()).toEqual({ dateFrom: '2026-08-01', dateTo: '2026-10-12' });
+    expect(academicYearToDate('2025-2026')).toEqual({ dateFrom: '2025-08-01', dateTo: '2026-10-12' });
+    // Next year's class: not started, so an empty period rather than one ending before it starts.
+    expect(academicYearToDate('2027-2028')).toEqual({ dateFrom: '2026-10-12', dateTo: '2026-10-12' });
   });
 
   it('gives the local date, not the UTC one', () => {

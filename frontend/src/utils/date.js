@@ -169,6 +169,19 @@ export function academicYearStart(label) {
 }
 
 /**
+ * An academic year from its first day up to today, as the `dateFrom` and `dateTo` of a summary ("this school
+ * year"): '2026-2027' -> { dateFrom: '2026-08-01', dateTo: today }; the current academic year by default. A
+ * year that has not started yet gives today alone: the API refuses a period that ends before it starts.
+ * @param {string} [label]
+ * @returns {{ dateFrom: string, dateTo: string }}
+ */
+export function academicYearToDate(label = currentAcademicYear()) {
+  const today = todayYmd();
+  const start = academicYearStart(label);
+  return { dateFrom: start <= today ? start : today, dateTo: today };
+}
+
+/**
  * The twelve months of an academic year label, first month first, each with its first and last day; `value`
  * and `label` make them Select options: '2026-2027' -> [{ value: '2026-08', label: 'August 2026',
  * dateFrom: '2026-08-01', dateTo: '2026-08-31' }, ..., { value: '2027-07', ... }].
