@@ -17,6 +17,12 @@ const pesoFormatter = new Intl.NumberFormat('en-PH', { style: 'currency', curren
 /** 5000 -> '₱5,000.00', for the activity log. */
 const peso = (amount) => pesoFormatter.format(amount);
 
+/**
+ * The amounts of `rows` added up in whole centavos (2500.5 -> 250050), so the sum is exact: whole numbers
+ * add without the floating-point tails pesos would get (0.1 + 0.2).
+ */
+const centavosOf = (rows) => rows.reduce((sum, row) => sum + Math.round(row.amount * 100), 0);
+
 const toFeeShape = (row) => ({
   id: row.id,
   academicYear: row.academicYear,
@@ -103,26 +109,27 @@ export async function deleteFee(id) {
 /**
  * A student's fees, payments and balance for one school year. The grade comes from the class they were in
  * last that year; without one, only the every-grade fees apply. `studentId` may be `me`; a student asking
- * for someone else is a 403.
+ * for someone else is a 403. The totals are added up from the very rows listed, so a payment recorded while
+ * the statement is read can never be in one and missing from the other.
  */
 export async function getStatement(user, { studentId, academicYear }) {
   const id = scopedStudentId(user, resolveMe(user, studentId, 'student'));
   const student = ApiError.assertFound(await repo.findStudentClassInYear(id, academicYear), 'student', id);
   const gradeLevel = student.gradeLevel ?? null;
-  const [fees, payments, totals] = await Promise.all([
+  const [fees, payments] = await Promise.all([
     repo.findFeesFor(academicYear, gradeLevel),
     repo.findPayments(id, academicYear),
-    repo.findTotals(id, academicYear, gradeLevel),
   ]);
+  const [feeCentavos, paidCentavos] = [centavosOf(fees), centavosOf(payments)];
   return {
     studentId: id,
     academicYear,
     class: student.classId ? { id: student.classId, name: student.className, gradeLevel } : null,
     fees: fees.map((fee) => ({ id: fee.id, name: fee.name, gradeLevel: fee.gradeLevel, amount: fee.amount })),
     payments: payments.map(toPaymentShape),
-    totalFees: totals.totalFees,
-    totalPaid: totals.totalPaid,
-    balance: totals.balance,
+    totalFees: feeCentavos / 100,
+    totalPaid: paidCentavos / 100,
+    balance: (feeCentavos - paidCentavos) / 100,
   };
 }
 

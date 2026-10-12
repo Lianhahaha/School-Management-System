@@ -1,8 +1,10 @@
 import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
+import { pool } from '../src/config/db.js';
 import { addDaysYmd, currentAcademicYear, nextAcademicYear, todayYmd } from '../src/utils/dates.js';
 import { api, as, buildSchool, closeWorld, makeUser, resetWorld } from './helpers/harness.js';
+import { openSession } from './helpers/locks.js';
 
 after(closeWorld);
 
@@ -187,7 +189,11 @@ describe('fees', () => {
     const after = (await statement(school.s1, 'me')).body.data;
     assert.equal(after.payments.length, 3);
     assert.equal(after.totalPaid, 8000.3);
-    assert.equal(after.balance, 12500.2, 'summed by MySQL, so 20500.5 - 8000.3 has no floating-point tail');
+    assert.equal(
+      after.balance,
+      12500.2,
+      'summed in centavos, so 20500.5 - 8000.3 has no floating-point tail',
+    );
 
     const noClass = (await statement(school.admin, school.s3.studentId)).body.data;
     assert.equal(noClass.class, null);
@@ -226,6 +232,50 @@ describe('fees', () => {
     assert.equal(removed.status, 200);
     assert.equal((await statement(school.admin, school.s1.studentId)).body.data.balance, 14500.4);
     assert.equal((await api.delete(`/api/v1/payments/${latest.id}`).set(as(school.admin))).status, 404);
+  });
+
+  it('totals exactly the payments it lists, also when one is recorded while it is read', async (t) => {
+    const { admin, s2 } = school;
+    for (const [amount, receiptNumber] of [
+      [0.1, 'OR-0300'],
+      [0.2, 'OR-0301'],
+    ]) {
+      assert.equal((await pay(admin, { studentId: s2.studentId, amount, receiptNumber })).status, 201);
+    }
+    // Replays the race: another office desk records a payment the moment the statement has read the payments,
+    // and every later query of the statement waits until that payment is in.
+    const desk = await openSession();
+    t.after(() => desk.end());
+    const realQuery = pool.query;
+    let recorded = null;
+    t.mock.method(pool, 'query', function (sql, ...rest) {
+      if (recorded) return recorded.then(() => realQuery.call(this, sql, ...rest));
+      const result = realQuery.call(this, sql, ...rest);
+      if (typeof sql === 'string' && sql.includes('ORDER BY p.paid_on')) {
+        recorded = result.then(() =>
+          desk.query(
+            `INSERT INTO payments (student_id, academic_year, amount, paid_on, method, receipt_number, recorded_by)
+             VALUES (?, ?, 1000.05, ?, 'cash', 'OR-0302', ?)`,
+            [s2.studentId, year, today, admin.id],
+          ),
+        );
+      }
+      return result;
+    });
+
+    const during = (await statement(admin, s2.studentId)).body.data;
+    assert.deepEqual(
+      during.payments.map((payment) => payment.receiptNumber),
+      ['OR-0301', 'OR-0300'],
+    );
+    assert.deepEqual(
+      [during.totalFees, during.totalPaid, during.balance],
+      [20500.5, 0.3, 20500.2],
+      'the two payments listed, to the centavo (0.1 + 0.2 is 0.30000000000000004 in floating point)',
+    );
+    const after = (await statement(admin, s2.studentId)).body.data;
+    assert.equal(after.payments.length, 3);
+    assert.deepEqual([after.totalPaid, after.balance], [1000.35, 19500.15]);
   });
 
   it('logs every change in the fees area', async () => {

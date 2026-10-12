@@ -1,6 +1,6 @@
 /**
  * SQL for fees (per school year, for one grade level or every grade: grade_level NULL) and payments. Money
- * is DECIMAL(10,2) and every total is summed by MySQL, so centavos never drift through floating point.
+ * is DECIMAL(10,2), never FLOAT; a statement's totals are added up in whole centavos (fees.service).
  */
 import { query, run } from '../../config/db.js';
 import { selectPage } from '../../utils/pagination.js';
@@ -85,20 +85,6 @@ export function findFeesFor(academicYear, gradeLevel) {
       ORDER BY f.name, f.id`,
     [academicYear, gradeLevel],
   );
-}
-
-/** `{ totalFees, totalPaid, balance }` of a student's school year; the balance is negative when they overpaid. */
-export async function findTotals(studentId, academicYear, gradeLevel) {
-  const rows = await query(
-    `SELECT t.total_fees, t.total_paid, t.total_fees - t.total_paid AS balance
-       FROM (SELECT
-               (SELECT COALESCE(SUM(f.amount), 0) FROM fees f
-                 WHERE f.academic_year = ? AND ${APPLIES_TO_GRADE}) AS total_fees,
-               (SELECT COALESCE(SUM(p.amount), 0) FROM payments p
-                 WHERE p.student_id = ? AND p.academic_year = ?) AS total_paid) t`,
-    [academicYear, gradeLevel, studentId, academicYear],
-  );
-  return rows[0];
 }
 
 const PAYMENT_COLUMNS =
