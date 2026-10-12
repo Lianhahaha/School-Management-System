@@ -407,6 +407,15 @@ export async function setStatus(user, id, status) {
     summary: `Closed ${nameOf(enrollment.student)}'s enrollment in ${enrollment.class.name} as ${status}`,
     details: { student: nameOf(enrollment.student), className: enrollment.class.name, status },
   });
+  await notifyStudents([
+    enrollmentNote(
+      enrollment,
+      status === 'withdrawn'
+        ? `You were withdrawn from ${enrollment.class.name}`
+        : `${enrollment.class.name} completed`,
+      enrollment.class.academicYear,
+    ),
+  ]);
   return enrollment;
 }
 

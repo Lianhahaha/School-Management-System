@@ -86,6 +86,30 @@ describe('notifications', () => {
     assert.equal(late.title, `Marked late in ${school.csA.subjectName}`);
   });
 
+  it('tells a student whose enrollment is closed as withdrawn or completed', async () => {
+    for (const [status, title] of [
+      ['withdrawn', `You were withdrawn from ${school.classB.name}`],
+      ['completed', `${school.classB.name} completed`],
+    ]) {
+      const student = await makeUser('student');
+      const enrolled = await api
+        .post('/api/v1/enrollments')
+        .set(as(school.admin))
+        .send({ studentId: student.studentId, classId: school.classB.id });
+      assert.equal(enrolled.status, 201, JSON.stringify(enrolled.body));
+      const closed = await api
+        .patch(`/api/v1/enrollments/${enrolled.body.data.id}`)
+        .set(as(school.admin))
+        .send({ status });
+      assert.equal(closed.status, 200, JSON.stringify(closed.body));
+      const [note] = await mine(student);
+      assert.deepEqual(
+        [note.type, note.title, note.body, note.link],
+        ['enrollment', title, school.classB.academicYear, '/student/class'],
+      );
+    }
+  });
+
   it('tells a teacher about a lesson to teach and admins about a sign-up', async () => {
     const teacher = await makeUser('teacher');
     const subject = await makeSubject(school.admin);

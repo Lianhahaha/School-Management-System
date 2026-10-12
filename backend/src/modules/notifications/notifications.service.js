@@ -3,7 +3,7 @@
  * notify* helpers after a change succeeded; like the activity log they are best effort, so a failed write is
  * reported in the server log and never fails the request. Nobody is notified of their own action.
  *
- *   student   a grade recorded or changed, an absence or late mark, a new class
+ *   student   a grade recorded or changed, an absence or late mark, a new class, a class withdrawn or completed
  *   teacher   a lesson to teach, a homeroom class
  *   assistant their sign-up approved or declined
  *   office    (admins and approved student assistants) a student signed up on their own and sent an
