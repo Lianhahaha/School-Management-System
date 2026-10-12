@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ADMISSION_STATUSES, GENDERS } from '../../constants/shared.js';
 import {
+  academicYear,
   boolQuery,
   dateStr,
   gradeLevel,
@@ -26,6 +27,10 @@ export const listStudentsQuery = listQuery(Object.keys(STUDENT_SORT_MAP), {
   // false: students without a class who are still to get one (pending applicants included, applications
   // declined in the past left out).
   hasActiveEnrollment: boolQuery.optional(),
+  // Students whose active enrollment is in a class of that school year: like classId and gradeLevel it reads
+  // the class of the active enrollment, so it only matches students in a class (none with
+  // hasActiveEnrollment=false). The admin dashboard's "Active enrollments" counts the current year's this way.
+  academicYear: academicYear.optional(),
   admissionStatus: z.enum(ADMISSION_STATUSES).optional(),
   // Together, with classId: the class's students on any day from enrolledFrom to enrolledTo, those who have
   // left it since included (the roster of a month's SF2), instead of its students now.

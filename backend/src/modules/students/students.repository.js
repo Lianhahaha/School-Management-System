@@ -65,6 +65,7 @@ export function listStudents(listQuery, scope) {
     ])
     .addIf(overRange ? undefined : listQuery.classId, 'e.class_id = ?')
     .addIf(listQuery.gradeLevel, 'c.grade_level = ?')
+    .addIf(listQuery.academicYear, 'c.academic_year = ?')
     .addIf(listQuery.gender, 's.gender = ?')
     .addIf(listQuery.isActive, 'u.is_active = ?')
     .addIf(listQuery.admissionStatus, 'ad.status = ?')

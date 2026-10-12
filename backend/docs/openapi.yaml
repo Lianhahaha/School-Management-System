@@ -541,7 +541,9 @@ paths:
         `hasActiveEnrollment=false` lists students without a class who are still to get one: pending
         applicants (who pick a section themselves, or the office places them) are included, applications
         declined in the past are left out; `admissionStatus` lists applicants by status. A `classId` the
-        teacher cannot see is a 403.
+        teacher cannot see is a 403. `academicYear` lists the students whose active enrollment is in a class
+        of that school year: `hasActiveEnrollment=true&academicYear={current}&isActive=true` is the list behind
+        the admin dashboard's `counts.activeEnrollments`.
 
         `classId` lists the class's students now. With `enrolledFrom` and `enrolledTo` as well (both, or
         neither; never without `classId`: 400) it lists the students who were in the class on at least one
@@ -575,6 +577,16 @@ paths:
             applications declined in the past left out).
           schema:
             type: boolean
+        - name: academicYear
+          in: query
+          description: |
+            Only students whose active enrollment is in a class of this school year. Like `classId` and
+            `gradeLevel` it reads the class of the active enrollment, so it implies `hasActiveEnrollment=true`
+            and matches nobody with `hasActiveEnrollment=false`. A student who has completed this year and is
+            already placed in next year's class is listed under next year. With `enrolledFrom` and
+            `enrolledTo` it still describes the student's class now.
+          schema:
+            $ref: '#/components/schemas/AcademicYear'
         - name: admissionStatus
           in: query
           description: Only self-registered students whose application has this status.
