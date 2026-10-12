@@ -45,12 +45,12 @@ export function listClassSubjects(listQuery, scope) {
   });
 }
 
-export async function insertClassSubject({ classId, subjectId, teacherId }) {
-  const result = await run('INSERT INTO class_subjects (class_id, subject_id, teacher_id) VALUES (?, ?, ?)', [
-    classId,
-    subjectId,
-    teacherId,
-  ]);
+export async function insertClassSubject({ classId, subjectId, teacherId }, conn) {
+  const result = await run(
+    'INSERT INTO class_subjects (class_id, subject_id, teacher_id) VALUES (?, ?, ?)',
+    [classId, subjectId, teacherId],
+    conn,
+  );
   return result.insertId;
 }
 

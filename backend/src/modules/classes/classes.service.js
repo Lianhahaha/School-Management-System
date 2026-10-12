@@ -1,3 +1,4 @@
+import { withTransaction } from '../../config/db.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { currentAcademicYear } from '../../utils/dates.js';
 import { resolveMe } from '../../utils/resolveMe.js';
@@ -49,7 +50,7 @@ export async function getClass(id) {
 
 /**
  * The class a request body refers to in `field`; 400 invalid_reference when it does not exist.
- * `options.forUpdate` locks the class row until the caller's transaction ends.
+ * `options.forUpdate` (or `forShare`) locks the class row until the caller's transaction ends.
  */
 export async function findReferencedClass(classId, field, conn, options) {
   const klass = await repo.findClassById(classId, conn, options);
@@ -61,10 +62,11 @@ export async function findReferencedClass(classId, field, conn, options) {
 
 /**
  * The class, unless it does not exist or belongs to a past academic year (past rosters are history): 400.
- * `field` names the body field the class came from.
+ * `field` names the body field the class came from. `options.forShare` keeps the class row share-locked until
+ * the caller's transaction ends, so its year and grade cannot change (updateClass) under the rows it writes.
  */
-export async function assertEnrollableClass(classId, conn, field = 'classId') {
-  const klass = await findReferencedClass(classId, field, conn);
+export async function assertEnrollableClass(classId, conn, field = 'classId', options) {
+  const klass = await findReferencedClass(classId, field, conn, options);
   if (klass.academicYear < currentAcademicYear()) {
     throw ApiError.validation(`class belongs to the past academic year ${klass.academicYear}`, undefined, {
       reason: 'past_academic_year',
@@ -76,8 +78,12 @@ export async function assertEnrollableClass(classId, conn, field = 'classId') {
 }
 
 export async function createClass(body) {
-  if (body.homeroomTeacherId) await assertActiveTeacher(body.homeroomTeacherId);
-  const klass = await getClass(await repo.insertClass(body));
+  // The homeroom teacher's account stays share-locked until the class is saved (assertActiveTeacher).
+  const id = await withTransaction(async (conn) => {
+    if (body.homeroomTeacherId) await assertActiveTeacher(body.homeroomTeacherId, conn);
+    return repo.insertClass(body, conn);
+  });
+  const klass = await getClass(id);
   await record({
     action: 'class.create',
     entityId: klass.id,
@@ -89,19 +95,29 @@ export async function createClass(body) {
 }
 
 export async function updateClass(id, patch) {
-  const existing = await getClass(id);
-  const fixedFields = FIXED_ONCE_IN_USE.filter((field) => field in patch && patch[field] !== existing[field]);
-  if (fixedFields.length && (await repo.classHasDependents(id))) {
-    throw ApiError.conflict('academic year and grade level are fixed while the class is in use', {
-      reason: 'class_in_use',
-      fields: fixedFields,
-    });
-  }
-  const homeroomChanged =
-    'homeroomTeacherId' in patch && patch.homeroomTeacherId !== (existing.homeroomTeacher?.id ?? null);
-  // Only a new homeroom teacher must be active: keeping a since-deactivated one on an old class is allowed.
-  if (homeroomChanged && patch.homeroomTeacherId) await assertActiveTeacher(patch.homeroomTeacherId);
-  await repo.updateClass(id, patch);
+  let existing;
+  let homeroomChanged;
+  await withTransaction(async (conn) => {
+    // The class row stays locked until the change is saved: an enrollment or assignment of the class waits for
+    // it (enrolling share-locks the row, and every insert of one reads it for its foreign key), so the "in use"
+    // check below cannot pass just before one is saved.
+    const row = await repo.findClassById(id, conn, { forUpdate: true });
+    existing = toClassShape(ApiError.assertFound(row, 'class', id));
+    const fixedFields = FIXED_ONCE_IN_USE.filter(
+      (field) => field in patch && patch[field] !== existing[field],
+    );
+    if (fixedFields.length && (await repo.classHasDependents(id, conn))) {
+      throw ApiError.conflict('academic year and grade level are fixed while the class is in use', {
+        reason: 'class_in_use',
+        fields: fixedFields,
+      });
+    }
+    homeroomChanged =
+      'homeroomTeacherId' in patch && patch.homeroomTeacherId !== (existing.homeroomTeacher?.id ?? null);
+    // Only a new homeroom teacher must be active: keeping a since-deactivated one on an old class is allowed.
+    if (homeroomChanged && patch.homeroomTeacherId) await assertActiveTeacher(patch.homeroomTeacherId, conn);
+    await repo.updateClass(id, patch, conn);
+  });
   const klass = await getClass(id);
   const before = logView(existing);
   const after = logView(klass);

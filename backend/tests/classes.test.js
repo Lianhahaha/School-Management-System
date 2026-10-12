@@ -18,6 +18,7 @@ import {
   makeUser,
   resetWorld,
 } from './helpers/harness.js';
+import { openSession, waitForLockWaits } from './helpers/locks.js';
 
 after(closeWorld);
 
@@ -288,5 +289,113 @@ describe('the visible-classes filter', () => {
       student.body.data.map((klass) => klass.id),
       [school.classA.id],
     );
+  });
+});
+
+describe('class and assignment changes racing an enrollment or a deactivation', () => {
+  let admin;
+  before(async () => {
+    await resetWorld();
+    admin = await makeUser('admin');
+  });
+
+  /** Sends `requests` while another session holds the writes of `statements` uncommitted, then commits them. */
+  async function whileHeld(statements, requests) {
+    const session = await openSession();
+    try {
+      await session.beginTransaction();
+      for (const [sql, params] of statements) await session.query(sql, params);
+      const pending = Promise.all(requests.map((send) => send()));
+      await waitForLockWaits(requests.length);
+      await session.commit();
+      return await pending;
+    } finally {
+      await session.end();
+    }
+  }
+
+  it('waits for a deactivation in progress before giving the teacher work, then refuses them', async () => {
+    const leaving = await makeUser('teacher');
+    const assignment = await assignTeacher(admin, {
+      classId: (await makeClass(admin)).id,
+      subjectId: (await makeSubject(admin)).id,
+      teacherId: (await makeUser('teacher')).teacherId,
+    });
+    const subject = await makeSubject(admin);
+    const klass = await makeClass(admin);
+    const homeroomClass = await makeClass(admin);
+    const responses = await whileHeld(
+      // The deactivation's own transaction: the account is switched off, not yet committed.
+      [['UPDATE users SET is_active = 0 WHERE id = ?', [leaving.id]]],
+      [
+        () =>
+          api
+            .post('/api/v1/class-subjects')
+            .set(as(admin))
+            .send({ classId: klass.id, subjectId: subject.id, teacherId: leaving.teacherId }),
+        () =>
+          api
+            .patch(`/api/v1/class-subjects/${assignment.id}`)
+            .set(as(admin))
+            .send({ teacherId: leaving.teacherId }),
+        () =>
+          api
+            .patch(`/api/v1/classes/${homeroomClass.id}`)
+            .set(as(admin))
+            .send({ homeroomTeacherId: leaving.teacherId }),
+        () =>
+          api.post('/api/v1/classes').set(as(admin)).send({
+            name: 'Grade 10 - Late',
+            gradeLevel: 10,
+            academicYear: currentAcademicYear(),
+            homeroomTeacherId: leaving.teacherId,
+          }),
+      ],
+    );
+    for (const res of responses) {
+      assert.equal(res.status, 400, JSON.stringify(res.body));
+      assert.equal(res.body.error.details.reason, 'teacher_inactive');
+    }
+  });
+
+  it('waits for an enrollment in progress before moving the class to another year, then refuses', async () => {
+    const klass = await makeClass(admin);
+    const student = await makeUser('student');
+    const [res] = await whileHeld(
+      // An enrollment being saved: its foreign key holds a share lock on the class row.
+      [
+        [
+          'INSERT INTO enrollments (student_id, class_id, enrolled_on) VALUES (?, ?, CURDATE())',
+          [student.studentId, klass.id],
+        ],
+      ],
+      [
+        () =>
+          api
+            .patch(`/api/v1/classes/${klass.id}`)
+            .set(as(admin))
+            .send({ academicYear: yearLabel(1) }),
+      ],
+    );
+    assert.equal(res.status, 409);
+    assert.equal(res.body.error.details.reason, 'class_in_use');
+  });
+
+  it('waits for a class change in progress before enrolling, then judges the class as changed', async () => {
+    const klass = await makeClass(admin);
+    const student = await makeUser('student');
+    const [res] = await whileHeld(
+      // The class edit's own transaction: the class moved to last year, not yet committed.
+      [['UPDATE classes SET academic_year = ? WHERE id = ?', [yearLabel(-1), klass.id]]],
+      [
+        () =>
+          api
+            .post('/api/v1/enrollments')
+            .set(as(admin))
+            .send({ studentId: student.studentId, classId: klass.id }),
+      ],
+    );
+    assert.equal(res.status, 400);
+    assert.equal(res.body.error.details.reason, 'past_academic_year');
   });
 });

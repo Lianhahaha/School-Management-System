@@ -23,6 +23,19 @@ export async function findTeacherById(id, conn) {
   return (await query(`SELECT ${COLUMNS} ${FROM} WHERE t.id = ?`, [id], conn))[0] ?? null;
 }
 
+/**
+ * `{ id, isActive }` of the teacher, or null. FOR SHARE on the account row: inside a transaction, a deactivation
+ * running at the same time either finishes first (and is seen here) or waits until the transaction ends.
+ */
+export async function findTeacherActivity(id, conn) {
+  const rows = await query(
+    'SELECT t.id, u.is_active FROM teachers t JOIN users u ON u.id = t.user_id WHERE t.id = ? FOR SHARE OF u',
+    [id],
+    conn,
+  );
+  return rows[0] ?? null;
+}
+
 export async function findTeacherByUserId(userId) {
   return (await query(`SELECT ${COLUMNS} ${FROM} WHERE t.user_id = ?`, [userId]))[0] ?? null;
 }

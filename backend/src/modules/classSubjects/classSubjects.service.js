@@ -1,3 +1,4 @@
+import { withTransaction } from '../../config/db.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { resolveMe } from '../../utils/resolveMe.js';
 import { classSubjectRef, personRef } from '../../utils/shapes.js';
@@ -36,9 +37,12 @@ export async function getClassSubjectRefUnscoped(id) {
 }
 
 export async function createClassSubject(body) {
-  await assertActiveTeacher(body.teacherId);
   await assertActiveSubject(body.subjectId);
-  const id = await repo.insertClassSubject(body);
+  // The teacher's account stays share-locked until the assignment is saved (assertActiveTeacher).
+  const id = await withTransaction(async (conn) => {
+    await assertActiveTeacher(body.teacherId, conn);
+    return repo.insertClassSubject(body, conn);
+  });
   const assignment = toClassSubjectShape(await repo.findClassSubjectById(id));
   await record({
     action: 'assignment.create',
@@ -71,8 +75,11 @@ export async function reassignTeacher(id, teacherId) {
   const before = toClassSubjectShape(
     ApiError.assertFound(await repo.findClassSubjectById(id), 'class subject', id),
   );
-  await assertActiveTeacher(teacherId);
-  await writeIfTeacherFree(id, teacherId, (conn) => repo.updateTeacher(id, teacherId, conn));
+  await writeIfTeacherFree(id, teacherId, async (conn) => {
+    // Checked in the writing transaction, where the teacher's account stays share-locked until it ends.
+    await assertActiveTeacher(teacherId, conn);
+    await repo.updateTeacher(id, teacherId, conn);
+  });
   const assignment = toClassSubjectShape(await repo.findClassSubjectById(id));
   if (before.teacherId !== assignment.teacherId) {
     await record({

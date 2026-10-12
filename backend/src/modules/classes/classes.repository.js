@@ -18,25 +18,23 @@ const FROM = `FROM classes c
   LEFT JOIN teachers ht ON ht.id = c.homeroom_teacher_id
   LEFT JOIN users hu ON hu.id = ht.user_id`;
 
-/** `forUpdate` locks the class row (only that row) until the transaction ends. */
-export async function findClassById(id, conn, { forUpdate = false } = {}) {
-  const lock = forUpdate ? 'FOR UPDATE OF c' : '';
+/** `forUpdate` (or `forShare`) locks the class row (only that row) until the transaction ends. */
+export async function findClassById(id, conn, { forUpdate = false, forShare = false } = {}) {
+  const lock = forUpdate ? 'FOR UPDATE OF c' : forShare ? 'FOR SHARE OF c' : '';
   return (await query(`SELECT ${COLUMNS} ${FROM} WHERE c.id = ? ${lock}`, [id], conn))[0] ?? null;
 }
 
 /**
  * True when students are or were enrolled in the class, or a subject is assigned to it. Timetable slots,
- * attendance and assessments all hang off an assignment, so they are covered by the second check.
+ * attendance and assessments all hang off an assignment, so they are covered by the second check. Locking
+ * reads (FOR SHARE): inside the caller's transaction they see rows committed after its snapshot was taken.
  */
-export async function classHasDependents(id) {
-  const rows = await query(
-    `SELECT 1 AS ok FROM enrollments WHERE class_id = ?
-     UNION
-     SELECT 1 FROM class_subjects WHERE class_id = ?
-     LIMIT 1`,
-    [id, id],
-  );
-  return rows.length > 0;
+export async function classHasDependents(id, conn) {
+  for (const table of ['enrollments', 'class_subjects']) {
+    const rows = await query(`SELECT 1 AS ok FROM ${table} WHERE class_id = ? LIMIT 1 FOR SHARE`, [id], conn);
+    if (rows.length) return true;
+  }
+  return false;
 }
 
 /** Every class (section) of one grade level in one academic year, by name. */
@@ -79,10 +77,11 @@ export function listClasses(listQuery, scope = null) {
   });
 }
 
-export async function insertClass({ name, gradeLevel, academicYear, homeroomTeacherId }) {
+export async function insertClass({ name, gradeLevel, academicYear, homeroomTeacherId }, conn) {
   const result = await run(
     'INSERT INTO classes (name, grade_level, academic_year, homeroom_teacher_id) VALUES (?, ?, ?, ?)',
     [name, gradeLevel, academicYear, homeroomTeacherId ?? null],
+    conn,
   );
   return result.insertId;
 }
@@ -94,9 +93,9 @@ const PATCH_COLUMNS = {
   homeroomTeacherId: 'homeroom_teacher_id',
 };
 
-export async function updateClass(id, fields) {
+export async function updateClass(id, fields, conn) {
   const set = buildSet(PATCH_COLUMNS, fields);
-  if (set) await run(`UPDATE classes SET ${set.sql} WHERE id = ?`, [...set.params, id]);
+  if (set) await run(`UPDATE classes SET ${set.sql} WHERE id = ?`, [...set.params, id], conn);
 }
 
 export async function deleteClass(id) {

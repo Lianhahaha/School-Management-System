@@ -166,7 +166,10 @@ async function assertSeatLeft(klass, conn) {
 function enrollInClass(classId, studentIds, refusal, { limitSeats = false } = {}) {
   return enrollingTransaction(studentIds, async (conn) => {
     await assertEnrollable(studentIds, conn);
-    const klass = await assertEnrollableClass(classId, conn);
+    // Share-locked, so the class keeps its year and grade until the rows are saved (updateClass). A student
+    // enrolling themselves locks every class of the grade instead (assertSeatLeft): two of them holding a share
+    // lock on the same class would deadlock upgrading it.
+    const klass = await assertEnrollableClass(classId, conn, 'classId', { forShare: !limitSeats });
     const active = await repo.findActiveByStudents(studentIds, conn);
     if (active.length) throw refusal(active);
     if (limitSeats) await assertSeatLeft(klass, conn);
@@ -236,7 +239,7 @@ export async function transfer({ studentId, classId }) {
   let fromClass;
   const id = await enrollingTransaction([studentId], async (conn) => {
     await assertEnrollable([studentId], conn);
-    const target = await assertEnrollableClass(classId, conn);
+    const target = await assertEnrollableClass(classId, conn, 'classId', { forShare: true });
     const active = await repo.findActiveByStudent(studentId, conn);
     if (!active) {
       throw ApiError.conflict('student has no active enrollment; enroll them instead', {
@@ -310,7 +313,7 @@ export async function completeYear({ classId, studentIds, nextClassId }) {
     klass = await findReferencedClass(classId, 'classId', conn, { forUpdate: true });
     if (klass.academicYear > currentAcademicYear()) throw yearNotStarted(klass.academicYear, 'classId');
     if (nextClassId !== undefined) {
-      next = await assertEnrollableClass(nextClassId, conn, 'nextClassId');
+      next = await assertEnrollableClass(nextClassId, conn, 'nextClassId', { forShare: true });
       if (next.academicYear <= klass.academicYear) {
         throw ApiError.validation('the next class must belong to a later school year', undefined, {
           reason: 'not_later_academic_year',

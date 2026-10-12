@@ -56,9 +56,13 @@ export async function createProfile(userId, profile = {}, conn) {
 /** Remove the profile row of a teacher user that is being deleted. Runs inside the caller's transaction. */
 export const deleteProfile = (userId, conn) => repo.deleteTeacherByUserId(userId, conn);
 
-/** 400 when the teacher does not exist or is deactivated (used before assigning a teacher to work). */
+/**
+ * 400 when the teacher does not exist or is deactivated (used before assigning a teacher to work). Inside the
+ * assigning transaction (`conn`) the teacher's account stays share-locked until it ends, so a deactivation,
+ * which refuses a teacher who still has work, cannot pass its check before the new work is saved.
+ */
 export async function assertActiveTeacher(teacherId, conn) {
-  const teacher = await repo.findTeacherById(teacherId, conn);
+  const teacher = await repo.findTeacherActivity(teacherId, conn);
   if (!teacher)
     throw ApiError.validation('teacher does not exist', undefined, {
       reason: 'invalid_reference',
