@@ -1237,7 +1237,9 @@ paths:
         every subject 75 or above is `promoted` (next grade level), 1 or 2 subjects below 75 is `remedial` (an
         admin places the student after remedial classes), 3 or more is `retained` (same grade level again).
         `enrolled` when the student has a class; `needs_placement` when there is no completed year, no grades in
-        it, or the next year has already passed; `finished` after passing the highest grade level. For
+        it, a subject of the completed class without a final grade (the year is incomplete and is not judged
+        on the other subjects alone), or the next year has already passed; `finished` after passing the highest
+        grade level. For
         `promoted` and `retained`, `classes` lists the sections of `gradeLevel` in `academicYear` (the year after
         the completed one) the student may pick; it is empty until the school creates them.
 

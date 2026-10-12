@@ -94,6 +94,10 @@ describe('SF10 permanent record', () => {
     expect(sf10Remarks([70, 74, 60], true)).toBe('In progress');
     expect(sf10Remarks([null], false)).toBe('');
     expect(sf10Remarks([], true)).toBe('In progress');
+    // A subject of the year's class without a final grade: the year is not judged on the others alone.
+    expect(sf10Remarks([90, 80], false, true)).toBe('Incomplete');
+    expect(sf10Remarks([], false, true)).toBe('Incomplete');
+    expect(sf10Remarks([90, 80], true, true)).toBe('In progress');
   });
 
   /**
@@ -127,7 +131,7 @@ describe('SF10 permanent record', () => {
       subject(2, 'Science', 'Grade 7 - B', '2025-2026', 90, 91, 89, 90),
       subject(3, 'English', 'Grade 7 - B', '2025-2026'),
     ];
-    const rows = sf10Rows(enrollments, subjects);
+    const rows = sf10Rows(enrollments, subjects, []);
     expect(rows.map(pick)).toEqual([
       '2025-2026|7|Grade 7 - B|English||',
       '2025-2026|7|Grade 7 - B|Math|70|Failed',
@@ -158,7 +162,7 @@ describe('SF10 permanent record', () => {
       inSecond(subject(1, 'Math', 'Grade 8 - A', '2026-2027', 90)),
       subject(2, 'Science', 'Grade 8 - A', '2026-2027', 70),
     ];
-    const rows = sf10Rows(enrollments, subjects);
+    const rows = sf10Rows(enrollments, subjects, []);
     expect(rows.map(pick)).toEqual([
       '2026-2027|8|Grade 8 - A|Math|85|Passed',
       '2026-2027|8|Grade 8 - A|Science|70|Failed',
@@ -186,11 +190,96 @@ describe('SF10 permanent record', () => {
       subject(1, 'Math', 'Grade 8 - A', '2026-2027', 70),
       subject(1, 'Math', 'Grade 8 - B', '2026-2027', null, 80, 84, 86),
     ];
-    const rows = sf10Rows(enrollments, subjects);
+    const rows = sf10Rows(enrollments, subjects, []);
     expect(rows.map(pick)).toEqual([
       '2026-2027|8|Grade 8 - A / Grade 8 - B|Math|80|Passed',
       '2026-2027|8|Grade 8 - A / Grade 8 - B|General average|80|Promoted',
     ]);
     expect(rows[0].quarters.sem1).toEqual({ term1: 70, term2: 80, term3: 84, term4: 86 });
+  });
+
+  /** A subject of a class, as GET /class-subjects?classId= lists it. */
+  const classSubject = (classId, className, subjectId, subjectName) => ({
+    classId,
+    className,
+    subjectId,
+    subjectName,
+  });
+
+  it('reads Incomplete for a finished year with a subject of its class left without a final grade', () => {
+    // Grade 7 - B takes Math, Science and English. Math and Science pass; English has no grade at all and
+    // Filipino was assessed only in a type weighted 0, so it has no final grade either.
+    const enrollments = [
+      {
+        status: 'completed',
+        classId: 7,
+        enrolledOn: '2025-08-04',
+        class: { name: 'Grade 7 - B', gradeLevel: 7, academicYear: '2025-2026' },
+      },
+    ];
+    const subjects = [
+      subject(1, 'Math', 'Grade 7 - B', '2025-2026', 80, 82, 84, 86),
+      subject(2, 'Science', 'Grade 7 - B', '2025-2026', 90, 90, 90, 90),
+      subject(4, 'Filipino', 'Grade 7 - B', '2025-2026'),
+    ];
+    const classSubjects = [
+      classSubject(7, 'Grade 7 - B', 1, 'Math'),
+      classSubject(7, 'Grade 7 - B', 2, 'Science'),
+      classSubject(7, 'Grade 7 - B', 3, 'English'),
+      classSubject(7, 'Grade 7 - B', 4, 'Filipino'),
+    ];
+    const rows = sf10Rows(enrollments, subjects, classSubjects);
+    expect(rows.map(pick)).toEqual([
+      '2025-2026|7|Grade 7 - B|English||Incomplete',
+      '2025-2026|7|Grade 7 - B|Filipino||Incomplete',
+      '2025-2026|7|Grade 7 - B|Math|83|Passed',
+      '2025-2026|7|Grade 7 - B|Science|90|Passed',
+      '2025-2026|7|Grade 7 - B|General average|86.5|Incomplete',
+    ]);
+    expect(rows[0].semesters).toEqual({ sem1: null, sem2: null });
+    expect(toCsv(SF10_CSV_COLUMNS, rows).split('\r\n')[1]).toBe(
+      '2025-2026,7,Grade 7 - B,English,,,,,,,,,,,,Incomplete',
+    );
+    // Every subject of the class graded: the year is judged again.
+    const complete = sf10Rows(enrollments, subjects.slice(0, 2), classSubjects.slice(0, 2));
+    expect(complete.at(-1).remarks).toBe('Promoted');
+  });
+
+  it('judges a year by the subjects of the class it ended in, and an ongoing year not at all', () => {
+    // Moved from 8-A to 8-B: Math was graded in 8-A only, which still counts for 8-B's Math; 8-A's Art,
+    // which 8-B does not take, is not missing. 8-B's Science has no grade.
+    const enrollments = [
+      {
+        status: 'transferred',
+        classId: 1,
+        enrolledOn: '2026-08-03',
+        class: { name: 'Grade 8 - A', gradeLevel: 8, academicYear: '2026-2027' },
+      },
+      {
+        status: 'completed',
+        classId: 2,
+        enrolledOn: '2026-10-05',
+        class: { name: 'Grade 8 - B', gradeLevel: 8, academicYear: '2026-2027' },
+      },
+    ];
+    const subjects = [subject(1, 'Math', 'Grade 8 - A', '2026-2027', 85)];
+    const classSubjects = [
+      classSubject(1, 'Grade 8 - A', 1, 'Math'),
+      classSubject(1, 'Grade 8 - A', 9, 'Art'),
+      classSubject(2, 'Grade 8 - B', 1, 'Math'),
+      classSubject(2, 'Grade 8 - B', 2, 'Science'),
+    ];
+    expect(sf10Rows(enrollments, subjects, classSubjects).map(pick)).toEqual([
+      '2026-2027|8|Grade 8 - A|Math|85|Passed',
+      '2026-2027|8|Grade 8 - B|Science||Incomplete',
+      '2026-2027|8|Grade 8 - A / Grade 8 - B|General average|85|Incomplete',
+    ]);
+
+    // While the year is in progress nothing is missing yet.
+    const ongoing = [{ ...enrollments[1], status: 'active' }];
+    expect(sf10Rows(ongoing, subjects, classSubjects).map(pick)).toEqual([
+      '2026-2027|8|Grade 8 - A|Math|85|Passed',
+      '2026-2027|8|Grade 8 - B / Grade 8 - A|General average|85|In progress',
+    ]);
   });
 });

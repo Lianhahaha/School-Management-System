@@ -14,6 +14,7 @@ import { averageOf, subjectYearResults } from '../../utils/grading.js';
 import { applicationOf } from '../admissions/admissions.service.js';
 import { summarizeStudentGradesUnscoped } from '../grades/grades.service.js';
 import { classesOfGrade } from '../classes/classes.service.js';
+import { subjectIdsOfClass } from '../subjects/subjects.service.js';
 import { enroll, seatsPerClass } from './enrollments.service.js';
 import * as repo from './enrollments.repository.js';
 
@@ -33,7 +34,9 @@ const classRef = (row) => ({
  * average of the quarterly grades graded in that semester; a semester with none is left out, utils/grading.js
  * subjectYearResults): every subject passed moves them up one grade level, 1-2 failed subjects need
  * remedial classes (an admin places them afterwards), 3 or more mean the same grade level again. A student
- * with no completed year, no grades in it, or whose next year has already passed is placed by an admin.
+ * with no completed year, no grades in it, a subject of the completed class without a final grade (the year is
+ * incomplete, so it is not judged on the other subjects alone), or whose next year has already passed is
+ * placed by an admin.
  * `classes` are the sections the student may pick: the grade level in the year after the completed one.
  */
 export async function nextClassStanding(studentId) {
@@ -64,10 +67,20 @@ export async function nextClassStanding(studentId) {
   const last = await repo.findLastClosedByStudent(studentId);
   if (!last || last.status !== 'completed') return standing('needs_placement');
   const lastClass = classRef(last);
-  const subjects = subjectYearResults(await summarizeStudentGradesUnscoped(studentId, last.academicYear))
+  const [results, classSubjectIds] = await Promise.all([
+    summarizeStudentGradesUnscoped(studentId, last.academicYear),
+    subjectIdsOfClass(last.classId),
+  ]);
+  const subjects = subjectYearResults(results)
     .filter((subject) => subject.percentage !== null)
     .map(({ subjectId, subjectName, percentage }) => ({ subjectId, subjectName, percentage }));
   if (!subjects.length) return standing('needs_placement', { lastClass });
+  // A subject of the completed class with no final grade (from any class of that year) leaves the year
+  // incomplete: passing the others does not promote.
+  const withGrade = new Set(subjects.map((subject) => subject.subjectId));
+  if (classSubjectIds.some((subjectId) => !withGrade.has(subjectId))) {
+    return standing('needs_placement', { lastClass });
+  }
 
   const generalAverage = averageOf(subjects.map((subject) => subject.percentage));
   const failedSubjects = subjects.filter((subject) => subject.percentage < PASSING_GRADE);

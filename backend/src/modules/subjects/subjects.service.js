@@ -151,6 +151,9 @@ export async function deleteSubject(id) {
   return { id };
 }
 
+/** Ids of the subjects a class takes (promotion: every one needs a final grade). No access check. */
+export const subjectIdsOfClass = (classId) => repo.findSubjectIdsOfClass(classId);
+
 /** 400 when the subject does not exist or has been retired (used before assigning it to a class). */
 export async function assertActiveSubject(subjectId) {
   const subject = await repo.findSubjectById(subjectId);

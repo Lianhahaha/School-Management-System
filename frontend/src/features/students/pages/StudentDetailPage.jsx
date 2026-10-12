@@ -14,6 +14,7 @@ import { fullName } from '../../../utils/names';
 import { AdmissionStatusBadge } from '../../admissions/components/AdmissionStatusBadge';
 import { isApplicant } from '../../admissions/status';
 import { AttendanceSummaryPanel } from '../../attendance/components/AttendanceSummaryPanel';
+import { listClassSubjects } from '../../classSubjects/api';
 import { listEnrollments } from '../../enrollments/api';
 import { EnrollmentHistoryTable } from '../../enrollments/components/EnrollmentHistoryTable';
 import { StudentFeesTab } from '../../fees/components/StudentFeesTab';
@@ -121,7 +122,8 @@ export default function StudentDetailPage() {
               <div className="space-y-4">
                 <div className="flex flex-wrap justify-end gap-2">
                   {/* SF10: every school year of the student, with the year's remarks. Its quarters and
-                      semester grades come from each semester's summary (every year of it), tagged. */}
+                      semester grades come from each semester's summary (every year of it), tagged; the
+                      subjects of each class say which ones a finished year left without a final grade. */}
                   <ExportCsvButton
                     label="Download SF10"
                     fileName={`SF10 ${name}`}
@@ -140,7 +142,19 @@ export default function StudentDetailPage() {
                           ),
                         ),
                       ]);
-                      return sf10Rows(enrollments.items, bySemester.flat());
+                      const classIds = [
+                        ...new Set(enrollments.items.map((enrollment) => enrollment.classId)),
+                      ];
+                      const classSubjects = await Promise.all(
+                        classIds.map((classId) =>
+                          listClassSubjects({ classId, limit: PAGINATION.MAX_LIMIT }),
+                        ),
+                      );
+                      return sf10Rows(
+                        enrollments.items,
+                        bySemester.flat(),
+                        classSubjects.flatMap((page) => page.items),
+                      );
                     }}
                   />
                   {/* The report card is for the student's current class and its school year, as a whole. */}

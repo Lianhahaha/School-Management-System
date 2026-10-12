@@ -270,10 +270,57 @@ describe('students enrolling themselves for next year (DepEd promotion)', () => 
     assert.equal(res.body.error.details.standing, 'needs_placement');
   });
 
-  it('counts only graded subjects and finishes a student who passed the highest grade level', async () => {
+  it('leaves a year with a subject of the class but no final grade to an admin', async () => {
+    // Subjects 1 and 4 pass; 2 and 3 of the same class have no final grade, so the year is incomplete and
+    // passing the other two does not promote.
     const section = await ownSection();
     const partly = await studentWith(section, section.subjects, [8, null, null, 9]);
-    assert.equal((await standing(partly)).status, 'promoted');
+    const result = await standing(partly);
+    assert.equal(result.status, 'needs_placement');
+    assert.equal(result.lastClass.id, section.id);
+    assert.deepEqual([result.gradeLevel, result.classes], [null, []]);
+    assert.equal((await enrollIn(partly, sections.g5a.id)).status, 409);
+
+    // A subject graded in a class the student left that year counts for the class they finished in: here
+    // subject 2 was graded in the first section before the move on day 20, and subject 3 in the second.
+    const [first, finishing] = [await ownSection(), await ownSection()];
+    const moved = await studentWith(finishing, finishing.subjects, [8, null, null, 9]);
+    const moveOn = addDaysYmd(lastYearStart, 20);
+    await run('UPDATE enrollments SET enrolled_on = ? WHERE student_id = ? AND class_id = ?', [
+      moveOn,
+      moved.studentId,
+      finishing.id,
+    ]);
+    await run(
+      `INSERT INTO enrollments (student_id, class_id, status, enrolled_on, left_on) VALUES (?, ?, 'transferred', ?, ?)`,
+      [moved.studentId, first.id, lastYearStart, moveOn],
+    );
+    for (const [classSubject, title, day] of [
+      [first.subjects[1], 'Before the move', 10],
+      [finishing.subjects[2], 'After the move', 40],
+    ]) {
+      const assessment = await api
+        .post('/api/v1/assessments')
+        .set(as(teacher))
+        .send({
+          classSubjectId: classSubject.id,
+          title: `${title} ${moved.studentId}`,
+          type: 'exam',
+          term: 'term1',
+          maxScore: 10,
+          assessedOn: addDaysYmd(lastYearStart, day),
+        });
+      assert.equal(assessment.status, 201, JSON.stringify(assessment.body));
+      const saved = await api
+        .put(`/api/v1/assessments/${assessment.body.data.id}/grades`)
+        .set(as(teacher))
+        .send({ grades: [{ studentId: moved.studentId, score: 8 }] });
+      assert.equal(saved.status, 200, JSON.stringify(saved.body));
+    }
+    assert.equal((await standing(moved)).status, 'promoted');
+  });
+
+  it('finishes a student who passed the highest grade level', async () => {
     const graduate = await studentWith(grade12, grade12.subjects, [9, 9, 9, 9]);
     const result = await standing(graduate);
     assert.equal(result.status, 'finished');
