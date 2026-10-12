@@ -57,7 +57,7 @@ info:
     | `NOT_FOUND` | 404 | The record does not exist or is not visible to the caller (`details.resource`, `details.id`), or the route is unknown. An unknown route is a 404 with or without a token; only below a secured resource (for example `/students/...`) is the token checked first. `POST /auth/register` answers 404 with `details.reason = registration_disabled` when self-registration is switched off. |
     | `CONFLICT` | 409 | Duplicate value (`details.key`, as `table.key_name`), record still in use (`details.reason` is `in_use`, `details.constraint`), or a business conflict identified by `details.reason`. |
     | `SCHEDULE_CONFLICT` | 409 | A timetable slot overlaps another slot of the same class, teacher or room. `details.conflicts` lists every overlap. |
-    | `RATE_LIMITED` | 429 | Too many registrations from one IP address. `details.retryAfterSeconds`, also sent as `Retry-After`. |
+    | `RATE_LIMITED` | 429 | Too many registrations from one IP address, or more than 600 requests a minute from one signed-in user (`API_RATE_LIMIT_PER_MINUTE`). `details.retryAfterSeconds`, also sent as `Retry-After`. |
     | `INTERNAL_ERROR` | 500 | Unexpected failure. |
     | `SERVICE_UNAVAILABLE` | 503 | A dependency cannot serve the request right now; retry later. `details.component` names it: `db` (database unreachable), `auth` (the token could not be checked because Firebase's signing keys could not be fetched; the session is still valid) or `timetable` (timetable lock busy). |
 
@@ -2511,7 +2511,7 @@ components:
         type: string
         example: 5b0e9a3c-7f1d-4e0a-9c55-0d1f6a2b8e47
     RetryAfter:
-      description: Seconds until the rate limit window allows another registration.
+      description: Seconds until the rate limit window allows another request.
       schema:
         type: integer
         example: 540
@@ -5608,7 +5608,7 @@ components:
                     endTime: '08:30'
                     room: b-204
     RateLimited:
-      description: Too many registrations from this IP address (`RATE_LIMITED`).
+      description: Too many registrations from this IP address, or too many requests from this user (`RATE_LIMITED`).
       headers:
         X-Request-Id: { $ref: '#/components/headers/XRequestId' }
         Retry-After: { $ref: '#/components/headers/RetryAfter' }

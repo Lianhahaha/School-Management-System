@@ -12,6 +12,7 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { env } from '../../config/env.js';
 import { authenticateOwnAccount } from '../../middleware/authenticate.js';
+import { rateLimitHandler } from '../../middleware/rateLimit.js';
 import { validate } from '../../middleware/validate.js';
 import { ApiError } from '../../utils/ApiError.js';
 import * as controller from './auth.controller.js';
@@ -20,14 +21,6 @@ import * as schemas from './auth.schemas.js';
 export const authRoutes = Router();
 
 export const REGISTER_FAILED_LIMIT = 150;
-
-const rateLimitHandler = (req, _res, next, options) => {
-  const resetAt = req.rateLimit?.resetTime?.getTime();
-  const retryAfterSeconds = resetAt
-    ? Math.max(1, Math.ceil((resetAt - Date.now()) / 1000))
-    : options.windowMs / 1000;
-  next(ApiError.rateLimited(retryAfterSeconds));
-};
 
 const registerLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

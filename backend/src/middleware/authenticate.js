@@ -21,6 +21,7 @@ import { firebase } from '../config/firebase.js';
 import { isAwaitingApproval } from '../modules/access/access.service.js';
 import { findAuthContextByFirebaseUid } from '../modules/users/users.repository.js';
 import { ApiError } from '../utils/ApiError.js';
+import { perUserLimit } from './rateLimit.js';
 import { tokenVerificationError } from '../utils/firebaseErrorMap.js';
 import { runWithContext } from '../utils/requestContext.js';
 
@@ -37,9 +38,10 @@ function notApproved(user) {
 
 function authenticator({ allowAwaitingApproval }) {
   const gate = (user) => (allowAwaitingApproval ? undefined : notApproved(user));
-  return async (req, _res, next) => {
+  return async (req, res, next) => {
     // A request that falls through one authenticated mount into another (/assessments/:id/grades, then
-    // /assessments) is checked once; the request context set below is still active.
+    // /assessments) is checked (and counted against the rate limit) once; the request context set below is
+    // still active.
     if (req.user) return next(gate(req.user));
     // The scheme name is case-insensitive (RFC 9110); exactly one token must follow it.
     const token = /^Bearer\s+(\S+)\s*$/i.exec(req.get('Authorization') ?? '')?.[1];
@@ -57,7 +59,8 @@ function authenticator({ allowAwaitingApproval }) {
     if (!user.isActive) return next(ApiError.accountDisabled());
 
     req.user = user;
-    runWithContext({ user }, () => next(gate(user)));
+    // Counted per user (middleware/rateLimit): 429 RATE_LIMITED past API_RATE_LIMIT_PER_MINUTE.
+    runWithContext({ user }, () => perUserLimit(req, res, (error) => next(error ?? gate(user))));
   };
 }
 

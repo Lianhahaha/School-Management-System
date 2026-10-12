@@ -8,3 +8,6 @@ process.env.LOG_LEVEL = 'error';
 process.env.DOCS_ENABLED = 'true';
 process.env.ALLOW_PUBLIC_REGISTRATION = 'true';
 process.env.APP_TIMEZONE = 'UTC';
+// Suites send thousands of requests as one user; the limit itself is tested with a low value
+// (rate-limit.test.js sets it before importing this file).
+process.env.API_RATE_LIMIT_PER_MINUTE ??= '1000000';

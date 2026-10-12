@@ -23,7 +23,13 @@ export function createApp() {
   app.set('trust proxy', env.isProd ? 1 : false);
 
   app.use(requestId);
-  app.use(helmet({ contentSecurityPolicy: false })); // the only HTML served is Swagger UI, which CSP breaks
+  // Helmet's full set of headers, its Content-Security-Policy included, on every response but the API docs:
+  // Swagger UI runs inline scripts and styles that the policy blocks, and it is the only HTML served.
+  const secureHeaders = helmet();
+  const docsHeaders = helmet({ contentSecurityPolicy: false });
+  app.use((req, res, next) =>
+    (req.path.startsWith('/api/docs') ? docsHeaders : secureHeaders)(req, res, next),
+  );
   app.use(
     cors({
       origin: env.CORS_ORIGINS,
