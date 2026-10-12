@@ -58,4 +58,22 @@ export const saveGradesBody = z.strictObject({
   ),
 });
 
+/** A score in the query string: a whole number or one with at most 2 decimals ('18', '17.5'). */
+const queryScore = z.preprocess(
+  (value) => (typeof value === 'string' && /^\d+(\.\d{1,2})?$/.test(value) ? Number(value) : value),
+  score,
+);
+
+/**
+ * DELETE /grades/:id: the grade the client last saw, its `score` and `remarks` (left out for none). When the
+ * stored grade differs, or is gone, someone saved meanwhile and nothing is deleted (409 sheet_changed). Without
+ * `score` the grade is deleted as it is.
+ */
+export const deleteGradeQuery = z
+  .strictObject({ score: queryScore.optional(), remarks: remarks.optional() })
+  .refine((query) => query.remarks === undefined || query.score !== undefined, {
+    error: 'remarks are checked together with the score',
+    path: ['remarks'],
+  });
+
 export { idParams };

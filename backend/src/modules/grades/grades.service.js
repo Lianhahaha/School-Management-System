@@ -302,15 +302,37 @@ async function recordGradeChanges(assessment, roster, grades, previous) {
   );
 }
 
-export async function deleteGrade(user, id) {
+/**
+ * Clears one grade. `expected` is the grade the client last saw (`score`, and `remarks` for none when left out):
+ * checked under the same assessment lock as a save of the sheet, a stored grade that differs means someone
+ * saved meanwhile, so nothing is deleted (409 sheet_changed). Without `expected.score` the grade is cleared as
+ * it is. A grade that is gone, cleared before or while this ran, is a 404 either way. The activity log keeps
+ * the score that was cleared.
+ */
+export async function deleteGrade(user, id, expected = {}) {
   const grade = ApiError.assertFound(await repo.findGradeById(id), 'grade', id);
   await access.assertCanManageClassSubject(user, grade.classSubjectId);
-  await repo.deleteGrade(id);
+  const cleared = await withTransaction(async (conn) => {
+    // First statement: saves of this assessment wait for this one, and the read below sees what they committed.
+    await lockMaxScoreForGrading(grade.assessmentId, conn);
+    const stored = ApiError.assertFound(await repo.findGradeValues(id, conn), 'grade', id);
+    if (expected.score !== undefined) {
+      const previous = { score: expected.score, remarks: remarksOf(expected.remarks) };
+      assertAsSeen(
+        [{ studentId: grade.studentId, previous }],
+        new Map([[grade.studentId, stored]]),
+        'score',
+        'someone changed this grade after you opened the sheet; reload to see the change',
+      );
+    }
+    await repo.deleteGrade(id, conn);
+    return stored;
+  });
   await record({
     action: 'grades.delete',
     entityId: grade.assessmentId,
-    summary: `Cleared ${nameOf(grade)}'s grade on ${grade.title} of ${grade.subjectName} · ${grade.className} (was ${grade.score} / ${grade.maxScore})`,
-    details: { student: nameOf(grade), assessment: grade.title, from: grade.score, to: null },
+    summary: `Cleared ${nameOf(grade)}'s grade on ${grade.title} of ${grade.subjectName} · ${grade.className} (was ${cleared.score} / ${grade.maxScore})`,
+    details: { student: nameOf(grade), assessment: grade.title, from: cleared.score, to: null },
   });
   return { id };
 }

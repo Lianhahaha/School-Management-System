@@ -15,7 +15,7 @@ gradesRoutes.get('/summary', validate({ query: schemas.gradeSummaryQuery }), con
 gradesRoutes.delete(
   '/:id',
   authorize('admin', 'teacher'),
-  validate({ params: schemas.idParams }),
+  validate({ params: schemas.idParams, query: schemas.deleteGradeQuery }),
   controller.remove,
 );
 

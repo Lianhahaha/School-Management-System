@@ -100,12 +100,16 @@ export function GradeSheet({ roster, canSave, onReload }) {
 
   const adopt = (nextRoster) => {
     save.reset();
+    deleteGrade.reset();
+    restoreGrade.reset();
     setRecords(nextRoster.records);
     reset(gradeSheetDefaults(nextRoster.records));
   };
+  // A Clear or an Undo is checked against what the sheet shows, like a save: someone who saved meanwhile
+  // makes it a 409 sheet_changed, which offers the same reload.
   const { isStale, canReload, reload } = useSheetEditing({
     isDirty: canSave && isDirty,
-    saveError: save.error,
+    saveError: save.error ?? deleteGrade.error ?? restoreGrade.error,
     onReload,
     adopt,
   });
@@ -136,9 +140,14 @@ export function GradeSheet({ roster, canSave, onReload }) {
     resetField(`rows.${index}.remarks`, { defaultValue: next.remarks ?? '' });
   };
 
-  /** A one-click clear: no confirmation, but the toast offers Undo, which saves the old score back. */
+  /**
+   * A one-click clear: no confirmation, but the toast offers Undo, which saves the old score back. Both send
+   * what the sheet shows, the Clear the grade as it was and the Undo that the student has none, so neither
+   * overwrites a grade someone else saved meanwhile.
+   */
   const clearGrade = (record, index) => {
-    deleteGrade.mutate(record.gradeId, {
+    const shown = { id: record.gradeId, score: record.score, remarks: record.remarks };
+    deleteGrade.mutate(shown, {
       onSuccess: () => {
         replaceRow(index, {
           ...record,
@@ -155,7 +164,12 @@ export function GradeSheet({ roster, canSave, onReload }) {
               restoreGrade.mutate(
                 {
                   assessmentId: assessment.id,
-                  grade: { studentId: record.studentId, score: record.score, remarks: record.remarks },
+                  grade: {
+                    studentId: record.studentId,
+                    score: record.score,
+                    remarks: record.remarks,
+                    previous: { score: null, remarks: null },
+                  },
                 },
                 {
                   onSuccess: (roster) => {

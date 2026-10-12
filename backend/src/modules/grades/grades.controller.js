@@ -10,7 +10,7 @@ export async function summary(req, res) {
 }
 
 export async function remove(req, res) {
-  ok(res, await service.deleteGrade(req.user, req.validated.params.id));
+  ok(res, await service.deleteGrade(req.user, req.validated.params.id, req.validated.query));
 }
 
 export async function getRoster(req, res) {

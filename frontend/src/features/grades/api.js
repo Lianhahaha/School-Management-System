@@ -59,5 +59,11 @@ export const listGrades = (params) => api.get('/grades', { params }).then(toPage
  */
 export const getGradeSummary = (params) => api.get('/grades/summary', { params }).then(toData);
 
-/** Admin, or the class-subject's teacher. Clears one recorded grade (a PUT cannot unset a score). */
-export const deleteGrade = (id) => api.delete(`/grades/${id}`).then(toData);
+/**
+ * Admin, or the class-subject's teacher. Clears one recorded grade (a PUT cannot unset a score). `score` and
+ * `remarks` are the grade as the sheet shows it: when someone changed or cleared it meanwhile the API answers
+ * 409 with `details.reason = sheet_changed` and nothing is cleared, as for a save.
+ * @param {{ id: number, score: number, remarks?: string | null }} grade
+ */
+export const deleteGrade = ({ id, score, remarks }) =>
+  api.delete(`/grades/${id}`, { params: { score, remarks: remarks ?? undefined } }).then(toData);

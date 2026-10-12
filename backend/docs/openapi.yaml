@@ -1827,15 +1827,34 @@ paths:
       description: |
         Roles: admin, teacher (only the teacher assigned to the class-subject of the grade).
 
-        Removes a grade that was entered for the wrong student.
+        Removes a grade that was entered for the wrong student. `score` and `remarks` are the grade the client
+        last saw: checked one after the other with the saves of the assessment's sheet, a stored grade that
+        differs answers 409 with `details.reason = sheet_changed` and `details.changedStudentIds` (nothing is
+        deleted), as a save does. Without `score` the grade is deleted as it is. A grade already cleared is a
+        404.
       parameters:
         - $ref: '#/components/parameters/IdPath'
+        - name: score
+          in: query
+          description: The score the client last saw (at most 2 decimals).
+          schema:
+            type: number
+            minimum: 0
+            multipleOf: 0.01
+          example: 18
+        - name: remarks
+          in: query
+          description: The remarks the client last saw, with `score`; left out for none.
+          schema:
+            type: string
+            maxLength: 255
       responses:
         '200': { $ref: '#/components/responses/Deleted' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /assessments/{id}/grades:
     get:
       tags: [grades]

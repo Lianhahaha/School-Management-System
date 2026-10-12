@@ -187,6 +187,12 @@ export async function findGradesOf(assessmentId, studentIds, conn) {
   return new Map(rows.map((row) => [row.studentId, { score: row.score, remarks: row.remarks }]));
 }
 
-export async function deleteGrade(id) {
-  return (await run('DELETE FROM grades WHERE id = ?', [id])).affectedRows;
+/** `{ studentId, score, remarks }` of one grade, or null when it is gone (inside a delete's transaction). */
+export async function findGradeValues(id, conn) {
+  const rows = await query('SELECT student_id, score, remarks FROM grades WHERE id = ?', [id], conn);
+  return rows[0] ?? null;
+}
+
+export async function deleteGrade(id, conn) {
+  return (await run('DELETE FROM grades WHERE id = ?', [id], conn)).affectedRows;
 }
