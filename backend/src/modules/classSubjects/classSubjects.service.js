@@ -4,9 +4,10 @@ import { resolveMe } from '../../utils/resolveMe.js';
 import { classSubjectRef, personRef } from '../../utils/shapes.js';
 import * as access from '../access/access.service.js';
 import { nameOf, record } from '../activity/activity.service.js';
+import { findReferencedClass } from '../classes/classes.service.js';
 import { notifyTeacher } from '../notifications/notifications.service.js';
 import { writeIfTeacherFree } from '../schedules/schedules.service.js';
-import { assertActiveSubject } from '../subjects/subjects.service.js';
+import { assertAssignableSubject } from '../subjects/subjects.service.js';
 import { assertActiveTeacher } from '../teachers/teachers.service.js';
 import * as repo from './classSubjects.repository.js';
 
@@ -36,10 +37,16 @@ export async function getClassSubjectRefUnscoped(id) {
   return classSubjectRef(ApiError.assertFound(await repo.findClassSubjectById(id), 'class subject', id));
 }
 
+/**
+ * A subject in a class with its teacher. The class, the subject and the teacher's account stay share-locked
+ * until the assignment is saved, so the class's grade level (updateClass), the subject's grading group
+ * (updateSubject) and the teacher's activity (assertActiveTeacher) cannot change between their checks and the
+ * insert: a subject's K-12 group must fit the class's grade level (assertAssignableSubject).
+ */
 export async function createClassSubject(body) {
-  await assertActiveSubject(body.subjectId);
-  // The teacher's account stays share-locked until the assignment is saved (assertActiveTeacher).
   const id = await withTransaction(async (conn) => {
+    const klass = await findReferencedClass(body.classId, 'classId', conn, { forShare: true });
+    await assertAssignableSubject(body.subjectId, klass, conn);
     await assertActiveTeacher(body.teacherId, conn);
     return repo.insertClassSubject(body, conn);
   });

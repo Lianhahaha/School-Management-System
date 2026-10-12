@@ -4,7 +4,11 @@
  */
 import { isDeepStrictEqual } from 'node:util';
 import { withTransaction } from '../../config/db.js';
-import { ASSESSMENT_TYPES } from '../../constants/shared.js';
+import {
+  ASSESSMENT_TYPES,
+  SENIOR_HIGH_FIRST_GRADE,
+  SENIOR_HIGH_GRADING_GROUPS,
+} from '../../constants/shared.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { currentAcademicYear } from '../../utils/dates.js';
 import { changedList, changesOf, record } from '../activity/activity.service.js';
@@ -95,10 +99,69 @@ async function assertGradingKept(before, after, conn) {
   );
 }
 
+/** The school stage whose DepEd weights a K-12 group holds, as messages name it. */
+const stageOfGroup = (group) => (SENIOR_HIGH_GRADING_GROUPS.includes(group) ? 'Senior High' : 'Grades 1-10');
+
+/** The school stage of a grade level: Senior High from SENIOR_HIGH_FIRST_GRADE (Grades 11 and 12). */
+const stageOfGrade = (gradeLevel) => (gradeLevel >= SENIOR_HIGH_FIRST_GRADE ? 'Senior High' : 'Grades 1-10');
+
+const otherStage = (stage) => (stage === 'Senior High' ? 'Grades 1-10' : 'Senior High');
+
+/**
+ * True when a subject graded by `group` may be taught in a class of `gradeLevel`. DepEd Order 8 s. 2015 weighs
+ * the components of Grades 1-10 (Table 4) and of Senior High (Table 5) differently, so a subject in a Senior
+ * High group is taught in Grades 11-12 only and a subject in a Grades 1-10 group in Grades 1-10 only: in the
+ * other stage its students would be graded with the wrong weights. A subject without a group (on points or its
+ * own weights) may be taught in any grade.
+ * @param {string | null} group constants/shared GRADING_GROUPS, or null
+ * @param {number} gradeLevel 1-12
+ */
+const groupFitsGrade = (group, gradeLevel) => !group || stageOfGroup(group) === stageOfGrade(gradeLevel);
+
+/**
+ * 409 grading_group_grade_mismatch when the update gave the subject a K-12 group that does not fit a class of
+ * this or a later school year that takes it (groupFitsGrade). A subject with grades from an earlier year keeps
+ * its method anyway (assertGradingKept), and earlier classes without grades have no results to get wrong.
+ * Checked only when the group changed, so a subject placed in a class before this rule existed can still be
+ * edited. The read of its classes is a locking one, and an assignment being made meanwhile waits for this
+ * update (createClassSubject share-locks the subject row the update holds), so none slips past the check.
+ * When the subject is taught in both stages, no group fits: it stays on points or its own weights.
+ */
+async function assertGroupFitsClasses(before, after, conn) {
+  if (!after.gradingGroup || after.gradingGroup === before.gradingGroup) return;
+  const classes = await repo.findClassesTakingFrom(after.id, currentAcademicYear(), conn);
+  const misfits = classes.filter((klass) => !groupFitsGrade(after.gradingGroup, klass.gradeLevel));
+  if (!misfits.length) return;
+  const stage = stageOfGroup(after.gradingGroup);
+  const [first] = misfits;
+  const others = misfits.length - 1;
+  const where =
+    `${first.name} (Grade ${first.gradeLevel}, ${first.academicYear})` +
+    (others ? ` and ${others} other class${others === 1 ? '' : 'es'}` : '');
+  const advice =
+    misfits.length < classes.length
+      ? 'it is taught in both Grades 1-10 and Senior High, so keep it on points or its own weights, or make a separate subject for each'
+      : `choose a ${otherStage(stage)} group`;
+  throw ApiError.conflict(
+    `${after.name} is taught in ${where}, so it cannot use ${stage} weights; ${advice}`,
+    {
+      reason: 'grading_group_grade_mismatch',
+      gradingGroup: after.gradingGroup,
+      classes: misfits.map(({ id, name, gradeLevel, academicYear }) => ({
+        id,
+        name,
+        gradeLevel,
+        academicYear,
+      })),
+    },
+  );
+}
+
 /**
  * `gradeWeights` replaces the subject's weights and `gradingGroup` its K-12 group; a subject is graded one way,
  * so setting either clears the other. Both null put it back on points. Neither may change once the subject has
- * grades from an earlier school year (assertGradingKept).
+ * grades from an earlier school year (assertGradingKept), and a new group must fit the grade level of every
+ * class of this or a later school year that takes the subject (assertGroupFitsClasses).
  */
 export async function updateSubject(id, patch) {
   const before = await getSubject(id);
@@ -109,7 +172,9 @@ export async function updateSubject(id, patch) {
       await repo.replaceGradeWeights(id, patch.gradingGroup ? null : patch.gradeWeights, conn);
     }
     if ('gradeWeights' in patch || 'gradingGroup' in patch) {
-      await assertGradingKept(before, await getSubject(id, conn), conn);
+      const after = await getSubject(id, conn);
+      await assertGradingKept(before, after, conn);
+      await assertGroupFitsClasses(before, after, conn);
     }
   });
   const subject = await getSubject(id);
@@ -154,9 +219,14 @@ export async function deleteSubject(id) {
 /** Ids of the subjects a class takes (promotion: every one needs a final grade). No access check. */
 export const subjectIdsOfClass = (classId) => repo.findSubjectIdsOfClass(classId);
 
-/** 400 when the subject does not exist or has been retired (used before assigning it to a class). */
-export async function assertActiveSubject(subjectId) {
-  const subject = await repo.findSubjectById(subjectId);
+/**
+ * The checks on a subject about to be assigned to class `klass` (`{ name, gradeLevel }`): 400 when it does not
+ * exist or has been retired, 409 grading_group_grade_mismatch when its K-12 group is not for the class's grade
+ * level (groupFitsGrade). Inside the assigning transaction (`conn`) the subject row stays share-locked until it
+ * ends, so its group cannot change (updateSubject) between this check and the assignment being saved.
+ */
+export async function assertAssignableSubject(subjectId, klass, conn) {
+  const subject = await repo.findSubjectById(subjectId, conn, { forShare: true });
   if (!subject) {
     throw ApiError.validation('subject does not exist', undefined, {
       reason: 'invalid_reference',
@@ -168,5 +238,16 @@ export async function assertActiveSubject(subjectId) {
       reason: 'subject_inactive',
       field: 'subjectId',
     });
+  }
+  if (!groupFitsGrade(subject.gradingGroup, klass.gradeLevel)) {
+    const stage = stageOfGroup(subject.gradingGroup);
+    throw ApiError.conflict(
+      `${subject.name} uses ${stage} weights and cannot be taught in Grade ${klass.gradeLevel}; use a ${otherStage(stage)} subject`,
+      {
+        reason: 'grading_group_grade_mismatch',
+        gradingGroup: subject.gradingGroup,
+        gradeLevel: klass.gradeLevel,
+      },
+    );
   }
 }

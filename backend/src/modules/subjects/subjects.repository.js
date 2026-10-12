@@ -8,8 +8,10 @@ const COLUMNS =
   'sub.id, sub.code, sub.name, sub.description, sub.is_active, sub.grading_group, sub.created_at, sub.updated_at';
 const FROM = 'FROM subjects sub';
 
-export async function findSubjectById(id, conn) {
-  return (await query(`SELECT ${COLUMNS} ${FROM} WHERE sub.id = ?`, [id], conn))[0] ?? null;
+/** `forShare` share-locks the subject row until the transaction of `conn` ends. */
+export async function findSubjectById(id, conn, { forShare = false } = {}) {
+  const lock = forShare ? 'FOR SHARE' : '';
+  return (await query(`SELECT ${COLUMNS} ${FROM} WHERE sub.id = ? ${lock}`, [id], conn))[0] ?? null;
 }
 
 export function listSubjects(listQuery) {
@@ -63,6 +65,23 @@ export async function updateSubject(id, fields, conn) {
 export async function findSubjectIdsOfClass(classId, conn) {
   const rows = await query('SELECT subject_id FROM class_subjects WHERE class_id = ?', [classId], conn);
   return rows.map((row) => row.subjectId);
+}
+
+/**
+ * `{ id, name, gradeLevel, academicYear }` of the classes of school year `academicYear` ('2026-2027') or later
+ * that take the subject, earliest year and lowest grade first. A locking read (FOR SHARE): inside the caller's
+ * transaction it sees assignments committed after its snapshot was taken, and holds them until it ends.
+ */
+export function findClassesTakingFrom(subjectId, academicYear, conn) {
+  return query(
+    `SELECT c.id, c.name, c.grade_level, c.academic_year FROM class_subjects cs
+       JOIN classes c ON c.id = cs.class_id
+      WHERE cs.subject_id = ? AND c.academic_year >= ?
+      ORDER BY c.academic_year, c.grade_level, c.name
+      FOR SHARE`,
+    [subjectId, academicYear],
+    conn,
+  );
 }
 
 /** True when the subject has a grade in a class of a school year before `academicYear` ('2026-2027'). */

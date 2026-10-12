@@ -848,6 +848,14 @@ paths:
         years' results, report cards, SF10s and promotion standings: a different group or different weights
         answer 409 with `details.reason = grading_method_locked` and nothing is written (create a new subject
         for a new method). Sending the method it already has is not a change.
+
+        A new `gradingGroup` must fit the grade level of every class of the current or a later school year that
+        takes the subject: a Senior High group (`shs_*`) Grades 11-12, a Grades 1-10 group Grades 1-10 (DepEd
+        weighs the two stages differently). Otherwise 409 with `details.reason = grading_group_grade_mismatch`,
+        `details.gradingGroup` and `details.classes` (`id`, `name`, `gradeLevel`, `academicYear` of each class
+        that does not fit), and nothing is written. A subject taught in both stages stays on points or weights.
+        Classes of earlier years are not checked (a subject with grades there is locked as above), and the
+        group a subject already has is not checked again.
       parameters:
         - $ref: '#/components/parameters/IdPath'
       requestBody:
@@ -1053,9 +1061,12 @@ paths:
         Roles: admin, assistant.
 
         One teacher teaches one subject per class: repeating a class and subject is a 409
-        (`details.key = class_subjects.uq_class_subjects_class_subject`). The teacher must exist and be
-        active, and the subject must exist and not be retired (400, `details.reason` is `teacher_inactive`,
-        `subject_inactive` or `invalid_reference`).
+        (`details.key = class_subjects.uq_class_subjects_class_subject`). The class must exist, the teacher must
+        exist and be active, and the subject must exist and not be retired (400, `details.reason` is
+        `teacher_inactive`, `subject_inactive` or `invalid_reference`). A subject in a Senior High grading group
+        goes to Grade 11-12 classes only and one in a Grades 1-10 group to Grade 1-10 classes only (a subject
+        on points or its own weights to any): otherwise 409 with `details.reason = grading_group_grade_mismatch`,
+        `details.gradingGroup` and `details.gradeLevel`.
       requestBody:
         required: true
         content:
@@ -3015,7 +3026,9 @@ components:
         35/40/25, shs_tvl (TVL, sports, arts and design tracks, all subjects and their work immersion)
         20/60/20. Quiz, test and assignment count as written work; project and other as performance tasks;
         exam as quarterly assessment. The initial grade is transmuted to 60-100 by the same table in every
-        group.
+        group. A subject in a Senior High group is taught in Grade 11-12 classes only, one in a Grades 1-10
+        group in Grade 1-10 classes only (409 `grading_group_grade_mismatch` from `POST /class-subjects` and
+        `PATCH /subjects/{id}`); a subject on points or its own weights may be taught in any grade.
       enum: [languages, math_science, mapeh, shs_core, shs_academic, shs_immersion, shs_tvl]
     Semester:
       type: string
