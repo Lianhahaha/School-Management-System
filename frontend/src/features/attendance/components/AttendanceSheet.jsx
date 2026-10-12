@@ -11,6 +11,7 @@ import { TBody, THead, Table, Td, Th, Tr } from '../../../components/ui/Table';
 import { ERROR_CODES } from '../../../constants/shared';
 import { ATTENDANCE_STATUS_LABELS, ATTENDANCE_STATUS_TONES, DAY_LABELS } from '../../../constants/ui';
 import { useSheetEditing } from '../../../hooks/useSheetEditing';
+import { cx } from '../../../utils/cx';
 import { useAuth } from '../../auth/hooks';
 import { formatDate, formatTimeOfDay, isoWeekdayOf } from '../../../utils/date';
 import { fullName, initials } from '../../../utils/names';
@@ -24,7 +25,8 @@ const STATUS_OPTIONS = Object.keys(LETTERS).map((status) => ({
   tone: ATTENDANCE_STATUS_TONES[status],
   label: (
     <>
-      <span aria-hidden="true" className="font-semibold">
+      {/* The letter goes on a phone, where the four words share one row. */}
+      <span aria-hidden="true" className="font-semibold max-sm:hidden">
         {LETTERS[status]}
       </span>
       {ATTENDANCE_STATUS_LABELS[status]}
@@ -33,6 +35,9 @@ const STATUS_OPTIONS = Object.keys(LETTERS).map((status) => ({
 }));
 
 const dayList = new Intl.ListFormat('en', { type: 'conjunction' });
+
+/** A cell on a phone, where the row is a block: full width, the card's side padding, no padding between. */
+const PHONE_CELL = 'max-sm:block max-sm:px-5 max-sm:py-0';
 
 /** `{ [studentId]: { status, remarks } }`; students who are not marked yet default to present. */
 const toDraft = (records) =>
@@ -221,7 +226,11 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
       </div>
 
       <div className="relative overflow-x-auto" tabIndex={0} role="region" aria-label="Attendance sheet">
-        <Table caption={`Attendance for ${className}, ${subjectName}, ${formatDate(saved.date)}`}>
+        {/* On a phone each row is a block: the student, the four statuses under the name, then the remarks. */}
+        <Table
+          caption={`Attendance for ${className}, ${subjectName}, ${formatDate(saved.date)}`}
+          className="max-sm:block max-sm:[&_tbody]:block max-sm:[&_thead]:hidden"
+        >
           <THead>
             <Tr>
               <Th>Student</Th>
@@ -234,8 +243,8 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
               const name = fullName(record);
               const mark = draft[record.studentId];
               return (
-                <Tr key={record.studentId}>
-                  <Td>
+                <Tr key={record.studentId} className="max-sm:block max-sm:py-3">
+                  <Td className={PHONE_CELL}>
                     <div className="flex items-center gap-3">
                       <span
                         aria-hidden="true"
@@ -249,10 +258,11 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
                       </div>
                     </div>
                   </Td>
-                  <Td>
+                  <Td className={cx(PHONE_CELL, 'max-sm:pt-2.5')}>
                     <RadioGroup
                       legend={`Attendance for ${name}`}
                       hideLegend
+                      oneRowOnPhone
                       name={`status-${record.studentId}`}
                       options={STATUS_OPTIONS}
                       value={mark.status}
@@ -265,7 +275,7 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
                       }
                     />
                   </Td>
-                  <Td>
+                  <Td className={cx(PHONE_CELL, 'max-sm:pt-2.5 max-sm:empty:hidden')}>
                     {(mark.status !== 'present' || mark.remarks !== '') && (
                       <Input
                         aria-label={`Remarks for ${name}`}
@@ -283,6 +293,20 @@ export function AttendanceSheet({ sheet, canSave: isOwner, onReload }) {
           </TBody>
         </Table>
       </div>
+      {/* On a phone the list is long: Save again at its end, so nobody scrolls back up for it. */}
+      {canSave && (
+        <div className="border-t border-gray-200 px-5 py-4 sm:hidden">
+          <Button
+            icon={Save}
+            isLoading={save.isPending}
+            disabled={!canSubmit}
+            onClick={submit}
+            className="w-full"
+          >
+            Save attendance
+          </Button>
+        </div>
+      )}
     </Card>
   );
 }

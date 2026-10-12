@@ -26,6 +26,7 @@ const CHECKED_CLASSES = {
  * @param {boolean} [props.hideLegend] keep the legend for screen readers only (dense rows)
  * @param {string} props.name shared by every radio of the group
  * @param {Array<{ value: string, label: import('react').ReactNode, tone?: string }>} props.options
+ * @param {boolean} [props.oneRowOnPhone] on a phone the options share one row in equal parts instead of wrapping
  */
 export function RadioGroup({
   legend,
@@ -35,6 +36,7 @@ export function RadioGroup({
   value,
   onChange,
   disabled,
+  oneRowOnPhone = false,
   className,
   ...inputProps
 }) {
@@ -43,7 +45,12 @@ export function RadioGroup({
       <legend className={hideLegend ? 'sr-only' : 'mb-1.5 text-sm font-medium text-gray-700'}>
         {legend}
       </legend>
-      <div className="flex flex-wrap gap-1.5">
+      <div
+        className={cx(
+          'flex flex-wrap gap-1.5',
+          oneRowOnPhone && 'max-sm:grid max-sm:auto-cols-fr max-sm:grid-flow-col',
+        )}
+      >
         {options.map((option) => (
           <label
             key={option.value}
@@ -63,6 +70,7 @@ export function RadioGroup({
                 'inline-flex min-h-9 items-center gap-1.5 rounded-control bg-gray-100 px-3.5 text-sm text-gray-700 transition-colors ring-inset hover:bg-gray-200 pointer-coarse:min-h-11',
                 'peer-checked:font-semibold peer-checked:ring-2 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-gray-900',
                 CHECKED_CLASSES[option.tone ?? 'neutral'],
+                oneRowOnPhone && 'max-sm:w-full max-sm:justify-center max-sm:px-1',
               )}
             >
               {option.label}
