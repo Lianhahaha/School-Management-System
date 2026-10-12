@@ -15,7 +15,7 @@ Authentication. Architecture overview: `../docs/ARCHITECTURE.md`.
 | Forms        | react-hook-form + zod 4 (`@hookform/resolvers`)                                                                    |
 | Auth         | Firebase v12 modular SDK, email and password                                                                       |
 | Types        | JSDoc in the `.js` logic files, checked by TypeScript (`jsconfig.json`; the `.jsx` components are not checked yet) |
-| Tests        | Vitest, unit tests of the pure modules in `tests/`, run in plain Node (`vitest.config.js`)                         |
+| Tests        | Vitest: unit tests of the pure modules in plain Node, component tests with Testing Library + jsdom (`tests/`)      |
 
 ## Scripts
 
@@ -25,14 +25,16 @@ cp .env.example .env     # then fill in the Firebase web app values
 npm run dev              # http://localhost:5173 (strict port; /api is proxied to 127.0.0.1:API_PORT, default 3000)
 npm run lint             # ESLint (react-hooks rules included)
 npm run typecheck        # TypeScript over the JSDoc types of src/**/*.js (jsconfig.json)
-npm test                 # Vitest unit tests (no browser, database or Firebase values needed)
+npm test                 # Vitest unit and component tests (no browser, database or Firebase values needed)
 npm run build            # production build into dist/
 npm run format           # Prettier (with the Tailwind class sorter)
 npm run check            # lint + typecheck + test + build
 ```
 
 The tests cover grade arithmetic (quarters, semesters and the school year), form schemas, reading a whole
-list page by page, dates, school years and the periods a school year is shown as.
+list page by page, dates, school years and the periods a school year is shown as. Component tests
+(`*.test.jsx`) render the riskiest screens with Testing Library in jsdom, with the feature's `api.js` mocked;
+`tests/helpers/render.jsx` wraps them in the app's providers and `vitest.config.js` keeps the unit tests in Node.
 `tests/grading-agreement.test.js` runs one table of scores through `../backend/src/utils/grading.js` and
 `src/utils/grades.js` and expects the same numbers, so the frontend and the API compute grades alike. GitHub
 runs lint, typecheck, test and build on every push and pull request (`.github/workflows/frontend-checks.yml`).
@@ -91,7 +93,7 @@ src/
                 API's assertCanManageClassSubject), enrollments/schoolYears.js, grades/periods.js (what
                 a school year is shown as: the whole year or a semester, its `semester` URL value and
                 its default, the current semester in the current year)
-tests/          Vitest unit tests (npm test)
+tests/          Vitest unit and component tests (npm test)
 ```
 
 Conventions: components, hooks and helpers are named exports; only pages are default exports (they are

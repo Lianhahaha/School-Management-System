@@ -148,14 +148,14 @@ npm run lint
 npm run check:secrets  # fails if a key or .env file would be committed
 
 cd ..\frontend
-npm test               # Vitest unit tests (no browser, database or Firebase needed)
+npm test               # Vitest unit and component tests (no browser, database or Firebase needed)
 npm run typecheck      # TypeScript checks the JSDoc types of the .js logic files
-npm run check          # lint + type check + unit tests + production build
+npm run check          # lint + type check + tests + production build
 ```
 
-The backend tests use a separate `school_management_test` database and an in-memory fake of Firebase, so they never touch your real data or your Firebase project. The frontend tests in `frontend/tests` cover grade arithmetic, form rules and dates; one of them runs the same scores through the backend's and the frontend's grading code and expects the same results.
+The backend tests use a separate `school_management_test` database and an in-memory fake of Firebase, so they never touch your real data or your Firebase project. The frontend tests in `frontend/tests` cover grade arithmetic, form rules and dates; one of them runs the same scores through the backend's and the frontend's grading code and expects the same results. A few component tests render the riskiest screens (the attendance and grade sheets, the sign-up form) with Testing Library in jsdom.
 
-GitHub runs both on every push and pull request: the backend checks (lint, secrets check, `npm test` against MySQL 8) in [backend-tests.yml](.github/workflows/backend-tests.yml) and the frontend checks (lint, type check, unit tests, build) in [frontend-checks.yml](.github/workflows/frontend-checks.yml); results are in the **Actions** tab. Every push to `main` also deploys the frontend once the backend tests pass ([deploy-frontend.yml](.github/workflows/deploy-frontend.yml), which runs the frontend lint and tests again first); Render deploys the API on its own.
+GitHub runs both on every push and pull request: the backend checks (lint, secrets check, `npm test` against MySQL 8) in [backend-tests.yml](.github/workflows/backend-tests.yml) and the frontend checks (lint, type check, unit and component tests, build) in [frontend-checks.yml](.github/workflows/frontend-checks.yml); results are in the **Actions** tab. Every push to `main` also deploys the frontend once the backend tests pass ([deploy-frontend.yml](.github/workflows/deploy-frontend.yml), which runs the frontend lint and tests again first); Render deploys the API on its own.
 
 ## Project tour
 
@@ -172,7 +172,7 @@ frontend/
   src/
     features/  one folder per feature: api, hooks, schemas, components, pages
     components/ hooks/ lib/ utils/ config/ app/
-  tests/       Vitest unit tests of the pure modules
+  tests/       Vitest unit tests of the pure modules, component tests (Testing Library + jsdom)
 docs/          ARCHITECTURE.md (start here), PROJECT_PLAN.md (the original plan, decisions and history)
 DESIGN.md      the visual design system: colours for both themes, type, components, rules
 .github/       workflows: backend tests, frontend checks, frontend deploy

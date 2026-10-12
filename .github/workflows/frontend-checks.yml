@@ -1,9 +1,9 @@
 name: Frontend checks
 
-# Every push and pull request lints, type-checks, unit-tests and builds the frontend. The tests run in plain
-# Node, with no browser, database or Firebase project. One of them also reads backend/src/utils/grading.js to
-# check that both sides compute grades alike, so this runs on backend-only changes too. Releasing stays in
-# deploy-frontend.yml, which runs the same tests again before it builds.
+# Every push and pull request lints, type-checks, tests and builds the frontend. The unit tests run in plain
+# Node and the component tests in jsdom, with no browser, database or Firebase project. One of them also reads
+# backend/src/utils/grading.js to check that both sides compute grades alike, so this runs on backend-only
+# changes too. Releasing stays in deploy-frontend.yml, which runs the same tests again before it builds.
 on:
   push:
   pull_request:
