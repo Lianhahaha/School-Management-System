@@ -10,7 +10,7 @@ import { classPickDefaults, classPickSchema } from '../schemas';
 const FORM_ID = 'class-picker-form';
 const FIELDS = ['classId'];
 
-function ClassPickerForm({ student, mutation, onClose, excludeIds }) {
+function ClassPickerForm({ student, mutation, onClose, excludeIds, filters, hint }) {
   const {
     register,
     handleSubmit,
@@ -27,13 +27,8 @@ function ClassPickerForm({ student, mutation, onClose, excludeIds }) {
   return (
     <form id={FORM_ID} onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
       <FormRootError error={errors.root?.server} />
-      <FormField
-        label="Class"
-        hint="Classes of the current and later academic years."
-        error={errors.classId?.message}
-        required
-      >
-        <ClassSelect {...register('classId')} excludeIds={excludeIds} fromCurrentYear />
+      <FormField label="Class" hint={hint} error={errors.classId?.message} required>
+        <ClassSelect {...register('classId')} filters={filters} excludeIds={excludeIds} fromCurrentYear />
       </FormField>
     </form>
   );
@@ -54,6 +49,8 @@ function ClassPickerForm({ student, mutation, onClose, excludeIds }) {
  * @param {string} props.submitLabel
  * @param {{ mutateAsync: Function, isPending: boolean }} props.mutation useEnrollStudent() or useTransferStudent()
  * @param {number[]} [props.excludeIds] classes that cannot be chosen
+ * @param {object} [props.filters] class list filters, for example `{ academicYear: '2026-2027' }` (ClassSelect)
+ * @param {string} [props.hint] which classes are offered, under the field
  */
 export function ClassPickerModal({
   student,
@@ -64,6 +61,8 @@ export function ClassPickerModal({
   submitLabel,
   mutation,
   excludeIds,
+  filters,
+  hint = 'Classes of the current and later academic years.',
 }) {
   return (
     <Modal
@@ -83,7 +82,14 @@ export function ClassPickerModal({
       }
     >
       {student && (
-        <ClassPickerForm student={student} mutation={mutation} onClose={onClose} excludeIds={excludeIds} />
+        <ClassPickerForm
+          student={student}
+          mutation={mutation}
+          onClose={onClose}
+          excludeIds={excludeIds}
+          filters={filters}
+          hint={hint}
+        />
       )}
     </Modal>
   );
