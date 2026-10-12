@@ -89,13 +89,15 @@ export class ApiError extends Error {
     return new ApiError(409, ERROR_CODES.CONFLICT, message, details, options);
   }
 
+  /** `conflicts` holds one entry per clashing period and shared resource, so the message counts the periods. */
   static scheduleConflict(conflicts) {
+    const periods = new Set(conflicts.map((conflict) => conflict.scheduleId)).size;
     return new ApiError(
       409,
       ERROR_CODES.SCHEDULE_CONFLICT,
-      conflicts.length === 1
+      periods === 1
         ? 'this period clashes with another period'
-        : `this period clashes with ${conflicts.length} other periods`,
+        : `this period clashes with ${periods} other periods`,
       { conflicts },
     );
   }

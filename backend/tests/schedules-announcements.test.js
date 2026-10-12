@@ -83,6 +83,11 @@ describe('schedules', () => {
 
     const roomClash = await create(slot(school.csB.id, { room: 'R-A' }));
     assert.deepEqual(conflictTypes(roomClash), ['room']);
+
+    // One period sharing the class, the teacher and the room is still one period.
+    const tripleClash = await create(slot(school.csA.id, { room: 'R-A' }));
+    assert.deepEqual(conflictTypes(tripleClash), ['class', 'teacher', 'room']);
+    assert.equal(tripleClash.body.error.message, 'this period clashes with another period');
   });
 
   it('allows back-to-back slots, other days and a different room', async () => {
