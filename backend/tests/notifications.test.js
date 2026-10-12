@@ -136,6 +136,39 @@ describe('notifications', () => {
     assert.equal(firstSignUp.isRead, false, 'other sign-ups stay unread');
   });
 
+  it("marks the office's sign-up notes read when the unused account is deleted", async () => {
+    const otherAdmin = await makeUser('admin');
+    const register = (fields) =>
+      api.post('/api/v1/auth/register').send({ password: 'Password123!', lastName: 'Gone', ...fields });
+    const applicant = (
+      await register({ email: 'gone.applicant@school.test', firstName: 'Applicant', ...APPLICATION_FIELDS })
+    ).body.data;
+    const assistant = (
+      await register({ accountType: 'assistant', email: 'gone.assistant@school.test', firstName: 'Helper' })
+    ).body.data;
+    const links = [
+      `/admin/students/${applicant.studentId}`,
+      `/admin/assistant-requests?user=${assistant.id}`,
+    ];
+    const notesOf = async (who) =>
+      (await mine(who, '?limit=100')).filter((note) => links.includes(note.link));
+    assert.deepEqual(
+      (await notesOf(otherAdmin)).map((note) => note.isRead),
+      [false, false],
+    );
+
+    for (const account of [applicant, assistant]) {
+      const res = await api.delete(`/api/v1/users/${account.id}`).set(as(school.admin));
+      assert.equal(res.status, 200, JSON.stringify(res.body));
+    }
+    for (const who of [school.admin, otherAdmin]) {
+      assert.deepEqual(
+        (await notesOf(who)).map((note) => note.isRead),
+        [true, true],
+      );
+    }
+  });
+
   it('counts unread ones and marks them read, only the caller own', async () => {
     const before = await unread(school.s1);
     assert.ok(before >= 3);

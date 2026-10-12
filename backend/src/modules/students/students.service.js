@@ -87,6 +87,9 @@ export async function createProfile(userId, profile = {}, conn) {
   return repo.insertStudent(userId, { ...profile, studentNumber, admissionDate }, conn);
 }
 
+/** The student id of a student user, or null without a profile row. */
+export const studentIdOfUser = async (userId) => (await repo.findStudentByUserId(userId))?.id ?? null;
+
 /** Remove the profile row of a student user that is being deleted. Runs inside the caller's transaction. */
 export const deleteProfile = (userId, conn) => repo.deleteStudentByUserId(userId, conn);
 

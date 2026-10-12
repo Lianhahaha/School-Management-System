@@ -365,11 +365,14 @@ const hasHistoryConflict = (options) =>
  * Permanent removal of an account created by mistake (email and role cannot be edited, and a
  * deactivated account keeps its email). Only an account nothing refers to can go; FK RESTRICT is
  * the backstop when a record is added concurrently. MySQL (profile + users row, one transaction)
- * first, then the Firebase user.
+ * first, then the Firebase user. The office's note about the account's sign-up is resolved, as
+ * enrolling the student or deciding the request would have.
  */
 export async function deleteUser(actor, id) {
   if (actor.id === id) throw ApiError.forbidden('self', 'you cannot delete your own account');
   const target = ApiError.assertFound(await repo.findUserById(id), 'user', id);
+  // A student's sign-up note opens the record by student id: read before the profile row goes.
+  const studentId = target.role === 'student' ? await studentsService.studentIdOfUser(id) : null;
 
   try {
     await withTransaction(async (conn) => {
@@ -396,6 +399,9 @@ export async function deleteUser(actor, id) {
     target.firebaseUid,
     'could not delete the Firebase user of a deleted account',
   );
+  // Nothing is left for the office to do about the sign-up, and the note's link opens a record that is gone.
+  if (studentId) await notifications.resolveSignups([studentId]);
+  if (target.role === 'assistant') await notifications.resolveAssistantSignup(id);
   await record({
     action: 'user.delete',
     entityId: id,

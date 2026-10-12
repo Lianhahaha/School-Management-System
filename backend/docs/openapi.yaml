@@ -395,7 +395,8 @@ paths:
         to (enrollments, attendance, grades, class-subject assignments, homeroom classes, announcements it
         wrote, attendance or grades it entered, student assistant requests it approved or declined) is kept;
         deactivate it instead. A student's application and a student assistant's own request (a declined one
-        too) are not school records: they are deleted with the account.
+        too) are not school records: they are deleted with the account, and the office's sign-up notification
+        about them is marked read for every recipient, as enrolling the student or deciding the request does.
 
         Refused with `403` (`details.reason = self`) when the target is the caller, with `409`
         (`details.reason = has_history`) when the account has school records, and with `409`
