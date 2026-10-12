@@ -30,8 +30,6 @@ const AREA_OF = {
   grades: 'grades',
   announcement: 'announcements',
   calendar: 'calendar',
-  fee: 'fees',
-  payment: 'fees',
 };
 
 /** "First Last" of anything with firstName / lastName. */

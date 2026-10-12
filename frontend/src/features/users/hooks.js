@@ -12,7 +12,7 @@
  * class-subjects and timetables (teacher name), enrollments and the dashboard, so every write
  * refreshes all of them. A name change also reaches the attendance sheets and grade rosters (students, who
  * marked or graded) and the announcements (author); a deactivation withdraws a student from their class, so it
- * reaches the sheets and rosters, the fee statements and the bell too. Deleting or (de)activating an account
+ * reaches the sheets and rosters and the bell too. Deleting or (de)activating an account
  * also refreshes the student assistant requests (list and nav badge). Editing your own account also refreshes
  * the session (`me`).
  *
@@ -31,7 +31,6 @@ import { classKeys } from '../classes/keys';
 import { classSubjectKeys } from '../classSubjects/keys';
 import { dashboardKeys } from '../dashboard/keys';
 import { enrollmentKeys } from '../enrollments/keys';
-import { feeKeys } from '../fees/keys';
 import { gradeKeys } from '../grades/keys';
 import { notificationKeys } from '../notifications/keys';
 import { scheduleKeys } from '../schedules/keys';
@@ -56,10 +55,10 @@ const ROSTER_SCOPES = [attendanceKeys.all, gradeKeys.all];
 
 /**
  * What a (de)activation changes beyond the accounts: a deactivated student is withdrawn from their class, and
- * the sheets, rosters, fee statements and bell follow the enrollment (as in enrollments/hooks.js); a
+ * the sheets, rosters and bell follow the enrollment (as in enrollments/hooks.js); a
  * deactivated student assistant's request no longer waits for the office (Assistant requests and its badge).
  */
-const STATUS_SCOPES = [...ROSTER_SCOPES, feeKeys.all, notificationKeys.all, assistantRequestKeys.all];
+const STATUS_SCOPES = [...ROSTER_SCOPES, notificationKeys.all, assistantRequestKeys.all];
 
 export function useUsers(params, { enabled = true } = {}) {
   return useQuery({

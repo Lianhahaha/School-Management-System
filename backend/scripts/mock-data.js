@@ -11,7 +11,7 @@
  *   subjects            code starting with "MK-"
  *   announcements,      title starting with "[Mock]" (announcements also by a mock author or for a mock class)
  *   calendar entries
- * `remove` also deletes what was done to mock records while testing: grades, marks, payments, enrollments, read
+ * `remove` also deletes what was done to mock records while testing: grades, marks, enrollments, read
  * marks, notifications, the sign-up requests of mock student assistants, and the activity entries by a mock
  * account or naming a mock person, class or subject.
  *
@@ -807,11 +807,6 @@ async function remove() {
       'DELETE FROM attendance WHERE class_subject_id IN (?) OR student_id IN (?) OR marked_by IN (?)',
       [ids(m.classSubjectIds), ids(m.studentIds), ids(m.userIds)],
     );
-    // Mock data has no fees or payments; these are payments a tester recorded for (or as) a mock account.
-    await del('DELETE FROM payments WHERE student_id IN (?) OR recorded_by IN (?)', [
-      ids(m.studentIds),
-      ids(m.userIds),
-    ]);
     await del('DELETE FROM assessments WHERE id IN (?)', [ids(m.assessmentIds)]);
     await del('DELETE FROM schedules WHERE class_subject_id IN (?)', [ids(m.classSubjectIds)]);
     await del('DELETE FROM class_subjects WHERE id IN (?)', [ids(m.classSubjectIds)]);

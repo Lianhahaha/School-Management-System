@@ -55,12 +55,6 @@ export const PERMISSIONS = Object.freeze({
   'announcements.manageAll': OFFICE,
   /** Add, edit and remove calendar entries (POST, PATCH, DELETE /calendar). */
   'calendar.manage': OFFICE,
-  /** Add, edit and delete the fees of a school year (POST, PATCH, DELETE /fees). */
-  'fees.manage': ADMIN,
-  /** POST /payments. */
-  'payments.record': OFFICE,
-  /** Remove a payment recorded by mistake (DELETE /payments/:id). */
-  'payments.remove': ADMIN,
 });
 
 /**

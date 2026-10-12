@@ -12,7 +12,6 @@ import { AdmissionStatusBadge } from '../../admissions/components/AdmissionStatu
 import { isApplicant } from '../../admissions/status';
 import { AttendanceSummaryPanel } from '../../attendance/components/AttendanceSummaryPanel';
 import { EnrollmentHistoryTable } from '../../enrollments/components/EnrollmentHistoryTable';
-import { StudentFeesTab } from '../../fees/components/StudentFeesTab';
 import { GradeSummaryPanel } from '../../grades/components/GradeSummaryPanel';
 import { GradeTrendCard } from '../../grades/components/GradeTrendCard';
 import { PrintReportCardButton, ReportCard } from '../../grades/components/ReportCard';
@@ -135,7 +134,6 @@ export default function StudentDetailPage() {
               </div>
             ),
           },
-          { id: 'fees', label: 'Fees', content: <StudentFeesTab studentId={student.id} /> },
         ]}
       />
 

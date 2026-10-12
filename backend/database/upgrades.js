@@ -111,4 +111,17 @@ export const UPGRADES = Object.freeze([
               ENUM('languages','math_science','mapeh','shs_core','shs_academic','shs_immersion','shs_tvl') NULL
               COMMENT 'K-12 components group; NULL = points or custom weights'`,
   },
+  {
+    // Fees and payments are no longer part of the system. Their activity log entries (area 'fees', which the
+    // log's area filter no longer offers) go first, then the two tables: payments before fees. Nothing ever
+    // sent a notification about a fee or a payment, so the notifications stay. Needed while either table
+    // exists; each statement can run again, so a run that stopped half-way finishes on the next one.
+    id: '2026-10-12-drop-fees-and-payments',
+    description: 'drop the fees and payments tables and their activity log entries',
+    needed: `SELECT 1 FROM information_schema.TABLES
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('fees', 'payments')`,
+    apply: `DELETE FROM activity_log WHERE area = 'fees';
+            DROP TABLE IF EXISTS payments;
+            DROP TABLE IF EXISTS fees`,
+  },
 ]);

@@ -16,9 +16,8 @@
  *                                        refusal (409 class_full) reloads the standing
  *
  * Every write refreshes enrollments, students, classes (student counts), the attendance sheets and
- * grade rosters (they list the enrolled students), the fee statements (their class and grade come from the
- * enrollment), the bell (an enrollment notifies the student and marks the office's sign-up notes read) and
- * the dashboard; a student's own enrollment also refreshes their account (`currentEnrollment`).
+ * grade rosters (they list the enrolled students), the bell (an enrollment notifies the student and marks
+ * the office's sign-up notes read) and the dashboard; a student's own enrollment also refreshes their account (`currentEnrollment`).
  *
  * Mutations tagged [form] are silent (meta.silent): the form that sends them shows every error itself
  * (applyServerErrors + FormRootError). Every other mutation raises an error toast.
@@ -33,7 +32,6 @@ import { attendanceKeys } from '../attendance/keys';
 import { authKeys } from '../auth/keys';
 import { classKeys } from '../classes/keys';
 import { dashboardKeys } from '../dashboard/keys';
-import { feeKeys } from '../fees/keys';
 import { gradeKeys } from '../grades/keys';
 import { notificationKeys } from '../notifications/keys';
 import { studentKeys } from '../students/keys';
@@ -100,7 +98,6 @@ function useInvalidateEnrollments() {
       classKeys.all,
       attendanceKeys.all,
       gradeKeys.all,
-      feeKeys.all,
       notificationKeys.all,
       dashboardKeys.all,
     );

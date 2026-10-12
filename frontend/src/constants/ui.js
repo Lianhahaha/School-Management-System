@@ -19,7 +19,6 @@ import {
   DAYS_OF_WEEK,
   ERROR_CODES,
   GENDERS,
-  PAYMENT_METHODS,
   ROLES,
   SEMESTERS,
   TERMS,
@@ -265,12 +264,8 @@ export const ACTIVITY_AREA_LABELS = Object.freeze({
   grades: 'Grades',
   announcements: 'Announcements',
   calendar: 'Calendar',
-  fees: 'Fees and payments',
 });
 export const ACTIVITY_AREA_OPTIONS = optionsOf(ACTIVITY_AREAS, ACTIVITY_AREA_LABELS);
-
-export const PAYMENT_METHOD_LABELS = Object.freeze({ cash: 'Cash', bank: 'Bank', other: 'Other' });
-export const PAYMENT_METHOD_OPTIONS = optionsOf(PAYMENT_METHODS, PAYMENT_METHOD_LABELS);
 
 /** Holidays mean no classes (attendance cannot be marked); events are informational. */
 export const CALENDAR_EVENT_TYPE_LABELS = Object.freeze({ holiday: 'No classes', event: 'School event' });
@@ -374,13 +369,5 @@ export const UNIQUE_KEY_FIELDS = Object.freeze({
   'assessments.uq_assessments_cs_period_title': {
     field: 'title',
     message: 'A quarter of this semester already has an assessment with this title',
-  },
-  'fees.uq_fees_year_grade_name': {
-    field: 'name',
-    message: 'A fee with this name already applies to these grades in this school year',
-  },
-  'payments.uq_payments_receipt': {
-    field: 'receiptNumber',
-    message: 'A payment with this OR number is already recorded',
   },
 });

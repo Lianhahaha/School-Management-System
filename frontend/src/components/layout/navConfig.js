@@ -22,7 +22,6 @@ import {
   School,
   UserCheck,
   Users,
-  Wallet,
 } from 'lucide-react';
 import { ROLE_HOME } from '../../constants/ui';
 
@@ -43,7 +42,6 @@ const OFFICE_NAV = Object.freeze([
   { label: 'Classes', to: '/admin/classes', icon: School, tab: true },
   { label: 'Attendance', to: '/admin/attendance', icon: ClipboardCheck, tab: true },
   { label: 'Grades', to: '/admin/grades', icon: Award },
-  { label: 'Fees', to: '/admin/fees', icon: Wallet },
   { label: 'Announcements', to: '/admin/announcements', icon: Megaphone, badge: 'newAnnouncements' },
   { label: 'Calendar', to: '/admin/calendar', icon: CalendarRange },
   { label: 'Activity', to: '/admin/activity', icon: History },
@@ -68,7 +66,6 @@ export const NAV = Object.freeze({
     { label: 'Schedule', to: '/student/schedule', icon: CalendarDays, tab: true },
     { label: 'Attendance', to: '/student/attendance', icon: ClipboardCheck, tab: true },
     { label: 'Grades', to: '/student/grades', icon: Award, tab: true },
-    { label: 'Fees', to: '/student/fees', icon: Wallet },
     { label: 'Announcements', to: '/student/announcements', icon: Megaphone, badge: 'newAnnouncements' },
     { label: 'Calendar', to: '/student/calendar', icon: CalendarRange },
   ],

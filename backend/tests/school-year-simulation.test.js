@@ -157,8 +157,6 @@ describe('one school year, end to end', () => {
       (await summary(admin, { groupBy: 'student', ...query })).map((row) => [row.studentId, row.percentage]),
     );
   const atRisk = async () => (await ok(api.get('/api/v1/dashboard').set(as(admin)))).atRisk;
-  const statement = (who, kid, academicYear) =>
-    ok(api.get('/api/v1/fees/statement').query({ studentId: kid, academicYear }).set(as(who)));
 
   before(async () => {
     mock.timers.enable({ apis: ['Date'], now: Date.parse('2030-08-01T09:00:00Z') });
@@ -167,7 +165,7 @@ describe('one school year, end to end', () => {
 
   after(() => mock.timers.reset());
 
-  it('2030-08-01: the office sets up the year: subjects, two sections, a teacher, the timetable and fees', async () => {
+  it('2030-08-01: the office sets up the year: subjects, two sections, a teacher and the timetable', async () => {
     on('2030-08-01');
     admin = await makeUser('admin');
     teacher = await makeUser('teacher', { firstName: 'Teresa', lastName: 'Aquino' });
@@ -211,10 +209,6 @@ describe('one school year, end to end', () => {
         .send({ title: 'National Heroes Day', type: 'holiday', startsOn: '2030-08-26' }),
       201,
     );
-    const fee = (body) => ok(api.post('/api/v1/fees').set(as(admin)).send(body), 201);
-    await fee({ academicYear: YEAR, name: 'Tuition', amount: 12000 });
-    await fee({ academicYear: YEAR, gradeLevel: 7, name: 'Miscellaneous', amount: 2500.5 });
-    await fee({ academicYear: YEAR, gradeLevel: 8, name: 'Miscellaneous', amount: 2600 }); // not Grade 7's
   });
 
   it('2030-08-05: students sign up and pick their own section; one never does', async () => {
@@ -247,21 +241,6 @@ describe('one school year, end to end', () => {
         ['Grade 7 - Rizal', 3, 35],
       ],
     );
-
-    const pay = (kid, amount, paidOn, receiptNumber) =>
-      ok(
-        api.post('/api/v1/payments').set(as(admin)).send({
-          studentId: kid.studentId,
-          academicYear: YEAR,
-          amount,
-          paidOn,
-          method: 'cash',
-          receiptNumber,
-        }),
-        201,
-      );
-    await pay(kids.ana, 5000, '2030-08-05', 'OR-2030-0001');
-    await pay(kids.ben, 7000, '2030-08-05', 'OR-2030-0002');
   });
 
   it('August: attendance on lesson days; a day without the lesson, a future day and a holiday are refused', async () => {
@@ -361,17 +340,6 @@ describe('one school year, end to end', () => {
 
   it('2031-01-20: a student moves to the other section; each sheet then takes her from her own day on', async () => {
     on('2031-01-13');
-    await ok(
-      api.post('/api/v1/payments').set(as(admin)).send({
-        studentId: kids.ben.studentId,
-        academicYear: YEAR,
-        amount: 7500.5,
-        paidOn: '2031-01-13',
-        method: 'bank',
-        receiptNumber: 'OR-2031-0003',
-      }),
-      201,
-    );
     const s2q1 = { semester: 'sem2', term: 'term1' };
     // The same titles as in the 1st Semester: the period is part of an assessment's name.
     const reflection = { ...s2q1, title: 'Reflection 1', type: 'assignment', maxScore: 10 };
@@ -631,68 +599,9 @@ describe('one school year, end to end', () => {
     assert.equal(rows[0].initialGrade, 75.33);
   });
 
-  it('2031-07-15: fees owed, only for a year with a class', async () => {
-    const { ana, ben, carla, eve } = kids;
-    const grade7Fees = [
-      { name: 'Miscellaneous', gradeLevel: 7, amount: 2500.5 },
-      { name: 'Tuition', gradeLevel: null, amount: 12000 },
-    ];
-    const brief = (s) => ({
-      class: s.class && s.class.name,
-      fees: s.fees.map(({ name, gradeLevel, amount }) => ({ name, gradeLevel, amount })),
-      totalFees: s.totalFees,
-      totalPaid: s.totalPaid,
-      balance: s.balance,
-    });
-    assert.deepEqual(brief(await statement(admin, ana.studentId, YEAR)), {
-      class: 'Grade 7 - Rizal',
-      fees: grade7Fees,
-      totalFees: 14500.5,
-      totalPaid: 5000,
-      balance: 9500.5,
-    });
-    assert.deepEqual(brief(await statement(admin, ben.studentId, YEAR)), {
-      class: 'Grade 7 - Rizal',
-      fees: grade7Fees,
-      totalFees: 14500.5,
-      totalPaid: 14500.5,
-      balance: 0,
-    });
-    // The transferee pays as a student of the class she was in last that year.
-    assert.deepEqual(brief(await statement(admin, carla.studentId, YEAR)), {
-      class: 'Grade 7 - Bonifacio',
-      fees: grade7Fees,
-      totalFees: 14500.5,
-      totalPaid: 0,
-      balance: 14500.5,
-    });
-    // Eve never took a seat: nothing is charged, not even the every-grade tuition.
-    assert.deepEqual(brief(await statement(eve, 'me', YEAR)), {
-      class: null,
-      fees: [],
-      totalFees: 0,
-      totalPaid: 0,
-      balance: 0,
-    });
-  });
-
   it('2031-07-15: End of school year: passed every subject -> Grade 8; one failed subject -> remedial', async () => {
     const { ana, ben, carla, dan } = kids;
     grade8 = await makeClass(admin, { name: 'Grade 8 - Mabini', gradeLevel: 8, academicYear: NEXT_YEAR });
-    await ok(
-      api
-        .post('/api/v1/fees')
-        .set(as(admin))
-        .send({ academicYear: NEXT_YEAR, name: 'Tuition', amount: 13000 }),
-      201,
-    );
-    await ok(
-      api
-        .post('/api/v1/fees')
-        .set(as(admin))
-        .send({ academicYear: NEXT_YEAR, gradeLevel: 8, name: 'Miscellaneous', amount: 2750.25 }),
-      201,
-    );
     const complete = (klass, students) =>
       ok(
         api
@@ -786,12 +695,5 @@ describe('one school year, end to end', () => {
       [carla.studentId]: 82.32,
       [dan.studentId]: 85.25,
     });
-    const anaFees = await statement(ana, 'me', NEXT_YEAR);
-    assert.deepEqual(
-      [anaFees.class.name, anaFees.totalFees, anaFees.totalPaid, anaFees.balance],
-      ['Grade 8 - Mabini', 15750.25, 0, 15750.25],
-    );
-    const benFees = await statement(admin, ben.studentId, NEXT_YEAR);
-    assert.deepEqual([benFees.class, benFees.fees, benFees.totalFees], [null, [], 0]);
   });
 });

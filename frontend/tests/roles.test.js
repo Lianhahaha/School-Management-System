@@ -14,10 +14,9 @@ const ASSISTANT_ALLOWED = [
   'enrollments.withdraw',
   'announcements.manageAll',
   'calendar.manage',
-  'payments.record',
 ];
 
-/** What stays with the admin: accounts other than students', what cannot be undone, money amounts, grades. */
+/** What stays with the admin: accounts other than students', what cannot be undone, grades. */
 const ASSISTANT_DENIED = [
   'school.setUp',
   'users.list',
@@ -29,8 +28,6 @@ const ASSISTANT_DENIED = [
   'classes.delete',
   'classSubjects.delete',
   'lessons.manageAll',
-  'fees.manage',
-  'payments.remove',
 ];
 
 describe('can: the student assistant', () => {
@@ -60,7 +57,7 @@ describe('can: the other roles', () => {
 
   it('refuses a signed-out user (no role)', () => {
     expect(can(null, 'school.readAll')).toBe(false);
-    expect(can(undefined, 'payments.record')).toBe(false);
+    expect(can(undefined, 'calendar.manage')).toBe(false);
   });
 
   it('only names known roles', () => {

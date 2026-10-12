@@ -10,7 +10,7 @@ import mysql from 'mysql2/promise';
 import { query, run } from '../src/config/db.js';
 import { dbConnectionOptions } from '../src/config/dbConnection.js';
 import { env } from '../src/config/env.js';
-import { academicYearOf, todayYmd } from '../src/utils/dates.js';
+import { todayYmd } from '../src/utils/dates.js';
 import { api, as, buildSchool, closeWorld, resetWorld } from './helpers/harness.js';
 
 after(closeWorld);
@@ -90,9 +90,8 @@ describe('backup and restore', () => {
     await resetWorld();
     const { admin, owner, s1, csA } = await buildSchool();
     const today = todayYmd();
-    const year = academicYearOf(today);
-    // Rows of every kind of column: DECIMAL fees and scores, TIME periods, DATE and DATETIME, JSON details,
-    // generated columns (enrollments.active_flag, fees.grade_key) and text that needs escaping.
+    // Rows of every kind of column: DECIMAL scores, TIME periods, DATE and DATETIME, JSON details, a generated
+    // column (enrollments.active_flag) and text that needs escaping.
     const expect201 = (res) => assert.equal(res.status, 201, JSON.stringify(res.body));
     expect201(
       await api
@@ -116,28 +115,6 @@ describe('backup and restore', () => {
     assert.equal(graded.status, 200, JSON.stringify(graded.body));
     expect201(
       await api
-        .post('/api/v1/fees')
-        .set(as(admin))
-        .send({ academicYear: year, name: 'Tuition', amount: 18000.5 }),
-    );
-    expect201(
-      await api
-        .post('/api/v1/fees')
-        .set(as(admin))
-        .send({ academicYear: year, gradeLevel: 10, name: 'Laboratory', amount: 1250.75 }),
-    );
-    expect201(
-      await api.post('/api/v1/payments').set(as(admin)).send({
-        studentId: s1.studentId,
-        academicYear: year,
-        amount: 0.01,
-        paidOn: today,
-        method: 'cash',
-        receiptNumber: 'OR-0001',
-      }),
-    );
-    expect201(
-      await api
         .post('/api/v1/announcements')
         .set(as(admin))
         .send({ title: 'Welcome', body: 'Hello', audience: 'all' }),
@@ -152,7 +129,7 @@ describe('backup and restore', () => {
     await run('UPDATE announcements SET body = ?', [AWKWARD]);
     await run('UPDATE grades SET remarks = ?', [AWKWARD]);
     await run('UPDATE activity_log SET details = CAST(? AS JSON) ORDER BY id LIMIT 1', [
-      JSON.stringify({ note: AWKWARD, amount: 18000.5, nested: [null, true, { deep: 'ok' }] }),
+      JSON.stringify({ note: AWKWARD, number: 18000.5, nested: [null, true, { deep: 'ok' }] }),
     ]);
     // The schema's own conventions, so a dump that only works on empty tables would fail here.
     assert.ok((await query('SELECT COUNT(*) AS n FROM enrollments WHERE active_flag = 1'))[0].n > 0);
@@ -199,7 +176,6 @@ describe('backup and restore', () => {
     const enrollments = insertColumns('enrollments');
     assert.equal(enrollments.includes('`active_flag`'), false);
     assert.equal(enrollments.includes('`created_at`'), true, 'DEFAULT CURRENT_TIMESTAMP is not generated');
-    assert.equal(insertColumns('fees').includes('`grade_key`'), false);
   });
 
   it('restores into another test database: same tables, rows, checksums and values', async () => {
@@ -219,7 +195,7 @@ describe('backup and restore', () => {
                   (SELECT remarks FROM ??.grades LIMIT 1) AS remarks,
                   (SELECT score FROM ??.grades LIMIT 1) AS score,
                   (SELECT details FROM ??.activity_log ORDER BY id LIMIT 1) AS details,
-                  (SELECT GROUP_CONCAT(amount ORDER BY id) FROM ??.fees) AS fees,
+                  (SELECT GROUP_CONCAT(max_score ORDER BY id) FROM ??.assessments) AS maxScores,
                   (SELECT GROUP_CONCAT(start_time) FROM ??.schedules) AS periods`,
           Array(6).fill(database),
         ),
@@ -228,7 +204,7 @@ describe('backup and restore', () => {
     assert.deepEqual([values], await valuesOf(env.DB_NAME));
     assert.equal(values.body, AWKWARD);
     assert.equal(values.details.note, AWKWARD);
-    assert.equal(values.fees, '18000.50,1250.75');
+    assert.equal(values.maxScores, '20.00');
   });
 
   it('refuses to restore a backup that was cut short, before dropping anything', async () => {

@@ -180,7 +180,6 @@ describe('chaotic input: every value gets a clear answer, never a crash', () => 
       '/grades?studentId=me',
       '/grades/summary?studentId=me',
       '/enrollments?studentId=me',
-      '/fees/statement?studentId=me',
       '/announcements?',
       '/calendar-events?',
       '/notifications?',

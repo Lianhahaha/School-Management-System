@@ -22,8 +22,8 @@ const year = currentAcademicYear();
 const today = todayYmd();
 
 /**
- * The student assistant: the admin's everyday office work, without what cannot be undone, sets money amounts,
- * changes grades or attendance, or manages accounts other than students'.
+ * The student assistant: the admin's everyday office work, without what cannot be undone, changes grades or
+ * attendance, or manages accounts other than students'.
  */
 describe('student assistant', () => {
   let school;
@@ -375,48 +375,10 @@ describe('student assistant', () => {
     assert.equal(status, 'absent', 'the mark is unchanged');
   });
 
-  it('reads fees and statements and records payments, but sets no amount and removes no payment', async () => {
-    const fee = await api
-      .post('/api/v1/fees')
-      .set(as(school.admin))
-      .send({ academicYear: year, name: 'Tuition', amount: 12000 });
-    expectStatus(fee, 201);
-    const feeId = fee.body.data.id;
-
-    const fees = await send('get', `/fees?academicYear=${year}`);
-    expectStatus(fees, 200);
-    assert.equal(fees.body.meta.total, 1);
-    const payment = await send('post', '/payments', {
-      studentId: school.s1.studentId,
-      academicYear: year,
-      amount: 2000,
-      paidOn: today,
-      method: 'cash',
-      receiptNumber: 'OR-OFFICE-1',
-    });
-    expectStatus(payment, 201);
-    const [{ recordedBy }] = await query('SELECT recorded_by AS recordedBy FROM payments WHERE id = ?', [
-      payment.body.data.id,
-    ]);
-    assert.equal(recordedBy, assistant.id);
-    const statement = await send(
-      'get',
-      `/fees/statement?studentId=${school.s1.studentId}&academicYear=${year}`,
-    );
-    expectStatus(statement, 200);
-    assert.equal(statement.body.data.balance, 10000);
-    expectStatus(await send('get', `/fees/statement?studentId=me&academicYear=${year}`), 400);
-
-    expectForbidden(await send('post', '/fees', { academicYear: year, name: 'Books', amount: 500 }));
-    expectForbidden(await send('patch', `/fees/${feeId}`, { amount: 1 }));
-    expectForbidden(await send('delete', `/fees/${feeId}`));
-    expectForbidden(await send('delete', `/payments/${payment.body.data.id}`));
-  });
-
   it('reads the activity log, which names the assistant as the one who acted', async () => {
-    const log = await send('get', '/activity?area=fees');
+    const log = await send('get', '/activity?area=calendar');
     expectStatus(log, 200);
-    const recorded = log.body.data.find((entry) => entry.action === 'payment.create');
+    const recorded = log.body.data.find((entry) => entry.action === 'calendar.create');
     assert.deepEqual(recorded.actor, {
       id: assistant.id,
       name: `${assistant.firstName} ${assistant.lastName}`,

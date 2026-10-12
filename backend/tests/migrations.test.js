@@ -154,6 +154,22 @@ describe('database migrations', () => {
     await session.query(
       'ALTER TABLE students DROP CHECK chk_students_lrn, DROP INDEX uq_students_lrn, DROP COLUMN lrn',
     );
+    // The fees and payments tables of the older schema, with their entries in the activity log.
+    await session.query(
+      `CREATE TABLE fees (id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, academic_year VARCHAR(9) NOT NULL,
+         name VARCHAR(100) NOT NULL, amount DECIMAL(10,2) NOT NULL) ENGINE=InnoDB`,
+    );
+    await session.query(
+      `CREATE TABLE payments (id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, student_id INT UNSIGNED NOT NULL,
+         amount DECIMAL(10,2) NOT NULL,
+         CONSTRAINT fk_payments_student FOREIGN KEY (student_id) REFERENCES students (id)) ENGINE=InnoDB`,
+    );
+    await session.query(
+      `INSERT INTO activity_log (actor_name, action, area, summary) VALUES
+         ('System', 'fee.create', 'fees', 'Added the fee Tuition'),
+         ('System', 'payment.create', 'fees', 'Recorded a payment'),
+         ('System', 'subject.create', 'subjects', 'Created the subject Migration')`,
+    );
     // Assessments of the older schema: a title used in two quarters, as the old key allowed.
     const classSubjectId = await makeClassSubject();
     await session.query(
@@ -175,6 +191,13 @@ describe('database migrations', () => {
     assert.equal(await hasColumn('students', 'lrn'), true);
     assert.equal(await hasIndex('students', 'uq_students_lrn'), true);
     assert.deepEqual(await definitions(), current, 'the ENUM columns end up as schema.sql defines them');
+    assert.equal(await hasTable('payments'), false);
+    assert.equal(await hasTable('fees'), false);
+    assert.deepEqual(
+      (await rows('SELECT action FROM activity_log ORDER BY id')).map((row) => row.action),
+      ['subject.create'],
+      'the activity log keeps every entry but those of fees and payments',
+    );
 
     // Every assessment is still there, in the 1st Semester through the column's default.
     assert.equal(await hasColumn('assessments', 'semester'), true);

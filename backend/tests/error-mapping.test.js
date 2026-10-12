@@ -73,16 +73,12 @@ describe('error mapping', () => {
   });
 
   it('answers 400, not 500, for an id or a date-time past what the columns hold', async () => {
-    const payment = await api.post('/api/v1/payments').set(as(admin)).send({
-      studentId: 4294967296,
-      academicYear: '2026-2027',
-      amount: 100,
-      paidOn: '2026-10-01',
-      method: 'cash',
-      receiptNumber: 'OR-RANGE',
-    });
-    assert.equal(payment.status, 400, JSON.stringify(payment.body));
-    assert.equal(payment.body.error.details.issues[0].path, 'body.studentId');
+    const enrollment = await api
+      .post('/api/v1/enrollments')
+      .set(as(admin))
+      .send({ studentId: 4294967296, classId: 1 });
+    assert.equal(enrollment.status, 400, JSON.stringify(enrollment.body));
+    assert.equal(enrollment.body.error.details.issues[0].path, 'body.studentId');
     const lookup = await api.get('/api/v1/students/4294967296').set(as(admin));
     assert.equal(lookup.status, 400);
     const announcement = await api.post('/api/v1/announcements').set(as(admin)).send({
@@ -97,9 +93,8 @@ describe('error mapping', () => {
 
   it("maps MySQL's out-of-range and wrong-value refusals to 400 with the column", async () => {
     const outOfRange = await run(
-      `INSERT INTO payments (student_id, academic_year, amount, paid_on, method, receipt_number, recorded_by)
-       VALUES (?, '2026-2027', 1, '2026-10-01', 'cash', 'OR-X', ?)`,
-      [4294967296, admin.id],
+      `INSERT INTO enrollments (student_id, class_id, enrolled_on) VALUES (?, 1, '2026-10-01')`,
+      [4294967296],
     ).catch((error) => error);
     assert.equal(outOfRange.code, 'ER_WARN_DATA_OUT_OF_RANGE');
     const wrongValue = await run('UPDATE users SET updated_at = ? WHERE id = ?', [

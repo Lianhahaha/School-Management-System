@@ -15,8 +15,8 @@
 
 /**
  * `assistant` is a student assistant: everyday office work for the admin (enrollment, student records,
- * classes, the timetable, announcements, payments). What cannot be undone, sets money amounts, changes
- * grades or manages accounts other than students' stays with the admin.
+ * classes, the timetable, announcements). What cannot be undone, changes grades or manages accounts other
+ * than students' stays with the admin.
  */
 export const ROLES = Object.freeze(['admin', 'teacher', 'student', 'assistant']);
 
@@ -165,11 +165,7 @@ export const ACTIVITY_AREAS = Object.freeze([
   'grades',
   'announcements',
   'calendar',
-  'fees',
 ]);
-
-/** How a student paid a fee: cash at the school office, a bank deposit or transfer, or another way (see the note). */
-export const PAYMENT_METHODS = Object.freeze(['cash', 'bank', 'other']);
 
 /** ISO 8601 weekday numbers: 1 = Monday … 7 = Sunday. */
 export const DAYS_OF_WEEK = Object.freeze([1, 2, 3, 4, 5, 6, 7]);
