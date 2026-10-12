@@ -1,0 +1,41 @@
+name: Keep awake
+
+# Render's free tier puts the API to sleep after 15 minutes without a request, and the next visitor then waits
+# 20 to 60 seconds. This pings the API and the website every 10 minutes, so they stay awake, and doubles as an
+# uptime check: when either does not answer (or the API reports its database down), the run fails and GitHub
+# emails the repository owner. GitHub may start scheduled runs a few minutes late; one free service awake all
+# month fits Render's 750 free hours. Run it by hand from the Actions tab to check the site at any time.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: keep-awake
+  cancel-in-progress: true
+
+permissions: {}
+
+env:
+  API_HEALTH_URL: https://skole-api.onrender.com/api/v1/health
+  SITE_URL: https://skoleph.web.app/
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: API answers and its database is up
+        run: |
+          # A sleeping API can take a minute to wake: retry before calling it down.
+          body=$(curl --silent --show-error --fail --retry 4 --retry-delay 20 --retry-all-errors \
+            --max-time 90 "$API_HEALTH_URL")
+          echo "$body"
+          echo "$body" | jq -e '.data.status == "ok" and .data.db == "up"' > /dev/null
+
+      - name: Website answers
+        run: |
+          code=$(curl --silent --output /dev/null --write-out '%{http_code}' --retry 3 --retry-delay 10 \
+            --max-time 30 "$SITE_URL")
+          echo "HTTP $code"
+          test "$code" = "200"
