@@ -12,14 +12,10 @@ import { Button } from './Button';
  *   <ExportCsvButton fileName={`attendance ${className}`} columns={ATTENDANCE_CSV}
  *                    getRows={() => fetchAllPages(listAttendance, { classSubjectId })} />
  *
- * A sheet whose columns depend on the data (one per marked day) leaves `columns` out and has `getRows`
- * resolve `{ columns, rows }` instead.
- *
  * @param {object} props
  * @param {string} props.fileName without extension; it is turned into a safe file name
- * @param {import('../../lib/csv').CsvColumn[]} [props.columns]
- * @param {() => object[] | { columns: import('../../lib/csv').CsvColumn[], rows: object[] }
- *   | Promise<object[] | { columns: import('../../lib/csv').CsvColumn[], rows: object[] }>} props.getRows
+ * @param {import('../../lib/csv').CsvColumn[]} props.columns
+ * @param {() => object[] | Promise<object[]>} props.getRows
  * @param {string} [props.label] button text (default "Download CSV")
  */
 export function ExportCsvButton({ fileName, columns, getRows, label = 'Download CSV', size = 'md' }) {
@@ -29,10 +25,9 @@ export function ExportCsvButton({ fileName, columns, getRows, label = 'Download 
   const onClick = async () => {
     setIsExporting(true);
     try {
-      const result = await getRows();
-      const sheet = Array.isArray(result) ? { columns, rows: result } : result;
-      if (sheet.rows.length === 0) toast.info('Nothing to download yet.');
-      else downloadCsv(fileName, sheet.columns, sheet.rows);
+      const rows = await getRows();
+      if (rows.length === 0) toast.info('Nothing to download yet.');
+      else downloadCsv(fileName, columns, rows);
     } catch (error) {
       toast.error(error);
     } finally {

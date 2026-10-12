@@ -16,16 +16,6 @@ export const enrolledInClassOn = (classSql, daySql) =>
   `e.class_id = ${classSql} AND e.enrolled_on <= ${daySql} AND (e.left_on IS NULL OR e.left_on > ${daySql})`;
 
 /**
- * Condition on an `enrollments e` row: its student was in class `classSql` on at least one day from `fromSql`
- * to `toSql` (both included), by the rule of enrolledInClassOn. An enrollment closed on the day it began
- * covers no day. The arguments are SQL expressions like enrolledInClassOn's; `?` ones are bound in the order
- * class, from, to.
- */
-export const enrolledInClassBetween = (classSql, fromSql, toSql) =>
-  `e.class_id = ${classSql} AND (e.left_on IS NULL OR (e.left_on > ${fromSql} AND e.left_on > e.enrolled_on))
-   AND e.enrolled_on <= ${toSql}`;
-
-/**
  * Sub-select of the class ids a teacher can see: classes where they teach a
  * subject, plus classes where they are the homeroom teacher. Takes the teacher
  * id twice as parameters (see visibleClassParams).

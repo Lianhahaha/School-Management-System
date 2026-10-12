@@ -84,7 +84,7 @@ export async function createSubject({ gradeWeights, ...body }) {
 /**
  * 409 grading_method_locked when the update changed how the subject is graded (its K-12 group or its weights)
  * and it has grades from an earlier school year. Every result is computed from the subject's method as it is
- * now, so a change would rewrite those years' results, report cards, SF10s and promotion standings; a new
+ * now, so a change would rewrite those years' results, report cards and promotion standings; a new
  * method needs a new subject. While its grades are all of the current school year (or it has none) the method
  * can still change. `after` is the subject as stored by the update, so weights sent with zeros left out, or the
  * same method sent again, are no change.

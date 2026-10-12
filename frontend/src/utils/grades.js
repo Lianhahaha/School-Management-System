@@ -199,7 +199,7 @@ export const tagSemester = (rows, semester) => rows.map((row) => ({ ...row, seme
  * `GET /grades/summary?groupBy=classSubject&semester=`, one request per semester, see tagSemester), as a
  * student's grades are shown: My grades, the report card and the grade cards. A subject taken in two classes of
  * one year (the student changed class) is one row, its quarters put together per semester and quarter as the
- * general average and the SF10 do (subjectQuarters, subjectSemesters, subjectFinalGrade), so it never reads
+ * general average does (subjectQuarters, subjectSemesters, subjectFinalGrade), so it never reads
  * Failed in one class and Passed in the other while the general average counts it once. Each row has
  *   key              'subjectId:academicYear', unique among the rows
  *   classSubjectIds  the class-subjects it was put together from, in the order of the rows

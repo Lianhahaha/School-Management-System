@@ -51,7 +51,7 @@ Beyond the brief, kept small and built on the same API:
 | Light and dark themes | Switch in the top bar (and on the sign-in page); the choice is remembered on the device, and the system setting is followed until you pick one |
 | Search everywhere | Admins press Ctrl+K (⌘K on a Mac) to find a student, teacher, class or subject from any page |
 | CSV and printing | Lists of grades and attendance download as CSV; report cards and timetables print cleanly |
-| LRN and DepEd school forms | A student can have a 12-digit LRN (Learner Reference Number), unique, set at sign-up, by an admin or on the profile, and found by search. SF1 (class → Students), SF2 for a month (class → Attendance) and SF10 (student → Grades) download as CSV for Excel; the printed report card (SF9) shows the LRN |
+| LRN | A student can have a 12-digit LRN (Learner Reference Number), unique, set at sign-up, by an admin or on the profile, and found by search; the printed report card (SF9) shows it |
 | Install as an app | See above: the browser's install button, or Add to Home Screen on an iPhone |
 | Student assistant sign-up | Student assistants sign up themselves (nobody creates one as an account); until an admin, or an approved assistant, approves the request (`/assistant-requests`) the account can only read and edit its own details, and a declined applicant reads the reason |
 

@@ -30,7 +30,7 @@ export const UPGRADES = Object.freeze([
               COMMENT 'K-12 components group; NULL = points or custom weights' AFTER is_active`,
   },
   {
-    // DepEd's 12-digit Learner Reference Number, unique once issued (school forms SF1, SF2, SF9 and SF10).
+    // DepEd's 12-digit Learner Reference Number, unique once issued (printed on the report card, SF9).
     id: '2026-10-10-students-lrn',
     description: 'add students.lrn',
     needed: `SELECT 1 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS

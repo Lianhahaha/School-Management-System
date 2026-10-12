@@ -45,7 +45,7 @@ const unique = (values) => [...new Set(values)];
  * A student's grade summary of one school year, one row per subject, from their class-subject summary rows
  * of that year (summarizeStudentGradesUnscoped). A subject taken in two classes (the student changed class)
  * is one row: its quarters of both classes put together per semester and quarter (utils/grading
- * subjectFinalGrade), the grade My grades, the general average, the SF10 and the promotion check give it, so
+ * subjectFinalGrade), the grade My grades, the general average and the promotion check give it, so
  * the dashboard never shows it twice with two different results. `className` names the classes it was taken
  * in ('Grade 10 - A / Grade 10 - B') and `assessmentsGraded` counts the scores of all of them. The rows are
  * of one school year, so the subject alone is the key. In My grades' order: class, then subject.

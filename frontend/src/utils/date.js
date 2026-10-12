@@ -20,7 +20,6 @@ export const LOCALE = 'en-PH';
 
 const dateFormatter = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
 const shortDateFormatter = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short' });
-const monthFormatter = new Intl.DateTimeFormat(LOCALE, { month: 'long', year: 'numeric' });
 const dateTimeFormatter = new Intl.DateTimeFormat(LOCALE, {
   day: 'numeric',
   month: 'short',
@@ -179,25 +178,6 @@ export function academicYearToDate(label = currentAcademicYear()) {
   const today = todayYmd();
   const start = academicYearStart(label);
   return { dateFrom: start <= today ? start : today, dateTo: today };
-}
-
-/**
- * The twelve months of an academic year label, first month first, each with its first and last day; `value`
- * and `label` make them Select options: '2026-2027' -> [{ value: '2026-08', label: 'August 2026',
- * dateFrom: '2026-08-01', dateTo: '2026-08-31' }, ..., { value: '2027-07', ... }].
- */
-export function academicYearMonths(label) {
-  const startYear = Number(label.slice(0, 4));
-  return Array.from({ length: 12 }, (_, index) => {
-    const first = new Date(startYear, ACADEMIC_YEAR_START_MONTH - 1 + index, 1);
-    const last = new Date(first.getFullYear(), first.getMonth() + 1, 0);
-    return {
-      value: toYmd(first).slice(0, 7),
-      label: monthFormatter.format(first),
-      dateFrom: toYmd(first),
-      dateTo: toYmd(last),
-    };
-  });
 }
 
 /**

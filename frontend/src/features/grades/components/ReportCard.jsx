@@ -52,7 +52,7 @@ export function PrintReportCardButton({ studentId, academicYear, semester }) {
 
 /**
  * A student's report card for paper (DepEd SF9): who (with LRN, sex and the age on the first day of the school
- * year, as on the SF1), which class, school year and period, per subject the grade of each quarter of a
+ * year), which class, school year and period, per subject the grade of each quarter of a
  * semester and its final grade (their average), or of each semester of the whole year and the final grade
  * (their average), with Passed / Failed, and the general average (the mean of the subject grades) with its
  * DepEd descriptor. A subject taken in two classes of the year is one line, its classes named together

@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SEMESTERS } from '../src/constants/shared';
 import {
   academicYearEnd,
-  academicYearMonths,
   academicYearStart,
   academicYearToDate,
   addDaysYmd,
@@ -69,19 +68,6 @@ describe('calendar arithmetic on YYYY-MM-DD', () => {
     expect(academicYearStart('2026-2027')).toBe('2026-08-01');
     expect(academicYearEnd('2026-2027')).toBe('2027-07-31');
     expect(academicYearEnd('2027-2028')).toBe('2028-07-31');
-  });
-
-  it('lists the twelve months of an academic year with their first and last day', () => {
-    const months = academicYearMonths('2027-2028');
-    expect(months).toHaveLength(12);
-    expect(months[0]).toEqual({
-      value: '2027-08',
-      label: 'August 2027',
-      dateFrom: '2027-08-01',
-      dateTo: '2027-08-31',
-    });
-    expect(months.find((month) => month.value === '2028-02')).toMatchObject({ dateTo: '2028-02-29' });
-    expect(months.at(-1)).toMatchObject({ value: '2028-07', dateFrom: '2028-07-01', dateTo: '2028-07-31' });
   });
 
   it('counts an age in whole years, a birthday on the day included', () => {

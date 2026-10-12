@@ -7,13 +7,10 @@
  *     { header: 'Student no', value: (record) => record.studentNumber },
  *     { header: 'Score', value: (record) => record.score },
  *   ], records);
- *
- * A column with `text: true` holds an identifier made of digits (an LRN) that a spreadsheet must not turn
- * into a number: see textCell.
  */
 import { PAGINATION } from '../constants/shared';
 
-/** @typedef {{ header: string, value: (row: object) => unknown, text?: boolean }} CsvColumn */
+/** @typedef {{ header: string, value: (row: object) => unknown }} CsvColumn */
 
 /** A phone number or a plain number: safe to leave as it is although it may start with + or -. */
 const NUMBER_LIKE = /^[+-]?[\d\s().-]+$/;
@@ -31,17 +28,6 @@ function cell(value) {
 }
 
 /**
- * A cell of a `text` column. Excel shows a 12-digit LRN as 1.23457E+11 and drops leading zeros, so a value
- * of digits only is written as the formula ="136512140001", which Excel and Google Sheets show as that text.
- * The formula is safe because it holds nothing but digits; any other value goes through `cell` and its
- * formula guard.
- */
-function textCell(value) {
-  const text = value === null || value === undefined ? '' : String(value);
-  return /^\d+$/.test(text) ? `="${text}"` : cell(value);
-}
-
-/**
  * @param {CsvColumn[]} columns
  * @param {object[]} rows
  * @returns {string}
@@ -49,7 +35,7 @@ function textCell(value) {
 export function toCsv(columns, rows) {
   const lines = [columns.map((column) => cell(column.header)).join(',')];
   for (const row of rows) {
-    lines.push(columns.map((column) => (column.text ? textCell : cell)(column.value(row))).join(','));
+    lines.push(columns.map((column) => cell(column.value(row))).join(','));
   }
   return lines.join('\r\n');
 }

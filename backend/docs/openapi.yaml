@@ -500,13 +500,6 @@ paths:
         teacher cannot see is a 403. `academicYear` lists the students whose active enrollment is in a class
         of that school year: `hasActiveEnrollment=true&academicYear={current}&isActive=true` is the list behind
         the admin dashboard's `counts.activeEnrollments`.
-
-        `classId` lists the class's students now. With `enrolledFrom` and `enrolledTo` as well (both, or
-        neither; never without `classId`: 400) it lists the students who were in the class on at least one
-        day of that range, by the roster rule of the attendance sheets (enrolled on or before the day, not
-        yet left), those who have left the class since included: the roster of a month's SF2, also of a past
-        school year's class. The other filters and each row's `currentEnrollment` keep describing the
-        student's class now.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Limit'
@@ -539,8 +532,7 @@ paths:
             Only students whose active enrollment is in a class of this school year. Like `classId` and
             `gradeLevel` it reads the class of the active enrollment, so it implies `hasActiveEnrollment=true`
             and matches nobody with `hasActiveEnrollment=false`. A student who has completed this year and is
-            already placed in next year's class is listed under next year. With `enrolledFrom` and
-            `enrolledTo` it still describes the student's class now.
+            already placed in next year's class is listed under next year.
           schema:
             $ref: '#/components/schemas/AcademicYear'
         - name: admissionStatus
@@ -548,18 +540,6 @@ paths:
           description: Only self-registered students whose application has this status.
           schema:
             $ref: '#/components/schemas/AdmissionStatus'
-        - name: enrolledFrom
-          in: query
-          description: >-
-            With `classId` and `enrolledTo`: first day of the range the students were in the class (included).
-          schema:
-            $ref: '#/components/schemas/DateYmd'
-        - name: enrolledTo
-          in: query
-          description: >-
-            With `classId` and `enrolledFrom`: last day of the range (included); not before `enrolledFrom`.
-          schema:
-            $ref: '#/components/schemas/DateYmd'
       responses:
         '200': { $ref: '#/components/responses/StudentListResponse' }
         '400': { $ref: '#/components/responses/BadRequest' }
@@ -801,7 +781,7 @@ paths:
         either clears the other, and sending both non-null is a 400. Both null put the subject back on points.
         Results change immediately. Once the subject has grades from an earlier school year its method is
         locked, because every result is computed from the method as it is now and a change would rewrite those
-        years' results, report cards, SF10s and promotion standings: a different group or different weights
+        years' results, report cards and promotion standings: a different group or different weights
         answer 409 with `details.reason = grading_method_locked` and nothing is written (create a new subject
         for a new method). Sending the method it already has is not a change.
 
@@ -1536,11 +1516,8 @@ paths:
 
         Counts per status and the attendance rate, `(present + late) / total` with 4 decimals, or `null` when
         nothing is marked. With `groupBy=none` (default) `data` is one object; with `student`,
-        `classSubject`, `week` or `studentDay` it is an array with one row per group, each with a `label`.
-        Weeks start on Monday (`weekStart`, also the label) and come oldest first; weeks without marks are left
-        out. `studentDay` gives one row per student and `date` with marks, counting every lesson of that day
-        (the daily attendance form, SF2); it needs `dateFrom` and `dateTo`, at most 31 days in all (400
-        otherwise).
+        `classSubject` or `week` it is an array with one row per group, each with a `label`. Weeks start on
+        Monday (`weekStart`, also the label) and come oldest first; weeks without marks are left out.
       parameters:
         - $ref: '#/components/parameters/StudentIdFilter'
         - $ref: '#/components/parameters/ClassSubjectIdFilter'
@@ -1552,7 +1529,7 @@ paths:
           description: Grouping of the summary.
           schema:
             type: string
-            enum: [none, student, classSubject, week, studentDay]
+            enum: [none, student, classSubject, week]
             default: none
       responses:
         '200': { $ref: '#/components/responses/AttendanceSummaryResponse' }
@@ -3811,13 +3788,9 @@ components:
               $ref: '#/components/schemas/Id'
             weekStart:
               $ref: '#/components/schemas/DateYmd'
-            date:
-              description: Present with `groupBy=studentDay`; the day the counts cover.
-              allOf:
-                - $ref: '#/components/schemas/DateYmd'
             label:
               type: string
-              description: Student name (also with `studentDay`), class and subject name, or the week's Monday.
+              description: Student name, class and subject name, or the week's Monday.
               example: Grade 7 - A - Biology
     # --- Assessments and grades ---
     Assessment:
@@ -4901,8 +4874,8 @@ components:
             One row per subject of the school year, `percentage` its grade of the year so far (the average of
             its semester grades, each the average of its quarterly grades, as in `GET /grades/summary`). A
             subject a student who changed class mid-year took in two classes is one row: the quarters of both
-            classes are put together per semester and quarter, the rule of the general average, the SF10 and
-            the promotion check. Ordered by `className`, then subject.
+            classes are put together per semester and quarter, the rule of the general average and the
+            promotion check. Ordered by `className`, then subject.
           items:
             type: object
             required: [subjectId, subjectName, className, classSubjectIds, assessmentsGraded, percentage]
@@ -6602,8 +6575,7 @@ components:
               totalPages: 1
     AttendanceSummaryResponse:
       description: >-
-        One summary object, or an array of summary rows when `groupBy` is `student`, `classSubject`, `week` or
-        `studentDay`.
+        One summary object, or an array of summary rows when `groupBy` is `student`, `classSubject` or `week`.
       headers:
         X-Request-Id: { $ref: '#/components/headers/XRequestId' }
       content:

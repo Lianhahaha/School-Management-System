@@ -22,7 +22,7 @@ const lastYear = `${Number(thisYear.slice(0, 4)) - 1}-${thisYear.slice(0, 4)}`;
 /**
  * A subject's grading method (its K-12 group or its weights) is locked once it has grades from an earlier
  * school year: every result is computed from the method as it is now, so changing it would rewrite those
- * years' results, report cards, SF10s and promotion standings. While its grades are all of the current year,
+ * years' results, report cards and promotion standings. While its grades are all of the current year,
  * or it has none, the method can still change.
  */
 describe('the grading method of a subject with history', () => {

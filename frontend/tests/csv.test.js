@@ -45,21 +45,6 @@ describe('toCsv', () => {
         .slice(1),
     ).toEqual(['-5', '-12.5', '+63 917 555 0101', '(02) 8123-4567']);
   });
-
-  it('writes the digits of a text column as ="…" so a spreadsheet keeps them, and guards anything else', () => {
-    const lrn = { ...column('lrn'), text: true };
-    const rows = ['136512140001', '007', '', null, '=1+1', '12 34', 1365].map((value) => ({ lrn: value }));
-    expect(toCsv([lrn], rows).split('\r\n')).toEqual([
-      'lrn',
-      '="136512140001"',
-      '="007"',
-      '',
-      '',
-      "'=1+1",
-      '12 34',
-      '="1365"',
-    ]);
-  });
 });
 
 describe('slugify', () => {

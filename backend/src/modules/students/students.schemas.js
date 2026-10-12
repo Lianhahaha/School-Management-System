@@ -32,23 +32,7 @@ export const listStudentsQuery = listQuery(Object.keys(STUDENT_SORT_MAP), {
   // hasActiveEnrollment=false). The admin dashboard's "Active enrollments" counts the current year's this way.
   academicYear: academicYear.optional(),
   admissionStatus: z.enum(ADMISSION_STATUSES).optional(),
-  // Together, with classId: the class's students on any day from enrolledFrom to enrolledTo, those who have
-  // left it since included (the roster of a month's SF2), instead of its students now.
-  enrolledFrom: dateStr.optional(),
-  enrolledTo: dateStr.optional(),
-})
-  .refine((value) => (value.enrolledFrom === undefined) === (value.enrolledTo === undefined), {
-    error: 'enrolledFrom and enrolledTo go together',
-    path: ['enrolledTo'],
-  })
-  .refine((value) => value.enrolledFrom === undefined || value.classId !== undefined, {
-    error: 'enrolledFrom and enrolledTo need a classId',
-    path: ['classId'],
-  })
-  .refine((value) => !value.enrolledFrom || !value.enrolledTo || value.enrolledFrom <= value.enrolledTo, {
-    error: 'enrolledFrom must not be after enrolledTo',
-    path: ['enrolledFrom'],
-  });
+});
 
 export const updateStudentBody = patchOf({
   firstName: name,
