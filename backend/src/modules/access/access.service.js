@@ -18,7 +18,8 @@
  * `scopedStudentId`). An explicit class or class-subject filter outside it is a 403
  * (`assertFiltersInScope`), as is a student asking for another student; other filters (a student,
  * teacher or assessment id from a teacher) only narrow the rows within the scope, so a foreign id
- * simply matches nothing.
+ * simply matches nothing. A student's own records (`scopeRecordFilters`) are the exception: their rows
+ * are always their own, so a class filter only narrows them, also to a class they have left.
  */
 import { ApiError } from '../../utils/ApiError.js';
 import { resolveMe } from '../../utils/resolveMe.js';
@@ -149,9 +150,13 @@ export async function assertFiltersInScope(user, { classId, classSubjectId }) {
  * lists and summaries: own records for students, visible classes for teachers. Returns the `filters` with
  * the effective `studentId` (`me` resolved) and the class `scope` on `cs.class_id` (null for students and
  * the office).
+ *
+ * A student's class and class-subject filters are not checked against the class they are in now: their rows
+ * are limited to themselves anyway, and their marks and grades of an earlier class (a past school year, a
+ * class they moved out of) are theirs to read and filter too.
  */
 export async function scopeRecordFilters(user, filters) {
-  await assertFiltersInScope(user, filters);
+  if (!isStudent(user)) await assertFiltersInScope(user, filters);
   const studentId = scopedStudentId(user, resolveMe(user, filters.studentId, 'student'));
   const scope = isStudent(user) ? null : classScope(user, 'cs.class_id');
   return { filters: { ...filters, studentId }, scope };

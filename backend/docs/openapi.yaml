@@ -2761,7 +2761,10 @@ components:
     ClassIdFilter:
       name: classId
       in: query
-      description: Only records of this class. A class outside the caller's scope is a 403.
+      description: |
+        Only records of this class. A class outside the caller's scope is a 403, except on a student's own
+        attendance and grades: those rows are always their own, so the filter only narrows them (also to a class
+        they have left).
       schema:
         $ref: '#/components/schemas/Id'
     GradeLevelFilter:
@@ -2793,7 +2796,10 @@ components:
     ClassSubjectIdFilter:
       name: classSubjectId
       in: query
-      description: Only records of this class-subject (lesson). A class-subject outside the caller's scope is a 403.
+      description: |
+        Only records of this class-subject (lesson). A class-subject outside the caller's scope is a 403, except
+        on a student's own attendance and grades: those rows are always their own, so the filter only narrows
+        them (also to a lesson of a class they have left).
       schema:
         $ref: '#/components/schemas/Id'
     DateFromFilter:

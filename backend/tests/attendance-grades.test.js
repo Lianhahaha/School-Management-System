@@ -9,6 +9,7 @@ import {
   assignTeacher,
   buildSchool,
   closeWorld,
+  fillClass,
   makeSubject,
   makeUser,
   resetWorld,
@@ -235,6 +236,102 @@ describe('attendance', () => {
     const url = `/api/v1/attendance/${list.body.data[0].id}`;
     assert.equal((await api.patch(url).set(as(school.admin)).send({ status: 'excused' })).status, 404);
     assert.equal((await api.delete(url).set(as(school.admin))).status, 404);
+  });
+});
+
+describe("a student's own records of a class they have left", () => {
+  let school;
+  let classmate;
+
+  before(async () => {
+    await resetWorld();
+    school = await buildSchool();
+    const { admin, other, s3, classB, csB } = school;
+    // s3 starts the day in class B with a classmate, is marked and graded there, then moves to class A.
+    await api
+      .post('/api/v1/enrollments')
+      .set(as(admin))
+      .send({ studentId: s3.studentId, classId: classB.id });
+    [classmate] = await fillClass(classB.id, 1);
+    const sheet = await api
+      .put('/api/v1/attendance/sheet')
+      .set(as(other))
+      .send({
+        classSubjectId: csB.id,
+        date: today,
+        records: [
+          { studentId: s3.studentId, status: 'late' },
+          { studentId: classmate, status: 'absent' },
+        ],
+      });
+    assert.equal(sheet.status, 200, JSON.stringify(sheet.body));
+    const quiz = await api
+      .post('/api/v1/assessments')
+      .set(as(other))
+      .send({ classSubjectId: csB.id, title: 'Quiz', type: 'quiz', term: 'term1', maxScore: 10 });
+    const graded = await api
+      .put(`/api/v1/assessments/${quiz.body.data.id}/grades`)
+      .set(as(other))
+      .send({
+        grades: [
+          { studentId: s3.studentId, score: 8 },
+          { studentId: classmate, score: 5 },
+        ],
+      });
+    assert.equal(graded.status, 200, JSON.stringify(graded.body));
+    await run("UPDATE enrollments SET status = 'transferred', left_on = ? WHERE student_id = ?", [
+      today,
+      s3.studentId,
+    ]);
+    await run(
+      "INSERT INTO enrollments (student_id, class_id, status, enrolled_on) VALUES (?, ?, 'active', ?)",
+      [s3.studentId, school.classA.id, today],
+    );
+  });
+
+  it('filters them by that lesson or class instead of answering 403', async () => {
+    const { s3, classB, csB } = school;
+    for (const url of [
+      `/api/v1/attendance?classSubjectId=${csB.id}`,
+      `/api/v1/attendance?classId=${classB.id}`,
+      `/api/v1/attendance?classSubjectId=${csB.id}&studentId=me`,
+    ]) {
+      const res = await api.get(url).set(as(s3));
+      assert.equal(res.status, 200, `${url}: ${JSON.stringify(res.body)}`);
+      assert.deepEqual(
+        res.body.data.map((row) => [row.studentId, row.status]),
+        [[s3.studentId, 'late']],
+        url,
+      );
+    }
+    const summary = await api.get(`/api/v1/attendance/summary?classSubjectId=${csB.id}`).set(as(s3));
+    assert.equal(summary.status, 200);
+    assert.deepEqual([summary.body.data.total, summary.body.data.late], [1, 1]);
+
+    const grades = await api.get(`/api/v1/grades?classSubjectId=${csB.id}`).set(as(s3));
+    assert.equal(grades.status, 200, JSON.stringify(grades.body));
+    assert.deepEqual(
+      grades.body.data.map((row) => [row.student.id, row.score]),
+      [[s3.studentId, 8]],
+    );
+    const gradeSummary = await api
+      .get(`/api/v1/grades/summary?classSubjectId=${csB.id}&groupBy=classSubject`)
+      .set(as(s3));
+    assert.equal(gradeSummary.status, 200, JSON.stringify(gradeSummary.body));
+  });
+
+  it('still keeps every other student out of reach', async () => {
+    const { s1, s3, csB } = school;
+    const peer = await api
+      .get(`/api/v1/attendance?classSubjectId=${csB.id}&studentId=${classmate}`)
+      .set(as(s3));
+    assert.equal(peer.status, 403);
+    assert.equal(peer.body.error.details.reason, 'student_not_self');
+    const stranger = await api.get(`/api/v1/attendance?classSubjectId=${csB.id}`).set(as(s1));
+    assert.equal(stranger.status, 200);
+    assert.equal(stranger.body.meta.total, 0, 'a class the student was never in holds none of their rows');
+    const strangerGrades = await api.get(`/api/v1/grades?classSubjectId=${csB.id}`).set(as(s1));
+    assert.equal(strangerGrades.body.meta.total, 0);
   });
 });
 
