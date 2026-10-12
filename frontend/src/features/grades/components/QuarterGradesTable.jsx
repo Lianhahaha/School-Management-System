@@ -45,7 +45,7 @@ export function QuarterGradesTable({ subjects, average, academicYear, semester =
 
   return (
     <Card title={title} description={period} padded={false}>
-      <div className="relative overflow-x-auto pb-1" tabIndex={0} role="region" aria-label={title}>
+      <div className="@container relative overflow-x-auto pb-1" tabIndex={0} role="region" aria-label={title}>
         <Table caption={`${title}, ${period}`}>
           <THead>
             <Tr>

@@ -51,7 +51,12 @@ export default function StudentsListPage() {
   const [classTarget, setClassTarget] = useState(null);
 
   const columns = [
-    { key: 'studentNumber', header: 'Student no', sortKey: 'studentNumber' },
+    {
+      key: 'studentNumber',
+      header: 'Student no',
+      sortKey: 'studentNumber',
+      cell: (student) => <span className="whitespace-nowrap">{student.studentNumber}</span>,
+    },
     {
       key: 'name',
       header: 'Name',

@@ -134,8 +134,9 @@ function useScrollToHighlighted(highlightedRowKey, isShown) {
  *
  * Column: `key` (also the default cell value, `row[key]`), `header`, `cell(row)` (custom content),
  * `sortKey` (an entry of the API's sort whitelist; makes the header clickable), `align`
- * ('left' | 'center' | 'right'), `width`, `hideBelow` ('sm' | 'md' | 'lg'), `primary` (the card title
- * on phones; default the `name`, `title` or `subject` column, else the first).
+ * ('left' | 'center' | 'right'), `width`, `hideBelow` ('sm' | 'md' | 'lg', by the table's own width: see
+ * Table), `primary` (the card title on phones; default the `name`, `title` or `subject` column, else
+ * the first).
  *
  * Phones (below `sm`): each row becomes a card instead of a table row: the primary column as the
  * title, the other columns that a phone-width table would show (no `hideBelow` other than 'sm') as
@@ -267,7 +268,7 @@ export function DataTable({
       <div ref={tableRef} className="sheet overflow-hidden pt-3 pb-1 max-sm:hidden">
         <div
           // relative: the sr-only header text is absolutely positioned and would otherwise escape the scroll box
-          className="relative overflow-x-auto"
+          className="@container relative overflow-x-auto"
           tabIndex={0}
           role={label ? 'region' : undefined}
           aria-label={label}

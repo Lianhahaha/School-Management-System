@@ -28,7 +28,12 @@ export default function TeachersListPage() {
   const createModal = useDisclosure();
 
   const columns = [
-    { key: 'employeeNumber', header: 'Employee no', sortKey: 'employeeNumber' },
+    {
+      key: 'employeeNumber',
+      header: 'Employee no',
+      sortKey: 'employeeNumber',
+      cell: (teacher) => <span className="whitespace-nowrap">{teacher.employeeNumber}</span>,
+    },
     {
       key: 'name',
       header: 'Name',

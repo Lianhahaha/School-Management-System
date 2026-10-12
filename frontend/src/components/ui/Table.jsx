@@ -8,8 +8,13 @@ import { cx } from '../../utils/cx';
 
 const ALIGN = { left: 'text-left', center: 'text-center', right: 'text-right' };
 
-/** Hides a column below a breakpoint: `hideBelow="md"` drops it on phones. */
-const HIDE_BELOW = { sm: 'max-sm:hidden', md: 'max-md:hidden', lg: 'max-lg:hidden' };
+/**
+ * Hides a column while the table's box is narrow: `sm` under 36rem, `md` under 48rem, `lg` under 64rem. The box
+ * is the nearest `@container`, the table's scroll region, so a column drops whether a phone or the sidebar
+ * squeezes the table (with the sidebar, a laptop leaves less room than a tablet). Without a container around
+ * the table the column always shows.
+ */
+const HIDE_BELOW = { sm: '@max-xl:hidden', md: '@max-3xl:hidden', lg: '@max-5xl:hidden' };
 
 const SORT_ICONS = { asc: ArrowUp, desc: ArrowDown };
 const ARIA_SORT = { asc: 'ascending', desc: 'descending' };

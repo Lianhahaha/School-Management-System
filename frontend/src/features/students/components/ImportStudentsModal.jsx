@@ -102,7 +102,7 @@ function ReviewStep({ fileName, rows, report, ignored }) {
         </Alert>
       )}
       <div
-        className="max-h-80 overflow-auto rounded-xl ring-1 ring-gray-200"
+        className="@container relative max-h-80 overflow-auto rounded-xl ring-1 ring-gray-200"
         tabIndex={0}
         role="region"
         aria-label="Rows of the file"

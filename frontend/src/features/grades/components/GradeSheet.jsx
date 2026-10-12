@@ -218,7 +218,7 @@ export function GradeSheet({ roster, canSave, onReload }) {
           </div>
         )}
 
-        <div className="relative overflow-x-auto" tabIndex={0} role="region" aria-label="Grade sheet">
+        <div className="@container relative overflow-x-auto" tabIndex={0} role="region" aria-label="Grade sheet">
           <Table caption={`Grades for ${assessment.title}`}>
             <THead>
               <Tr>
