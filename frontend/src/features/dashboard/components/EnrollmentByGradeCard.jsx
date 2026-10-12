@@ -2,7 +2,10 @@ import { ChartBarBig, ChartNoAxesColumn } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 
-/** Students per grade level as horizontal bars (payload `enrollmentsByGrade`), scaled to the biggest grade. */
+/**
+ * The students of the "Active enrollments" tile per grade level as horizontal bars (payload
+ * `enrollmentsByGrade`), scaled to the biggest grade.
+ */
 export function EnrollmentByGradeCard({ grades }) {
   const sorted = [...grades].sort((a, b) => a.gradeLevel - b.gradeLevel);
   const largest = Math.max(1, ...sorted.map((grade) => grade.students));
@@ -12,7 +15,7 @@ export function EnrollmentByGradeCard({ grades }) {
       icon={ChartBarBig}
       mark="maroon"
       title="Enrollment by grade"
-      description="Students with an active enrollment"
+      description="Active students in the current academic year's classes"
     >
       {sorted.length === 0 ? (
         <EmptyState icon={ChartNoAxesColumn} title="No enrollments yet" compact />

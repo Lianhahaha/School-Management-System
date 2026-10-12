@@ -3,7 +3,8 @@
  * is features/enrollments.
  *
  *   useStudents(params, { enabled })  paginated list; params: page, limit, search, sortBy, sortOrder,
- *                                     classId, gradeLevel, gender, isActive, hasActiveEnrollment, admissionStatus
+ *                                     classId, gradeLevel, gender, isActive, hasActiveEnrollment, academicYear,
+ *                                     admissionStatus
  *   useClassRoster(classId)           every student currently in the class, as an array (all pages)
  *   useStudent(id)                    one student ('me' for the signed-in student); includes currentEnrollment
  *                                     and `admission` (the application of a self-registered student, or null)

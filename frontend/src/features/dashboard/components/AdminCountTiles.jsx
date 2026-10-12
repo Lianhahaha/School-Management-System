@@ -5,7 +5,7 @@ import { currentAcademicYear } from '../../../utils/date';
 /**
  * The six school-wide figures of the admin dashboard (payload `counts`). Each tile opens its list
  * filtered the way the figure is counted (active accounts and subjects, the current academic year's
- * classes). Each icon chip carries its area's mark (people maroon, classes and subjects cream); the
+ * classes, the active students in them), so the list shows the tile's number. Each icon chip carries its area's mark (people maroon, classes and subjects cream); the
  * unenrolled chip turns oxblood while students are waiting for a class and sage once everyone has one.
  */
 export function AdminCountTiles({ counts }) {
@@ -47,9 +47,10 @@ export function AdminCountTiles({ counts }) {
         <StatTile
           label="Active enrollments"
           value={counts.activeEnrollments}
+          hint="Current academic year"
           icon={IdCard}
           mark="maroon"
-          to="/admin/students?hasActiveEnrollment=true"
+          to={`/admin/students?hasActiveEnrollment=true&academicYear=${currentAcademicYear()}&isActive=true`}
         />
         <StatTile
           label="Unenrolled students"

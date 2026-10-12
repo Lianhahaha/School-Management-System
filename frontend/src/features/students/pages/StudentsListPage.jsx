@@ -25,6 +25,7 @@ import { EnrollStudentsModal } from '../../enrollments/components/EnrollStudents
 import { UserFormModal } from '../../users/components/UserFormModal';
 import { UserStatusBadge } from '../../users/components/UserStatusBadge';
 import { ImportStudentsModal } from '../components/ImportStudentsModal';
+import { SchoolYearFilter } from '../components/SchoolYearFilter';
 import { StudentClassButton, StudentClassModals } from '../components/StudentClassModals';
 import { UNENROLLED_STUDENTS_PARAMS, useStudents } from '../hooks';
 
@@ -35,7 +36,7 @@ const ENROLLMENT_OPTIONS = [
 
 export default function StudentsListPage() {
   const list = useListParams({
-    filters: ['classId', 'gradeLevel', 'hasActiveEnrollment', 'isActive'],
+    filters: ['academicYear', 'classId', 'gradeLevel', 'hasActiveEnrollment', 'isActive'],
     defaultSort: ['lastName', 'asc'],
   });
   const { data, isPending, isFetching, error, refetch } = useStudents(list.apiParams);
@@ -132,6 +133,10 @@ export default function StudentsListPage() {
           value={list.params.search}
           onChange={list.setSearch}
           placeholder="Search name, student number, LRN"
+        />
+        <SchoolYearFilter
+          value={list.params.academicYear}
+          onChange={(event) => list.setFilter('academicYear', event.target.value)}
         />
         <ClassSelect
           aria-label="Filter by class"
