@@ -2,7 +2,16 @@ import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { buildSet } from '../src/utils/sql.js';
-import { email, id, name, optionalText, phone, studentNumber } from '../src/utils/zod/common.js';
+import {
+  dateStr,
+  email,
+  id,
+  isoDateTime,
+  name,
+  optionalText,
+  phone,
+  studentNumber,
+} from '../src/utils/zod/common.js';
 
 describe('shared validation rules', () => {
   it('takes an id as a number or a string of digits, nothing looser', () => {
@@ -10,6 +19,33 @@ describe('shared validation rules', () => {
     assert.equal(id.parse('12'), 12);
     for (const bad of [true, [5], '0x10', '1e3', ' 5', 0, 1.5]) {
       assert.equal(id.safeParse(bad).success, false, JSON.stringify(bad));
+    }
+  });
+
+  it('stops ids at the INT UNSIGNED columns that hold them', () => {
+    assert.equal(id.parse(4294967295), 4294967295);
+    assert.equal(id.parse('4294967295'), 4294967295);
+    for (const bad of [4294967296, '4294967296', Number.MAX_SAFE_INTEGER, '99999999999999999999']) {
+      assert.equal(id.safeParse(bad).success, false, String(bad));
+    }
+  });
+
+  it('keeps dates and date-times within the years 1000 to 9998, a date-time judged in UTC', () => {
+    for (const good of ['1000-01-01', '2026-10-12', '9998-12-31']) {
+      assert.equal(dateStr.safeParse(good).success, true, good);
+    }
+    for (const bad of ['0999-12-31', '0100-01-01', '9999-01-01', '9999-12-31']) {
+      assert.equal(dateStr.safeParse(bad).success, false, bad);
+    }
+    for (const good of ['1000-01-01T08:00:00+08:00', '2026-10-12T09:30:00Z', '9998-12-31T18:00:00-05:00']) {
+      assert.equal(isoDateTime.safeParse(good).success, true, good);
+    }
+    for (const bad of [
+      '1000-01-01T07:59:59+08:00', // 0999-12-31 in UTC
+      '9998-12-31T23:00:00-05:00', // 9999-01-01 in UTC
+      '9999-12-31T23:00:00-05:00', // 10000-01-01 in UTC
+    ]) {
+      assert.equal(isoDateTime.safeParse(bad).success, false, bad);
     }
   });
 

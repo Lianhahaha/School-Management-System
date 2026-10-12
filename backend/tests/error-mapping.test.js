@@ -1,7 +1,7 @@
 import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
-import { pool } from '../src/config/db.js';
+import { pool, run } from '../src/config/db.js';
 import { toApiError } from '../src/utils/toApiError.js';
 import { api, as, closeWorld, makeUser, resetWorld } from './helpers/harness.js';
 
@@ -70,5 +70,50 @@ describe('error mapping', () => {
 
   it('still answers 500 for an unknown error', () => {
     assert.equal(toApiError(new Error('boom')).status, 500);
+  });
+
+  it('answers 400, not 500, for an id or a date-time past what the columns hold', async () => {
+    const payment = await api.post('/api/v1/payments').set(as(admin)).send({
+      studentId: 4294967296,
+      academicYear: '2026-2027',
+      amount: 100,
+      paidOn: '2026-10-01',
+      method: 'cash',
+      receiptNumber: 'OR-RANGE',
+    });
+    assert.equal(payment.status, 400, JSON.stringify(payment.body));
+    assert.equal(payment.body.error.details.issues[0].path, 'body.studentId');
+    const lookup = await api.get('/api/v1/students/4294967296').set(as(admin));
+    assert.equal(lookup.status, 400);
+    const announcement = await api.post('/api/v1/announcements').set(as(admin)).send({
+      title: 'Far future',
+      body: 'Hello',
+      audience: 'all',
+      publishedAt: '9999-12-31T23:00:00-05:00',
+    });
+    assert.equal(announcement.status, 400, JSON.stringify(announcement.body));
+    assert.equal(announcement.body.error.details.issues[0].path, 'body.publishedAt');
+  });
+
+  it("maps MySQL's out-of-range and wrong-value refusals to 400 with the column", async () => {
+    const outOfRange = await run(
+      `INSERT INTO payments (student_id, academic_year, amount, paid_on, method, receipt_number, recorded_by)
+       VALUES (?, '2026-2027', 1, '2026-10-01', 'cash', 'OR-X', ?)`,
+      [4294967296, admin.id],
+    ).catch((error) => error);
+    assert.equal(outOfRange.code, 'ER_WARN_DATA_OUT_OF_RANGE');
+    const wrongValue = await run('UPDATE users SET updated_at = ? WHERE id = ?', [
+      '10000-01-01 00:00:00',
+      admin.id,
+    ]).catch((error) => error);
+    assert.equal(wrongValue.code, 'ER_TRUNCATED_WRONG_VALUE');
+    for (const [error, field] of [
+      [outOfRange, 'studentId'],
+      [wrongValue, 'updatedAt'],
+    ]) {
+      const mapped = toApiError(error);
+      assert.equal(mapped.status, 400, error.code);
+      assert.equal(mapped.details.field, field, error.code);
+    }
   });
 });

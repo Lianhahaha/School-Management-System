@@ -79,10 +79,19 @@ export function mysqlErrorMap(error) {
         field: column ? toCamel(column) : undefined,
       });
     }
+    // ER_TRUNCATED_WRONG_VALUE: a value MySQL cannot read as its column's type, e.g. a DATETIME past 9999.
     case 'WARN_DATA_TRUNCATED':
+    case 'ER_TRUNCATED_WRONG_VALUE':
     case 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD': {
       const column = /for column '(\w+)'/.exec(text)?.[1];
       return ApiError.validation('invalid value for field', undefined, {
+        field: column ? toCamel(column) : undefined,
+      });
+    }
+    // A number past its column's range, e.g. an id above INT UNSIGNED.
+    case 'ER_WARN_DATA_OUT_OF_RANGE': {
+      const column = /for column '(\w+)'/.exec(text)?.[1];
+      return ApiError.validation('value out of range for field', undefined, {
         field: column ? toCamel(column) : undefined,
       });
     }

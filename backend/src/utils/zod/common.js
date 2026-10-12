@@ -22,16 +22,33 @@ import {
 } from '../../constants/shared.js';
 import { todayYmd } from '../dates.js';
 
+/** The largest id there is: every id column is INT UNSIGNED, which MySQL refuses to go past (a 500). */
+const MAX_ID = 4_294_967_295;
+
 /**
  * A positive whole-number id: a JSON number, or a string of digits (path and query values are always text).
  * Unlike z.coerce it refuses true, [5], '0x10' and '1e3'.
  */
 export const id = z.preprocess(
   (value) => (typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value),
-  z.number({ error: 'expected a whole-number id' }).int().positive(),
+  z
+    .number({ error: 'expected a whole-number id' })
+    .int()
+    .positive()
+    .max(MAX_ID, { error: `ids go up to ${MAX_ID}` }),
 );
 
 export const idOrMe = z.union([z.literal('me'), id]);
+
+/**
+ * The years a date or date-time may fall in. DATE and DATETIME columns hold 1000 to 9999; stopping one year
+ * short leaves room for a day added to a date, or a date-time moved to UTC, so neither leaves the column's
+ * range (MySQL refuses those, a 500).
+ */
+const MIN_YEAR = 1000;
+const MAX_YEAR = 9998;
+const YEAR_RANGE_ERROR = `the year must be between ${MIN_YEAR} and ${MAX_YEAR}`;
+const isYearInRange = (year) => year >= MIN_YEAR && year <= MAX_YEAR;
 
 export const dateStr = z
   .string()
@@ -43,14 +60,21 @@ export const dateStr = z
       return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
     },
     { error: 'not a real calendar date' },
-  );
+  )
+  .refine((value) => isYearInRange(Number(value.slice(0, 4))), { error: YEAR_RANGE_ERROR });
 
 /** A real calendar date strictly before today (school time zone). */
 export const pastDate = dateStr.refine((value) => value < todayYmd(), { error: 'must be in the past' });
 
 export const timeStr = z.string().regex(TIME_REGEX, { error: 'expected HH:MM (24-hour)' });
 
-export const isoDateTime = z.iso.datetime({ offset: true, error: 'expected an ISO-8601 date-time' });
+/**
+ * An ISO-8601 date-time with a time zone. The year is checked on the instant in UTC, as it is stored:
+ * '9998-12-31T23:00:00-05:00' is already the year 9999 there.
+ */
+export const isoDateTime = z.iso
+  .datetime({ offset: true, error: 'expected an ISO-8601 date-time' })
+  .refine((value) => isYearInRange(new Date(value).getUTCFullYear()), { error: YEAR_RANGE_ERROR });
 
 /** Trimmed and lower-cased before the format check, so a pasted " Ana@School.ph " is accepted. */
 export const email = z
