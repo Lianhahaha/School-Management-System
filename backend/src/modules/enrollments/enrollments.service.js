@@ -284,6 +284,17 @@ export async function transfer({ studentId, classId }) {
 }
 
 /**
+ * 400 `year_not_started`: a completed row can never be reopened, so a year that has not started cannot be
+ * closed by mistake. `field` names the body field that asked for it.
+ */
+const yearNotStarted = (academicYear, field) =>
+  ApiError.validation(`the ${academicYear} school year has not started yet`, undefined, {
+    reason: 'year_not_started',
+    field,
+    academicYear,
+  });
+
+/**
  * The end of a school year for one class: the listed students' active enrollments in `classId` close as
  * `completed` and, with `nextClassId`, they join that class of a later year. All or nothing; students of the
  * class who are not listed stay active. Both rows carry today's date, as in a transfer, so this belongs after
@@ -297,14 +308,7 @@ export async function completeYear({ classId, studentIds, nextClassId }) {
     // Runs for one class are serialised on the class row: a second run waits, then finds the students closed
     // (locking only the enrollment rows lets two runs deadlock on the index gaps their updates touch).
     klass = await findReferencedClass(classId, 'classId', conn, { forUpdate: true });
-    // A completed row can never be reopened, so a year that has not started cannot be closed by mistake.
-    if (klass.academicYear > currentAcademicYear()) {
-      throw ApiError.validation(`the ${klass.academicYear} school year has not started yet`, undefined, {
-        reason: 'year_not_started',
-        field: 'classId',
-        academicYear: klass.academicYear,
-      });
-    }
+    if (klass.academicYear > currentAcademicYear()) throw yearNotStarted(klass.academicYear, 'classId');
     if (nextClassId !== undefined) {
       next = await assertEnrollableClass(nextClassId, conn, 'nextClassId');
       if (next.academicYear <= klass.academicYear) {
@@ -369,7 +373,8 @@ export async function completeYear({ classId, studentIds, nextClassId }) {
 
 /**
  * Close an active enrollment as `completed` or `withdrawn`. Closed rows cannot be changed. Completing a
- * year is the admin's (as POST /complete is); a student assistant withdraws only.
+ * year is the admin's (as POST /complete is), and only once the year has started; a student assistant
+ * withdraws only.
  */
 export async function setStatus(user, id, status) {
   if (status === 'completed') {
@@ -383,6 +388,9 @@ export async function setStatus(user, id, status) {
     });
   const row = ApiError.assertFound(await repo.findEnrollmentById(id), 'enrollment', id);
   if (row.status !== 'active') throw alreadyClosed(row.status);
+  if (status === 'completed' && row.academicYear > currentAcademicYear()) {
+    throw yearNotStarted(row.academicYear, 'status');
+  }
   await withTransaction(async (conn) => {
     // Another request (a transfer, a second admin) may have closed it since the check above.
     if ((await repo.closeEnrollments([id], status, todayYmd(), conn)) === 0) {

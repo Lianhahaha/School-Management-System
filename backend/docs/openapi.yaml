@@ -1299,7 +1299,9 @@ paths:
 
         Allowed transitions are `active` to `completed` and `active` to `withdrawn`; both set `leftOn` to today.
         Anything else, such as re-activation or closing a closed enrollment, is a 409
-        (`details.reason = invalid_status_transition`). `transferred` is set only by
+        (`details.reason = invalid_status_transition`). As in `POST /enrollments/complete`, closing as
+        `completed` an enrollment whose class's school year has not started is a 400 (`details.reason =
+        year_not_started`, `details.field = status`, with `details.academicYear`). `transferred` is set only by
         `POST /enrollments/transfer`. Enrollments cannot be deleted.
       parameters:
         - $ref: '#/components/parameters/IdPath'

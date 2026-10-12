@@ -89,6 +89,30 @@ describe('enrollment into past, current and future academic years', () => {
     );
   });
 
+  it('closes an enrollment as completed only once its year has started (400 year_not_started)', async () => {
+    const close = (enrollment, status) =>
+      api.patch(`/api/v1/enrollments/${enrollment.id}`).set(as(admin)).send({ status });
+    const nextYear = await enrollStudent(admin, {
+      studentId: (await makeUser('student')).studentId,
+      classId: (await makeClass(admin, { academicYear: yearLabel(1) })).id,
+    });
+    const early = await close(nextYear, 'completed');
+    assert.equal(early.status, 400);
+    assert.equal(early.body.error.details.reason, 'year_not_started');
+    assert.equal(early.body.error.details.field, 'status');
+    assert.equal(early.body.error.details.academicYear, yearLabel(1));
+    const unchanged = await api.get(`/api/v1/enrollments/${nextYear.id}`).set(as(admin));
+    assert.equal(unchanged.body.data.status, 'active');
+    // Withdrawing is not completing: a student can leave next year's class before it starts.
+    assert.equal((await close(nextYear, 'withdrawn')).status, 200);
+
+    const thisYear = await enrollStudent(admin, {
+      studentId: (await makeUser('student')).studentId,
+      classId: (await makeClass(admin)).id,
+    });
+    assert.equal((await close(thisYear, 'completed')).status, 200);
+  });
+
   it('bulk-enrolls the largest allowed batch and returns every enrollment', async () => {
     const klass = await makeClass(admin);
     const students = [];
