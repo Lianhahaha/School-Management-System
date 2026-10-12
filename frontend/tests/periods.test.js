@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { STUDENT_GRADES_CSV_COLUMNS } from '../src/features/grades/csv';
 import {
   PERIODS,
   WHOLE_YEAR_PARAM,
@@ -126,47 +125,5 @@ describe("a new assessment's semester", () => {
     today(2027, 3, 1);
     expect(defaultAssessmentSemester('')).toBe('sem2');
     expect(defaultAssessmentSemester('not a date')).toBe('sem2');
-  });
-});
-
-describe("a student's grades CSV", () => {
-  it('names the semester and the quarter of each grade, in separate columns', () => {
-    const headers = STUDENT_GRADES_CSV_COLUMNS.map((column) => column.header);
-    expect(headers).toEqual([
-      'Subject',
-      'Assessment',
-      'Type',
-      'Semester',
-      'Quarter',
-      'Date',
-      'Score',
-      'Max score',
-      'Percent',
-      'Remarks',
-    ]);
-    const grade = {
-      score: 18,
-      percentage: 90,
-      remarks: null,
-      assessment: {
-        subjectName: 'Math',
-        title: 'Quiz 1',
-        type: 'quiz',
-        semester: 'sem2',
-        term: 'term3',
-        maxScore: 20,
-        assessedOn: '2027-03-02',
-      },
-    };
-    const cells = Object.fromEntries(
-      STUDENT_GRADES_CSV_COLUMNS.map((column) => [column.header, column.value(grade)]),
-    );
-    expect(cells).toMatchObject({
-      Subject: 'Math',
-      Type: 'Quiz',
-      Semester: '2nd Semester',
-      Quarter: '3rd Quarter',
-      Date: '2027-03-02',
-    });
   });
 });

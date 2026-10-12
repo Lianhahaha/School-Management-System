@@ -14,7 +14,7 @@ const EMPTY = '—';
 
 /**
  * One locale for every date and time on screen, whatever the browser is set to: Philippine English,
- * so dates read 'Oct 6, 2026' and times '8:00 AM' everywhere. CSV exports keep 'YYYY-MM-DD'.
+ * so dates read 'Oct 6, 2026' and times '8:00 AM' everywhere.
  */
 export const LOCALE = 'en-PH';
 

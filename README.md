@@ -50,7 +50,7 @@ Beyond the brief, kept small and built on the same API:
 | Live updates | The page you are looking at refreshes itself about every 20 seconds (and when you return to the tab), so other people's changes appear without a reload; the sheets a teacher is editing are left alone |
 | Light and dark themes | Switch in the top bar (and on the sign-in page); the choice is remembered on the device, and the system setting is followed until you pick one |
 | Search everywhere | Admins press Ctrl+K (⌘K on a Mac) to find a student, teacher, class or subject from any page |
-| CSV and printing | Lists of grades and attendance download as CSV; report cards and timetables print cleanly |
+| Printing | Report cards and timetables print cleanly |
 | LRN | A student can have a 12-digit LRN (Learner Reference Number), unique, set at sign-up, by an admin or on the profile, and found by search; the printed report card (SF9) shows it |
 | Install as an app | See above: the browser's install button, or Add to Home Screen on an iPhone |
 | Student assistant sign-up | Student assistants sign up themselves (nobody creates one as an account); until an admin, or an approved assistant, approves the request (`/assistant-requests`) the account can only read and edit its own details, and a declined applicant reads the reason |
@@ -154,7 +154,7 @@ npm run typecheck      # TypeScript checks the JSDoc types of the .js logic file
 npm run check          # lint + type check + unit tests + production build
 ```
 
-The backend tests use a separate `school_management_test` database and an in-memory fake of Firebase, so they never touch your real data or your Firebase project. The frontend tests in `frontend/tests` cover grade arithmetic, form rules, CSV export, and dates; one of them runs the same scores through the backend's and the frontend's grading code and expects the same results.
+The backend tests use a separate `school_management_test` database and an in-memory fake of Firebase, so they never touch your real data or your Firebase project. The frontend tests in `frontend/tests` cover grade arithmetic, form rules and dates; one of them runs the same scores through the backend's and the frontend's grading code and expects the same results.
 
 GitHub runs both on every push and pull request: the backend checks (lint, secrets check, `npm test` against MySQL 8) in [backend-tests.yml](.github/workflows/backend-tests.yml) and the frontend checks (lint, type check, unit tests, build) in [frontend-checks.yml](.github/workflows/frontend-checks.yml); results are in the **Actions** tab. Every push to `main` also deploys the frontend once the backend tests pass ([deploy-frontend.yml](.github/workflows/deploy-frontend.yml), which runs the frontend lint and tests again first); Render deploys the API on its own.
 

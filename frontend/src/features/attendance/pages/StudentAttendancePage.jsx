@@ -2,7 +2,6 @@ import { PageHeader } from '../../../components/layout/PageHeader';
 import { Alert } from '../../../components/ui/Alert';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { ErrorState } from '../../../components/ui/ErrorState';
-import { ExportCsvButton } from '../../../components/ui/ExportCsvButton';
 import { FilterBar } from '../../../components/ui/FilterBar';
 import { Input } from '../../../components/ui/Input';
 import { OptionSelect } from '../../../components/ui/OptionSelect';
@@ -11,16 +10,13 @@ import { Select } from '../../../components/ui/Select';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { ATTENDANCE_STATUS_OPTIONS } from '../../../constants/ui';
 import { useListParams } from '../../../hooks/useListParams';
-import { fetchAllPages } from '../../../lib/csv';
 import { academicYearEnd, academicYearStart, todayYmd } from '../../../utils/date';
 import { useAuth } from '../../auth/hooks';
 import { NotEnrolledState, NotInClassNote } from '../../enrollments/components/NotEnrolledState';
 import { SchoolYearSelect } from '../../enrollments/components/SchoolYearSelect';
 import { useSchoolYear } from '../../enrollments/hooks';
-import { listAttendance } from '../api';
 import { AttendanceRecordsTable } from '../components/AttendanceRecordsTable';
 import { AttendanceSummaryPanel } from '../components/AttendanceSummaryPanel';
-import { ATTENDANCE_CSV_COLUMNS } from '../csv';
 import { useAttendance, useAttendanceSummary } from '../hooks';
 
 const earlier = (a, b) => (a <= b ? a : b);
@@ -75,28 +71,9 @@ function StudentAttendanceContent({ list, academicYear, notEnrolled = false }) {
       {isRangeValid && <AttendanceSummaryPanel studentId="me" dateFrom={dateFrom} dateTo={dateTo} />}
 
       <section aria-labelledby="attendance-records-heading">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 id="attendance-records-heading" className="text-base font-semibold text-gray-900">
-            Records
-          </h2>
-          {isRangeValid && (
-            <ExportCsvButton
-              size="sm"
-              fileName={`my attendance ${dateFrom} to ${dateTo}`}
-              columns={ATTENDANCE_CSV_COLUMNS}
-              getRows={() =>
-                fetchAllPages(listAttendance, {
-                  dateFrom,
-                  dateTo,
-                  ...(list.params.classSubjectId && { classSubjectId: list.params.classSubjectId }),
-                  ...(list.params.status && { status: list.params.status }),
-                  sortBy: 'attendanceDate',
-                  sortOrder: 'asc',
-                })
-              }
-            />
-          )}
-        </div>
+        <h2 id="attendance-records-heading" className="mb-3 text-base font-semibold text-gray-900">
+          Records
+        </h2>
         <FilterBar onClear={hasYearFilters ? clearYearFilters : undefined}>
           <label className="flex items-center gap-2 text-sm text-gray-700">
             From

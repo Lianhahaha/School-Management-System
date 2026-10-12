@@ -35,7 +35,7 @@ import { keepPreviousData, useMutation, useQueries, useQuery } from '@tanstack/r
 import { SEMESTERS } from '../../constants/shared';
 import { useInvalidate } from '../../hooks/useInvalidate';
 import { useToast } from '../../hooks/useToast';
-import { fetchAllPages } from '../../lib/csv';
+import { fetchAllPages } from '../../lib/pagination';
 import { isInlineFormError } from '../../lib/formErrors';
 import { tagSemester } from '../../utils/grades';
 import { dashboardKeys } from '../dashboard/keys';

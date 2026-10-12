@@ -16,7 +16,7 @@
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { useInvalidate } from '../../hooks/useInvalidate';
 import { useToast } from '../../hooks/useToast';
-import { fetchAllPages } from '../../lib/csv';
+import { fetchAllPages } from '../../lib/pagination';
 import { fullName } from '../../utils/names';
 import { attendanceKeys } from '../attendance/keys';
 import { dashboardKeys } from '../dashboard/keys';
