@@ -12,7 +12,9 @@
  * class-subjects and timetables (teacher name), enrollments and the dashboard, so every write
  * refreshes all of them. A name change also reaches the attendance sheets and grade rosters (students, who
  * marked or graded) and the announcements (author); a deactivation withdraws a student from their class, so it
- * reaches the sheets and rosters too. Editing your own account also refreshes the session (`me`).
+ * reaches the sheets and rosters, the fee statements and the bell too. Deleting or (de)activating an account
+ * also refreshes the student assistant requests (list and nav badge). Editing your own account also refreshes
+ * the session (`me`).
  *
  * Mutations tagged [form] are silent (meta.silent): the form or dialog that sends them shows every
  * error itself. Every other mutation raises an error toast.
@@ -22,13 +24,16 @@ import { useInvalidate } from '../../hooks/useInvalidate';
 import { useToast } from '../../hooks/useToast';
 import { fullName } from '../../utils/names';
 import { announcementKeys } from '../announcements/keys';
+import { assistantRequestKeys } from '../assistantRequests/keys';
 import { attendanceKeys } from '../attendance/keys';
 import { useAuth } from '../auth/hooks';
 import { classKeys } from '../classes/keys';
 import { classSubjectKeys } from '../classSubjects/keys';
 import { dashboardKeys } from '../dashboard/keys';
 import { enrollmentKeys } from '../enrollments/keys';
+import { feeKeys } from '../fees/keys';
 import { gradeKeys } from '../grades/keys';
+import { notificationKeys } from '../notifications/keys';
 import { scheduleKeys } from '../schedules/keys';
 import { studentKeys } from '../students/keys';
 import { teacherKeys } from '../teachers/keys';
@@ -48,6 +53,13 @@ const ACCOUNT_SCOPES = [
 
 /** The attendance sheets and grade rosters list students and who marked or graded; the live refresh skips them. */
 const ROSTER_SCOPES = [attendanceKeys.all, gradeKeys.all];
+
+/**
+ * What a (de)activation changes beyond the accounts: a deactivated student is withdrawn from their class, and
+ * the sheets, rosters, fee statements and bell follow the enrollment (as in enrollments/hooks.js); a
+ * deactivated student assistant's request no longer waits for the office (Assistant requests and its badge).
+ */
+const STATUS_SCOPES = [...ROSTER_SCOPES, feeKeys.all, notificationKeys.all, assistantRequestKeys.all];
 
 export function useUsers(params, { enabled = true } = {}) {
   return useQuery({
@@ -102,7 +114,7 @@ export function useSetUserStatus() {
       toast.success(`${fullName(user)} ${user.isActive ? 'reactivated' : 'deactivated'}`);
     },
     // Also after a 503: the school side may be saved while the sign-in step failed, so show what is stored.
-    onSettled: () => invalidateAccounts(...ROSTER_SCOPES),
+    onSettled: () => invalidateAccounts(...STATUS_SCOPES),
   });
 }
 
@@ -114,7 +126,8 @@ export function useDeleteUser() {
       deleteUser(user.id),
     meta: { silent: true },
     onSuccess: (_, user) => {
-      invalidateAccounts();
+      // A declined (or never used) student assistant's request goes with the account.
+      invalidateAccounts(assistantRequestKeys.all);
       toast.success(`${fullName(user)} deleted`);
     },
   });
