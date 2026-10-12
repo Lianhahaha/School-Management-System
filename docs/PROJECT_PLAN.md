@@ -361,7 +361,7 @@ Pre-submission gate (in order): `npm test` (backend) → `npm run lint` and `npm
 | JavaScript or TypeScript | JavaScript (ESM) with zod and ESLint | No build step on the backend; a reviewer runs `npm install` and `npm run dev` |
 | Public student self-registration | On by default (`ALLOW_PUBLIC_REGISTRATION`); the role is forced to `student` on the server | A reviewer can try the app before using the admin |
 | Time zone and school year | `APP_TIMEZONE` (default: `Asia/Manila`); the school year starts in August | Matches the school calendar used here |
-| Deployment | Local-first; a free deployment (Firebase Hosting, Render, Aiven) was added afterwards | Running locally is the deliverable; the live demo is a bonus |
+| Deployment | Local-first; a free deployment (Firebase Hosting, Render, Aiven) was added afterwards | Running locally is the deliverable; the live site is a bonus |
 | Project folder | Stays where it is; the README's troubleshooting covers OneDrive syncing `node_modules` | The owner's choice |
 | Git | One commit per completed step, conventional messages, every change pushed | Readable history for the review |
 

@@ -317,7 +317,7 @@ paths:
               teacher:
                 summary: Teacher with an explicit employee number
                 value:
-                  email: ana.reyes@school.test
+                  email: ana.reyes@example.com
                   password: TempPass#2026
                   role: teacher
                   firstName: Ana
@@ -330,7 +330,7 @@ paths:
               admin:
                 summary: Administrator (no profile)
                 value:
-                  email: admin3@school.test
+                  email: sam.ortiz@example.com
                   password: TempPass#2026
                   role: admin
                   firstName: Sam
@@ -5691,7 +5691,7 @@ components:
                 data:
                   id: 7
                   firebaseUid: t3AcH3rUid
-                  email: ana.reyes@school.test
+                  email: ana.reyes@example.com
                   firstName: Ana
                   lastName: Reyes
                   phone: null
@@ -6351,7 +6351,7 @@ components:
               status: ok
               db: up
               version: 1.0.0
-              firebaseProjectId: school-management-demo
+              firebaseProjectId: school-management-12345
               timeZone: Asia/Manila
               uptimeSeconds: 4312
               timestamp: '2026-10-03T07:30:00.000Z'
@@ -6522,7 +6522,7 @@ components:
               declineReason: null
               requestedAt: '2026-10-11T01:15:00.000Z'
               decidedAt: '2026-10-11T02:40:00.000Z'
-              decidedBy: { id: 1, firstName: Amara, lastName: Johnson }
+              decidedBy: { id: 1, firstName: Sam, lastName: Ortiz }
     AssistantRequestListResponse:
       description: A page of student assistant requests.
       headers:
