@@ -40,10 +40,10 @@ function OpenStudent({ to, student, className }) {
   );
 }
 
-/** The full-width version (admin dashboard): one row per student, read across. Scrolls sideways on a phone. */
+/** The full-width version (admin dashboard, from `sm` up): one row per student, read across. */
 function AtRiskTable({ students, studentPath }) {
   return (
-    <div className="-mx-5 overflow-x-auto">
+    <div className="relative -mx-5 overflow-x-auto">
       <table className="w-full min-w-[34rem] text-left">
         <thead>
           <tr className="border-b border-gray-200 text-xs text-gray-600">
@@ -103,13 +103,17 @@ function Figure({ label, value, isBelow: below }) {
   );
 }
 
-/** The narrow version (a dashboard column): name and class, then both figures on the right. */
+/** The narrow version (a dashboard column, and every phone): name and class, then both figures on the right. */
 function AtRiskList({ students, studentPath }) {
   return (
     <ul className="divide-y divide-gray-200">
       {students.map((student) => (
-        <li key={student.studentId} className="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
-          <span className="min-w-0 flex-1">
+        // On a narrow screen the figures move under the name instead of squeezing it.
+        <li
+          key={student.studentId}
+          className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3 first:pt-0 last:pb-0"
+        >
+          <span className="min-w-44 flex-1">
             <span className="block text-[0.9375rem] font-medium text-gray-900">{fullName(student)}</span>
             <span className="mt-0.5 block text-xs text-gray-600">
               {student.className} · <span className="whitespace-nowrap">{student.studentNumber}</span>
@@ -123,7 +127,9 @@ function AtRiskList({ students, studentPath }) {
             />
             <Figure label="Average" value={averageOf(student)} isBelow={isBelow(student, 'grades')} />
           </span>
-          {studentPath && <OpenStudent to={studentPath(student.studentId)} student={student} />}
+          {studentPath && (
+            <OpenStudent to={studentPath(student.studentId)} student={student} className="ml-auto" />
+          )}
         </li>
       ))}
     </ul>
@@ -140,12 +146,25 @@ function AtRiskList({ students, studentPath }) {
  * @param {object} props
  * @param {{ attendanceRateBelow: number, gradeAverageBelow: number, total: number, students: object[] }} props.atRisk
  * @param {(studentId: number) => string} [props.studentPath] link of a row; rows are plain text without it
- * @param {'list'|'table'} [props.layout] `table` when the card spans the page, `list` in a column
+ * @param {'list'|'table'} [props.layout] `table` when the card spans the page (a phone still gets the list), `list`
+ *   in a column
  */
 export function AtRiskCard({ atRisk, studentPath, layout = 'list' }) {
   const lines = `Below ${formatPercent(atRisk.attendanceRateBelow)} attendance or a ${formatResult(atRisk.gradeAverageBelow)} average this school year`;
   const hasStudents = atRisk.total > 0;
-  const Rows = layout === 'table' ? AtRiskTable : AtRiskList;
+  const rows =
+    layout === 'table' ? (
+      <>
+        <div className="max-sm:hidden">
+          <AtRiskTable students={atRisk.students} studentPath={studentPath} />
+        </div>
+        <div className="sm:hidden">
+          <AtRiskList students={atRisk.students} studentPath={studentPath} />
+        </div>
+      </>
+    ) : (
+      <AtRiskList students={atRisk.students} studentPath={studentPath} />
+    );
 
   return (
     <Card
@@ -159,7 +178,7 @@ export function AtRiskCard({ atRisk, studentPath, layout = 'list' }) {
         <EmptyState icon={UserCheck} title="Everyone is on track" compact />
       ) : (
         <>
-          <Rows students={atRisk.students} studentPath={studentPath} />
+          {rows}
           {atRisk.students.some((student) => isBelow(student, 'attendance')) && (
             <p className="mt-3 text-xs text-gray-600">Excused absences count as missed periods.</p>
           )}

@@ -45,7 +45,7 @@ const typesOf = (component) => {
 function ComponentTable({ group }) {
   const weights = COMPONENT_WEIGHTS[group];
   return (
-    <div className="overflow-x-auto rounded-xl ring-1 ring-gray-200">
+    <div className="relative overflow-x-auto rounded-xl ring-1 ring-gray-200">
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-xs text-gray-600">

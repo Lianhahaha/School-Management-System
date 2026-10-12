@@ -331,6 +331,11 @@
     font-feature-settings: 'cv11', 'ss01';
     /* A long email or link breaks onto the next line instead of pushing the page wider than a phone. */
     overflow-wrap: break-word;
+    /*
+     * The page never scrolls sideways: whatever is wider than the screen scrolls inside its own box (a
+     * table's region) instead of shifting the whole page. `clip`, not `hidden`, so sticky headers still work.
+     */
+    overflow-x: clip;
   }
 
   ::selection {

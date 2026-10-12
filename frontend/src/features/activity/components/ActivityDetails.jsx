@@ -47,7 +47,7 @@ function formatValue(value, field) {
 /** Before / after rows: either one per field (edits) or one per student (grades, attendance). */
 function ChangesTable({ caption, firstHeader, rows }) {
   return (
-    <div className="overflow-x-auto rounded-xl ring-1 ring-gray-200">
+    <div className="relative overflow-x-auto rounded-xl ring-1 ring-gray-200">
       <Table caption={caption}>
         <THead>
           <Tr>
