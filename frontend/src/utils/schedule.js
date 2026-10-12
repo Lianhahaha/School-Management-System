@@ -90,15 +90,18 @@ export function lessonToMark(periods, minutesNow) {
  *   morePeriods  the started periods of the other started sheets ("and 2 more periods")
  *   laterPeriods the periods of any of these sheets that have not started yet ("2 periods later today")
  * One sheet marks all its periods, so a sheet that has started can still have a period later today.
- * @param {Array<{ startTime: string, periods: Array<{ startTime: string }> }>} unmarkedLessons
+ * @param {Array<{ startTime: string, periods?: Array<{ startTime: string }> }>} unmarkedLessons
  * @param {number} minutesNow minutes since midnight
  * @param {number} listLimit
  */
 export function unmarkedPeriodsNow(unmarkedLessons, minutesNow, listLimit) {
   const hasStarted = (item) => timeToMinutes(item.startTime) <= minutesNow;
+  // A sheet without `periods` (an API from before they were sent, e.g. while a deploy is half done) counts as
+  // its one first period, so the card keeps working instead of failing.
+  const periodsOf = (lesson) => lesson.periods ?? [lesson];
   const overdue = unmarkedLessons.filter(hasStarted);
-  const startedPeriods = overdue.slice(listLimit).flatMap((lesson) => lesson.periods.filter(hasStarted));
-  const laterPeriods = unmarkedLessons.flatMap((lesson) => lesson.periods.filter((p) => !hasStarted(p)));
+  const startedPeriods = overdue.slice(listLimit).flatMap((lesson) => periodsOf(lesson).filter(hasStarted));
+  const laterPeriods = unmarkedLessons.flatMap((lesson) => periodsOf(lesson).filter((p) => !hasStarted(p)));
   return {
     listed: overdue.slice(0, listLimit),
     morePeriods: startedPeriods.length,
