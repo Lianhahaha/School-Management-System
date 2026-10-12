@@ -1,8 +1,9 @@
 import './helpers/setup.js';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
+import { run } from '../src/config/db.js';
 import { currentAcademicYear, nextAcademicYear } from '../src/utils/dates.js';
-import { api, as, buildSchool, closeWorld, makeClass, resetWorld } from './helpers/harness.js';
+import { api, as, buildSchool, closeWorld, fillClass, makeClass, resetWorld } from './helpers/harness.js';
 
 after(closeWorld);
 
@@ -66,5 +67,74 @@ describe('students by the school year of their class', () => {
         .set(as(school.admin));
       assert.equal(res.status, 400, year);
     }
+  });
+});
+
+/** The filters of the list the "Active enrollments" tile opens (frontend AdminCountTiles). */
+const TILE_LIST = `hasActiveEnrollment=true&academicYear=${thisYear}&isActive=true`;
+
+describe("the admin dashboard's active enrollments", () => {
+  let school;
+  let nextClass;
+
+  const dashboard = async () => {
+    const res = await api.get('/api/v1/dashboard').set(as(school.admin));
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    return res.body.data;
+  };
+  const completeYear = async (studentIds) => {
+    const res = await api
+      .post('/api/v1/enrollments/complete')
+      .set(as(school.admin))
+      .send({ classId: school.classA.id, studentIds, nextClassId: nextClass.id });
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+  };
+  /** The tile, the bars and the list the tile opens all count the same students. */
+  const assertTileMatchesList = async () => {
+    const { counts, enrollmentsByGrade } = await dashboard();
+    const res = await api.get(`/api/v1/students?${TILE_LIST}&limit=1`).set(as(school.admin));
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.equal(res.body.meta.total, counts.activeEnrollments, 'the tile and its list');
+    const byGrade = enrollmentsByGrade.reduce((sum, grade) => sum + grade.students, 0);
+    assert.equal(byGrade, counts.activeEnrollments, 'the bars and the tile');
+    return counts.activeEnrollments;
+  };
+
+  before(async () => {
+    await resetWorld();
+    // s1 and s2 in class A (grade 10, this school year).
+    school = await buildSchool();
+    nextClass = await makeClass(school.admin, {
+      name: 'Grade 11 - A',
+      gradeLevel: 11,
+      academicYear: nextYear,
+    });
+    const [, switchedOff] = await fillClass(school.classB.id, 2);
+    // An account switched off with its enrollment still open: deactivating through the API withdraws the
+    // enrollment, but older data or a hand fix may hold one. Neither the tile nor its list counts it.
+    await run('UPDATE users u JOIN students s ON s.user_id = u.id SET u.is_active = 0 WHERE s.id = ?', [
+      switchedOff,
+    ]);
+  });
+
+  it("counts the active students in this school year's classes", async () => {
+    const { counts, enrollmentsByGrade } = await dashboard();
+    assert.equal(counts.activeEnrollments, 3);
+    assert.deepEqual(enrollmentsByGrade, [{ gradeLevel: 10, students: 3 }]);
+  });
+
+  it("leaves out students already placed in next year's class", async () => {
+    // The End of school year run before August: s2 now has an active enrollment in next year's class.
+    await completeYear([school.s2.studentId]);
+    const { counts, enrollmentsByGrade } = await dashboard();
+    assert.equal(counts.activeEnrollments, 2);
+    assert.deepEqual(enrollmentsByGrade, [{ gradeLevel: 10, students: 2 }]);
+    assert.equal(counts.classes, 2, "next year's class is not this year's either");
+  });
+
+  it('shows the number of the list the tile opens, whatever the year-end stage', async () => {
+    assert.equal(await assertTileMatchesList(), 2);
+    await completeYear([school.s1.studentId]);
+    assert.equal(await assertTileMatchesList(), 1);
   });
 });

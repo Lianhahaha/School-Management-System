@@ -133,7 +133,7 @@ async function adminDashboard(user) {
     await Promise.all([
       repo.findAdminCounts(day.year),
       summarizeAttendanceUnscoped({ dateFrom: today, dateTo: today }),
-      repo.findEnrollmentsByGrade(),
+      repo.findEnrollmentsByGrade(day.year),
       upcomingAssessmentsUnscoped({ days: 7, limit: 10 }),
       briefAnnouncements(user),
       atRiskStudents(user),

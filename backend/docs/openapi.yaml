@@ -4601,6 +4601,10 @@ components:
               description: Weekly timetable slots of the current academic year's classes.
             activeEnrollments:
               type: integer
+              description: |
+                Active students in a class of the current academic year (as
+                `GET /students?hasActiveEnrollment=true&academicYear={current}&isActive=true`). A student
+                already placed in next year's class is not counted.
             unenrolledStudents:
               type: integer
               description: |
@@ -4666,6 +4670,9 @@ components:
                               $ref: '#/components/schemas/TimeHm'
         enrollmentsByGrade:
           type: array
+          description: >-
+            The students of `counts.activeEnrollments` per grade level of their class, lowest grade first; grades
+            without any are left out.
           items:
             type: object
             required: [gradeLevel, students]
@@ -6958,7 +6965,10 @@ components:
                     excused: 10
                     rate: 0.949
                   enrollmentsByGrade:
-                    - { gradeLevel: 7, students: 80 }
+                    - { gradeLevel: 7, students: 62 }
+                    - { gradeLevel: 8, students: 60 }
+                    - { gradeLevel: 9, students: 58 }
+                    - { gradeLevel: 10, students: 56 }
                   upcomingAssessments:
                     - id: 31
                       title: Unit 2 Exam

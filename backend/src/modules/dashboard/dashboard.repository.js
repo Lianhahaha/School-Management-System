@@ -8,8 +8,22 @@ import { enrolledInClassOn } from '../access/access.repository.js';
 import { WITHOUT_A_CLASS } from '../students/students.repository.js';
 
 /**
- * `unenrolled_students` counts like GET /students?hasActiveEnrollment=false&isActive=true (pending applicants
- * included, applications declined in the past left out).
+ * Active students in a class of the school year (the `?` placeholder): their active enrollments, one per student
+ * (uq_enrollments_one_active). The rows of GET /students?hasActiveEnrollment=true&academicYear=…&isActive=true,
+ * so the dashboard tile that opens that list counts what it shows. A student already placed in next year's class
+ * (End of school year run before August) counts under next year, not this one.
+ */
+const ENROLLED_IN_YEAR = `FROM enrollments e
+  JOIN classes c ON c.id = e.class_id
+  JOIN students s ON s.id = e.student_id
+  JOIN users u ON u.id = s.user_id
+ WHERE e.status = 'active' AND u.is_active = 1 AND c.academic_year = ?`;
+
+/**
+ * Classes, teacher assignments, timetable slots and active enrollments are those of the academic year's
+ * classes. `active_enrollments` counts like GET /students?hasActiveEnrollment=true&academicYear=…&isActive=true
+ * (ENROLLED_IN_YEAR); `unenrolled_students` like GET /students?hasActiveEnrollment=false&isActive=true (pending
+ * applicants included, applications declined in the past left out).
  */
 export async function findAdminCounts(academicYear) {
   const rows = await query(
@@ -24,13 +38,13 @@ export async function findAdminCounts(academicYear) {
           JOIN class_subjects cs ON cs.id = sch.class_subject_id
           JOIN classes c ON c.id = cs.class_id
          WHERE c.academic_year = ?) AS timetable_slots,
-       (SELECT COUNT(*) FROM enrollments WHERE status = 'active') AS active_enrollments,
+       (SELECT COUNT(*) ${ENROLLED_IN_YEAR}) AS active_enrollments,
        (SELECT COUNT(*) FROM students s
           JOIN users u ON u.id = s.user_id
           LEFT JOIN enrollments e ON e.student_id = s.id AND e.status = 'active'
           LEFT JOIN admissions ad ON ad.student_id = s.id
          WHERE u.is_active = 1 AND ${WITHOUT_A_CLASS}) AS unenrolled_students`,
-    [academicYear, academicYear, academicYear],
+    [academicYear, academicYear, academicYear, academicYear],
   );
   return rows[0];
 }
@@ -49,12 +63,13 @@ export async function findClassIdsWithStudentsOn(classIds, ymd) {
   return new Set(rows.map((row) => row.id));
 }
 
-export function findEnrollmentsByGrade() {
+/** The active enrollments counted, per grade level of the academic year's classes: they add up to the count. */
+export function findEnrollmentsByGrade(academicYear) {
   return query(
     `SELECT c.grade_level, COUNT(*) AS students
-       FROM enrollments e JOIN classes c ON c.id = e.class_id
-      WHERE e.status = 'active'
+       ${ENROLLED_IN_YEAR}
       GROUP BY c.grade_level ORDER BY c.grade_level`,
+    [academicYear],
   );
 }
 
