@@ -15,8 +15,15 @@ import { dashboardKeys } from '../dashboard/keys';
 import { studentKeys } from '../students/keys';
 import { updateAdmission } from './api';
 
-/** Pending applications; `limit: 1` because only `meta.total` is read. */
-export const PENDING_APPLICATIONS_PARAMS = Object.freeze({ admissionStatus: 'pending', limit: 1 });
+/**
+ * Pending applications of active accounts: a deactivated applicant waits for nothing (the office cannot enroll
+ * them), so they would stay in the badge for good. `limit: 1` because only `meta.total` is read.
+ */
+export const PENDING_APPLICATIONS_PARAMS = Object.freeze({
+  admissionStatus: 'pending',
+  isActive: 'true',
+  limit: 1,
+});
 
 export function useUpdateAdmission() {
   const queryClient = useQueryClient();

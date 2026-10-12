@@ -39,6 +39,9 @@ export default function AdmissionsPage() {
       sortBy: list.params.sortBy,
       sortOrder: list.params.sortOrder,
       admissionStatus: status,
+      // Waiting means an active account, as in the nav badge (PENDING_APPLICATIONS_PARAMS): a deactivated
+      // applicant cannot be admitted. The admitted list stays a record of everyone admitted.
+      ...(status === 'pending' && { isActive: 'true' }),
     }),
   );
   const [admitTarget, setAdmitTarget] = useState(null);
