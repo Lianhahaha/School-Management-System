@@ -10,6 +10,7 @@ const form = (patch) => ({
   email: 'joy.bautista@example.com',
   password: 'Str0ngPass!',
   confirmPassword: 'Str0ngPass!',
+  privacyConsent: true,
   ...patch,
 });
 
@@ -59,6 +60,7 @@ describe('registerSchema: a student assistant', () => {
       password: 'Str0ngPass!',
       confirmPassword: 'Str0ngPass!',
       phone: '+63 917 555 0123',
+      privacyConsent: true,
     });
   });
 
@@ -81,6 +83,22 @@ describe('registerSchema: either kind', () => {
       });
       expect(issuesOf(registerSchema.safeParse(values))).toEqual({
         confirmPassword: "Passwords don't match",
+      });
+    }
+  });
+
+  it('needs the Privacy Notice box ticked, which starts unticked', () => {
+    expect(registerDefaults.privacyConsent).toBe(false);
+    for (const accountType of ['student', 'assistant']) {
+      const values = form({
+        accountType,
+        privacyConsent: false,
+        gradeLevel: '7',
+        guardianName: 'Maria Cruz',
+        guardianPhone: '+63 917 765 4321',
+      });
+      expect(issuesOf(registerSchema.safeParse(values))).toEqual({
+        privacyConsent: 'Tick the box to agree to the Privacy Notice',
       });
     }
   });

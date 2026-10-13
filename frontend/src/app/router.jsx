@@ -111,6 +111,11 @@ export const router = createBrowserRouter([
         element: <PublicOnly />,
         children: [{ element: <AuthLayout />, children: publicRoutes }],
       },
+      // Open to everyone, signed in or not.
+      {
+        element: <AuthLayout wide />,
+        children: [{ path: 'privacy', element: page(() => import('../features/privacy/pages/PrivacyPage')) }],
+      },
       {
         element: <RequireAuth />,
         children: [
@@ -124,6 +129,7 @@ export const router = createBrowserRouter([
                 children: [
                   { index: true, element: <RoleRedirect /> },
                   { path: 'profile', element: page(() => import('../features/profile/pages/ProfilePage')) },
+                  { path: 'help', element: page(() => import('../features/help/pages/HelpPage')) },
                   { path: '403', element: page(() => import('./pages/ForbiddenPage')) },
                   {
                     path: 'admin',

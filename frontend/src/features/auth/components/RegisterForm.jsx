@@ -2,12 +2,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { Alert } from '../../../components/ui/Alert';
 import { Button } from '../../../components/ui/Button';
+import { Checkbox } from '../../../components/ui/Checkbox';
 import { FormField, FormRootError } from '../../../components/ui/FormField';
 import { Input } from '../../../components/ui/Input';
 import { PasswordInput } from '../../../components/ui/PasswordInput';
 import { RadioTiles } from '../../../components/ui/RadioTiles';
 import { Select } from '../../../components/ui/Select';
+import { TextLink } from '../../../components/ui/TextLink';
 import { Textarea } from '../../../components/ui/Textarea';
+import { SCHOOL } from '../../../constants/privacy';
+import { PRIVACY_NOTICE_VERSION } from '../../../constants/shared';
 import { GENDER_OPTIONS, GRADE_LEVEL_OPTIONS } from '../../../constants/ui';
 import { applyServerErrors } from '../../../lib/formErrors';
 import { useRegister } from '../hooks';
@@ -93,6 +97,35 @@ function MoreAboutYou({ register, errors }) {
 }
 
 /**
+ * The short notice at the moment of collection (NPC Circular 2023-04) and the consent box, unticked: the
+ * law accepts only a clear act of agreeing. The full notice opens in a new tab so the form keeps its input.
+ */
+function PrivacyConsent({ register, errors }) {
+  return (
+    <div className="space-y-3 border-t border-gray-200 pt-5">
+      <p className="text-sm text-gray-700">
+        {SCHOOL.name} uses what you enter to run your account and, once you are enrolled, your school records:
+        class, attendance and grades. Your teachers and the school office see them; other students do not.
+        They are stored with Google, Render and Aiven, partly outside the Philippines. You can see, correct or
+        ask to delete them.{' '}
+        <TextLink to="/privacy" target="_blank" rel="noreferrer">
+          Read the Privacy Notice
+        </TextLink>
+      </p>
+      <Checkbox
+        {...register('privacyConsent')}
+        label="I have read the Privacy Notice and agree to the school using my information as it explains."
+      />
+      {errors.privacyConsent && (
+        <p role="alert" className="text-xs text-red-600">
+          {errors.privacyConsent.message}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
  * Self-registration, as a student or as a student assistant (the choice at the top):
  *   student    the account fields, an "Application" section (grade applied for, LRN, previous school and
  *              guardian) and an optional, collapsible "More about you"; afterwards the student picks a class
@@ -112,10 +145,11 @@ export function RegisterForm() {
   const accountType = useWatch({ control, name: 'accountType' });
   const isAssistant = accountType === 'assistant';
 
-  // confirmPassword exists only in the form; the endpoint rejects unknown fields.
-  const onSubmit = ({ confirmPassword: _confirmPassword, ...body }) =>
+  // confirmPassword and privacyConsent exist only in the form; the endpoint rejects unknown fields and
+  // records the version of the notice that was agreed to.
+  const onSubmit = ({ confirmPassword: _confirmPassword, privacyConsent: _privacyConsent, ...body }) =>
     registration
-      .mutateAsync(body)
+      .mutateAsync({ ...body, privacyNoticeVersion: PRIVACY_NOTICE_VERSION })
       .catch((error) => applyServerErrors(error, setError, { knownFields: REGISTER_FIELDS }));
 
   return (
@@ -156,6 +190,8 @@ export function RegisterForm() {
             <MoreAboutYou register={register} errors={errors} />
           </>
         )}
+
+        <PrivacyConsent register={register} errors={errors} />
 
         <Button type="submit" isLoading={registration.isPending} className="w-full">
           {SUBMIT_LABELS[accountType] ?? SUBMIT_LABELS.student}

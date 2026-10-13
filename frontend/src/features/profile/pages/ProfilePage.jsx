@@ -10,6 +10,7 @@ import { mapFirebaseError } from '../../auth/firebaseErrors';
 import { useAuth, useForgotPassword } from '../../auth/hooks';
 import { RoleBadge } from '../../users/components/RoleBadge';
 import { ContactDetailsForm } from '../components/ContactDetailsForm';
+import { PrivacyCard } from '../components/PrivacyCard';
 import { RoleDetails } from '../components/RoleDetails';
 
 export default function ProfilePage() {
@@ -62,6 +63,8 @@ export default function ProfilePage() {
             Email me a reset link
           </Button>
         </Card>
+
+        <PrivacyCard me={me} />
       </div>
     </>
   );

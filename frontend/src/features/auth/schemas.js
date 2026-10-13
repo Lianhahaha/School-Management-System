@@ -30,6 +30,8 @@ const accountFields = {
   password,
   confirmPassword: z.string(),
   phone: optionalField(phone),
+  // Form only, like confirmPassword: the request carries the notice version instead (RegisterForm).
+  privacyConsent: z.literal(true, { error: 'Tick the box to agree to the Privacy Notice' }),
 };
 
 /**
@@ -70,6 +72,7 @@ export const REGISTER_FIELDS = Object.freeze([
   'email',
   'password',
   'confirmPassword',
+  'privacyConsent',
   'phone',
   'gradeLevel',
   'previousSchool',
@@ -97,6 +100,7 @@ export const registerDefaults = {
   dateOfBirth: '',
   gender: '',
   address: '',
+  privacyConsent: false,
 };
 
 /** The PATCH /auth/me body: a blank input clears the stored value (null). Only students may send the last three. */

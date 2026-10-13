@@ -54,6 +54,8 @@ Beyond the brief, kept small and built on the same API:
 | Printing | Report cards and timetables print cleanly |
 | LRN | A student can have a 12-digit LRN (Learner Reference Number), unique, set at sign-up, by an admin or on the profile, and found by search; the printed report card (SF9) shows it |
 | Install as an app | See above: the browser's install button, or Add to Home Screen on an iPhone |
+| Privacy Notice | `/privacy`, open to everyone and linked from sign-in, sign-up, the sidebar and the profile: a version for students and the full notice, written for the Data Privacy Act of 2012 (RA 10173). Signing up needs an unticked box ticked; the API refuses another notice version and records the one agreed to and when (Profile → Privacy). The school's name and Data Protection Officer are set in [frontend/src/constants/privacy.js](frontend/src/constants/privacy.js); the notice's date is `PRIVACY_NOTICE_VERSION` in `shared.js` |
+| Help | Sidebar → Help: short "How do I…?" answers for the signed-in role, searchable, each with a button to the page it starts on |
 | Student assistant sign-up | Student assistants sign up themselves (nobody creates one as an account); until an admin, or an approved assistant, approves the request (`/assistant-requests`) the account can only read and edit its own details, and a declined applicant reads the reason |
 
 ## Quick start (Windows, $0)

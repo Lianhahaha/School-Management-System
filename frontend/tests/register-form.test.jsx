@@ -1,6 +1,7 @@
 import { screen } from '@testing-library/react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { PRIVACY_NOTICE_VERSION } from '../src/constants/shared';
 import { RegisterForm } from '../src/features/auth/components/RegisterForm';
 import { register } from '../src/features/auth/api';
 import { renderWithProviders } from './helpers/render';
@@ -31,6 +32,9 @@ async function fillAccount(user, { firstName = 'Juan', lastName = 'Dela Cruz' } 
   await fill(user, screen.getByLabelText(/^Password/), PASSWORD);
   await fill(user, screen.getByLabelText(/^Confirm password/), PASSWORD);
 }
+
+/** Ticks the Privacy Notice box, which every sign-up needs. */
+const agree = (user) => user.click(screen.getByRole('checkbox', { name: /I have read the Privacy Notice/ }));
 
 /** The application a student sign-up requires. */
 async function fillApplication(user) {
@@ -65,6 +69,7 @@ describe('RegisterForm', () => {
 
     await fillAccount(user, { firstName: '  Juan  ', lastName: 'Dela    Cruz ' });
     await fillApplication(user);
+    await agree(user);
     await user.click(screen.getByRole('button', { name: 'Create account and pick a class' }));
 
     expect(await screen.findByText('Welcome, Juan!')).toBeInTheDocument();
@@ -78,6 +83,7 @@ describe('RegisterForm', () => {
       gradeLevel: 7,
       guardianName: 'Maria Dela Cruz',
       guardianPhone: '+63 917 765 4321',
+      privacyNoticeVersion: PRIVACY_NOTICE_VERSION,
     });
     expect(signInWithEmailAndPassword).toHaveBeenCalledWith(expect.anything(), 'juan@example.com', PASSWORD);
   });
@@ -92,6 +98,7 @@ describe('RegisterForm', () => {
     expect(screen.getByText('The school office will review your request and email you.')).toBeInTheDocument();
 
     await fillAccount(user);
+    await agree(user);
     await user.click(screen.getByRole('button', { name: 'Send request' }));
 
     expect(await screen.findByText('Request sent')).toBeInTheDocument();
@@ -101,6 +108,21 @@ describe('RegisterForm', () => {
       lastName: 'Dela Cruz',
       email: 'juan@example.com',
       password: PASSWORD,
+      privacyNoticeVersion: PRIVACY_NOTICE_VERSION,
     });
+  });
+
+  it('sends nothing until the Privacy Notice box is ticked', async () => {
+    const { user } = renderWithProviders(<RegisterForm />, { me: null });
+
+    await fillAccount(user);
+    await fillApplication(user);
+    const consent = screen.getByRole('checkbox', { name: /I have read the Privacy Notice/ });
+    expect(consent).not.toBeChecked();
+    expect(screen.getByRole('link', { name: 'Read the Privacy Notice' })).toHaveAttribute('href', '/privacy');
+    await user.click(screen.getByRole('button', { name: 'Create account and pick a class' }));
+
+    expect(await screen.findByText('Tick the box to agree to the Privacy Notice')).toBeInTheDocument();
+    expect(register).not.toHaveBeenCalled();
   });
 });
