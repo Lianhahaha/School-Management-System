@@ -134,10 +134,10 @@ async function adminDashboard(user) {
       repo.findAdminCounts(day.year),
       summarizeAttendanceUnscoped({ dateFrom: today, dateTo: today }),
       repo.findEnrollmentsByGrade(day.year),
-      upcomingAssessmentsUnscoped({ days: 7, limit: 5 }),
+      upcomingAssessmentsUnscoped({ today, days: 7, limit: 5 }),
       briefAnnouncements(user),
-      atRiskStudents(user),
-      upcomingEvents(),
+      atRiskStudents(user, today),
+      upcomingEvents({ today }),
       holidayOn(today),
     ]);
   const toMark = await attendanceToMark(day, holiday);
@@ -176,10 +176,10 @@ async function teacherDashboard(user) {
       repo.findTeacherClassSubjects(teacherId, year),
       listClasses(user, { page: 1, limit: 100, homeroomTeacherId: teacherId, academicYear: year }),
       findSlotsUnscoped({ teacherId, dayOfWeek: weekday, academicYear: year }),
-      pendingGradingUnscoped(teacherId, year),
+      pendingGradingUnscoped(teacherId, year, { today }),
       briefAnnouncements(user),
-      atRiskStudents(user),
-      upcomingEvents(),
+      atRiskStudents(user, today),
+      upcomingEvents({ today }),
       holidayOn(today),
     ]);
   // A school holiday has no lessons: nothing to teach or mark, so today's list stays empty. Neither does a
@@ -237,7 +237,7 @@ async function studentDashboard(user) {
     getStudent(user, user.studentId),
     classId ? getClass(classId) : null,
     briefAnnouncements(user),
-    upcomingEvents(),
+    upcomingEvents({ today }),
     holidayOn(today),
   ]);
   const base = {
@@ -281,7 +281,7 @@ async function studentDashboard(user) {
     holiday || !isClassOfThisYear ? [] : findSlotsUnscoped({ classId, dayOfWeek: weekday }),
     summarizeStudentGradesUnscoped(user.studentId, year),
     recentGradesUnscoped(user.studentId, 5),
-    upcomingAssessmentsUnscoped({ classId, days: 7, limit: 5 }),
+    upcomingAssessmentsUnscoped({ classId, today, days: 7, limit: 5 }),
   ]);
   const attendanceSummary = { dateFrom, dateTo: today, ...attendance };
   return {

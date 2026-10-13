@@ -2,7 +2,7 @@
  * The "needs attention" list of the admin and teacher dashboards: students whose attendance or general average
  * this school year is below the AT_RISK lines, worst first.
  */
-import { academicYearStart, currentAcademicYear, todayYmd } from '../../utils/dates.js';
+import { academicYearOf, academicYearStart, todayYmd } from '../../utils/dates.js';
 import * as access from '../access/access.service.js';
 import { summarizeAttendanceUnscoped } from '../attendance/attendance.service.js';
 import { studentResultsUnscoped } from '../grades/grades.service.js';
@@ -35,16 +35,16 @@ const shortfall = (student) =>
  * average is the student's whole year, every class included, so a teacher sees the figure the office sees (a
  * student who changed class keeps the grades of the class they left): the mean of the subjects' school year
  * grades so far, each the average of its semester grades, a semester's the average of its quarterly grades
- * (grades.service, utils/grading.js).
+ * (grades.service, utils/grading.js). `today` is the dashboard request's school day (its one clock reading).
  */
-export async function atRiskStudents(user) {
-  const year = currentAcademicYear();
+export async function atRiskStudents(user, today = todayYmd()) {
+  const year = academicYearOf(today);
   // The scope picks the students; their results are then read whole.
   const enrolled = repo.findEnrolledStudents(year, access.classScope(user, 'e.class_id'));
   const [students, attendance, results] = await Promise.all([
     enrolled,
     summarizeAttendanceUnscoped(
-      { groupBy: 'student', dateFrom: academicYearStart(year), dateTo: todayYmd() },
+      { groupBy: 'student', dateFrom: academicYearStart(year), dateTo: today },
       access.classScope(user, 'cs.class_id'),
     ),
     enrolled.then((rows) =>

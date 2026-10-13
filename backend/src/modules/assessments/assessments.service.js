@@ -156,8 +156,7 @@ export async function deleteAssessment(user, id) {
  * first `limit` as `items`, and `total`, how many there are in all. One that already has a score is given, so
  * it is left out even when dated today.
  */
-export async function upcomingAssessmentsUnscoped({ classId, days = 7, limit = 10 }) {
-  const today = todayYmd();
+export async function upcomingAssessmentsUnscoped({ classId, today = todayYmd(), days = 7, limit = 10 }) {
   const rows = await repo.findUpcoming({ classId, from: today, to: addDaysYmd(today, days), limit });
   return {
     items: rows.map((row) => ({
@@ -173,8 +172,12 @@ export async function upcomingAssessmentsUnscoped({ classId, days = 7, limit = 1
 }
 
 /** Assessments of a teacher dated up to today that still lack grades (dashboards; no access check). */
-export async function pendingGradingUnscoped(teacherId, academicYear, limit = 10) {
-  const rows = await repo.findPendingGrading(teacherId, academicYear, todayYmd(), limit);
+export async function pendingGradingUnscoped(
+  teacherId,
+  academicYear,
+  { today = todayYmd(), limit = 10 } = {},
+) {
+  const rows = await repo.findPendingGrading(teacherId, academicYear, today, limit);
   return rows.map((row) => ({
     assessmentId: row.assessmentId,
     title: row.title,

@@ -118,9 +118,8 @@ export async function assertSchoolDay(date) {
   }
 }
 
-/** Entries running today or starting within `days`, soonest first (dashboards; everyone may read them). */
-export async function upcomingEvents({ days = 30, limit = 5 } = {}) {
-  const today = todayYmd();
+/** Entries running `today` or starting within `days`, soonest first (dashboards; everyone may read them). */
+export async function upcomingEvents({ today = todayYmd(), days = 30, limit = 5 } = {}) {
   return (await repo.findUpcoming(today, addDaysYmd(today, days), limit)).map((row) => ({
     id: row.id,
     title: row.title,
