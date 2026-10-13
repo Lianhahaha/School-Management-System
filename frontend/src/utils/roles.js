@@ -45,10 +45,8 @@ export const PERMISSIONS = Object.freeze({
   'enrollments.withdraw': OFFICE,
   /** End of school year (POST /enrollments/complete) and closing an enrollment as completed. */
   'enrollments.complete': ADMIN,
-  /** Create a subject with its grading rules (POST /subjects). */
-  'subjects.create': OFFICE,
-  /** Edit, retire and delete subjects: changing a subject regrades every class using it (PATCH, DELETE /subjects). */
-  'subjects.manage': ADMIN,
+  /** Create, edit, retire and delete subjects, with their grading rules (POST, PATCH, DELETE /subjects). */
+  'subjects.manage': OFFICE,
   /** DELETE /classes/:id. */
   'classes.delete': ADMIN,
   /** Remove a subject and its teacher from a class (DELETE /class-subjects/:id). */

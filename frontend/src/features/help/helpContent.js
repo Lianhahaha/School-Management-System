@@ -400,7 +400,7 @@ const ASSISTANT_LIMITS = {
   question: "Why can't I see some pages or buttons?",
   steps: [
     "Some work is the administrator's, so those pages and buttons are hidden for a student assistant.",
-    'You can\'t open "Users", edit a teacher\'s record, change or delete subjects, delete a class or remove a subject from a class.',
+    'You can\'t open "Users", edit a teacher\'s record, delete a class or remove a subject from a class.',
     "You can look at attendance and grade sheets, but only the subject's teacher or the administrator can save them.",
     "You can't end the school year, mark an enrollment completed, or deactivate or delete accounts.",
     'Ask the administrator when one of these needs doing.',

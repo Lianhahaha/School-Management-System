@@ -7,8 +7,8 @@ import * as schemas from './subjects.schemas.js';
 export const subjectsRoutes = Router();
 
 subjectsRoutes.get('/', validate({ query: schemas.listSubjectsQuery }), controller.list);
-// The office creates subjects (a student assistant too); editing, retiring and deleting one, which change how
-// every class using it is graded, stay the admin's.
+// The subject catalogue is the office's (the admin and the student assistant): create, edit (grading rules
+// included), retire and delete.
 subjectsRoutes.post(
   '/',
   authorize('admin', 'assistant'),
@@ -18,8 +18,13 @@ subjectsRoutes.post(
 subjectsRoutes.get('/:id', validate({ params: schemas.idParams }), controller.get);
 subjectsRoutes.patch(
   '/:id',
-  authorize('admin'),
+  authorize('admin', 'assistant'),
   validate({ params: schemas.idParams, body: schemas.updateSubjectBody }),
   controller.update,
 );
-subjectsRoutes.delete('/:id', authorize('admin'), validate({ params: schemas.idParams }), controller.remove);
+subjectsRoutes.delete(
+  '/:id',
+  authorize('admin', 'assistant'),
+  validate({ params: schemas.idParams }),
+  controller.remove,
+);

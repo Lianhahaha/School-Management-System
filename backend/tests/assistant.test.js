@@ -265,17 +265,19 @@ describe('student assistant', () => {
     expectForbidden(await send('delete', `/classes/${klass.id}`));
   });
 
-  it('reads and creates subjects but does not change them or their grading', async () => {
+  it('creates, edits, retires and deletes subjects like an admin', async () => {
     const subject = await makeSubject(school.admin);
     expectStatus(await send('get', '/subjects'), 200);
     const created = await send('post', '/subjects', { code: 'OFFICE-1', name: 'Office subject' });
     expectStatus(created, 201);
-    expectForbidden(await send('patch', `/subjects/${created.body.data.id}`, { name: 'Renamed' }));
-    expectForbidden(await send('delete', `/subjects/${created.body.data.id}`));
-    expectForbidden(await send('patch', `/subjects/${subject.id}`, { name: 'Renamed' }));
-    expectForbidden(await send('patch', `/subjects/${subject.id}`, { gradeWeights: { quiz: 50, exam: 50 } }));
-    expectForbidden(await send('patch', `/subjects/${subject.id}`, { gradingGroup: 'languages' }));
-    expectForbidden(await send('delete', `/subjects/${subject.id}`));
+    const renamed = await send('patch', `/subjects/${subject.id}`, { name: 'Renamed' });
+    expectStatus(renamed, 200);
+    assert.equal(renamed.body.data.name, 'Renamed');
+    const retired = await send('patch', `/subjects/${subject.id}`, { isActive: false });
+    expectStatus(retired, 200);
+    assert.equal(retired.body.data.isActive, false);
+    expectStatus(await send('delete', `/subjects/${created.body.data.id}`), 200);
+    expectStatus(await send('get', `/subjects/${created.body.data.id}`), 404);
   });
 
   it('publishes, edits and deletes announcements and calendar entries like an admin', async () => {

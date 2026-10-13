@@ -11,7 +11,7 @@ import { PERMISSIONS, can, roleHome, roleLabel } from '../src/utils/roles';
 const ASSISTANT_ALLOWED = [
   'school.readAll',
   'assistantRequests.review',
-  'subjects.create',
+  'subjects.manage',
   'teachers.create',
   'school.setUp',
   'enrollments.withdraw',
@@ -26,7 +26,6 @@ const ASSISTANT_DENIED = [
   'users.delete',
   'teachers.manage',
   'enrollments.complete',
-  'subjects.manage',
   'classes.delete',
   'classSubjects.delete',
   'lessons.manageAll',

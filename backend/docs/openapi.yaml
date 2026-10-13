@@ -735,7 +735,7 @@ paths:
       operationId: createSubject
       summary: Create a subject
       description: |
-        Roles: admin, assistant (editing, retiring and deleting a subject stay the admin's).
+        Roles: admin, assistant.
 
         A code that already exists is a 409 (`details.key = subjects.uq_subjects_code`).
       requestBody:
@@ -774,7 +774,7 @@ paths:
       operationId: updateSubject
       summary: Update or retire a subject
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         Edits a subject, or retires and reactivates it with `isActive`. A retired subject cannot be assigned to
         new classes (`POST /class-subjects` rejects it) while existing history keeps working. This is the way to
@@ -819,7 +819,7 @@ paths:
       operationId: deleteSubject
       summary: Delete a subject
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         Allowed only while nothing references the subject; otherwise 409 with `details.reason = in_use`.
         Retire it with `PATCH { "isActive": false }` instead.
