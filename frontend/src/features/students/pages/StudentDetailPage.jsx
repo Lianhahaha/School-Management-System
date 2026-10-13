@@ -12,6 +12,7 @@ import { AdmissionStatusBadge } from '../../admissions/components/AdmissionStatu
 import { isApplicant } from '../../admissions/status';
 import { AttendanceSummaryPanel } from '../../attendance/components/AttendanceSummaryPanel';
 import { EnrollmentHistoryTable } from '../../enrollments/components/EnrollmentHistoryTable';
+import { useSchoolYear } from '../../enrollments/hooks';
 import { GradeSummaryPanel } from '../../grades/components/GradeSummaryPanel';
 import { GradeTrendCard } from '../../grades/components/GradeTrendCard';
 import { PrintReportCardButton, ReportCard } from '../../grades/components/ReportCard';
@@ -28,6 +29,9 @@ export default function StudentDetailPage() {
   const { data: student, isPending, error, refetch } = useStudent(studentId);
   const [, setSearchParams] = useSearchParams();
   const [classTarget, setClassTarget] = useState(null);
+  // The school year the figures, the Attendance tab and the report card show: the one the student's own pages
+  // open on, so a student placed in next year's class still shows this year's results here too.
+  const schoolYear = useSchoolYear(studentId, '', student?.currentEnrollment ?? null);
 
   if (isPending && !error) return <PageSkeleton />;
 
@@ -74,6 +78,7 @@ export default function StudentDetailPage() {
             content: (
               <StudentOverview
                 student={student}
+                academicYear={schoolYear.academicYear}
                 onOpenTab={(tab) => setSearchParams({ tab }, { replace: true })}
               />
             ),
@@ -98,12 +103,12 @@ export default function StudentDetailPage() {
           {
             id: 'attendance',
             label: 'Attendance',
-            // This school year so far (the class's year, or the current one without a class): the period the
-            // Overview tile that opens this tab counts, so the two show the same rate.
+            // The school year so far: the period the Overview tile that opens this tab counts, so the two show
+            // the same rate.
             content: (
               <AttendanceSummaryPanel
                 studentId={student.id}
-                {...academicYearToDate(student.currentEnrollment?.academicYear)}
+                {...academicYearToDate(schoolYear.academicYear)}
               />
             ),
           },
@@ -112,23 +117,20 @@ export default function StudentDetailPage() {
             label: 'Grades',
             content: (
               <div className="space-y-4">
-                {/* The report card is for the student's current class and its school year, as a whole. */}
-                {student.currentEnrollment && (
+                {/* The report card is for that school year as a whole, and the student's class in it. */}
+                {schoolYear.className && (
                   <div className="flex flex-wrap justify-end gap-2">
-                    <PrintReportCardButton
-                      studentId={student.id}
-                      academicYear={student.currentEnrollment.academicYear}
-                    />
+                    <PrintReportCardButton studentId={student.id} academicYear={schoolYear.academicYear} />
                   </div>
                 )}
                 <GradeSummaryPanel studentId={student.id} />
                 <GradeTrendCard studentId={student.id} />
-                {student.currentEnrollment && (
+                {schoolYear.className && (
                   <ReportCard
                     student={student}
                     studentId={student.id}
-                    academicYear={student.currentEnrollment.academicYear}
-                    className={student.currentEnrollment.className}
+                    academicYear={schoolYear.academicYear}
+                    className={schoolYear.className}
                   />
                 )}
               </div>

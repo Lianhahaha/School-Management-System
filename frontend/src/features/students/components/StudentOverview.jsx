@@ -2,7 +2,7 @@ import { Award, ClipboardList, Users } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { DescriptionList } from '../../../components/ui/DescriptionList';
 import { StatTile } from '../../../components/ui/StatTile';
-import { academicYearToDate, currentAcademicYear } from '../../../utils/date';
+import { academicYearToDate } from '../../../utils/date';
 import { countOf, formatPercent } from '../../../utils/format';
 import { formatResult, generalAverage } from '../../../utils/grades';
 import { ApplicationCard } from '../../admissions/components/ApplicationCard';
@@ -22,15 +22,16 @@ const waitingHint = (query, what) => (query.isError ? `Couldn't load the ${what}
  * The first tab of a student's page: what an admin usually opens it for. Class, attendance and average of the
  * current school year as figure rows (each opening the tab with the detail), then how to reach the student,
  * and the application of a self-registered student (first while it waits).
- * The year is the student's class year, or the current one while they have no class.
+ * The year is the one the student's own pages open on (enrollments/schoolYears defaultSchoolYear): the class's
+ * year, this year while the class is next year's (placed at the end of the year), else the current year.
  *
  * @param {object} props
  * @param {object} props.student GET /students/:id data
+ * @param {string} props.academicYear the school year of the attendance and average figures
  * @param {(tab: string) => void} props.onOpenTab switches to another tab of the page
  */
-export function StudentOverview({ student, onOpenTab }) {
+export function StudentOverview({ student, academicYear, onOpenTab }) {
   const enrollment = student.currentEnrollment;
-  const academicYear = enrollment?.academicYear ?? currentAcademicYear();
   // The same dates as the Attendance tab the tile opens (StudentDetailPage).
   const attendance = useAttendanceSummary({ studentId: student.id, ...academicYearToDate(academicYear) });
   // Both semesters of the year, tagged: the year's general average puts the semesters (and a subject's two
