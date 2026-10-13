@@ -4540,7 +4540,8 @@ components:
           nullable: true
           description: >-
             The active enrollment, as in `GET /auth/me`, plus the class's homeroom teacher. Null while the student
-            has no active enrollment; then the schedule, grade and assessment lists are empty.
+            has no active enrollment; then today's schedule and upcoming assessments are empty, while attendance
+            and grades still cover the school year.
           allOf:
             - $ref: '#/components/schemas/CurrentEnrollment'
             - type: object

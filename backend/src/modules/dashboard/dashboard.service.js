@@ -33,6 +33,19 @@ const toAnnouncementBrief = (a) => ({
 
 const briefAnnouncements = async (user) => (await recentAnnouncements(user, 5)).map(toAnnouncementBrief);
 
+/** A grade as the student dashboard lists it. */
+const toRecentGrade = (grade) => ({
+  gradeId: grade.id,
+  assessmentId: grade.assessmentId,
+  title: grade.assessment.title,
+  type: grade.assessment.type,
+  subjectName: grade.assessment.subjectName,
+  score: grade.score,
+  maxScore: grade.assessment.maxScore,
+  percentage: grade.percentage,
+  assessedOn: grade.assessment.assessedOn,
+});
+
 /** Today in the school's time zone, read from the clock once, with its ISO weekday and school year. */
 function schoolDay() {
   const today = todayYmd();
@@ -257,33 +270,34 @@ async function studentDashboard(user) {
   const year = klass && klass.academicYear <= thisYear ? klass.academicYear : thisYear;
   const isClassOfThisYear = klass?.academicYear === thisYear;
   const dateFrom = academicYearStart(year);
-  const attendanceOfYear = summarizeAttendanceUnscoped({
-    studentId: user.studentId,
-    dateFrom,
-    dateTo: today,
-  });
+  // The school year's results, with or without a class: a student withdrawn mid-year keeps both their marks
+  // and their grades, as on My attendance and My grades.
+  const resultsOfYear = Promise.all([
+    summarizeAttendanceUnscoped({ studentId: user.studentId, dateFrom, dateTo: today }),
+    summarizeStudentGradesUnscoped(user.studentId, year),
+    recentGradesUnscoped(user.studentId, 5),
+  ]).then(([attendance, gradeRows, recent]) => ({
+    attendanceSummary: { dateFrom, dateTo: today, ...attendance },
+    gradeSummary: subjectGradeSummary(gradeRows),
+    recentGrades: recent.map(toRecentGrade),
+  }));
   if (!klass) {
     return {
       ...base,
       currentEnrollment: null,
       todaySchedule: [],
-      attendanceSummary: { dateFrom, dateTo: today, ...(await attendanceOfYear) },
-      gradeSummary: [],
-      recentGrades: [],
+      ...(await resultsOfYear),
       upcomingAssessments: [],
       upcomingAssessmentsTotal: 0,
     };
   }
 
-  // One round of queries for the rest, the attendance summary included.
-  const [attendance, slots, gradeRows, recent, upcoming] = await Promise.all([
-    attendanceOfYear,
+  // One round of queries for the rest, the year's results included.
+  const [results, slots, upcoming] = await Promise.all([
+    resultsOfYear,
     holiday || !isClassOfThisYear ? [] : findSlotsUnscoped({ classId, dayOfWeek: weekday }),
-    summarizeStudentGradesUnscoped(user.studentId, year),
-    recentGradesUnscoped(user.studentId, 5),
     upcomingAssessmentsUnscoped({ classId, today, days: 7, limit: 5 }),
   ]);
-  const attendanceSummary = { dateFrom, dateTo: today, ...attendance };
   return {
     ...base,
     // The enrollment as /auth/me gives it, plus the homeroom teacher.
@@ -304,19 +318,7 @@ async function studentDashboard(user) {
       endTime: slot.endTime,
       room: slot.room,
     })),
-    attendanceSummary,
-    gradeSummary: subjectGradeSummary(gradeRows),
-    recentGrades: recent.map((grade) => ({
-      gradeId: grade.id,
-      assessmentId: grade.assessmentId,
-      title: grade.assessment.title,
-      type: grade.assessment.type,
-      subjectName: grade.assessment.subjectName,
-      score: grade.score,
-      maxScore: grade.assessment.maxScore,
-      percentage: grade.percentage,
-      assessedOn: grade.assessment.assessedOn,
-    })),
+    ...results,
     upcomingAssessments: upcoming.items,
     upcomingAssessmentsTotal: upcoming.total,
   };
