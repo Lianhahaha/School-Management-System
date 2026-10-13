@@ -15,7 +15,7 @@ export const ASSISTANT_SIGNUP_ONLY =
 
 /**
  * `profile` is required to be an object for students and teachers (may be empty) and forbidden for admins.
- * Which roles the caller may create is the service's rule (a student assistant: students only). There is no
+ * Which roles the caller may create is the service's rule (a student assistant: students and teachers). There is no
  * `assistant` variant: student assistants only come from sign-up.
  */
 export const createUserBody = z.discriminatedUnion(

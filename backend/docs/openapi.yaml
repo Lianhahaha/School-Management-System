@@ -289,7 +289,7 @@ paths:
       operationId: createUser
       summary: Create an account
       description: |
-        Roles: admin, assistant (student accounts only; any other role is a 403 `role_not_allowed`).
+        Roles: admin, assistant (student and teacher accounts only; an admin account is a 403 `role_not_allowed`).
 
         Creates a Firebase user, the account and the role profile, in one step, for a student, a teacher or
         an admin. Never a student assistant, for anyone: `role: assistant` is a 400 (assistants sign up

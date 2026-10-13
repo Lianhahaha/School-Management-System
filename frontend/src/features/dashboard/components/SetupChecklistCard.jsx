@@ -11,8 +11,8 @@ const STEPS = [
   {
     key: 'teachers',
     title: 'Add teachers',
-    hint: 'Create a teacher account for each teacher under Users.',
-    to: '/admin/users?role=teacher',
+    hint: 'Add an account for each teacher on the Teachers page.',
+    to: '/admin/teachers',
     done: (counts) => counts.teachers > 0,
   },
   {

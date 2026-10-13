@@ -6,7 +6,7 @@ import * as schemas from './users.schemas.js';
 
 export const usersRoutes = Router();
 
-// A student assistant creates and edits student accounts only (users.service); the account list, deletion and
+// A student assistant creates student and teacher accounts and edits student accounts only (users.service); the account list, deletion and
 // activation are the admin's.
 usersRoutes.get('/', authorize('admin'), validate({ query: schemas.listUsersQuery }), controller.list);
 usersRoutes.post(

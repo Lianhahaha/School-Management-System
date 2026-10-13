@@ -18,7 +18,7 @@ import { UpcomingEventsCard } from '../components/UpcomingEventsCard';
 const ANNOUNCEMENTS_SHOWN = 3;
 
 /**
- * /admin: "Is the school running?" The setup checklist while the school is still being set up (the admin's),
+ * /admin: "Is the school running?" The setup checklist while the school is still being set up (the office's),
  * then the counts, then the students who need attention as a full-width table read across, then two roomy
  * columns: today's attendance and the next assessments; what is coming on the calendar, enrollment by grade
  * and the latest announcements. A student assistant gets the same page (the API sends them the admin's

@@ -1,7 +1,8 @@
 /**
  * Accounts: the one code path that creates a person in Firebase and MySQL,
  * account reads, office edits, activation status and deletion of unused accounts.
- * An admin manages every account; a student assistant creates and edits student accounts only.
+ * An admin manages every account; a student assistant creates student and teacher accounts, and edits student
+ * accounts only.
  * Student assistants are never created by the office: they sign up themselves and wait for approval
  * (assistantRequests).
  */
@@ -69,13 +70,20 @@ export async function listUsers(listQuery) {
   return { data: rows.map(toUserShape), meta };
 }
 
-/** 403 unless `actor` may manage an account of `role`: an admin any, a student assistant students' only. */
-function assertMayManageAccountOf(actor, role) {
-  if (role !== 'student') assertAdmin(actor, 'student assistants can only manage student accounts');
+/** 403 unless `actor` may edit an account of `role`: an admin any, a student assistant students' only. */
+function assertMayEditAccountOf(actor, role) {
+  if (role !== 'student') assertAdmin(actor, 'student assistants can only edit student accounts');
+}
+
+/** 403 unless `actor` may create an account of `role`: an admin any, a student assistant students and teachers. */
+function assertMayCreateAccountOf(actor, role) {
+  if (role !== 'student' && role !== 'teacher') {
+    assertAdmin(actor, 'student assistants can only create student and teacher accounts');
+  }
 }
 
 /**
- * POST /users: the office creates an account (a student assistant, a student account only). Never a student
+ * POST /users: the office creates an account (a student assistant, a student or teacher account only). Never a student
  * assistant, for anyone: they sign up themselves and wait for approval. The body schema refuses the role
  * already; this keeps the rule should the schema change.
  */
@@ -86,14 +94,14 @@ export async function createAccount(actor, body) {
       field: 'role',
     });
   }
-  assertMayManageAccountOf(actor, body.role);
+  assertMayCreateAccountOf(actor, body.role);
   return createUserAccount(body, { trusted: true });
 }
 
 /** PATCH /users/:id: the office edits an account's name and phone (a student assistant, a student's only). */
 export async function editAccount(actor, id, patch) {
   const target = ApiError.assertFound(await repo.findUserById(id), 'user', id);
-  assertMayManageAccountOf(actor, target.role);
+  assertMayEditAccountOf(actor, target.role);
   return updateUser(id, patch);
 }
 

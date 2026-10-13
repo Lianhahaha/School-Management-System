@@ -12,6 +12,8 @@ const ASSISTANT_ALLOWED = [
   'school.readAll',
   'assistantRequests.review',
   'subjects.create',
+  'teachers.create',
+  'school.setUp',
   'enrollments.withdraw',
   'announcements.manageAll',
   'calendar.manage',
@@ -19,7 +21,6 @@ const ASSISTANT_ALLOWED = [
 
 /** What stays with the admin: accounts other than students', what cannot be undone, grades. */
 const ASSISTANT_DENIED = [
-  'school.setUp',
   'users.list',
   'users.setStatus',
   'users.delete',

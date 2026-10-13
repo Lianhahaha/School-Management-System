@@ -19,10 +19,10 @@ import { UserStatusBadge } from '../../users/components/UserStatusBadge';
 import { UserStatusButton } from '../../users/components/UserStatusButton';
 import { useTeachers } from '../hooks';
 
-/** The teaching staff. The admin adds teachers and (de)activates them; a student assistant reads the list. */
+/** The teaching staff. The office adds teachers; the admin also (de)activates them. */
 export default function TeachersListPage() {
   const { role } = useAuth();
-  const canAdd = can(role, 'teachers.manage');
+  const canAdd = can(role, 'teachers.create');
   const list = useListParams({ filters: ['isActive'], defaultSort: ['lastName', 'asc'] });
   const { data, isPending, isFetching, error, refetch } = useTeachers(list.apiParams);
   const createModal = useDisclosure();

@@ -23,8 +23,8 @@ const OFFICE = Object.freeze(['admin', 'assistant']);
 export const PERMISSIONS = Object.freeze({
   /** Every class, student and teacher: the search, the class picker of attendance and grades, nav counts. */
   'school.readAll': OFFICE,
-  /** The setup checklist of a new school: its first steps (teachers, subjects) are the admin's. */
-  'school.setUp': ADMIN,
+  /** The setup checklist of a new school: every step is office work. */
+  'school.setUp': OFFICE,
   /** The Users page: every account (GET /users). */
   'users.list': ADMIN,
   /** Deactivate or reactivate an account (PATCH /users/:id/status). */
@@ -37,7 +37,9 @@ export const PERMISSIONS = Object.freeze({
    * screen). Nobody creates an assistant account: POST /users refuses the role.
    */
   'assistantRequests.review': OFFICE,
-  /** Create a teacher account (POST /users) and edit a teacher's record (PATCH /teachers/:id). */
+  /** Create a teacher account (POST /users with role teacher). */
+  'teachers.create': OFFICE,
+  /** Edit a teacher's record (PATCH /teachers/:id) and account. */
   'teachers.manage': ADMIN,
   /** Close an active enrollment as withdrawn (PATCH /enrollments/:id). */
   'enrollments.withdraw': OFFICE,

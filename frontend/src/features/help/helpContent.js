@@ -400,7 +400,7 @@ const ASSISTANT_LIMITS = {
   question: "Why can't I see some pages or buttons?",
   steps: [
     "Some work is the administrator's, so those pages and buttons are hidden for a student assistant.",
-    'You can\'t open "Users", add teachers, change or delete subjects, delete a class or remove a subject from a class.',
+    'You can\'t open "Users", edit a teacher\'s record, change or delete subjects, delete a class or remove a subject from a class.',
     "You can look at attendance and grade sheets, but only the subject's teacher or the administrator can save them.",
     "You can't end the school year, mark an enrollment completed, or deactivate or delete accounts.",
     'Ask the administrator when one of these needs doing.',
@@ -419,6 +419,20 @@ const ADD_STUDENT = {
   ],
   to: '/admin/students',
   toLabel: 'Open Students',
+};
+
+const ADD_TEACHER = {
+  id: 'add-teacher',
+  topic: 'People',
+  question: 'How do I add a new teacher?',
+  steps: [
+    'Open "Teachers" in the menu (on a phone: More) and press "Add teacher".',
+    'Fill in the name, the "Email" and a "Temporary password", and the teacher record below.',
+    'Leave "Employee number" empty and it is made for you.',
+    'Press "Add teacher", then give the teacher their email and temporary password. Next, assign them subjects in a class.',
+  ],
+  to: '/admin/teachers',
+  toLabel: 'Open Teachers',
 };
 
 const ASSISTANT_ATTENDANCE = {
@@ -496,9 +510,11 @@ export const HELP = Object.freeze({
     ...ACCOUNT,
   ],
   assistant: [
+    SET_UP_SCHOOL,
     ASSISTANT_LIMITS,
     SEARCH,
     ADD_STUDENT,
+    ADD_TEACHER,
     ENROLL_STUDENT,
     MOVE_STUDENT,
     STUDENT_DETAILS,

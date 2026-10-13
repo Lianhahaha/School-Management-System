@@ -80,7 +80,7 @@ describe('student assistant', () => {
     expectStatus(signUp, 400);
   });
 
-  it('creates student accounts only', async () => {
+  it('creates student and teacher accounts, never an admin', async () => {
     const student = await send('post', '/users', newAccount('student', { profile: { gender: 'female' } }));
     expectStatus(student, 201);
     assert.equal(student.body.data.role, 'student');
@@ -88,14 +88,24 @@ describe('student assistant', () => {
 
     const assistantAccount = newAccount('assistant');
     expectStatus(await send('post', '/users', assistantAccount), 400);
-    for (const role of ['teacher', 'admin']) {
-      const body = newAccount(role, role === 'teacher' ? { profile: {} } : {});
-      const res = await send('post', '/users', body);
-      expectForbidden(res);
-      assert.equal(res.body.error.details.reason, 'role_not_allowed');
-      const [{ n }] = await query('SELECT COUNT(*) AS n FROM users WHERE email = ?', [body.email]);
-      assert.equal(n, 0, `no ${role} account was created`);
-    }
+    const teacher = await send(
+      'post',
+      '/users',
+      newAccount('teacher', { profile: { department: 'Science' } }),
+    );
+    expectStatus(teacher, 201);
+    assert.equal(teacher.body.data.role, 'teacher');
+    assert.equal(teacher.body.data.profile.department, 'Science');
+    // Creating a teacher account is not editing one: the account and the record stay the admin's.
+    expectForbidden(await send('patch', `/users/${teacher.body.data.id}`, { phone: '+63 917 000 2222' }));
+    expectForbidden(await send('patch', `/teachers/${teacher.body.data.teacherId}`, { department: 'Math' }));
+
+    const admin = newAccount('admin');
+    const res = await send('post', '/users', admin);
+    expectForbidden(res);
+    assert.equal(res.body.error.details.reason, 'role_not_allowed');
+    const [{ n }] = await query('SELECT COUNT(*) AS n FROM users WHERE email = ?', [admin.email]);
+    assert.equal(n, 0, 'no admin account was created');
   });
 
   it('edits student records and student accounts, and no other account', async () => {

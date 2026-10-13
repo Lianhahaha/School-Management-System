@@ -49,7 +49,7 @@ export const isOffice = (user) => isAdmin(user) || isApprovedAssistant(user);
 
 /**
  * 403 `role_not_allowed` unless the caller is an admin: the admin-only part of an operation the office
- * shares (a student assistant manages student accounts only, and closes enrollments as withdrawn only).
+ * shares (a student assistant creates student and teacher accounts and edits student accounts only, and closes enrollments as withdrawn only).
  */
 export function assertAdmin(user, message) {
   if (!isAdmin(user)) throw ApiError.forbidden('role_not_allowed', message);

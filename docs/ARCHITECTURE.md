@@ -268,11 +268,12 @@ Results: each assessment belongs to a semester (`sem1`, `sem2`) and to one of th
 
 `Y` = any record, `own` = within the caller's scope, `N` = 403. A teacher's *visible* scope is the class-subjects they teach plus every class-subject of a class they are homeroom teacher of (reads); they *own* only the class-subjects assigned to them (writes).
 
-The assistant (`assistant`) is a student assistant who takes everyday office work off the admin. Together they are "the office" (`isOffice`): both read the whole school, and both get the sign-up notifications. What cannot be undone, changes grades or attendance, or manages accounts other than students' stays with the admin. Assistants sign up themselves (never `POST /users`); until the office approves the request, and after it declines it, the assistant has none of the rights below except their own `/auth/me` (403 `assistant_not_approved`, from `authenticate`; `isOffice` also requires the approval). An assistant created before sign-up existed has no request and counts as approved.
+The assistant (`assistant`) is a student assistant who takes everyday office work off the admin. Together they are "the office" (`isOffice`): both read the whole school, and both get the sign-up notifications. What cannot be undone, changes grades or attendance, or manages accounts other than students' (beyond creating teacher accounts) stays with the admin. Assistants sign up themselves (never `POST /users`); until the office approves the request, and after it declines it, the assistant has none of the rights below except their own `/auth/me` (403 `assistant_not_approved`, from `authenticate`; `isOffice` also requires the approval). An assistant created before sign-up existed has no request and counts as approved.
 
 | Capability | Admin | Assistant | Teacher | Student |
 |---|---|---|---|---|
-| Accounts: create (never a student assistant: they sign up), edit name and phone | Y | student accounts only | N | N |
+| Accounts: create (never a student assistant: they sign up) | Y | student and teacher accounts | N | N |
+| Accounts: edit name and phone | Y | student accounts only | N | N |
 | Accounts: list and read, (de)activate, delete an unused one | Y | N | N | N |
 | Own identity and contact fields (`/auth/me`) | Y | Y | Y | Y |
 | Students: list and read | Y | Y | own (visible classes) | own (self) |
@@ -303,7 +304,7 @@ The assistant (`assistant`) is a student assistant who takes everyday office wor
 | Dashboard | admin payload: school-wide counts | the admin payload (`role: 'admin'`) | teacher payload: today's lessons, pending grading | student payload: schedule, attendance, grades |
 | Student assistant sign-ups: list, approve, decline (`/assistant-requests`) | Y | Y (approved assistants) | N | N |
 
-Enforcement: the role column is `authorize(...)` on the route; every `own` cell is a named rule in `modules/access/access.service.js` (`assertCanViewClass`, `assertCanViewClassSubject`, `assertCanManageClassSubject`, `assertCanViewStudent`, `assertIsSelfTeacher`, `assertIsAuthor`, and for lists `classScope`, `scopedStudentId`, `assertFiltersInScope` and `scopeRecordFilters`). The office passes every read rule; `assertCanManageClassSubject` (attendance, assessments, grades) passes the admin only. Where a route is shared but part of it is the admin's (an assistant creating or editing a non-student account, closing an enrollment as `completed`), the service calls `assertAdmin`. The UI hides what a role cannot do, but the API is the enforcement point.
+Enforcement: the role column is `authorize(...)` on the route; every `own` cell is a named rule in `modules/access/access.service.js` (`assertCanViewClass`, `assertCanViewClassSubject`, `assertCanManageClassSubject`, `assertCanViewStudent`, `assertIsSelfTeacher`, `assertIsAuthor`, and for lists `classScope`, `scopedStudentId`, `assertFiltersInScope` and `scopeRecordFilters`). The office passes every read rule; `assertCanManageClassSubject` (attendance, assessments, grades) passes the admin only. Where a route is shared but part of it is the admin's (an assistant creating an admin account or editing a non-student account, closing an enrollment as `completed`), the service calls `assertAdmin`. The UI hides what a role cannot do, but the API is the enforcement point.
 
 ## 7. Frontend
 
