@@ -561,8 +561,8 @@ describe('one school year, end to end', () => {
         row.className,
         row.subjectName,
         row.assessedOn,
-        row.graded,
-        row.enrolled,
+        row.gradedCount,
+        row.enrolledCount,
       ]),
       [
         ['Essay 1', 'Grade 7 - Rizal', 'Values Education 7', '2030-10-08', 2, 3],

@@ -286,7 +286,9 @@ async function studentDashboard(user) {
   const attendanceSummary = { dateFrom, dateTo: today, ...attendance };
   return {
     ...base,
+    // The enrollment as /auth/me gives it, plus the homeroom teacher.
     currentEnrollment: {
+      ...student.currentEnrollment,
       classId: klass.id,
       className: klass.name,
       gradeLevel: klass.gradeLevel,

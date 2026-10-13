@@ -4480,7 +4480,7 @@ components:
             roster (see `Assessment.enrolledCount`), newest first, at most 10.
           items:
             type: object
-            required: [assessmentId, title, className, subjectName, assessedOn, graded, enrolled]
+            required: [assessmentId, title, className, subjectName, assessedOn, gradedCount, enrolledCount]
             properties:
               assessmentId:
                 $ref: '#/components/schemas/Id'
@@ -4492,9 +4492,9 @@ components:
                 type: string
               assessedOn:
                 $ref: '#/components/schemas/DateYmd'
-              graded:
+              gradedCount:
                 type: integer
-              enrolled:
+              enrolledCount:
                 type: integer
         recentAnnouncements:
           type: array
@@ -4537,23 +4537,19 @@ components:
         student:
           $ref: '#/components/schemas/StudentRef'
         currentEnrollment:
-          type: object
           nullable: true
-          description: Null while the student has no active enrollment; then the schedule, grade and assessment lists are empty.
-          required: [classId, className, gradeLevel, academicYear, homeroomTeacher]
-          properties:
-            classId:
-              $ref: '#/components/schemas/Id'
-            className:
-              type: string
-            gradeLevel:
-              type: integer
-            academicYear:
-              $ref: '#/components/schemas/AcademicYear'
-            homeroomTeacher:
-              nullable: true
-              allOf:
-                - $ref: '#/components/schemas/PersonRef'
+          description: >-
+            The active enrollment, as in `GET /auth/me`, plus the class's homeroom teacher. Null while the student
+            has no active enrollment; then the schedule, grade and assessment lists are empty.
+          allOf:
+            - $ref: '#/components/schemas/CurrentEnrollment'
+            - type: object
+              required: [homeroomTeacher]
+              properties:
+                homeroomTeacher:
+                  nullable: true
+                  allOf:
+                    - $ref: '#/components/schemas/PersonRef'
         todaySchedule:
           type: array
           description: >-
@@ -6488,8 +6484,8 @@ components:
                       className: Grade 7 - A
                       subjectName: Biology
                       assessedOn: '2026-09-30'
-                      graded: 20
-                      enrolled: 32
+                      gradedCount: 20
+                      enrolledCount: 32
                   recentAnnouncements: []
             student:
               summary: Student
@@ -6499,10 +6495,13 @@ components:
                   role: student
                   student: { id: 12, studentNumber: STU-2026-0040, firstName: Liam, lastName: Cruz }
                   currentEnrollment:
+                    id: 87
                     classId: 3
                     className: Grade 7 - A
                     gradeLevel: 7
                     academicYear: '2026-2027'
+                    status: active
+                    enrolledOn: '2026-10-03'
                     homeroomTeacher: { id: 5, firstName: Ana, lastName: Reyes }
                   todaySchedule:
                     - scheduleId: 44

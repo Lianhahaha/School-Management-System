@@ -33,7 +33,7 @@ export function PendingGradingCard({ assessments }) {
                   {assessment.className} · {assessment.subjectName} · {formatDate(assessment.assessedOn)}
                 </p>
                 <p className="mt-1 text-xs font-medium text-amber-700">
-                  {assessment.graded}/{assessment.enrolled} graded
+                  {assessment.gradedCount}/{assessment.enrolledCount} graded
                 </p>
               </Link>
             </li>

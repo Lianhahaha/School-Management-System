@@ -121,7 +121,7 @@ describe('dashboard', () => {
     assert.equal(data.todaySchedule[0].attendanceMarked, true);
     assert.deepEqual(data.attendanceToday, { sessionsScheduled: 1, sessionsMarked: 1 });
     assert.deepEqual(
-      data.pendingGrading.map((p) => [p.assessmentId, p.graded, p.enrolled]),
+      data.pendingGrading.map((p) => [p.assessmentId, p.gradedCount, p.enrolledCount]),
       [[quiz.id, 1, 2]],
     );
 
@@ -137,6 +137,13 @@ describe('dashboard', () => {
     assert.equal(data.student.id, school.s1.studentId);
     assert.equal(data.currentEnrollment.classId, school.classA.id);
     assert.equal(data.currentEnrollment.homeroomTeacher.id, school.owner.teacherId);
+    // The same enrollment, under the same name and shape, as GET /auth/me, plus the homeroom teacher.
+    const me = (await api.get('/api/v1/auth/me').set(as(school.s1))).body.data;
+    assert.deepEqual(data.currentEnrollment, {
+      ...me.currentEnrollment,
+      homeroomTeacher: data.currentEnrollment.homeroomTeacher,
+    });
+    assert.equal(data.currentEnrollment.status, 'active');
     assert.equal(data.todaySchedule.length, 1);
     assert.equal(data.todaySchedule[0].teacher.id, school.owner.teacherId);
     assert.equal(data.attendanceSummary.total, 1);

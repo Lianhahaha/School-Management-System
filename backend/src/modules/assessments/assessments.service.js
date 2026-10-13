@@ -181,7 +181,7 @@ export async function pendingGradingUnscoped(teacherId, academicYear, limit = 10
     className: row.className,
     subjectName: row.subjectName,
     assessedOn: row.assessedOn,
-    graded: row.graded,
-    enrolled: row.enrolled,
+    gradedCount: row.graded,
+    enrolledCount: row.enrolled,
   }));
 }

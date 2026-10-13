@@ -267,7 +267,7 @@ describe('rosters of past dates', () => {
   it('lists pending grading up to today only, with roster-based counts', async () => {
     const res = await api.get('/api/v1/dashboard').set(as(school.owner));
     assert.deepEqual(
-      res.body.data.pendingGrading.map((row) => [row.assessmentId, row.graded, row.enrolled]),
+      res.body.data.pendingGrading.map((row) => [row.assessmentId, row.gradedCount, row.enrolledCount]),
       [
         [qToday.id, 2, 3],
         [qYesterday.id, 1, 3],
