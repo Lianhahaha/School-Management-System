@@ -22,7 +22,7 @@ classSubjectsRoutes.patch(
 );
 classSubjectsRoutes.delete(
   '/:id',
-  authorize('admin'),
+  authorize('admin', 'assistant'),
   validate({ params: schemas.idParams }),
   controller.remove,
 );

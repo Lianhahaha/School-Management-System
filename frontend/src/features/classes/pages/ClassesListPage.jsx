@@ -22,7 +22,7 @@ import { useClasses, useDeleteClass } from '../hooks';
 
 const YEAR_OPTIONS = academicYearOptions();
 
-/** The classes of every school year. The office creates and edits them; only the admin deletes one. */
+/** The classes of every school year. The office creates, edits and deletes them. */
 export default function ClassesListPage() {
   const { role } = useAuth();
   const canDelete = can(role, 'classes.delete');

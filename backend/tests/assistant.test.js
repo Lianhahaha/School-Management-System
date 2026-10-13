@@ -225,7 +225,7 @@ describe('student assistant', () => {
     assert.equal(withdrawn.body.data.status, 'withdrawn');
   });
 
-  it('sets up classes, teacher assignments and the timetable, but deletes no class or assignment', async () => {
+  it('sets up, and takes down, classes, teacher assignments and the timetable', async () => {
     const created = await send('post', '/classes', {
       name: 'Grade 8 - Rizal',
       gradeLevel: 8,
@@ -261,8 +261,11 @@ describe('student assistant', () => {
     expectStatus(await send('patch', `/schedules/${slot.body.data.id}`, { room: 'Room 4' }), 200);
     expectStatus(await send('delete', `/schedules/${slot.body.data.id}`), 200);
 
-    expectForbidden(await send('delete', `/class-subjects/${classSubjectId}`));
-    expectForbidden(await send('delete', `/classes/${klass.id}`));
+    // A class in use is refused for the office as a whole (409), then goes once its subject is removed.
+    expectStatus(await send('delete', `/classes/${klass.id}`), 409);
+    expectStatus(await send('delete', `/class-subjects/${classSubjectId}`), 200);
+    expectStatus(await send('delete', `/classes/${klass.id}`), 200);
+    expectStatus(await send('get', `/classes/${klass.id}`), 404);
   });
 
   it('creates, edits, retires and deletes subjects like an admin', async () => {

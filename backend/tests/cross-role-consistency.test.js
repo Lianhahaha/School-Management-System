@@ -1133,8 +1133,6 @@ describe('every role sees the same school', () => {
         ['get', `/users/${school.admin.id}`],
         ['patch', `/users/${students.ana.id}/status`, { isActive: false }],
         ['delete', `/users/${students.quinn.id}`],
-        ['delete', `/classes/${classes.luna.id}`],
-        ['delete', `/class-subjects/${lessons['luna.mapeh'].id}`],
         ['patch', `/teachers/${teachers.aquino.teacherId}`, { department: 'Science' }],
         [
           'post',

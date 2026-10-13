@@ -17,8 +17,7 @@ import { useSchedules } from '../../schedules/hooks';
 
 /**
  * "Subjects & Teachers" tab of a class: the teacher-assignment UI. A class-subject is an assignment,
- * so every subject row has a teacher. Add a subject with its teacher, change the teacher, remove it
- * (removing is the admin's).
+ * so every subject row has a teacher. Add a subject with its teacher, change the teacher, remove it.
  *
  * @param {object} props
  * @param {{ id: number, name: string }} props.schoolClass

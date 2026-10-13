@@ -20,4 +20,9 @@ classesRoutes.patch(
   validate({ params: schemas.idParams, body: schemas.updateClassBody }),
   controller.update,
 );
-classesRoutes.delete('/:id', authorize('admin'), validate({ params: schemas.idParams }), controller.remove);
+classesRoutes.delete(
+  '/:id',
+  authorize('admin', 'assistant'),
+  validate({ params: schemas.idParams }),
+  controller.remove,
+);

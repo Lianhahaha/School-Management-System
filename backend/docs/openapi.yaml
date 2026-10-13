@@ -948,7 +948,7 @@ paths:
       operationId: deleteClass
       summary: Delete a class
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         409 (`details.reason = in_use`) while enrollments, class-subjects or announcements reference the class.
       parameters:
@@ -1073,7 +1073,7 @@ paths:
       operationId: deleteClassSubject
       summary: Remove a teacher assignment
       description: |
-        Roles: admin.
+        Roles: admin, assistant.
 
         409 (`details.reason = in_use`) while attendance, assessments or schedules reference it.
       parameters:

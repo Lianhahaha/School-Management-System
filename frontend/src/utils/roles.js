@@ -48,9 +48,9 @@ export const PERMISSIONS = Object.freeze({
   /** Create, edit, retire and delete subjects, with their grading rules (POST, PATCH, DELETE /subjects). */
   'subjects.manage': OFFICE,
   /** DELETE /classes/:id. */
-  'classes.delete': ADMIN,
+  'classes.delete': OFFICE,
   /** Remove a subject and its teacher from a class (DELETE /class-subjects/:id). */
-  'classSubjects.delete': ADMIN,
+  'classSubjects.delete': OFFICE,
   /** Attendance, assessments and grades of any class-subject (a teacher: only the ones assigned to them). */
   'lessons.manageAll': ADMIN,
   /** Edit or delete anyone's announcement, and see scheduled and expired ones; everyone else, their own. */

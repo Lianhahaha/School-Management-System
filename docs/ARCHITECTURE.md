@@ -283,8 +283,7 @@ The assistant (`assistant`) is a student assistant who takes everyday office wor
 | Teachers: edit | Y | N | N | N |
 | Subjects, classes, school calendar: read | Y | Y | Y | Y |
 | Subjects: create, edit (grading rules and weights included), retire, delete | Y | Y | N | N |
-| Classes, teacher assignment: create, edit | Y | Y | N | N |
-| Classes, teacher assignment: delete | Y | N | N | N |
+| Classes, teacher assignment: create, edit, delete | Y | Y | N | N |
 | Enrollments: enroll, bulk enroll, transfer, withdraw | Y | Y | N | N (except self-enrollment, next row) |
 | Enrollments: end a school year, close one as `completed` | Y | N | N | N |
 | Enroll themselves in next year's class (`/enrollments/next-class`, when the promotion rules allow), or in a section of the grade applied for right after signing up; only while the class has a seat | N | N | N | own (self) |
