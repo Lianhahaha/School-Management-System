@@ -190,7 +190,7 @@ describe('student assistant', () => {
     assert.equal((await noteOf()).isRead, true, 'nothing is left to do');
   });
 
-  it('enrolls, transfers and withdraws students, but does not end a school year', async () => {
+  it('enrolls, transfers, withdraws and completes students like an admin', async () => {
     const [first, second] = [await makeUser('student'), await makeUser('student')];
     const enrolled = await send('post', '/enrollments', {
       studentId: first.studentId,
@@ -207,20 +207,30 @@ describe('student assistant', () => {
     });
     expectStatus(moved, 201);
 
-    expectForbidden(
-      await send('post', '/enrollments/complete', {
+    // The end of the school year for one student of the class, and one enrollment closed as completed.
+    const yearEnd = await send('post', '/enrollments/complete', {
+      classId: school.classA.id,
+      studentIds: [second.studentId],
+    });
+    expectStatus(yearEnd, 200);
+    assert.equal(yearEnd.body.data.completed, 1);
+    const [third, fourth] = [await makeUser('student'), await makeUser('student')];
+    const enrollmentOf = async (student) => {
+      const res = await send('post', '/enrollments', {
+        studentId: student.studentId,
         classId: school.classA.id,
-        studentIds: [second.studentId],
-      }),
-    );
-    const [{ id: secondEnrollmentId }] = await query(
-      "SELECT id FROM enrollments WHERE student_id = ? AND status = 'active'",
-      [second.studentId],
-    );
-    const completed = await send('patch', `/enrollments/${secondEnrollmentId}`, { status: 'completed' });
-    expectForbidden(completed);
-    assert.equal(completed.body.error.details.reason, 'role_not_allowed');
-    const withdrawn = await send('patch', `/enrollments/${secondEnrollmentId}`, { status: 'withdrawn' });
+      });
+      expectStatus(res, 201);
+      return res.body.data.id;
+    };
+    const completed = await send('patch', `/enrollments/${await enrollmentOf(third)}`, {
+      status: 'completed',
+    });
+    expectStatus(completed, 200);
+    assert.equal(completed.body.data.status, 'completed');
+    const withdrawn = await send('patch', `/enrollments/${await enrollmentOf(fourth)}`, {
+      status: 'withdrawn',
+    });
     expectStatus(withdrawn, 200);
     assert.equal(withdrawn.body.data.status, 'withdrawn');
   });

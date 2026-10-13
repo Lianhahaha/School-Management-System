@@ -46,5 +46,5 @@ export const getNextClass = () => api.get('/enrollments/next-class').then(toData
  */
 export const enrollMyself = (classId) => api.post('/enrollments/next-class', { classId }).then(toData);
 
-/** The office only. Closes an active enrollment: status is 'withdrawn', or 'completed' (the admin's). */
+/** The office only. Closes an active enrollment: status is 'withdrawn' or 'completed'. */
 export const setEnrollmentStatus = (id, status) => api.patch(`/enrollments/${id}`, { status }).then(toData);

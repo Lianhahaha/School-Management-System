@@ -31,7 +31,7 @@ const CLOSE_ACTIONS = [
 
 /**
  * Every enrollment of one student, newest first: class, academic year, status badge, enrolled and
- * left dates. With `canManage`, an active row offers Withdraw and Mark completed (the admin's) behind a
+ * left dates. With `canManage`, an active row offers Withdraw and Mark completed behind a
  * confirmation; closed rows have no actions (transitions are one-way, and `transferred` rows are
  * written only by a transfer).
  *

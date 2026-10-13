@@ -16,7 +16,7 @@ const OFFICE = Object.freeze(['admin', 'assistant']);
 /**
  * The roles allowed each action the pages offer or hide by role. It mirrors the backend's authorize() lists,
  * and the service rules where a route admits more roles than one of its uses (a student assistant creates
- * student accounts only, and closes an enrollment as withdrawn only). Only actions some page checks are
+ * student and teacher accounts, and edits student accounts only). Only actions some page checks are
  * listed: everything else in an area is open to every role that reaches it. This only decides what is shown;
  * the backend enforces access.
  */
@@ -44,7 +44,7 @@ export const PERMISSIONS = Object.freeze({
   /** Close an active enrollment as withdrawn (PATCH /enrollments/:id). */
   'enrollments.withdraw': OFFICE,
   /** End of school year (POST /enrollments/complete) and closing an enrollment as completed. */
-  'enrollments.complete': ADMIN,
+  'enrollments.complete': OFFICE,
   /** Create, edit, retire and delete subjects, with their grading rules (POST, PATCH, DELETE /subjects). */
   'subjects.manage': OFFICE,
   /** DELETE /classes/:id. */

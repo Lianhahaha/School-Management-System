@@ -26,10 +26,10 @@ enrollmentsRoutes.post(
   validate({ body: schemas.transferBody }),
   controller.transfer,
 );
-// The end of a school year cannot be undone: admins only.
+// The end of a school year (the office's; it cannot be undone, so the page confirms first).
 enrollmentsRoutes.post(
   '/complete',
-  authorize('admin'),
+  authorize('admin', 'assistant'),
   validate({ body: schemas.completeYearBody }),
   controller.completeYear,
 );
@@ -42,7 +42,7 @@ enrollmentsRoutes.post(
   controller.enrollMyself,
 );
 enrollmentsRoutes.get('/:id', validate({ params: schemas.idParams }), controller.get);
-// A student assistant may close an enrollment as withdrawn only (enrollments.service).
+// The office closes an enrollment as withdrawn or completed (enrollments.service).
 enrollmentsRoutes.patch(
   '/:id',
   authorize('admin', 'assistant'),

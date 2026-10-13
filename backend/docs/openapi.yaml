@@ -1211,7 +1211,7 @@ paths:
       operationId: completeSchoolYear
       summary: End the school year for students of a class
       description: |
-        Roles: admin (it cannot be undone).
+        Roles: admin, assistant (it cannot be undone).
 
         All or nothing: one transaction closes the listed students' active enrollments in `classId` as
         `completed` (left today) and, with `nextClassId`, enrolls them in that class from today. Students of the
@@ -1323,7 +1323,7 @@ paths:
       operationId: closeEnrollment
       summary: Close an enrollment
       description: |
-        Roles: admin, assistant (`withdrawn` only; closing as `completed` is a 403 `role_not_allowed`).
+        Roles: admin, assistant.
 
         Allowed transitions are `active` to `completed` and `active` to `withdrawn`; both set `leftOn` to today.
         Anything else, such as re-activation or closing a closed enrollment, is a 409

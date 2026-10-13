@@ -402,7 +402,7 @@ const ASSISTANT_LIMITS = {
     "Some work is the administrator's, so those pages and buttons are hidden for a student assistant.",
     'You can\'t open "Users" or edit a teacher\'s record.',
     "You can look at attendance and grade sheets, but only the subject's teacher or the administrator can save them.",
-    "You can't end the school year, mark an enrollment completed, or deactivate or delete accounts.",
+    "You can't deactivate or delete accounts.",
     'Ask the administrator when one of these needs doing.',
   ],
 };
@@ -530,6 +530,7 @@ export const HELP = Object.freeze({
     ASSISTANT_GRADES,
     POST_ANNOUNCEMENT,
     NO_CLASS_DAY,
+    END_OF_YEAR,
     ...ACCOUNT,
   ],
   teacher: [

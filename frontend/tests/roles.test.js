@@ -17,6 +17,7 @@ const ASSISTANT_ALLOWED = [
   'teachers.create',
   'school.setUp',
   'enrollments.withdraw',
+  'enrollments.complete',
   'announcements.manageAll',
   'calendar.manage',
 ];
@@ -27,7 +28,6 @@ const ASSISTANT_DENIED = [
   'users.setStatus',
   'users.delete',
   'teachers.manage',
-  'enrollments.complete',
   'lessons.manageAll',
 ];
 

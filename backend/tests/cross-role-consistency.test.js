@@ -1124,22 +1124,15 @@ describe('every role sees the same school', () => {
     });
 
     it('is refused what only an admin does, and nothing changes', async () => {
-      const { assistant, students, classes, lessons, teachers } = school;
+      const { assistant, students, lessons, teachers } = school;
       const [assessment] = db.assessments;
       const [grade] = db.grades;
-      const anaEnrollment = activeEnrollmentOf(students.ana.studentId);
       const attempts = [
         ['get', '/users'],
         ['get', `/users/${school.admin.id}`],
         ['patch', `/users/${students.ana.id}/status`, { isActive: false }],
         ['delete', `/users/${students.quinn.id}`],
         ['patch', `/teachers/${teachers.aquino.teacherId}`, { department: 'Science' }],
-        [
-          'post',
-          '/enrollments/complete',
-          { classId: classes.rizal.id, studentIds: [students.ana.studentId] },
-        ],
-        ['patch', `/enrollments/${anaEnrollment.id}`, { status: 'completed' }],
         [
           'put',
           '/attendance/sheet',
