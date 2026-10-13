@@ -300,6 +300,9 @@ describe('OpenAPI specification', () => {
       assert.equal(schemas[schema].pattern, regex.source, `${schema} pattern`);
     }
 
+    assert.deepEqual(schemas.PrivacyConsent.properties.privacyNoticeVersion.enum, [
+      shared.PRIVACY_NOTICE_VERSION,
+    ]);
     assert.equal(schemas.Password.minLength, shared.PASSWORD_MIN_LENGTH);
     assert.equal(schemas.Password.maxLength, shared.PASSWORD_MAX_LENGTH);
     assert.equal(parameters.Page.schema.default, shared.PAGINATION.DEFAULT_PAGE);

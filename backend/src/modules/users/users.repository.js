@@ -15,7 +15,7 @@ export const USER_SORT_MAP = {
 };
 
 const COLUMNS = `u.id, u.firebase_uid, u.email, u.first_name, u.last_name, u.phone, u.role, u.is_active,
-  u.created_at, u.updated_at`;
+  u.privacy_notice_version, u.privacy_accepted_at, u.created_at, u.updated_at`;
 
 /**
  * One query per request: identity, role, profile ids, the class of the active enrollment and, for a student
@@ -96,10 +96,20 @@ export function listUsers(listQuery) {
   });
 }
 
-export async function insertUser({ firebaseUid, email, firstName, lastName, phone, role }, conn) {
+/**
+ * `privacyNoticeVersion` is the Privacy Notice a sign-up agreed to; the time of the agreement is the insert's
+ * (UTC). Without it (an account the school office creates) both stay NULL.
+ */
+export async function insertUser(
+  { firebaseUid, email, firstName, lastName, phone, role, privacyNoticeVersion },
+  conn,
+) {
+  const version = privacyNoticeVersion ?? null;
   const result = await run(
-    'INSERT INTO users (firebase_uid, email, first_name, last_name, phone, role) VALUES (?, ?, ?, ?, ?, ?)',
-    [firebaseUid, email, firstName, lastName, phone ?? null, role],
+    `INSERT INTO users (firebase_uid, email, first_name, last_name, phone, role, privacy_notice_version,
+                        privacy_accepted_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, IF(? IS NULL, NULL, UTC_TIMESTAMP()))`,
+    [firebaseUid, email, firstName, lastName, phone ?? null, role, version, version],
     conn,
   );
   return result.insertId;

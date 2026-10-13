@@ -11,10 +11,13 @@ const isEmailTaken = (error) =>
   (error instanceof ApiError && error.details?.key === 'users.uq_users_email') ||
   (error?.code === 'ER_DUP_ENTRY' && /uq_users_email/.test(error.sqlMessage ?? ''));
 
-/** The account a registration body describes: a student with an application, or a student assistant. */
+/**
+ * The account a registration body describes: a student with an application, or a student assistant. Both
+ * carry the Privacy Notice the person agreed to (the schema accepts the current one only).
+ */
 function accountOf(body) {
-  const { accountType, email, password, firstName, lastName, phone, ...rest } = body;
-  const identity = { email, password, firstName, lastName, phone };
+  const { accountType, email, password, firstName, lastName, phone, privacyNoticeVersion, ...rest } = body;
+  const identity = { email, password, firstName, lastName, phone, privacyNoticeVersion };
   if (accountType === 'assistant') return { ...identity, role: 'assistant' };
   const { gradeLevel, previousSchool, ...profile } = rest;
   return { ...identity, role: 'student', profile, application: { gradeLevel, previousSchool } };

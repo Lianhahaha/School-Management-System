@@ -4,6 +4,7 @@ import { after, before, describe, it } from 'node:test';
 import { todayYmd } from '../src/utils/dates.js';
 import {
   APPLICATION_FIELDS,
+  PRIVACY_CONSENT,
   api,
   as,
   buildSchool,
@@ -163,7 +164,9 @@ describe('notifications', () => {
   it("deletes the office's sign-up notes when the unused account is deleted", async () => {
     const otherAdmin = await makeUser('admin');
     const register = (fields) =>
-      api.post('/api/v1/auth/register').send({ password: 'Password123!', lastName: 'Gone', ...fields });
+      api
+        .post('/api/v1/auth/register')
+        .send({ password: 'Password123!', lastName: 'Gone', ...PRIVACY_CONSENT, ...fields });
     const applicant = (
       await register({ email: 'gone.applicant@school.test', firstName: 'Applicant', ...APPLICATION_FIELDS })
     ).body.data;

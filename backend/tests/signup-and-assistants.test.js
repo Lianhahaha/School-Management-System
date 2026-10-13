@@ -6,6 +6,7 @@ import { currentAcademicYear, nextAcademicYear } from '../src/utils/dates.js';
 import { bearer } from './helpers/fakeFirebase.js';
 import {
   APPLICATION_FIELDS,
+  PRIVACY_CONSENT,
   api,
   as,
   closeWorld,
@@ -56,7 +57,12 @@ describe('sign-up: students pick their class, student assistants wait for approv
   };
   /** A student assistant who signed up (request pending), with a ready Authorization header. */
   const signUpAssistant = async (overrides = {}) => {
-    const res = await register({ accountType: 'assistant', ...accountFields(), ...overrides });
+    const res = await register({
+      accountType: 'assistant',
+      ...accountFields(),
+      ...PRIVACY_CONSENT,
+      ...overrides,
+    });
     expectStatus(res, 201);
     return withAuth(res.body.data);
   };
@@ -236,7 +242,7 @@ describe('sign-up: students pick their class, student assistants wait for approv
   describe('student assistants', () => {
     it('signs up with the account fields only, waits for approval and tells the office', async () => {
       const fields = { ...accountFields(), phone: '+63 917 222 3333' };
-      const res = await register({ accountType: 'assistant', ...fields });
+      const res = await register({ accountType: 'assistant', ...fields, ...PRIVACY_CONSENT });
       expectStatus(res, 201);
       const account = res.body.data;
       assert.deepEqual(
@@ -261,13 +267,15 @@ describe('sign-up: students pick their class, student assistants wait for approv
       const [entry] = await activity('user.register');
       assert.match(entry.summary, /signed up as a student assistant/);
 
+      // Each with the consent, so each is refused for its own field.
+      const consenting = () => ({ ...accountFields(), ...PRIVACY_CONSENT });
       const refused = [
-        { accountType: 'assistant', ...accountFields(), gradeLevel: 7 },
-        { accountType: 'assistant', ...accountFields(), guardianName: 'Maria Cruz' },
-        { accountType: 'assistant', ...accountFields(), lrn: '136512140001' },
-        { accountType: 'assistant', ...accountFields(), role: 'admin' },
-        { accountType: 'admin', ...accountFields() },
-        { accountType: 'teacher', ...accountFields() },
+        { accountType: 'assistant', ...consenting(), gradeLevel: 7 },
+        { accountType: 'assistant', ...consenting(), guardianName: 'Maria Cruz' },
+        { accountType: 'assistant', ...consenting(), lrn: '136512140001' },
+        { accountType: 'assistant', ...consenting(), role: 'admin' },
+        { accountType: 'admin', ...consenting() },
+        { accountType: 'teacher', ...consenting() },
       ];
       for (const body of refused) {
         expectStatus(await register(body), 400);

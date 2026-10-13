@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it, mock } from 'node:test';
 import { pool, query } from '../src/config/db.js';
 import { firebase } from '../src/config/firebase.js';
+import { PRIVACY_NOTICE_VERSION } from '../src/constants/shared.js';
 import { REGISTER_FAILED_LIMIT } from '../src/modules/auth/auth.routes.js';
 import { createUserAccount } from '../src/modules/users/users.service.js';
 import { logger } from '../src/utils/logger.js';
@@ -10,6 +11,7 @@ import { FAKE_PROJECT_ID, bearer, firebaseUsers } from './helpers/fakeFirebase.j
 import { currentAcademicYear } from '../src/utils/dates.js';
 import {
   APPLICATION_FIELDS,
+  PRIVACY_CONSENT,
   api,
   as,
   assignTeacher,
@@ -223,6 +225,61 @@ describe('registration', () => {
     assert.equal(res.body.error.code, 'VALIDATION_ERROR');
   });
 
+  /** A student assistant's sign-up: the account fields and the consent only. */
+  const assistantBody = (email) => ({
+    accountType: 'assistant',
+    email,
+    password: 'Password123!',
+    firstName: 'Ada',
+    lastName: 'Santos',
+    ...PRIVACY_CONSENT,
+  });
+
+  it('refuses a sign-up that does not agree to the current Privacy Notice, of either kind (400)', async () => {
+    const { privacyNoticeVersion: _agreed, ...studentWithout } = { ...body, email: 'no.consent@school.test' };
+    const { privacyNoticeVersion: _too, ...assistantWithout } = assistantBody('no.consent2@school.test');
+    for (const without of [studentWithout, assistantWithout]) {
+      for (const version of [undefined, '2026-01-01', null, true]) {
+        const res = await api
+          .post('/api/v1/auth/register')
+          .send({ ...without, privacyNoticeVersion: version });
+        assert.equal(res.status, 400, `${without.accountType ?? 'student'} with ${version}`);
+        assert.deepEqual(res.body.error.details.issues, [
+          {
+            path: 'body.privacyNoticeVersion',
+            message: 'agree to the current Privacy Notice; reload the page if it changed',
+          },
+        ]);
+      }
+    }
+    const [{ n }] = await query("SELECT COUNT(*) AS n FROM users WHERE email LIKE 'no.consent%'");
+    assert.equal(n, 0, 'no account without the consent');
+  });
+
+  it('records which Privacy Notice a sign-up agreed to and when, and /auth/me shows it', async () => {
+    for (const signUp of [
+      { ...body, email: 'consent.student@school.test' },
+      assistantBody('consent.assistant@school.test'),
+    ]) {
+      // DATETIME keeps whole seconds: the earliest time it can show is the start of this second.
+      const earliest = Math.floor(Date.now() / 1000) * 1000;
+      const res = await api.post('/api/v1/auth/register').send(signUp);
+      assert.equal(res.status, 201, JSON.stringify(res.body));
+      const { privacyNoticeVersion, privacyAcceptedAt } = res.body.data;
+      assert.equal(privacyNoticeVersion, PRIVACY_NOTICE_VERSION);
+      assert.match(privacyAcceptedAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.000Z$/);
+      const acceptedAt = Date.parse(privacyAcceptedAt);
+      assert.ok(acceptedAt >= earliest && acceptedAt <= Date.now(), `${privacyAcceptedAt} is not now`);
+
+      const me = await api.get('/api/v1/auth/me').set('Authorization', bearer(res.body.data.firebaseUid));
+      assert.equal(me.status, 200);
+      assert.deepEqual(
+        [me.body.data.privacyNoticeVersion, me.body.data.privacyAcceptedAt],
+        [PRIVACY_NOTICE_VERSION, privacyAcceptedAt],
+      );
+    }
+  });
+
   it('answers 409 for an email that is already registered', async () => {
     const res = await api.post('/api/v1/auth/register').send(body);
     assert.equal(res.status, 409);
@@ -288,6 +345,43 @@ describe('user administration', () => {
     assert.equal(res.status, 201);
     assert.match(res.body.data.profile.employeeNumber, /^EMP-\d{4}-\d{4}$/);
     assert.equal(res.body.data.profile.department, 'Science');
+  });
+
+  it("records no Privacy Notice consent for the office's accounts, and lets the office send none", async () => {
+    const admin = await makeUser('admin');
+    const student = { role: 'student', password: 'Password123!', firstName: 'Office', lastName: 'Made' };
+    const created = await api
+      .post('/api/v1/users')
+      .set(as(admin))
+      .send({ ...student, email: 'office.made@school.test' });
+    assert.equal(created.status, 201, JSON.stringify(created.body));
+    const noConsent = { privacyNoticeVersion: null, privacyAcceptedAt: null };
+    const consentOf = (account) => ({
+      privacyNoticeVersion: account.privacyNoticeVersion,
+      privacyAcceptedAt: account.privacyAcceptedAt,
+    });
+    assert.deepEqual(consentOf(created.body.data), noConsent);
+    const detail = await api.get(`/api/v1/users/${created.body.data.id}`).set(as(admin));
+    assert.deepEqual(consentOf(detail.body.data), noConsent);
+    // The list stays the plain account shape.
+    const listed = (await api.get('/api/v1/users?search=office.made').set(as(admin))).body.data;
+    assert.deepEqual(
+      Object.keys(listed[0]).filter((key) => key.startsWith('privacy')),
+      [],
+    );
+
+    // Consent is the person's own act: the office cannot record it for them.
+    const sent = await api
+      .post('/api/v1/users')
+      .set(as(admin))
+      .send({ ...student, email: 'office.consent@school.test', ...PRIVACY_CONSENT });
+    assert.equal(sent.status, 400);
+    assert.equal(sent.body.error.code, 'VALIDATION_ERROR');
+    const script = await createUserAccount(
+      { ...student, email: 'script.consent@school.test', profile: {}, ...PRIVACY_CONSENT },
+      { trusted: true },
+    );
+    assert.deepEqual(consentOf(script), noConsent);
   });
 
   it('students and teachers cannot use /users (403 FORBIDDEN)', async () => {

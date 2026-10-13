@@ -5,6 +5,7 @@
 import request from 'supertest';
 import { createApp } from '../../src/app.js';
 import { run } from '../../src/config/db.js';
+import { PRIVACY_NOTICE_VERSION } from '../../src/constants/shared.js';
 import { createUserAccount } from '../../src/modules/users/users.service.js';
 import { currentAcademicYear, todayYmd } from '../../src/utils/dates.js';
 import { bearer, installFakeFirebase } from './fakeFirebase.js';
@@ -103,8 +104,15 @@ async function makeAccount(role, overrides) {
   return { ...account, auth: bearer(account.firebaseUid) };
 }
 
-/** The fields POST /auth/register requires besides the account ones: the guardian and the grade applied for. */
+/** What every POST /auth/register sends, a student's and a student assistant's: the current Privacy Notice. */
+export const PRIVACY_CONSENT = Object.freeze({ privacyNoticeVersion: PRIVACY_NOTICE_VERSION });
+
+/**
+ * The fields a student's POST /auth/register requires besides the account ones: the agreement to the Privacy
+ * Notice, the guardian and the grade applied for.
+ */
 export const APPLICATION_FIELDS = Object.freeze({
+  ...PRIVACY_CONSENT,
   gradeLevel: 7,
   guardianName: 'Maria Cruz',
   guardianPhone: '+63 917 765 4321',

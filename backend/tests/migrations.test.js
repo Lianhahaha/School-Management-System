@@ -133,6 +133,11 @@ describe('database migrations', () => {
     const definitions = () =>
       Promise.all(enumColumns.map(([table, column]) => columnDefinition(table, column)));
     const current = await definitions();
+    const consentColumns = () =>
+      Promise.all(
+        ['privacy_notice_version', 'privacy_accepted_at'].map((column) => columnDefinition('users', column)),
+      );
+    const currentConsent = await consentColumns();
     // Put back what the upgrades removed or added, and forget that they ran.
     await session.query(
       `ALTER TABLE users MODIFY COLUMN role ENUM('admin','teacher','student') NOT NULL
@@ -153,6 +158,10 @@ describe('database migrations', () => {
     );
     await session.query(
       'ALTER TABLE students DROP CHECK chk_students_lrn, DROP INDEX uq_students_lrn, DROP COLUMN lrn',
+    );
+    await session.query(
+      `ALTER TABLE users DROP CHECK chk_users_privacy_consent,
+         DROP COLUMN privacy_notice_version, DROP COLUMN privacy_accepted_at`,
     );
     // The fees and payments tables of the older schema, with their entries in the activity log.
     await session.query(
@@ -191,6 +200,22 @@ describe('database migrations', () => {
     assert.equal(await hasColumn('students', 'lrn'), true);
     assert.equal(await hasIndex('students', 'uq_students_lrn'), true);
     assert.deepEqual(await definitions(), current, 'the ENUM columns end up as schema.sql defines them');
+    assert.deepEqual(await consentColumns(), currentConsent, 'the consent columns too, in their place');
+    // An account made before them (the class-subject's teacher) has no recorded consent, as the office's.
+    assert.deepEqual(
+      await rows(
+        "SELECT privacy_notice_version, privacy_accepted_at FROM users WHERE email = 'migration@school.test'",
+      ),
+      [{ privacy_notice_version: null, privacy_accepted_at: null }],
+    );
+    // The version and its time come together.
+    await assert.rejects(
+      session.query(
+        `INSERT INTO users (firebase_uid, email, first_name, last_name, role, privacy_notice_version)
+         VALUES ('uid-half', 'half@school.test', 'Half', 'Consent', 'student', '2026-10-13')`,
+      ),
+      { code: 'ER_CHECK_CONSTRAINT_VIOLATED' },
+    );
     assert.equal(await hasTable('payments'), false);
     assert.equal(await hasTable('fees'), false);
     assert.deepEqual(

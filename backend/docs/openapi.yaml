@@ -155,6 +155,11 @@ paths:
         account has no access beyond `/auth/me` until the school office approves the request
         (`POST /assistant-requests/{userId}/approve`).
 
+        Both agree to the Privacy Notice (Data Privacy Act, RA 10173): `privacyNoticeVersion` is required and
+        must be the current version, the date of the notice's wording. Missing or another version (a page
+        loaded before the notice changed) is a 400 with the issue on `body.privacyNoticeVersion`. The account
+        records the version and the time of the agreement (`privacyNoticeVersion`, `privacyAcceptedAt`).
+
         Every active admin and approved assistant gets a `signup` notification. No token is returned: sign in
         with the Firebase client SDK afterwards.
 
@@ -186,6 +191,7 @@ paths:
                   guardianPhone: +63 917 765 4321
                   gradeLevel: 7
                   previousSchool: Bagong Silang Elementary School
+                  privacyNoticeVersion: '2026-10-13'
               assistant:
                 summary: Student assistant (waits for approval)
                 value:
@@ -195,6 +201,7 @@ paths:
                   firstName: Joy
                   lastName: Bautista
                   phone: +63 917 555 0123
+                  privacyNoticeVersion: '2026-10-13'
       responses:
         '201': { $ref: '#/components/responses/AccountResponse' }
         '400': { $ref: '#/components/responses/BadRequest' }
@@ -3110,10 +3117,22 @@ components:
       allOf:
         - $ref: '#/components/schemas/User'
         - type: object
-          required: [firebaseUid, studentId, teacherId, profile]
+          required: [firebaseUid, privacyNoticeVersion, privacyAcceptedAt, studentId, teacherId, profile]
           properties:
             firebaseUid:
               type: string
+            privacyNoticeVersion:
+              type: string
+              nullable: true
+              description: >-
+                The Privacy Notice agreed to at sign-up (its date). `null` for an account the school office
+                created: the school collects that consent on paper.
+              example: '2026-10-13'
+            privacyAcceptedAt:
+              nullable: true
+              description: When the person agreed to it; `null` with `privacyNoticeVersion`.
+              allOf:
+                - $ref: '#/components/schemas/Timestamp'
             studentId:
               type: integer
               nullable: true
@@ -5272,10 +5291,22 @@ components:
         expiresAt:
           $ref: '#/components/schemas/CreateAnnouncementRequest/properties/expiresAt'
     # --- Sign-up: new students' sections, student assistants' requests ---
+    PrivacyConsent:
+      type: object
+      required: [privacyNoticeVersion]
+      properties:
+        privacyNoticeVersion:
+          type: string
+          enum: ['2026-10-13']
+          description: >-
+            The Privacy Notice the person ticked to agree to: the date of its current wording
+            (`PRIVACY_NOTICE_VERSION`). Any other value is a 400.
+          example: '2026-10-13'
     RegisterStudentRequest:
       allOf:
         - $ref: '#/components/schemas/AccountFields'
         - $ref: '#/components/schemas/StudentDetails'
+        - $ref: '#/components/schemas/PrivacyConsent'
         - type: object
           required: [guardianName, guardianPhone, gradeLevel]
           properties:
@@ -5293,9 +5324,10 @@ components:
               maxLength: 150
               description: Optional; blank is stored as no value.
     RegisterAssistantRequest:
-      description: The account fields only; student details and application fields are rejected.
+      description: The account fields and the consent only; student details and application fields are rejected.
       allOf:
         - $ref: '#/components/schemas/AccountFields'
+        - $ref: '#/components/schemas/PrivacyConsent'
         - type: object
           required: [accountType]
           properties:
@@ -5697,6 +5729,8 @@ components:
                   phone: null
                   role: teacher
                   isActive: true
+                  privacyNoticeVersion: null
+                  privacyAcceptedAt: null
                   studentId: null
                   teacherId: 5
                   profile:
@@ -5720,6 +5754,8 @@ components:
                   phone: +63 917 123 4567
                   role: student
                   isActive: true
+                  privacyNoticeVersion: null
+                  privacyAcceptedAt: null
                   studentId: 12
                   teacherId: null
                   profile:
@@ -5755,6 +5791,8 @@ components:
                   phone: null
                   role: student
                   isActive: true
+                  privacyNoticeVersion: '2026-10-13'
+                  privacyAcceptedAt: '2026-10-13T07:45:00.000Z'
                   studentId: 13
                   teacherId: null
                   profile:
@@ -5766,10 +5804,10 @@ components:
                     address: null
                     guardianName: null
                     guardianPhone: null
-                    admissionDate: '2026-10-03'
+                    admissionDate: '2026-10-13'
                   currentEnrollment: null
-                  createdAt: '2026-10-03T07:45:00.000Z'
-                  updatedAt: '2026-10-03T07:45:00.000Z'
+                  createdAt: '2026-10-13T07:45:00.000Z'
+                  updatedAt: '2026-10-13T07:45:00.000Z'
     UserListResponse:
       description: A page of accounts.
       headers:

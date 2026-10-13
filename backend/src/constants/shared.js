@@ -210,6 +210,13 @@ export const PASSWORD_MAX_LENGTH = 128;
 /** Month (1-12) in which the academic year starts. 8 = August, so 2026-10-03 belongs to "2026-2027". */
 export const ACADEMIC_YEAR_START_MONTH = 8;
 
+/**
+ * The date of the Privacy Notice's current wording. Change it whenever the notice changes in substance:
+ * sign-up records which version each person agreed to (and refuses any other), so the school can show
+ * what notice they were given.
+ */
+export const PRIVACY_NOTICE_VERSION = '2026-10-13';
+
 /** The closed error-code catalogue. The API never emits a code outside this list. */
 export const ERROR_CODES = Object.freeze({
   VALIDATION_ERROR: 'VALIDATION_ERROR', // 400

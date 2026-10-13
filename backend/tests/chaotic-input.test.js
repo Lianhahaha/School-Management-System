@@ -98,6 +98,7 @@ describe('chaotic input: every value gets a clear answer, never a crash', () => 
       'address',
       'previousSchool',
       'accountType',
+      'privacyNoticeVersion',
     ];
     for (const field of fields) {
       for (const value of CHAOS_VALUES) {

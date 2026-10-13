@@ -24,6 +24,10 @@ SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
 --    An account with history is never deleted: the API sets is_active = 0 (and
 --    disables the Firebase user) instead. Only an account created by mistake,
 --    that nothing refers to yet, can be deleted (DELETE /users/:id).
+--    privacy_notice_version + privacy_accepted_at prove a sign-up's consent
+--    (RA 10173): which Privacy Notice the person agreed to, and when. Both are
+--    NULL on accounts the school office or create-admin made: the school
+--    collects that consent on paper at enrollment.
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS users (
   id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -38,13 +42,18 @@ CREATE TABLE IF NOT EXISTS users (
                 COMMENT 'Single source of truth for RBAC. Immutable after creation',
   is_active     BOOLEAN      NOT NULL DEFAULT TRUE
                 COMMENT 'Stored as tinyint(1). 0 = deactivated: API rejects the request even if the Firebase token is valid',
+  privacy_notice_version VARCHAR(10) NULL
+                COMMENT 'Privacy Notice (its date) agreed to at sign-up; NULL = created by the school office',
+  privacy_accepted_at    DATETIME    NULL
+                COMMENT 'When the sign-up agreed to that notice (UTC); NULL = created by the school office',
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_users_firebase_uid (firebase_uid),           -- token -> user lookup on EVERY API request
   UNIQUE KEY uq_users_email        (email),                  -- one account per e-mail; search by e-mail
   KEY        idx_users_role_active (role, is_active),        -- "all active teachers", dashboard counts
-  KEY        idx_users_name        (last_name, first_name)   -- name search (prefix LIKE) + default sort order
+  KEY        idx_users_name        (last_name, first_name),  -- name search (prefix LIKE) + default sort order
+  CONSTRAINT chk_users_privacy_consent CHECK ((privacy_notice_version IS NULL) = (privacy_accepted_at IS NULL))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='Accounts of all roles; identity in Firebase, profile + role here';
 

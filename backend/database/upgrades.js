@@ -124,4 +124,22 @@ export const UPGRADES = Object.freeze([
             DROP TABLE IF EXISTS payments;
             DROP TABLE IF EXISTS fees`,
   },
+  {
+    // Proof of a sign-up's consent to the Privacy Notice (RA 10173): which version, and when. Every account
+    // stored so far gets NULL in both, as accounts the school office creates do. One ALTER adds both columns
+    // and their CHECK together, so the first column alone tells whether it ran.
+    id: '2026-10-13-users-privacy-consent',
+    description: 'add users.privacy_notice_version and users.privacy_accepted_at',
+    needed: `SELECT 1 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'privacy_notice_version')`,
+    apply: `ALTER TABLE users
+              ADD COLUMN privacy_notice_version VARCHAR(10) NULL
+                COMMENT 'Privacy Notice (its date) agreed to at sign-up; NULL = created by the school office'
+                AFTER is_active,
+              ADD COLUMN privacy_accepted_at DATETIME NULL
+                COMMENT 'When the sign-up agreed to that notice (UTC); NULL = created by the school office'
+                AFTER privacy_notice_version,
+              ADD CONSTRAINT chk_users_privacy_consent
+                CHECK ((privacy_notice_version IS NULL) = (privacy_accepted_at IS NULL))`,
+  },
 ]);

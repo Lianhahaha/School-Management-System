@@ -38,13 +38,16 @@ const toUserShape = (row) => ({
 
 /**
  * Identity + role profile (+ current enrollment for students, + where the sign-up stands for student
- * assistants): the shape of /auth/me and /users/:id.
+ * assistants) + the Privacy Notice agreed to at sign-up and when (null for an account the school office
+ * created): the shape of /auth/me and /users/:id.
  */
 export async function getAccount(id) {
   const user = ApiError.assertFound(await repo.findUserById(id), 'user', id);
   const account = {
     ...toUserShape(user),
     firebaseUid: user.firebaseUid,
+    privacyNoticeVersion: user.privacyNoticeVersion,
+    privacyAcceptedAt: user.privacyAcceptedAt,
     studentId: null,
     teacherId: null,
     profile: null,
@@ -191,12 +194,17 @@ function withAccountLock(email, work) {
  *
  * @param {{ email: string, password: string, role: 'admin'|'teacher'|'student'|'assistant',
  *           firstName: string, lastName: string, phone?: string, profile?: object,
- *           application?: { gradeLevel: number, previousSchool?: string|null } }} input
- *   `application` is sent by public registration only: office-created students have none
+ *           application?: { gradeLevel: number, previousSchool?: string|null },
+ *           privacyNoticeVersion?: string }} input
+ *   `application` and `privacyNoticeVersion` (the Privacy Notice agreed to, stored with the time) are sent by
+ *   public registration only: office-created students have no application, and the office's accounts no
+ *   recorded consent (the school collects it on paper)
  * @param {{ trusted: boolean }} options trusted = the office, or the create-admin script
  */
 export async function createUserAccount(input, { trusted }) {
   const email = input.email.toLowerCase();
+  // Consent is the person's own act: a version the office sent along is never recorded as theirs.
+  const privacyNoticeVersion = trusted ? null : input.privacyNoticeVersion;
   const userId = await withAccountLock(email, async (conn) => {
     if (await repo.findUserByEmail(email, conn)) throw emailAlreadyRegistered();
 
@@ -208,7 +216,7 @@ export async function createUserAccount(input, { trusted }) {
 
     const insertAll = () =>
       inTransaction(conn, async () => {
-        const id = await repo.insertUser({ ...input, email, firebaseUid: uid }, conn);
+        const id = await repo.insertUser({ ...input, email, firebaseUid: uid, privacyNoticeVersion }, conn);
         if (input.role === 'student') {
           const studentId = await studentsService.createProfile(id, input.profile, conn);
           if (input.application) await admissions.createApplication(studentId, input.application, conn);
