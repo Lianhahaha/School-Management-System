@@ -35,7 +35,10 @@ export default function StudentDashboardPage() {
                 <div className="space-y-6">
                   <StudentTimetableCard periods={data.todaySchedule} holiday={data.holidayToday} />
                   <StudentAttendanceCard summary={data.attendanceSummary} />
-                  <UpcomingAssessmentsCard assessments={data.upcomingAssessments} />
+                  <UpcomingAssessmentsCard
+                    assessments={data.upcomingAssessments}
+                    total={data.upcomingAssessmentsTotal}
+                  />
                 </div>
                 <div className="space-y-6">
                   <StudentGradeSummaryCard subjects={data.gradeSummary} />

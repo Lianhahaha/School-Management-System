@@ -65,7 +65,7 @@ export function listAssessments(listQuery, scope) {
 
 /**
  * Assessments dated within [from, to] and not given yet (no score recorded), soonest first (dashboards).
- * `classId` limits them to one class.
+ * `classId` limits them to one class. Each row also carries `total`, how many match before the LIMIT.
  */
 export function findUpcoming({ classId, from, to, limit }) {
   const where = new WhereBuilder()
@@ -73,7 +73,8 @@ export function findUpcoming({ classId, from, to, limit }) {
     .add('NOT EXISTS (SELECT 1 FROM grades g WHERE g.assessment_id = a.id)')
     .addIf(classId, 'cs.class_id = ?');
   return query(
-    `SELECT a.id, a.title, a.type, a.assessed_on, c.name AS class_name, sub.name AS subject_name
+    `SELECT a.id, a.title, a.type, a.assessed_on, c.name AS class_name, sub.name AS subject_name,
+            COUNT(*) OVER () AS total
        ${FROM} ${where.sql} ORDER BY a.assessed_on ASC, a.id ASC LIMIT ${Number(limit)}`,
     where.params,
   );

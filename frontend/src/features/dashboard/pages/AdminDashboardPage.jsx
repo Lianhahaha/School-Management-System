@@ -14,8 +14,7 @@ import { SetupChecklistCard } from '../components/SetupChecklistCard';
 import { UpcomingAssessmentsCard } from '../components/UpcomingAssessmentsCard';
 import { UpcomingEventsCard } from '../components/UpcomingEventsCard';
 
-/** How many upcoming assessments and announcements the dashboard lists; their pages hold the rest. */
-const ASSESSMENTS_SHOWN = 5;
+/** How many announcements the dashboard lists; their page holds the rest. */
 const ANNOUNCEMENTS_SHOWN = 3;
 
 /**
@@ -63,7 +62,10 @@ export default function AdminDashboardPage() {
             first={
               <>
                 <AdminAttendanceCard attendance={data.attendanceToday} holiday={data.holidayToday} />
-                <UpcomingAssessmentsCard assessments={data.upcomingAssessments} limit={ASSESSMENTS_SHOWN} />
+                <UpcomingAssessmentsCard
+                  assessments={data.upcomingAssessments}
+                  total={data.upcomingAssessmentsTotal}
+                />
               </>
             }
             second={

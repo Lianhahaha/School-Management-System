@@ -134,7 +134,7 @@ async function adminDashboard(user) {
       repo.findAdminCounts(day.year),
       summarizeAttendanceUnscoped({ dateFrom: today, dateTo: today }),
       repo.findEnrollmentsByGrade(day.year),
-      upcomingAssessmentsUnscoped({ days: 7, limit: 10 }),
+      upcomingAssessmentsUnscoped({ days: 7, limit: 5 }),
       briefAnnouncements(user),
       atRiskStudents(user),
       upcomingEvents(),
@@ -159,7 +159,8 @@ async function adminDashboard(user) {
       gradeLevel: row.gradeLevel,
       students: row.students,
     })),
-    upcomingAssessments: upcoming,
+    upcomingAssessments: upcoming.items,
+    upcomingAssessmentsTotal: upcoming.total,
     recentAnnouncements: announcements,
     atRisk,
     upcomingEvents: events,
@@ -270,6 +271,7 @@ async function studentDashboard(user) {
       gradeSummary: [],
       recentGrades: [],
       upcomingAssessments: [],
+      upcomingAssessmentsTotal: 0,
     };
   }
 
@@ -313,7 +315,8 @@ async function studentDashboard(user) {
       percentage: grade.percentage,
       assessedOn: grade.assessment.assessedOn,
     })),
-    upcomingAssessments: upcoming,
+    upcomingAssessments: upcoming.items,
+    upcomingAssessmentsTotal: upcoming.total,
   };
 }
 

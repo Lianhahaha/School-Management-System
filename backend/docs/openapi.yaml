@@ -4214,6 +4214,7 @@ components:
           attendanceToday,
           enrollmentsByGrade,
           upcomingAssessments,
+          upcomingAssessmentsTotal,
           recentAnnouncements,
           atRisk,
           upcomingEvents,
@@ -4344,9 +4345,12 @@ components:
                 type: integer
         upcomingAssessments:
           type: array
-          description: Assessments from today to 7 days ahead that have no score yet, at most 10.
+          description: Assessments from today to 7 days ahead that have no score yet, soonest first, at most 5.
           items:
             $ref: '#/components/schemas/UpcomingAssessment'
+        upcomingAssessmentsTotal:
+          type: integer
+          description: How many such assessments there are in all (upcomingAssessments lists the first 5).
         recentAnnouncements:
           type: array
           description: Latest active announcements, at most 5.
@@ -4517,6 +4521,7 @@ components:
           gradeSummary,
           recentGrades,
           upcomingAssessments,
+          upcomingAssessmentsTotal,
           recentAnnouncements,
           upcomingEvents,
         ]
@@ -4641,9 +4646,12 @@ components:
                 $ref: '#/components/schemas/DateYmd'
         upcomingAssessments:
           type: array
-          description: Assessments of the class from today to 7 days ahead that have no score yet, at most 5.
+          description: Assessments of the class from today to 7 days ahead that have no score yet, soonest first, at most 5.
           items:
             $ref: '#/components/schemas/UpcomingAssessment'
+        upcomingAssessmentsTotal:
+          type: integer
+          description: How many such assessments the class has in all (upcomingAssessments lists the first 5).
         recentAnnouncements:
           type: array
           description: Latest active announcements visible to the student, at most 5.
@@ -6439,6 +6447,7 @@ components:
                       assessedOn: '2026-10-07'
                       className: Grade 7 - A
                       subjectName: Biology
+                  upcomingAssessmentsTotal: 1
                   recentAnnouncements:
                     - id: 9
                       title: Science fair on Friday
@@ -6536,6 +6545,7 @@ components:
                       assessedOn: '2026-10-07'
                       className: Grade 7 - A
                       subjectName: Biology
+                  upcomingAssessmentsTotal: 1
                   recentAnnouncements: []
     AssistantRequestResponse:
       description: The student assistant's request.

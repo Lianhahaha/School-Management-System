@@ -6,20 +6,19 @@ import { ASSESSMENT_TYPE_LABELS } from '../../../constants/ui';
 import { formatDate } from '../../../utils/date';
 
 /**
- * Assessments coming up in the next seven days (dashboard payload `upcomingAssessments`).
- * Shown on the admin and the student dashboard.
+ * Assessments coming up in the next seven days (dashboard payload `upcomingAssessments`, the first few, and
+ * `upcomingAssessmentsTotal`, how many there are in all). Shown on the admin and the student dashboard.
  * @param {object} props
  * @param {object[]} props.assessments soonest first
- * @param {number} [props.limit] list only the first few (the count beside the title stays the full one)
+ * @param {number} props.total every upcoming assessment, also those not listed
  */
-export function UpcomingAssessmentsCard({ assessments: all, limit }) {
-  const assessments = limit ? all.slice(0, limit) : all;
+export function UpcomingAssessmentsCard({ assessments, total }) {
   return (
     <Card
       icon={ClipboardCheck}
       mark="cream"
       title="Upcoming assessments"
-      total={all.length > 0 ? all.length : undefined}
+      total={total > 0 ? total : undefined}
       description="In the next 7 days"
     >
       {assessments.length === 0 ? (
@@ -47,9 +46,9 @@ export function UpcomingAssessmentsCard({ assessments: all, limit }) {
           ))}
         </ul>
       )}
-      {assessments.length < all.length && (
+      {assessments.length < total && (
         <p className="mt-3 text-xs text-gray-600">
-          Showing the next {assessments.length} of {all.length}.
+          Showing the next {assessments.length} of {total}.
         </p>
       )}
     </Card>

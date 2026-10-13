@@ -164,6 +164,7 @@ describe('dashboard', () => {
     assert.deepEqual(data.gradeSummary, []);
     assert.deepEqual(data.recentGrades, []);
     assert.deepEqual(data.upcomingAssessments, []);
+    assert.equal(data.upcomingAssessmentsTotal, 0);
     assert.equal(data.attendanceSummary.total, 0);
     assert.equal(data.attendanceSummary.rate, null);
   });
@@ -187,8 +188,32 @@ describe('dashboard', () => {
       .set(as(school.owner))
       .send({ grades: [{ studentId: school.s2.studentId, score: 8 }] });
     for (const who of [school.admin, school.s1, school.s2]) {
-      assert.deepEqual((await dashboard(who)).upcomingAssessments, []);
+      const data = await dashboard(who);
+      assert.deepEqual(data.upcomingAssessments, []);
+      assert.equal(data.upcomingAssessmentsTotal, 0);
     }
+  });
+
+  it('lists the first five upcoming assessments and counts all of them', async () => {
+    const titles = ['Quiz Alpha', 'Quiz Bravo', 'Quiz Charlie', 'Quiz Delta', 'Quiz Echo', 'Quiz Foxtrot'];
+    const created = [];
+    for (const title of titles) {
+      const res = await api
+        .post('/api/v1/assessments')
+        .set(as(school.owner))
+        .send({ classSubjectId: school.csA.id, title, type: 'quiz', term: 'term1', maxScore: 10 });
+      assert.equal(res.status, 201, JSON.stringify(res.body));
+      created.push(res.body.data.id);
+    }
+    for (const who of [school.admin, school.s1]) {
+      const data = await dashboard(who);
+      assert.deepEqual(
+        data.upcomingAssessments.map((a) => a.title),
+        titles.slice(0, 5),
+      );
+      assert.equal(data.upcomingAssessmentsTotal, 6);
+    }
+    for (const id of created) await api.delete(`/api/v1/assessments/${id}`).set(as(school.owner));
   });
 
   it("keeps this year's figures for a student already placed in next year's class", async () => {
