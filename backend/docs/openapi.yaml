@@ -4270,8 +4270,8 @@ components:
             unenrolledStudents:
               type: integer
               description: |
-                Active students without an active enrollment, leaving out pending and declined applicants (as
-                `GET /students?hasActiveEnrollment=false&isActive=true`).
+                Active students without an active enrollment, pending applicants included and declined ones left
+                out (as `GET /students?hasActiveEnrollment=false&isActive=true`).
         attendanceToday:
           description: >-
             Attendance counts of today across the whole school, how many of today's timetable periods are
@@ -4556,7 +4556,9 @@ components:
                 - $ref: '#/components/schemas/PersonRef'
         todaySchedule:
           type: array
-          description: Lessons of today for the student's class; empty on a school holiday.
+          description: >-
+            Lessons of today for the student's class; empty on a school holiday and while the student's class
+            is next school year's (placed at the end of this one).
           items:
             type: object
             required: [scheduleId, classSubjectId, subjectName, teacher, startTime, endTime, room]

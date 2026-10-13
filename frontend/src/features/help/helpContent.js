@@ -672,7 +672,7 @@ export const HELP = Object.freeze({
       steps: [
         'Open "Grades".',
         'At the top, choose the school year and "1st Semester", "2nd Semester" or "Whole year".',
-        'The table shows each subject\'s quarter grades, its "Final" grade (the average of its quarters) and your "General average". 75 is passing.',
+        'The table shows each subject\'s quarter grades, its "Final" grade (the average of its quarters; for the whole year, of its two semesters) and your "General average". 75 is passing.',
         'Choose a subject in the list to see your score on each assessment.',
         'Press "Print report card" for a paper copy.',
       ],
