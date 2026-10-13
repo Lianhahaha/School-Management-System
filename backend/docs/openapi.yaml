@@ -735,7 +735,7 @@ paths:
       operationId: createSubject
       summary: Create a subject
       description: |
-        Roles: admin.
+        Roles: admin, assistant (editing, retiring and deleting a subject stay the admin's).
 
         A code that already exists is a 409 (`details.key = subjects.uq_subjects_code`).
       requestBody:

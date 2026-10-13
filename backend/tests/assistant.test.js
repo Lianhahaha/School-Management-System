@@ -255,10 +255,13 @@ describe('student assistant', () => {
     expectForbidden(await send('delete', `/classes/${klass.id}`));
   });
 
-  it('reads subjects but does not create or change them or their grading', async () => {
+  it('reads and creates subjects but does not change them or their grading', async () => {
     const subject = await makeSubject(school.admin);
     expectStatus(await send('get', '/subjects'), 200);
-    expectForbidden(await send('post', '/subjects', { code: 'OFFICE-1', name: 'Office subject' }));
+    const created = await send('post', '/subjects', { code: 'OFFICE-1', name: 'Office subject' });
+    expectStatus(created, 201);
+    expectForbidden(await send('patch', `/subjects/${created.body.data.id}`, { name: 'Renamed' }));
+    expectForbidden(await send('delete', `/subjects/${created.body.data.id}`));
     expectForbidden(await send('patch', `/subjects/${subject.id}`, { name: 'Renamed' }));
     expectForbidden(await send('patch', `/subjects/${subject.id}`, { gradeWeights: { quiz: 50, exam: 50 } }));
     expectForbidden(await send('patch', `/subjects/${subject.id}`, { gradingGroup: 'languages' }));

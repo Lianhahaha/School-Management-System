@@ -11,6 +11,7 @@ import { PERMISSIONS, can, roleHome, roleLabel } from '../src/utils/roles';
 const ASSISTANT_ALLOWED = [
   'school.readAll',
   'assistantRequests.review',
+  'subjects.create',
   'enrollments.withdraw',
   'announcements.manageAll',
   'calendar.manage',

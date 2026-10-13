@@ -23,11 +23,12 @@ const STATUS_OPTIONS = [
 ];
 
 /**
- * The subject catalogue. The admin creates, edits (grading rules included), retires and deletes subjects; a
- * student assistant reads it.
+ * The subject catalogue. The office creates subjects; only the admin edits (grading rules included), retires and
+ * deletes them, since a change regrades every class that uses the subject.
  */
 export default function SubjectsPage() {
   const { role } = useAuth();
+  const canCreate = can(role, 'subjects.create');
   const canManage = can(role, 'subjects.manage');
   const list = useListParams({ filters: ['isActive'], defaultSort: ['code', 'asc'] });
   const { data, isPending, isFetching, error, refetch } = useSubjects(list.apiParams);
@@ -131,7 +132,7 @@ export default function SubjectsPage() {
     });
   }
 
-  const createButton = canManage && <Button onClick={createModal.open}>Create subject</Button>;
+  const createButton = canCreate && <Button onClick={createModal.open}>Create subject</Button>;
 
   return (
     <>
@@ -177,7 +178,7 @@ export default function SubjectsPage() {
           ) : (
             <EmptyState
               title="No subjects yet"
-              description={canManage ? 'Create the first subject to get started.' : undefined}
+              description={canCreate ? 'Create the first subject to get started.' : undefined}
               action={createButton}
             />
           )
@@ -186,15 +187,13 @@ export default function SubjectsPage() {
 
       <Pagination meta={data?.meta} onPageChange={list.setPage} onLimitChange={list.setLimit} />
 
+      {canCreate && <SubjectFormModal open={createModal.isOpen} onClose={createModal.close} />}
       {canManage && (
-        <>
-          <SubjectFormModal open={createModal.isOpen} onClose={createModal.close} />
-          <SubjectFormModal
-            open={editTarget !== null}
-            onClose={() => setEditTarget(null)}
-            subject={editTarget ?? undefined}
-          />
-        </>
+        <SubjectFormModal
+          open={editTarget !== null}
+          onClose={() => setEditTarget(null)}
+          subject={editTarget ?? undefined}
+        />
       )}
     </>
   );

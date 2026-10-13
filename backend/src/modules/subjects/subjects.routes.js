@@ -7,9 +7,11 @@ import * as schemas from './subjects.schemas.js';
 export const subjectsRoutes = Router();
 
 subjectsRoutes.get('/', validate({ query: schemas.listSubjectsQuery }), controller.list);
+// The office creates subjects (a student assistant too); editing, retiring and deleting one, which change how
+// every class using it is graded, stay the admin's.
 subjectsRoutes.post(
   '/',
-  authorize('admin'),
+  authorize('admin', 'assistant'),
   validate({ body: schemas.createSubjectBody }),
   controller.create,
 );
