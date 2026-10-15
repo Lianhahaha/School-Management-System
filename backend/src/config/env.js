@@ -44,6 +44,11 @@ const schema = z.object({
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   DOCS_ENABLED: boolString.default(true),
   ALLOW_PUBLIC_REGISTRATION: boolString.default(true),
+  // The account anyone may sign in as from the sign-in page with one tap (modules/auth, /auth/demo). Unset: off.
+  DEMO_ACCOUNT_EMAIL: z
+    .email()
+    .transform((value) => value.toLowerCase())
+    .optional(),
   /** Requests per minute per signed-in user (middleware/rateLimit). */
   API_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(600),
   APP_TIMEZONE: z

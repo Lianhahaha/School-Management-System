@@ -102,4 +102,6 @@ export const firebase = {
   updateUser: (uid, properties) => (init(), adminAuth.updateUser(uid, properties)),
   deleteUser: (uid) => (init(), adminAuth.deleteUser(uid)),
   revokeRefreshTokens: (uid) => (init(), adminAuth.revokeRefreshTokens(uid)),
+  /** A token the client SDK signs in with (signInWithCustomToken): the demo sign-in. */
+  createCustomToken: (uid) => (init(), adminAuth.createCustomToken(uid)),
 };

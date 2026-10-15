@@ -12,7 +12,7 @@ info:
 
     ## Authentication and roles
 
-    Every operation except `GET /health` and `POST /auth/register` requires
+    Every operation except `GET /health`, `POST /auth/register` and `/auth/demo` requires
     `Authorization: Bearer <Firebase ID token>`. Use **Authorize** and paste a token; in development
     `npm run token --silent -- <email> <password>` (run in `backend/`) prints one for any account.
     The token only proves identity: the account must exist in the school database and be active.
@@ -57,7 +57,7 @@ info:
     | `NOT_FOUND` | 404 | The record does not exist or is not visible to the caller (`details.resource`, `details.id`), or the route is unknown. An unknown route is a 404 with or without a token; only below a secured resource (for example `/students/...`) is the token checked first. `POST /auth/register` answers 404 with `details.reason = registration_disabled` when self-registration is switched off. |
     | `CONFLICT` | 409 | Duplicate value (`details.key`, as `table.key_name`), record still in use (`details.reason` is `in_use`, `details.constraint`), or a business conflict identified by `details.reason`. |
     | `SCHEDULE_CONFLICT` | 409 | A timetable slot overlaps another slot of the same class, teacher or room. `details.conflicts` lists every overlap. |
-    | `RATE_LIMITED` | 429 | Too many registrations from one IP address, or more than 600 requests a minute from one signed-in user (`API_RATE_LIMIT_PER_MINUTE`). `details.retryAfterSeconds`, also sent as `Retry-After`. |
+    | `RATE_LIMITED` | 429 | Too many registrations or demo sign-ins from one IP address, or more than 600 requests a minute from one signed-in user (`API_RATE_LIMIT_PER_MINUTE`). `details.retryAfterSeconds`, also sent as `Retry-After`. |
     | `INTERNAL_ERROR` | 500 | Unexpected failure. |
     | `SERVICE_UNAVAILABLE` | 503 | A dependency cannot serve the request right now; retry later. `details.component` names it: `db` (database unreachable), `auth` (the token could not be checked because Firebase's signing keys could not be fetched; the session is still valid) or `timetable` (timetable lock busy). |
 
@@ -209,6 +209,79 @@ paths:
         '409': { $ref: '#/components/responses/Conflict' }
         '429': { $ref: '#/components/responses/RateLimited' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /auth/demo:
+    get:
+      tags: [auth]
+      operationId: getDemoAccount
+      summary: Get the demo account the sign-in page offers
+      description: |
+        Roles: public (no token).
+
+        The name and role of the demo account (`DEMO_ACCOUNT_EMAIL`), which anyone may sign in as from the
+        sign-in page with one tap. It is a real account with that role's full rights. 404 with
+        `details.reason = demo_disabled` while the variable is unset, or when the account does not exist or is
+        deactivated: the page then offers no demo.
+      security: []
+      responses:
+        '200':
+          description: The demo account.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [firstName, lastName, role]
+                        properties:
+                          firstName:
+                            type: string
+                          lastName:
+                            type: string
+                          role:
+                            $ref: '#/components/schemas/Role'
+              example:
+                success: true
+                data: { firstName: Plue, lastName: Truslow, role: admin }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [auth]
+      operationId: signInDemoAccount
+      summary: Get a sign-in token for the demo account
+      description: |
+        Roles: public (no token).
+
+        A Firebase custom token for the demo account. The client signs in with it
+        (`signInWithCustomToken` of the Firebase client SDK), then calls the API with the ID token it gets,
+        as after any sign-in. No password is involved, so the one-tap sign-in keeps working whatever is done
+        with the account's password. 404 with `details.reason = demo_disabled` as for `GET`. Limited per IP
+        address to 60 sign-ins per 15 minutes.
+      security: []
+      responses:
+        '200':
+          description: A custom token, valid for one hour.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [customToken]
+                        properties:
+                          customToken:
+                            type: string
+                            description: Pass to `signInWithCustomToken`.
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
   /auth/me:
     get:
       tags: [auth]
@@ -3117,10 +3190,16 @@ components:
       allOf:
         - $ref: '#/components/schemas/User'
         - type: object
-          required: [firebaseUid, privacyNoticeVersion, privacyAcceptedAt, studentId, teacherId, profile]
+          required:
+            [firebaseUid, privacyNoticeVersion, privacyAcceptedAt, isDemo, studentId, teacherId, profile]
           properties:
             firebaseUid:
               type: string
+            isDemo:
+              type: boolean
+              description: >-
+                True for the demo account (`DEMO_ACCOUNT_EMAIL`), which anyone may sign in as from the sign-in
+                page (`POST /auth/demo`).
             privacyNoticeVersion:
               type: string
               nullable: true
@@ -5647,7 +5726,7 @@ components:
                     endTime: '08:30'
                     room: b-204
     RateLimited:
-      description: Too many registrations from this IP address, or too many requests from this user (`RATE_LIMITED`).
+      description: Too many registrations or demo sign-ins from this IP address, or too many requests from this user (`RATE_LIMITED`).
       headers:
         X-Request-Id: { $ref: '#/components/headers/XRequestId' }
         Retry-After: { $ref: '#/components/headers/RetryAfter' }

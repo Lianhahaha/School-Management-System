@@ -5,6 +5,14 @@ export async function register(req, res) {
   ok(res, await service.register(req.validated.body), { status: 201 });
 }
 
+export async function demo(req, res) {
+  ok(res, await service.getDemo());
+}
+
+export async function demoSignIn(req, res) {
+  ok(res, await service.signInDemo());
+}
+
 export async function me(req, res) {
   ok(res, await service.getMe(req.user));
 }

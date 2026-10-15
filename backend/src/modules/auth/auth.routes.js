@@ -1,5 +1,6 @@
 /**
  * /auth: POST /register is public (rate limited; disabled with ALLOW_PUBLIC_REGISTRATION=false);
+ * GET and POST /demo are public (the one-tap demo sign-in; off while DEMO_ACCOUNT_EMAIL is unset);
  * GET and PATCH /me require a signed-in user. They are the only routes a student assistant whose sign-up is
  * pending or declined may use (authenticateOwnAccount); every other route refuses them (authenticate).
  *
@@ -56,6 +57,21 @@ authRoutes.post(
   validate({ body: schemas.registerBody }),
   controller.register,
 );
+
+export const DEMO_SIGN_IN_LIMIT = 60;
+
+// One-tap demo sign-ins per IP address and 15 minutes: plenty for a room of visitors, not for a script.
+const demoSignInLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: DEMO_SIGN_IN_LIMIT,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+});
+
+// The demo account (DEMO_ACCOUNT_EMAIL): who the sign-in page offers, and a token to sign in as it.
+authRoutes.get('/demo', controller.demo);
+authRoutes.post('/demo', demoSignInLimiter, controller.demoSignIn);
 // The caller's own account: also open to a student assistant awaiting approval (or declined).
 authRoutes.get('/me', authenticateOwnAccount, controller.me);
 authRoutes.patch(

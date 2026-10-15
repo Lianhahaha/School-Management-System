@@ -1,6 +1,8 @@
 /**
- * Registration and the signed-in user's own account.
+ * Registration, the demo sign-in and the signed-in user's own account.
  */
+import { env } from '../../config/env.js';
+import { firebase } from '../../config/firebase.js';
 import { ApiError } from '../../utils/ApiError.js';
 import * as studentsService from '../students/students.service.js';
 import * as usersService from '../users/users.service.js';
@@ -41,6 +43,29 @@ export async function register(body) {
       { cause: error },
     );
   }
+}
+
+/**
+ * The demo account (DEMO_ACCOUNT_EMAIL): a real, active account of any role that anyone may sign in as from the
+ * sign-in page. 404 `demo_disabled` while the variable is unset, the account does not exist or is deactivated,
+ * so the page shows no demo and a sign-in is never offered that would fail.
+ */
+async function demoAccount() {
+  const user = env.DEMO_ACCOUNT_EMAIL && (await usersService.findUserByEmail(env.DEMO_ACCOUNT_EMAIL));
+  if (!user?.isActive) throw ApiError.notFound('route', '/auth/demo', { reason: 'demo_disabled' });
+  return user;
+}
+
+/** Who the sign-in page offers: the demo account's name and role. */
+export async function getDemo() {
+  const { firstName, lastName, role } = await demoAccount();
+  return { firstName, lastName, role };
+}
+
+/** A Firebase custom token for the demo account; the client signs in with it (signInWithCustomToken). */
+export async function signInDemo() {
+  const { firebaseUid } = await demoAccount();
+  return { customToken: await firebase.createCustomToken(firebaseUid) };
 }
 
 export const getMe = (user) => usersService.getAccount(user.id);

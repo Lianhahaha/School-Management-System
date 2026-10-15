@@ -41,6 +41,8 @@ export function installFakeFirebase() {
     if (!users.delete(uid)) throw failure('auth/user-not-found');
   };
   firebase.revokeRefreshTokens = async () => {};
+  // Like the real SDK, it signs any uid without looking it up.
+  firebase.createCustomToken = async (uid) => `custom-${uid}`;
 }
 
 export const firebaseUsers = () => [...users.values()];

@@ -37,10 +37,17 @@ const toUserShape = (row) => ({
   updatedAt: row.updatedAt,
 });
 
+/** True for the account anyone may sign in as from the sign-in page (DEMO_ACCOUNT_EMAIL). */
+export const isDemoEmail = (email) =>
+  Boolean(env.DEMO_ACCOUNT_EMAIL) && email.toLowerCase() === env.DEMO_ACCOUNT_EMAIL;
+
+/** The users row with this email, or null. */
+export const findUserByEmail = (email) => repo.findUserByEmail(email);
+
 /**
  * Identity + role profile (+ current enrollment for students, + where the sign-up stands for student
  * assistants) + the Privacy Notice agreed to at sign-up and when (null for an account the school office
- * created): the shape of /auth/me and /users/:id.
+ * created) + whether it is the demo account: the shape of /auth/me and /users/:id.
  */
 export async function getAccount(id) {
   const user = ApiError.assertFound(await repo.findUserById(id), 'user', id);
@@ -49,6 +56,7 @@ export async function getAccount(id) {
     firebaseUid: user.firebaseUid,
     privacyNoticeVersion: user.privacyNoticeVersion,
     privacyAcceptedAt: user.privacyAcceptedAt,
+    isDemo: isDemoEmail(user.email),
     studentId: null,
     teacherId: null,
     profile: null,
