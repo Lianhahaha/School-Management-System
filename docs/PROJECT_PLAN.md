@@ -188,7 +188,7 @@ Shared enum values (section 11) are the only values these ENUM columns accept.
 - Scoping: omitted filter = caller's own scope; explicit filter outside the caller's scope = 403 (never silently narrowed); admin unscoped. The literal `me` is accepted wherever a `studentId`, `teacherId` or `authorId` appears.
 - Teacher *visible* set = class-subjects they teach or any class-subject of a class they are homeroom teacher of; teacher *owns* = `class_subjects.teacher_id = me`. Reads use visible, writes use owns.
 
-### 7.2 Endpoints as planned (64; 79 today, see section 14 and the OpenAPI spec)
+### 7.2 Endpoints as planned (64; 81 today, see section 14 and the OpenAPI spec)
 
 | Module | Endpoints | Roles |
 |---|---|---|
