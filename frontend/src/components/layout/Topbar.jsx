@@ -2,6 +2,7 @@ import { useAuth } from '../../features/auth/hooks';
 import { NotificationBell } from '../../features/notifications/components/NotificationBell';
 import { SearchButton } from '../../features/search/components/SearchButton';
 import { can } from '../../utils/roles';
+import { Badge } from '../ui/Badge';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { Brand } from './Brand';
 import { LastUpdated } from './LastUpdated';
@@ -9,13 +10,14 @@ import { UserMenu } from './UserMenu';
 
 /**
  * Top bar: the wordmark below `lg` (the sidebar carries it from `lg` up), when the data was last
- * refreshed (from `md` up), the office's search, the notification bell, the theme switch and the user menu. On phones the full menu opens from the tab bar's "More".
+ * refreshed (from `md` up), a "Demo account" tag for the demo account anyone may sign in as ("Demo" on
+ * phones), the office's search, the notification bell, the theme switch and the user menu. On phones the full menu opens from the tab bar's "More".
  * Below `sm` the controls shrink to 44 px squares so the bar fits a 320 px screen, and below 22rem only the
  * mark of the brand is shown. The user's name and the menu chevron appear from `lg` and the search box
  * widens at `xl`, so a tablet between 640 and 1024 px never scrolls sideways.
  */
 export function Topbar() {
-  const { role } = useAuth();
+  const { me, role } = useAuth();
 
   return (
     <header
@@ -25,6 +27,12 @@ export function Topbar() {
       <Brand className="lg:hidden" wordmarkClassName="max-[22rem]:hidden" />
       <LastUpdated className="max-md:hidden lg:-ml-2" />
       <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-3">
+        {me?.isDemo && (
+          <Badge tone="oxblood" className="mr-1 py-1 sm:mr-0 sm:px-2.5">
+            {/* The badge's gap is the space between the words. */}
+            Demo<span className="max-sm:hidden">account</span>
+          </Badge>
+        )}
         {can(role, 'school.readAll') && <SearchButton />}
         <NotificationBell />
         <ThemeToggle />
