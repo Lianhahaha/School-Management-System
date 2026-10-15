@@ -1,6 +1,7 @@
 import { AuthHeading } from '../../../components/layout/AuthHeading';
 import { Alert } from '../../../components/ui/Alert';
 import { TextLink } from '../../../components/ui/TextLink';
+import { DemoAccountTile } from '../components/DemoAccountTile';
 import { LoginForm } from '../components/LoginForm';
 import { useAuth } from '../hooks';
 import { useRegistrationClosed } from '../registrationClosed';
@@ -18,6 +19,7 @@ export default function LoginPage() {
         </Alert>
       )}
       <LoginForm />
+      <DemoAccountTile />
       <div className="mt-6 space-y-2 text-center text-sm text-gray-600">
         <p>
           <TextLink to="/forgot-password">Forgot password?</TextLink>

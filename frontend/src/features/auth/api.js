@@ -14,5 +14,11 @@ export const getMe = () => api.get('/auth/me').then(toData);
  */
 export const register = (payload) => api.post('/auth/register', payload, { auth: false }).then(toData);
 
+/** The demo account the sign-in page offers (`{ firstName, lastName, role }`); 404 `demo_disabled` when there is none. */
+export const getDemo = () => api.get('/auth/demo', { auth: false }).then(toData);
+
+/** A Firebase custom token for the demo account, to sign in with (`{ customToken }`). */
+export const createDemoToken = () => api.post('/auth/demo', undefined, { auth: false }).then(toData);
+
 /** Self-service contact fields (phone for everyone; address and guardian details for students). */
 export const updateMe = (patch) => api.patch('/auth/me', patch).then(toData);

@@ -1,11 +1,12 @@
-import { useMutation } from '@tanstack/react-query';
-import { sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { sendPasswordResetEmail, signInWithCustomToken, signInWithEmailAndPassword } from 'firebase/auth';
 import { useContext } from 'react';
 import { useNavigate } from 'react-router';
 import { auth } from '../../config/firebase';
 import { useToast } from '../../hooks/useToast';
 import { AuthContext } from './authContext';
-import { register, updateMe } from './api';
+import { createDemoToken, getDemo, register, updateMe } from './api';
+import { authKeys } from './keys';
 import { REGISTRATION_DISABLED, markRegistrationClosed } from './registrationClosed';
 
 /** The signed-in session; see authContext.js for the fields. Throws outside <AuthProvider>. */
@@ -24,6 +25,32 @@ export function useLogin() {
   return useMutation({
     mutationFn: (/** @type {{ email: string, password: string }} */ { email, password }) =>
       signInWithEmailAndPassword(auth, email, password),
+    meta: { silent: true },
+  });
+}
+
+/**
+ * The demo account the sign-in page offers (`{ firstName, lastName, role }`), or null when the API offers none
+ * (404 `demo_disabled`). Any other failure leaves `data` undefined, so the page simply shows no demo.
+ */
+export function useDemoAccount() {
+  return useQuery({
+    queryKey: authKeys.demo(),
+    queryFn: () => getDemo().catch((error) => (error?.status === 404 ? null : Promise.reject(error))),
+    staleTime: 5 * 60_000,
+  });
+}
+
+/**
+ * One-tap sign-in as the demo account: a custom token from the API, then the Firebase sign-in with it. As with
+ * useLogin, AuthProvider takes over from there. Silent: the demo tile shows the error itself.
+ */
+export function useDemoSignIn() {
+  return useMutation({
+    mutationFn: async () => {
+      const { customToken } = await createDemoToken();
+      return signInWithCustomToken(auth, customToken);
+    },
     meta: { silent: true },
   });
 }
