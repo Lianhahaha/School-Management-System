@@ -1,6 +1,7 @@
 /**
  * /auth: POST /register is public (rate limited; disabled with ALLOW_PUBLIC_REGISTRATION=false);
- * GET and POST /demo are public (the one-tap demo sign-in; off while DEMO_ACCOUNT_EMAIL is unset);
+ * GET and POST /demo are public (the one-tap demo sign-in; off while the DEMO_ACCOUNT_EMAIL account is missing
+ * or deactivated);
  * GET and PATCH /me require a signed-in user. They are the only routes a student assistant whose sign-up is
  * pending or declined may use (authenticateOwnAccount); every other route refuses them (authenticate).
  *

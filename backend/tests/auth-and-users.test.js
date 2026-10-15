@@ -31,7 +31,7 @@ const firebaseError = (code, message) => Object.assign(new Error(message), { cod
 describe('health, 404 and authentication middleware', () => {
   before(resetWorld);
 
-  it('offers no demo sign-in while DEMO_ACCOUNT_EMAIL is unset', async () => {
+  it('offers no demo sign-in while the demo account does not exist', async () => {
     for (const res of [await api.get('/api/v1/auth/demo'), await api.post('/api/v1/auth/demo')]) {
       assert.equal(res.status, 404);
       assert.equal(res.body.error.details.reason, 'demo_disabled');

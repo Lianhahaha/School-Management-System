@@ -32,7 +32,7 @@ Per request, `authenticate` does: verify the ID token → find the `users` row b
 
 Accounts have exactly one creation path, `createUserAccount`: it creates (or, for trusted callers, adopts) the Firebase user, writes the `users` + profile rows in one transaction, and deletes the Firebase user again if MySQL fails, so the two systems never drift. Creations of one e-mail run one after another under a named lock, so one cannot replace the Firebase user of another that is still saving its rows. Public self-registration only ever creates students, each with a pending application (an `admissions` row) written in the same transaction.
 
-One account may be offered as a demo (`DEMO_ACCOUNT_EMAIL`): `GET /auth/demo` names it for the sign-in page, and `POST /auth/demo` answers a Firebase custom token for it, which the client signs in with. No password is involved, and the account is otherwise an ordinary one of its role; `isDemo` on `/auth/me` lets the app label it.
+One account is offered as a demo while it exists and is active (`DEMO_ACCOUNT_EMAIL`, by default `demo.admin@skoleph.web.app`): `GET /auth/demo` names it for the sign-in page, and `POST /auth/demo` answers a Firebase custom token for it, which the client signs in with. No password is involved, and the account is otherwise an ordinary one of its role; `isDemo` on `/auth/me` lets the app label it. Deactivating the account turns the demo off.
 
 ## 3. Backend layers
 

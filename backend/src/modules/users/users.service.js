@@ -38,8 +38,7 @@ const toUserShape = (row) => ({
 });
 
 /** True for the account anyone may sign in as from the sign-in page (DEMO_ACCOUNT_EMAIL). */
-export const isDemoEmail = (email) =>
-  Boolean(env.DEMO_ACCOUNT_EMAIL) && email.toLowerCase() === env.DEMO_ACCOUNT_EMAIL;
+export const isDemoEmail = (email) => email.toLowerCase() === env.DEMO_ACCOUNT_EMAIL;
 
 /** The users row with this email, or null. */
 export const findUserByEmail = (email) => repo.findUserByEmail(email);

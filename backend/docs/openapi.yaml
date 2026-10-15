@@ -217,10 +217,10 @@ paths:
       description: |
         Roles: public (no token).
 
-        The name and role of the demo account (`DEMO_ACCOUNT_EMAIL`), which anyone may sign in as from the
-        sign-in page with one tap. It is a real account with that role's full rights. 404 with
-        `details.reason = demo_disabled` while the variable is unset, or when the account does not exist or is
-        deactivated: the page then offers no demo.
+        The name and role of the demo account (`DEMO_ACCOUNT_EMAIL`, by default `demo.admin@skoleph.web.app`),
+        which anyone may sign in as from the sign-in page with one tap. It is a real account with that role's
+        full rights. 404 with `details.reason = demo_disabled` while the account does not exist or is
+        deactivated: the page then offers no demo, so deactivating the account turns the demo off.
       security: []
       responses:
         '200':

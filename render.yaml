@@ -41,6 +41,3 @@ services:
         sync: false
       - key: CORS_ORIGINS
         sync: false
-      # Optional: the account the sign-in page offers as a one-tap demo. Unset: no demo.
-      - key: DEMO_ACCOUNT_EMAIL
-        sync: false

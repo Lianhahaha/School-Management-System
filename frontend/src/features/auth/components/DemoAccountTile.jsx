@@ -9,7 +9,8 @@ import { useDemoAccount, useDemoSignIn } from '../hooks';
 /**
  * The demo account the API offers (DEMO_ACCOUNT_EMAIL), as one tile under the sign-in form: its initials, name,
  * role and a "Demo account" tag, so a visitor knows what they open before tapping. One tap signs in (no
- * password); AuthProvider and the guards take over from there. Renders nothing when there is no demo.
+ * password); AuthProvider and the guards take over from there. Renders nothing when there is no demo (the
+ * account is missing or deactivated).
  */
 export function DemoAccountTile() {
   const { data: demo } = useDemoAccount();
