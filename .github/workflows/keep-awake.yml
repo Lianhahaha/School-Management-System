@@ -1,10 +1,10 @@
 name: Keep awake
 
-# Render's free tier puts the API to sleep after 15 minutes without a request, and the next visitor then waits
-# 20 to 60 seconds. This pings the API and the website every 10 minutes, so they stay awake, and doubles as an
-# uptime check: when either does not answer (or the API reports its database down), the run fails and GitHub
-# emails the repository owner. GitHub may start scheduled runs a few minutes late; one free service awake all
-# month fits Render's 750 free hours. Run it by hand from the Actions tab to check the site at any time.
+# Render's free tier puts the API to sleep after 15 minutes without a request. A cron-job.org job (the owner's
+# account) calls /api/v1/health every 5 minutes and is what keeps it awake: GitHub starts this frequent schedule
+# only every few hours. This workflow stays as an uptime check of the API and the website: when either does not
+# answer (or the API reports its database down), the run fails and GitHub emails the repository owner. Run it by
+# hand from the Actions tab to check the site at any time.
 on:
   schedule:
     - cron: '*/10 * * * *'
