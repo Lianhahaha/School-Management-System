@@ -21,6 +21,7 @@ export const listClassesQuery = listQuery(Object.keys(CLASS_SORT_MAP), {
   // Only the classes the caller can see (a teacher's taught and homeroom classes, a student's class).
   visible: boolQuery.optional(),
 });
+//aight
 
 export const createClassBody = z.strictObject({
   name,
