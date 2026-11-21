@@ -12,19 +12,37 @@ function readCa() {
   return undefined;
 }
 
-/** What to do about a MySQL error, by driver code; printed by the server at start-up and by the scripts. */
-const DB_ERROR_HINTS = {
-  ECONNREFUSED: `MySQL is not reachable at ${env.DB_HOST}:${env.DB_PORT}. Start the "MySQL80" service (services.msc, or \`net start MySQL80\` in an administrator terminal).`,
-  ETIMEDOUT: `The connection to ${env.DB_HOST}:${env.DB_PORT} timed out. Check DB_HOST / DB_PORT and that MySQL is running.`,
-  ER_ACCESS_DENIED_ERROR:
-    'Wrong DB_USER / DB_PASSWORD in backend/.env (wrap the password in double quotes if it contains # or spaces).',
-  ER_DBACCESS_DENIED_ERROR: `DB_USER has no privileges on the database ${env.DB_NAME}. Grant them or use the root account.`,
-  ER_BAD_DB_ERROR: 'The database does not exist yet: run `npm run db:migrate`.',
-  ER_NO_SUCH_TABLE: 'A table is missing: run `npm run db:migrate`.',
-};
+/** A database on this machine is started as a Windows service; a hosted one is switched on by its provider. */
+const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
 
-/** The hint for a MySQL error, or undefined when there is none. */
-export const dbErrorHint = (error) => DB_ERROR_HINTS[error?.code];
+const START_LOCAL_MYSQL =
+  'Start the "MySQL80" service (services.msc, or `net start MySQL80` in an administrator terminal).';
+const START_HOSTED_MYSQL =
+  "Check the service in the provider's console (a free Aiven service is powered off after long inactivity) and that DB_HOST / DB_PORT are right.";
+
+/**
+ * What to do about a MySQL error, by driver code; printed by the server at start-up and by the scripts.
+ * `host` is a parameter so the hint can be tested, and defaults to DB_HOST.
+ */
+export function dbErrorHint(error, host = env.DB_HOST) {
+  const startHint = LOCAL_HOSTS.has(host) ? START_LOCAL_MYSQL : START_HOSTED_MYSQL;
+  switch (error?.code) {
+    case 'ECONNREFUSED':
+      return `MySQL is not reachable at ${host}:${env.DB_PORT}. ${startHint}`;
+    case 'ETIMEDOUT':
+      return `The connection to ${host}:${env.DB_PORT} timed out. ${startHint}`;
+    case 'ER_ACCESS_DENIED_ERROR':
+      return 'Wrong DB_USER / DB_PASSWORD in backend/.env (wrap the password in double quotes if it contains # or spaces).';
+    case 'ER_DBACCESS_DENIED_ERROR':
+      return `DB_USER has no privileges on the database ${env.DB_NAME}. Grant them or use the root account.`;
+    case 'ER_BAD_DB_ERROR':
+      return 'The database does not exist yet: run `npm run db:migrate`.';
+    case 'ER_NO_SUCH_TABLE':
+      return 'A table is missing: run `npm run db:migrate`.';
+    default:
+      return undefined;
+  }
+}
 
 export function dbConnectionOptions() {
   return {

@@ -58,7 +58,7 @@ async function checkDatabase() {
       connectTimeout: 5000,
     });
   } catch (error) {
-    const hint = dbErrorHint(error) ?? `Is the "MySQL80" service running on ${env.DB_HOST}:${env.DB_PORT}?`;
+    const hint = dbErrorHint(error) ?? `Check that MySQL is running at ${env.DB_HOST}:${env.DB_PORT}.`;
     return record('fail', 'MySQL connection', `${error.code ?? error.message}. ${hint}`);
   }
   try {
