@@ -3,8 +3,8 @@ name: Keep awake
 # Render's free tier puts the API to sleep after 15 minutes without a request. A cron-job.org job (the owner's
 # account) calls /api/v1/health every 5 minutes and is what keeps it awake: GitHub starts this frequent schedule
 # only every few hours. This workflow stays as an uptime check of the API and the website: when either does not
-# answer (or the API reports its database down), the run fails and GitHub emails the repository owner. Run it by
-# hand from the Actions tab to check the site at any time.
+# answer (or the API reports its database down), or the latest release of either workflow on main failed, the run
+# fails and GitHub emails the repository owner. Run it by hand from the Actions tab to check the site at any time.
 on:
   schedule:
     - cron: '*/10 * * * *'
@@ -14,7 +14,8 @@ concurrency:
   group: keep-awake
   cancel-in-progress: true
 
-permissions: {}
+permissions:
+  actions: read
 
 env:
   API_HEALTH_URL: https://skole-api.onrender.com/api/v1/health
@@ -39,3 +40,17 @@ jobs:
             --max-time 30 "$SITE_URL")
           echo "HTTP $code"
           test "$code" = "200"
+
+      # The site above can answer with an old release for weeks: on 2026-11-03 the frontend deploy failed,
+      # the site stayed up on the previous one, and every check here passed. A failed release must fail one.
+      - name: The latest release of each workflow on main succeeded
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for workflow in "Backend tests" "Deploy frontend"; do
+            conclusion=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "$workflow" \
+              --branch main --status completed --limit 1 --json conclusion --jq '.[0].conclusion')
+            echo "$workflow: $conclusion"
+            test "$conclusion" = "success" || { echo "::error::$workflow last run on main: $conclusion"; exit 1; }
+          done
+
