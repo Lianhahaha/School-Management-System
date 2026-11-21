@@ -48,15 +48,22 @@ const record = (level, name, detail = '') => {
 };
 
 /** GET a URL with a deadline; returns the response and, for JSON, the parsed body (null when it is not JSON). */
-async function get(url, asJson = false) {
-  const response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
-  return { response, body: asJson ? await response.json().catch(() => null) : await response.text() };
+async function get(url, asJson = false, timeoutMs = TIMEOUT_MS, tries = 2) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+      return { response, body: asJson ? await response.json().catch(() => null) : await response.text() };
+    } catch (error) {
+      if (attempt === tries) throw error;
+      await sleep(2000 * attempt);
+    }
+  }
 }
 
 async function checkSite(url) {
   try {
     const started = performance.now();
-    const { response, body } = await get(url);
+    const { response, body } = await get(url, false, 20_000);
     const ms = Math.round(performance.now() - started);
     if (!response.ok) return record('fail', 'site', `${response.status} from ${url}`);
     if (!body.includes('id="root"')) return record('fail', 'site', `${url} answered, but not with the app`);
@@ -88,6 +95,29 @@ async function checkApi(url) {
   }
 }
 
+/** Failures a cold free database or a lost connection produces; a second try usually answers. */
+const TRANSIENT = new Set(['ETIMEDOUT', 'ECONNRESET', 'PROTOCOL_CONNECTION_LOST', 'ER_CON_COUNT_ERROR']);
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * The first connection to a free hosted MySQL can take longer than the pool's 10-second connect timeout and be
+ * accepted on a second try (seen with Aiven). A diagnostic must not report that as a database that is down.
+ */
+async function withRetry(operation, tries = 3) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (attempt === tries || !TRANSIENT.has(error.code)) throw error;
+      await sleep(2000 * attempt);
+    }
+  }
+}
+
+/** query(), retried while the failure is the connection rather than the query. */
+const checkedQuery = (sql, params) => withRetry(() => query(sql, params));
+
 async function checkDatabase() {
   if (isLocalDbHost()) {
     return record(
@@ -99,9 +129,9 @@ async function checkDatabase() {
   let version;
   let present;
   try {
-    const [server] = await query('SELECT VERSION() AS version');
+    const [server] = await checkedQuery('SELECT VERSION() AS version');
     version = server.version;
-    const tables = await query(
+    const tables = await checkedQuery(
       'SELECT table_name AS name FROM information_schema.tables WHERE table_schema = DATABASE()',
     );
     present = new Set(tables.map((table) => table.name));
@@ -113,7 +143,7 @@ async function checkDatabase() {
   const missing = EXPECTED_TABLES.filter((name) => !present.has(name));
   if (missing.length) record('fail', 'tables', `missing ${missing.join(', ')}; run the hosted db:migrate`);
 
-  const applied = await query('SELECT id, checksum FROM schema_migrations');
+  const applied = await checkedQuery('SELECT id, checksum FROM schema_migrations');
   const ids = new Set(applied.map((row) => row.id));
   const pending = UPGRADES.filter((upgrade) => !ids.has(upgrade.id)).map((upgrade) => upgrade.id);
   if (pending.length) {
@@ -161,7 +191,7 @@ async function checkAccounts() {
     return record('fail', 'Firebase', `${error.code ?? ''} ${error.message}`.trim());
   }
 
-  const rows = await query('SELECT firebase_uid FROM users');
+  const rows = await checkedQuery('SELECT firebase_uid FROM users');
   const databaseUids = new Set(rows.map((row) => row.firebaseUid));
   const notRegistered = [...firebaseUids].filter((uid) => !databaseUids.has(uid)).length;
   const cannotSignIn = [...databaseUids].filter((uid) => !firebaseUids.has(uid)).length;
@@ -180,18 +210,18 @@ async function checkAccounts() {
 
 async function checkSchoolData() {
   const year = currentAcademicYear();
-  const [{ n: unplaced }] = await query(
+  const [{ n: unplaced }] = await checkedQuery(
     `SELECT COUNT(*) AS n FROM students s
        LEFT JOIN enrollments e ON e.student_id = s.id AND e.status = 'active'
       WHERE e.id IS NULL`,
   );
-  const [{ n: emptyClasses }] = await query(
+  const [{ n: emptyClasses }] = await checkedQuery(
     `SELECT COUNT(*) AS n FROM classes c
       WHERE c.academic_year = ?
         AND NOT EXISTS (SELECT 1 FROM class_subjects cs WHERE cs.class_id = c.id)`,
     [year],
   );
-  const [{ n: pendingAssistants }] = await query(
+  const [{ n: pendingAssistants }] = await checkedQuery(
     "SELECT COUNT(*) AS n FROM assistant_requests WHERE status = 'pending'",
   );
 
