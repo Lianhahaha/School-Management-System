@@ -66,3 +66,7 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           projectId: school-management-system-b0a2a
           channelId: live
+          # The action's default, "latest", changes under this workflow: a new CLI starts new checks, and on
+          # 2026-11-03 one of them (the enabled-services check) failed for a day-old permission the deploy key
+          # lacked, so a release stopped while the site kept answering an older one. Raise this by hand.
+          firebaseToolsVersion: 15.37.0
