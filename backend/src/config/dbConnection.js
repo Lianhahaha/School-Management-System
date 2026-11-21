@@ -15,6 +15,9 @@ function readCa() {
 /** A database on this machine is started as a Windows service; a hosted one is switched on by its provider. */
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
 
+/** True for a database on this machine (the default), false for a hosted one. */
+export const isLocalDbHost = (host = env.DB_HOST) => LOCAL_HOSTS.has(host);
+
 const START_LOCAL_MYSQL =
   'Start the "MySQL80" service (services.msc, or `net start MySQL80` in an administrator terminal).';
 const START_HOSTED_MYSQL =
@@ -25,7 +28,7 @@ const START_HOSTED_MYSQL =
  * `host` is a parameter so the hint can be tested, and defaults to DB_HOST.
  */
 export function dbErrorHint(error, host = env.DB_HOST) {
-  const startHint = LOCAL_HOSTS.has(host) ? START_LOCAL_MYSQL : START_HOSTED_MYSQL;
+  const startHint = isLocalDbHost(host) ? START_LOCAL_MYSQL : START_HOSTED_MYSQL;
   switch (error?.code) {
     case 'ECONNREFUSED':
       return `MySQL is not reachable at ${host}:${env.DB_PORT}. ${startHint}`;
